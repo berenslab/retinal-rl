@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Training Results (Don't belong in repo)
+train_dir
+
 # C extensions
 *.so
 
