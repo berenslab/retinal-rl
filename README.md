@@ -16,12 +16,14 @@ and then install `sample-factory` and `vizdoom`
 pip install sample-factory
 pip install vizdoom
 ```
-We'll also need some other tools
+We'll also need some other tools and libraries
 ```bash
-conda install -c conda-forge matplotlib
+conda install -c conda-forge matplotlib gxx
 ```
 
 Now clone the repo
 ```bash
 https://github.com/berenslab/retina-rl.git
 ```
+
+For now I have to copy the `scenarios` directory from sample-factory into the correct path in my conda env, but I'm trying to work that out.
