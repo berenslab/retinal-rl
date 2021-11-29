@@ -4,8 +4,8 @@ import time
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from torchinfo import summary
-from captum.attr import NeuronGradient
+#from torchinfo import summary
+#from captum.attr import NeuronGradient
 
 from sample_factory.algorithms.appo.model_utils import get_hidden_size
 from sample_factory.algorithms.appo.learner import LearnerWorker
@@ -65,7 +65,7 @@ def analyze(cfg):
     obs0 = obs[0]
     obs1 = obs0['obs']
     #print(actor_critic(obs_torch,rnn_states))
-    summary(enc,input_data=obs_torch['obs'])
+    #summary(enc,input_data=obs_torch['obs'])
     inp0 = obs_torch['obs']
     inp = inp0.numpy()[0,:,:,:]
     obssz = obs_torch['obs'].size()
