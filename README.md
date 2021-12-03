@@ -18,7 +18,8 @@ pip install vizdoom
 ```
 We'll also need some other tools and libraries
 ```bash
-conda install -c conda-forge matplotlib gxx
+conda install -c conda-forge matplotlib gxx pyglet imageio
+pip install pygifsicle
 ```
 
 Now clone the repo
