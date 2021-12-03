@@ -5,7 +5,7 @@ Here are the steps I'm currently going through to get the `retina-rl` project wo
 conda create retina-rl
 conda activate retina-rl
 ```
-I'm using `miniconda`, so some of the following command smight be redundant if you're using `anaconda`.
+I'm using `miniconda`, so some of the following commands might be redundant if you're using `anaconda`.
 
 We use the LTS version of `pytorch` to maximize compatibility
 ```bash
@@ -26,5 +26,3 @@ Now clone the repo
 ```bash
 https://github.com/berenslab/retina-rl.git
 ```
-
-For now I have to copy the `scenarios` directory from sample-factory into the correct path in my conda env, but I'm trying to work that out.
