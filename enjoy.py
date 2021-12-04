@@ -9,6 +9,7 @@ def main():
     """Script entry point."""
     register_custom_encoders()
     cfg = custom_parse_args(evaluation=True)
+    print(cfg)
     status = enjoy(cfg)
     return status
 

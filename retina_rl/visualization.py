@@ -9,19 +9,19 @@ from pygifsicle import optimize
 #from captum.attr import NeuronGradient
 
 
-def save_simulation_gif(imgs):
+def save_simulation_gif(cfg,imgs):
 
-    gif_path = "simulation.gif"
+    pth = cfg.train_dir + "/" + cfg.experiment + "/simulation.gif"
 
-    wrt = imageio.get_writer(gif_path, mode='I',fps=30)
+    wrt = imageio.get_writer(pth, mode='I',fps=35)
 
     with wrt as writer:
         for img in imgs:
             writer.append_data(img)
 
-    optimize(gif_path)
+    optimize(pth)
 
-def save_receptive_fields_plot(device,enc,isz,osz):
+def save_receptive_fields_plot(cfg,device,enc,isz,osz):
 
     nchns = isz[0]
     flts = osz[0]
@@ -49,8 +49,8 @@ def save_receptive_fields_plot(device,enc,isz,osz):
 
                 if k == 0:
                     ax.set_title("Filter: " + str(flt), { 'weight' : 'bold' } )
-
-    plt.savefig("receptive-fields.png")
+    pth = cfg.train_dir +  "/" + cfg.experiment + "/receptive-fields.png"
+    plt.savefig(pth)
 
 
 def spike_triggered_average(dev,enc,flt,rds,isz):

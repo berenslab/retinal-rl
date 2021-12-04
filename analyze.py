@@ -18,7 +18,8 @@ from sample_factory.envs.create_env import create_env
 from sample_factory.utils.utils import log, AttrDict
 from sample_factory.algorithms.appo.actor_worker import transform_dict_observations
 from sample_factory.algorithms.utils.multi_agent_wrapper import MultiAgentWrapper
-from retina_rl.retina_rl import register_custom_components, custom_parse_args
+from retina_rl.encoders import register_custom_encoders
+from retina_rl.environment import custom_parse_args
 
 # retina-rl
 from retina_rl.visualization import *
@@ -126,13 +127,13 @@ def analyze(cfg, max_num_frames=1e3):
     print("Input Size: ", isz)
     print("Output Size: ", osz)
 
-    save_simulation_gif(imgs)
-    save_receptive_fields_plot(device,enc,isz,osz)
+    save_simulation_gif(cfg,imgs)
+    save_receptive_fields_plot(cfg,device,enc,isz,osz)
     ### Analysis and plotting
 
 def main():
     """Script entry point."""
-    register_custom_components()
+    register_custom_encoders()
     cfg = custom_parse_args(evaluation=True)
     analyze(cfg)
 
