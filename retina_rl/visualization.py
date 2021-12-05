@@ -29,7 +29,7 @@ def save_receptive_fields_plot(cfg,device,enc,isz,osz):
     rwsmlt = 2
     fltsdv = flts//rwsmlt
 
-    fig, axs = plt.subplots(nchns*rwsmlt,fltsdv)
+    fig, axs = plt.subplots(nchns*rwsmlt,fltsdv,dpi = 100,figsize = [20,14])
 
     for i in range(fltsdv):
 
@@ -43,6 +43,7 @@ def save_receptive_fields_plot(cfg,device,enc,isz,osz):
                 # Plotting statistics
                 rw = k + j*nchns
                 ax = axs[rw,i]
+                ax.set_axis_off()
                 vmx = abs(avg[k,:,:]).max()
                 pnl = ax.imshow(avg[k,:,:],vmin=-vmx,vmax=vmx)
                 fig.colorbar(pnl, ax=ax)
