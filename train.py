@@ -8,7 +8,7 @@ python -m sample_factory_examples.enjoy_custom_env_custom_model --algo=APPO --en
 """
 
 import sys
-from retina_rl.environment import custom_parse_args
+from retina_rl.environment import custom_parse_args,register_custom_doom_environments
 from retina_rl.encoders import register_custom_encoders
 
 from sample_factory.run_algorithm import run_algorithm
@@ -17,6 +17,7 @@ from sample_factory.run_algorithm import run_algorithm
 def main():
     """Script entry point."""
     register_custom_encoders()
+    register_custom_doom_environments()
     cfg = custom_parse_args()
     status = run_algorithm(cfg)
     return status

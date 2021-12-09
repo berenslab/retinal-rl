@@ -18,17 +18,22 @@ class CNNEncoder(EncoderBase):
         super().__init__(cfg, timing)
 
         obs_shape = get_obs_shape(obs_space)
+        nchns = 16
+        btlchnls = 4
 
-        self.conv1 = nn.Conv2d(3, 8, 3, stride=2)
-        self.conv2 = nn.Conv2d(8, 16, 2, stride=1)
+        self.conv1 = nn.Conv2d(3, nchns, 9, stride=1)
+        self.conv2 = nn.Conv2d(nchns, btlchnls, 9, stride=1)
+        self.conv3 = nn.Conv2d(btlchnls, nchns, 9, stride=1)
+        self.conv4 = nn.Conv2d(nchns, nchns, 9, stride=1)
 
-        self.nl1 = nonlinearity(cfg)
-        self.nl2 = nonlinearity(cfg)
+        self.nl = nonlinearity(cfg)
 
         # Preparing Fully Connected Layers
         conv_layers = [
-            self.conv1, self.nl1,
-            self.conv2, self.nl2,
+            self.conv1, self.nl,
+            self.conv2, self.nl,
+            self.conv3, self.nl,
+            self.conv4, self.nl,
         ]
 
         self.conv_head = nn.Sequential(*conv_layers)
@@ -36,14 +41,15 @@ class CNNEncoder(EncoderBase):
 
         self.encoder_out_size = 512
         self.fc1 = nn.Linear(self.conv_head_out_size,self.encoder_out_size)
-        self.nl3 = nonlinearity(cfg)
 
     def forward(self, x):
         # we always work with dictionary observations. Primary observation is available with the key 'obs'
-        x = self.nl1(self.conv1(x))
-        x = self.nl2(self.conv2(x))
+        x = self.nl(self.conv1(x))
+        x = self.nl(self.conv2(x))
+        x = self.nl(self.conv3(x))
+        x = self.nl(self.conv4(x))
         x = x.contiguous().view(-1, self.conv_head_out_size)
-        x = self.nl3(self.fc1(x))
+        x = self.nl(self.fc1(x))
         return x
 
 class RNNEncoder(CNNEncoder):

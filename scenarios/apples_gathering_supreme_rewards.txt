@@ -1,0 +1,90 @@
+#include "zcommon.acs"
+
+global int 0:reward;
+global int 1:shaping_reward;
+
+int spawn_delay = 25;
+int wall_min  = -2000.0;
+int wall_max = 2000.0;
+int start_medikits_quantity = 100;
+int start_poison_quantity = 100;
+int start_tree_quantity = 1000;
+
+
+int medikit_tid = 111;
+int poison_tid = 112;
+int tree_tid = 43; //43
+
+int poison_damage = 30;
+
+// CustomMedkit and Poison are custom things added in  decorate
+function void SpawnMedikit(void)
+{   
+	while(Spawn("CustomMedikit", random(wall_min+1.0,wall_max-1.0), random(wall_min+1.0,wall_max-1.0), 20.0,medikit_tid)==0);
+	//execute script #2 after taking
+	SetThingSpecial(medikit_tid, ACS_ExecuteAlways, 2);
+}
+function void SpawnPoison(void)
+{   
+	
+	while(Spawn("Poison", random(wall_min+1.0,wall_max-1.0), random(wall_min+1.0,wall_max-1.0), 20.0,poison_tid)==0);
+	// execute script #2 after taking
+	SetThingSpecial(poison_tid, ACS_ExecuteAlways, 3);
+}
+function void SpawnTorchTree(void)
+{   
+	
+	while(Spawn("TorchTree", random(wall_min+1.0,wall_max-1.0), random(wall_min+1.0,wall_max-1.0), 20.0,tree_tid)==0);
+
+}
+
+
+
+
+script 1 OPEN
+{
+    reward = 0;
+    for(int i =0;i<start_medikits_quantity;++i)
+    {
+        SpawnMedikit();
+    }
+	for(i =0;i<start_poison_quantity;++i)
+    {
+        SpawnPoison();
+    }
+    for(i =0;i<start_tree_quantity;++i)
+    {
+		SpawnTorchTree();
+    }
+	
+    while(1)
+    {
+        SpawnMedikit();
+		SpawnPoison();
+        delay(spawn_delay);
+		SpawnMedikit();
+        delay(spawn_delay);
+    }
+}
+script 2(void)
+{
+	shaping_reward += 100.0;
+}
+script 3(void)
+{
+	//Inflict 25 damage when the poison is pickd up
+	Thing_Damage(0,poison_damage,MOD_SUICIDE);
+	shaping_reward -= 100.0;
+}
+
+script 4 ENTER
+{
+	int target_id = random(10,21);
+    SetActorPosition(0, GetActorX(target_id), GetActorY(target_id), 0.0, 0);
+    SetActorAngle(0,random(0.0,1.0));
+    shaping_reward = 0;
+    ClearInventory();
+    
+}
+
+

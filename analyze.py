@@ -19,7 +19,7 @@ from sample_factory.utils.utils import log, AttrDict
 from sample_factory.algorithms.appo.actor_worker import transform_dict_observations
 from sample_factory.algorithms.utils.multi_agent_wrapper import MultiAgentWrapper
 from retina_rl.encoders import register_custom_encoders
-from retina_rl.environment import custom_parse_args
+from retina_rl.environment import custom_parse_args,register_custom_doom_environments
 
 # retina-rl
 from retina_rl.visualization import *
@@ -76,7 +76,7 @@ def analyze(cfg, max_num_frames=1e3):
         obs_torch[key] = torch.from_numpy(x).to(device).float()
 
     isz = list(obs_torch['obs'].size())[1:]
-    outmtx = enc.nl2(enc.conv2(enc.nl1(enc.conv1(obs_torch['obs']))))
+    outmtx = enc.nl(enc.conv2(enc.nl(enc.conv1(obs_torch['obs']))))
     osz = list(outmtx.size())[1:]
 
     ### Running and saving a simulation
@@ -134,6 +134,7 @@ def analyze(cfg, max_num_frames=1e3):
 def main():
     """Script entry point."""
     register_custom_encoders()
+    register_custom_doom_environments()
     cfg = custom_parse_args(evaluation=True)
     analyze(cfg)
 

@@ -66,7 +66,7 @@ def spike_triggered_average(dev,enc,flt,rds,isz):
         mnx = cntx - rds
         mxx = cntx + rds+1
         obsns = torch.randn(size=btchsz,device=dev)
-        outmtx = enc.nl2(enc.conv2(enc.nl1(enc.conv1(obsns))))
+        outmtx = (enc.nl(enc.conv1(obsns)))
         outsz = outmtx.size()
         outs = outmtx[:,flt,outsz[2]//2,outsz[3]//2].cpu()
         obsns1 = obsns[:,:,mny:mxy,mnx:mxx].cpu()
