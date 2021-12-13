@@ -52,4 +52,5 @@ For specifing the form the visual encoder, the key arguments are:
 Finally, when training a model there are a number of additional parameters for controlling the reinforcement learning brain, and adjusting simulation parameters. The key ones to worry about are
 
 - `--num_workers`: This is the number of simulation threads to run, and should match the number of cores on the CPU.
-- `--num_envs_per_worker`: This is the number of environments to simulate per thread. This should be fine tuned. `24` seems good.
+- `--num_envs_per_worker`: This is the number of environments to simulate per thread. This should be adjusted. `24` seems good.
+- `--batch_size`: Also manages per worker load. Try `4096`.
