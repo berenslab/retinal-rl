@@ -18,8 +18,8 @@ from sample_factory.envs.create_env import create_env
 from sample_factory.utils.utils import log, AttrDict
 from sample_factory.algorithms.appo.actor_worker import transform_dict_observations
 from sample_factory.algorithms.utils.multi_agent_wrapper import MultiAgentWrapper
-from retina_rl.encoders import register_custom_encoders
-from retina_rl.environment import custom_parse_args,register_custom_doom_environments
+from retina_rl.encoders import register_encoders
+from retina_rl.environment import custom_parse_args,register_environments
 
 # retina-rl
 from retina_rl.visualization import *
@@ -68,16 +68,19 @@ def analyze(cfg, max_num_frames=1e3):
 
     ### Parsing out the encoder and preparing some analyses
 
-    enc = actor_critic.encoder.cnn_encoder
+    enc = actor_critic.encoder.base_encoder
 
     obs = env.reset()
     obs_torch = AttrDict(transform_dict_observations(obs))
     for key, x in obs_torch.items():
         obs_torch[key] = torch.from_numpy(x).to(device).float()
 
-    isz = list(obs_torch['obs'].size())[1:]
-    outmtx = enc.nl(enc.conv2(enc.nl(enc.conv1(obs_torch['obs']))))
-    osz = list(outmtx.size())[1:]
+    ### Analysing encoder
+    print("Encoder Stats:")
+    # Printing encoder stats
+    print(enc)
+
+    save_receptive_fields_plot(cfg,device,enc,obs_torch)
 
     ### Running and saving a simulation
 
@@ -120,21 +123,13 @@ def analyze(cfg, max_num_frames=1e3):
 
     env.close()
 
-    # Printing encoder stats
-    print(enc)
-
-    # Analysing encoder
-    print("Input Size: ", isz)
-    print("Output Size: ", osz)
-
     save_simulation_gif(cfg,imgs)
-    save_receptive_fields_plot(cfg,device,enc,isz,osz)
     ### Analysis and plotting
 
 def main():
     """Script entry point."""
-    register_custom_encoders()
-    register_custom_doom_environments()
+    register_encoders()
+    register_environments()
     cfg = custom_parse_args(evaluation=True)
     analyze(cfg)
 

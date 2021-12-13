@@ -9,41 +9,38 @@ from sample_factory.envs.doom.doom_utils import DoomSpec, register_additional_do
 from sample_factory.envs.doom.action_space import doom_action_space_extended
 from sample_factory.algorithms.utils.arguments import arg_parser, parse_args
 
-def register_custom_doom_environments():
+def register_environment(nm):
 
     # absolute path needs to be specified, otherwise Doom will look in the SampleFactory scenarios folder
 
-    smplbtl = DoomSpec(
-            'doom_simple_battle',
-            join(os.path.abspath('scenarios'), 'simple_battle.cfg'),  # use your custom cfg here
+    spec = DoomSpec(
+            'doom_' + nm,
+            join(os.path.abspath('scenarios'), nm + '.cfg'),  # use your custom cfg here
             doom_action_space_extended(),
             reward_scaling=0.01,
             )
 
-    register_additional_doom_env(smplbtl)
+    print(join(os.path.abspath('scenarios'), nm + '.cfg'))
 
-    aplpth = join(os.path.abspath('scenarios'), 'apples_gathering_supreme.cfg')
-    print(aplpth)
-    aplgthr = DoomSpec(
-            'doom_apples_gathering_supreme',
-            aplpth,  # use your custom cfg here
-            doom_action_space_extended(),
-            reward_scaling=0.01,
-            )
+    register_additional_doom_env(spec)
 
-    register_additional_doom_env(aplgthr)
+def register_environments():
+
+    register_environment('simple_battle')
+    register_environment('apples_gathering_supreme')
 
 def custom_parse_args(argv=None, evaluation=False):
     """
     Parse default SampleFactory arguments and add user-defined arguments on top.
     Allow to override argv for unit tests. Default value (None) means use sys.argv.
     Setting the evaluation flag to True adds additional CLI arguments for evaluating the policy (see the enjoy_ script).
-
     """
     parser = arg_parser(argv, evaluation=evaluation)
 
-    # add custom args here
-    parser.add_argument('--my_custom_arg', type=int, default=42, help='Any custom arguments users might define')
+    # Parse args for rvvs model from Lindsey et al 2019
+    parser.add_argument('--global_channels', type=int, default=16, help='Standard number of channels in CNN layers')
+    parser.add_argument('--retinal_bottleneck', type=int, default=4, help='Number of channels in retinal bottleneck')
+    parser.add_argument('--vvs_depth', type=int, default=1, help='Number of CNN layers in the ventral stream network')
 
     # SampleFactory parse_args function does some additional processing (see comments there)
     cfg = parse_args(argv=argv, evaluation=evaluation, parser=parser)
