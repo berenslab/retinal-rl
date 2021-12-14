@@ -17,8 +17,9 @@ class SimpleEncoderBase(EncoderBase):
         super().__init__(cfg, timing)
 
         obs_shape = get_obs_shape(obs_space)
+        self.kernel_size = 3
 
-        self.conv1 = nn.Conv2d(3, 8, 3, stride=2)
+        self.conv1 = nn.Conv2d(3, 8, self.kernel_size, stride=2)
         self.conv2 = nn.Conv2d(8, 16, 2, stride=1)
 
         self.nl1 = nonlinearity(cfg)
@@ -74,6 +75,7 @@ class LindseyEncoderBase(EncoderBase):
         krnsz = cfg.kernel_size
 
         self.nl = nonlinearity(cfg)
+        self.kernel_size = krnsz
 
 
         self.conv1 = nn.Conv2d(3, nchns, krnsz, stride=1)
