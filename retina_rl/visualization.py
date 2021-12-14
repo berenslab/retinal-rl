@@ -29,7 +29,7 @@ def save_receptive_fields_plot(cfg,device,enc,obs_torch):
 
     nchns = isz[0]
     flts = osz[0]
-    rds = 3
+    rds = 1 + (enc.stride + 1) // 2
     rwsmlt = 2
     fltsdv = flts//rwsmlt
 

@@ -26,7 +26,6 @@ def register_environment(nm):
 
 def register_environments():
 
-    register_environment('simple_battle')
     register_environment('apples_gathering_supreme')
 
 def custom_parse_args(argv=None, evaluation=False):

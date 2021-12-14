@@ -41,9 +41,9 @@ Certain arguments must always be provided, regardless of script, namely:
 
 The following argument should always be set when training for the first time, as it specifies that we're using our encoding model based on Lindsey et. al. 2019:
 
-- `--encoder_custom`: This should be set to `lindsey_encoder` until there are other viable candidates.
+- `--encoder_custom`: The options are `lindsey_encoder` until there are other viable candidates.
 
-For specifing the form the visual encoder, the key arguments are:
+For specifing the form of the `lindsey-encoder`, the key arguments are:
 
 - `--global_channels`: The number of channels in each CNN layers, except for the bottleneck layer.
 - `--retinal_bottleneck`: Number of channels in the retinal bottleneck.
@@ -51,6 +51,7 @@ For specifing the form the visual encoder, the key arguments are:
 
 Finally, when training a model there are a number of additional parameters for controlling the reinforcement learning brain, and adjusting simulation parameters. The key ones to worry about are
 
+- `--hidden_size`: The size of the hidden/latent state used to represent the RL problem.
 - `--num_workers`: This is the number of simulation threads to run, and should match the number of cores on the CPU.
 - `--num_envs_per_worker`: This is the number of environments to simulate per thread. This should be adjusted. `24` seems good.
 - `--batch_size`: Also manages per worker load. Try `4096`.
