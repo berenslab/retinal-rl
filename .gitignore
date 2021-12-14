@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 
 # Training Results (Don't belong in repo)
+_vizdoom.ini
 train_dir
 
 # C extensions
