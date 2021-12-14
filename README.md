@@ -41,13 +41,14 @@ Certain arguments must always be provided, regardless of script, namely:
 
 The following argument should always be set when training for the first time, as it specifies that we're using our encoding model based on Lindsey et. al. 2019:
 
-- `--encoder_custom`: The options are `lindsey_encoder` until there are other viable candidates.
+- `--encoder_custom`: The options are `simple`, which is a small, hard-coded network that still tends to perform well, and `lindsey`, is has a number of tuneable hyperparameters.
 
-For specifing the form of the `lindsey-encoder`, the key arguments are:
+For specifing the form of the `lindsey`, the key arguments are:
 
 - `--global_channels`: The number of channels in each CNN layers, except for the bottleneck layer.
 - `--retinal_bottleneck`: Number of channels in the retinal bottleneck.
 - `--vvs_depth`: Number of CNN layers in the ventral stream network.
+- `--kernel_size`: Number of CNN layers in the ventral stream network.
 
 Finally, when training a model there are a number of additional parameters for controlling the reinforcement learning brain, and adjusting simulation parameters. The key ones to worry about are
 

@@ -71,21 +71,22 @@ class LindseyEncoderBase(EncoderBase):
         nchns = cfg.global_channels
         btlchns = cfg.retinal_bottleneck
         vvsdpth = cfg.vvs_depth
+        krnsz = cfg.kernel_size
 
         self.nl = nonlinearity(cfg)
 
 
-        self.conv1 = nn.Conv2d(3, nchns, 9, stride=1)
-        self.conv2 = nn.Conv2d(nchns, btlchns, 9, stride=1)
+        self.conv1 = nn.Conv2d(3, nchns, krnsz, stride=1)
+        self.conv2 = nn.Conv2d(nchns, btlchns, krnsz, stride=1)
 
         # Preparing Fully Connected Layers
         conv_layers = [ self.conv1, self.nl, self.conv2, self.nl ]
 
         for i in range(vvsdpth):
             if i == 0:
-                conv_layers.extend([nn.Conv2d(btlchns, nchns, 9, stride=1), self.nl])
+                conv_layers.extend([nn.Conv2d(btlchns, nchns, krnsz, stride=1), self.nl])
             else:
-                conv_layers.extend([nn.Conv2d(nchns, nchns, 9, stride=1), self.nl])
+                conv_layers.extend([nn.Conv2d(nchns, nchns, krnsz, stride=1), self.nl])
 
         self.conv_head = nn.Sequential(*conv_layers)
 
