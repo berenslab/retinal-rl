@@ -26,7 +26,12 @@ def register_environment(nm):
 
 def register_environments():
 
-    register_environment('apples_gathering_supreme')
+    register_environment('apple_gathering_r25_b25_g250')
+    register_environment('apple_gathering_r30_b0_g0')
+    register_environment('apple_gathering_r30_b0_100')
+    register_environment('apple_gathering_r30_b2_g0')
+    register_environment('apple_gathering_r30_b2_g100')
+    
 
 def custom_parse_args(argv=None, evaluation=False):
     """
