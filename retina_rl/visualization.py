@@ -29,7 +29,7 @@ def save_receptive_fields_plot(cfg,device,enc,obs_torch):
 
     nchns = isz[0]
     flts = osz[0]
-    rds = 1 + (enc.stride + 1) // 2
+    rds = (enc.kernel_size + 1) // 2
     rwsmlt = 2
     fltsdv = flts//rwsmlt
 
@@ -65,10 +65,10 @@ def spike_triggered_average(dev,enc,flt,rds,isz):
         btchsz = [20000] + isz
         cnty = btchsz[2]//2
         cntx = btchsz[3]//2
-        mny = cnty - rds
-        mxy = cnty + rds+1
-        mnx = cntx - rds
-        mxx = cntx + rds+1
+        mny = cnty - rds - 1
+        mxy = cnty + rds
+        mnx = cntx - rds - 1
+        mxx = cntx + rds
         obsns = torch.randn(size=btchsz,device=dev)
         outmtx = (enc.nl(enc.conv1(obsns)))
         outsz = outmtx.size()
