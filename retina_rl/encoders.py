@@ -50,14 +50,14 @@ class SimpleEncoder(SimpleEncoderBase):
     def __init__(self, cfg, obs_space,timing):
 
         super().__init__(cfg,obs_space,timing)
-        self.cnn_encoder = SimpleEncoderBase(cfg,obs_space,timing)
+        self.base_encoder = SimpleEncoderBase(cfg,obs_space,timing)
 
     def forward(self, obs_dict):
         # we always work with dictionary observations. Primary observation is available with the key 'obs'
         main_obs = obs_dict['obs']
 
         # forward pass through configurable fully connected blocks immediately after the encoder
-        x = self.cnn_encoder(main_obs)
+        x = self.base_encoder(main_obs)
         return x
 
 ### Retinal-VVS Model ###
