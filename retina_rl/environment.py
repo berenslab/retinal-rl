@@ -31,7 +31,7 @@ def register_environments():
     register_environment('apple_gathering_r30_b0_g100')
     register_environment('apple_gathering_r30_b2_g0')
     register_environment('apple_gathering_r30_b2_g100')
-    register_environment('apple_gathering_count-reward_testing')
+    register_environment('apple_gathering_hr100_r30_b0_g0')
 
 def custom_parse_args(argv=None, evaluation=False):
     """
