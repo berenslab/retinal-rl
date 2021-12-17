@@ -9,5 +9,6 @@ spreadsheet log for all experiments: https://bit.ly/3E42X9R
 - Adding reward for current health level appears to address this.
 
 12.17.2021:
-- Using the new value function, some initializations using the `simple` encoder can solve the harder environments (r=30, b=2, g=100) in relatively few iterations (~0.2G)
+- Using the new value function and the `simple` encoder can solve the harder environments (r=30, b=2, g=100) in relatively few iterations (~0.2G)
+- Reproduced on cin servers - `lindsey` can quite easily solve the easy red apples task (~0.03G)
 
