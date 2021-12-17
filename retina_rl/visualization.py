@@ -11,7 +11,7 @@ from pygifsicle import optimize
 
 def save_simulation_gif(cfg,imgs):
 
-    pth = cfg.train_dir + "/" + cfg.experiment + "/simulation.gif"
+    pth = cfg.train_dir + "/" + cfg.experiment + "/simulation-" + str(np.datetime64('now')) + ".gif"
 
     wrt = imageio.get_writer(pth, mode='I',fps=35)
 
@@ -54,7 +54,7 @@ def save_receptive_fields_plot(cfg,device,enc,obs_torch):
 
                 if k == 0:
                     ax.set_title("Filter: " + str(flt), { 'weight' : 'bold' } )
-    pth = cfg.train_dir +  "/" + cfg.experiment + "/receptive-fields.png"
+    pth = cfg.train_dir +  "/" + cfg.experiment + "/receptive-fields-" + str(np.datetime64('now')) + ".png"
     plt.savefig(pth)
 
 
