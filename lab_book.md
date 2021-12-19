@@ -12,3 +12,5 @@ spreadsheet log for all experiments: https://bit.ly/3E42X9R
 - Using the new value function and the `simple` encoder can solve the harder environments (r=30, b=2, g=100) in relatively few iterations (~0.2G)
 - Reproduced on cin servers - `lindsey` can quite easily solve the easy red apples task (~0.03G)
 
+12.19.2021:
+- running some `lindsey` simulations on both scenarios, observations during training: the agents that walk backwards show two oscillating strategies during learnin, walking backwards away from the arena (low reward periods) or blindly circulating around arena (higher reward periods)
