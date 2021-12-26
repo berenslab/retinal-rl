@@ -18,3 +18,7 @@ spreadsheet log for all experiments: https://bit.ly/3E42X9R
 12.20.2021:
 - `lindsey03_hr100_r30_b2_g100` ran through, needed 2d 10h and did not converge to a good solution, `lindsey05_hr100_r30_b2_g100` converged to good solution very fast (daster than `simple`)
 - added scenarios as `_nb` ('no backwards') at the end of name, might be worth trying
+
+12.26.2021:
+- `lindsey05_hr100_r30_b2_g100` ran through and seems to have developed some interesting receptive fields (red/blue detectors - filter 0, and maybe some edge/horizon detectors - filters 8 and 15?, see `receptive-fields-2021-12-26T12:57:53.png`)
+-  `lindsey` networks take >2d on gpu25 (~5d on gpu10) to run 10G steps
