@@ -20,5 +20,6 @@ spreadsheet log for all experiments: https://bit.ly/3E42X9R
 - added scenarios as `_nb` ('no backwards') at the end of name, might be worth trying
 
 12.26.2021:
-- `lindsey05_hr100_r30_b2_g100` ran through and seems to have developed some interesting receptive fields (red/blue detectors - filter 0, and maybe some edge/horizon detectors - filters 8 and 15?, see `receptive-fields-2021-12-26T12:57:53.png`)
+- `lindsey05_hr100_r30_b2_g100` ran through (10G) and seems to have developed some interesting receptive fields (red/blue detectors - filter 0, and maybe some edge/horizon detectors - filters 8 and 15?, see `receptive-fields-2021-12-26T12:57:53.png`) - nothing similar can be seen in `lindsey03...` which had the same parameters, but did not solve the task!
 -  `lindsey` networks take >2d on gpu25 (~5d on gpu10) to run 10G steps
+- tried training `lindsey10` on an `_nb` scenario for 0.3G steps but the performance seemed even worse than in scenarios with all movement options
