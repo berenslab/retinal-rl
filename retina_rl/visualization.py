@@ -46,7 +46,7 @@ def save_receptive_fields_plot(cfg,device,enc,obs_torch):
 
                 # Plotting statistics
                 rw = k + j*nchns
-                ax = axs[rw,i] if flts > 8 else axs[rw]
+                ax = axs[rw,i] if flts > 1 else axs[rw] # if one filter - axs is a 1-D array
                 ax.set_axis_off()
                 vmx = abs(avg[k,:,:]).max()
                 pnl = ax.imshow(avg[k,:,:],vmin=-vmx,vmax=vmx)
