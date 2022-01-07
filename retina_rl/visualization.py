@@ -30,7 +30,7 @@ def save_receptive_fields_plot(cfg,device,enc,obs_torch):
     nchns = isz[0]
     flts = osz[0]
     rds = 1 + (1 + enc.kernel_size) // 2
-    rwsmlt = 2
+    rwsmlt = 2 if flts > 8 else 1 # rows in rf subplot
     fltsdv = flts//rwsmlt
 
     fig, axs = plt.subplots(nchns*rwsmlt,fltsdv,dpi = 100,figsize = [20,14])
@@ -46,7 +46,7 @@ def save_receptive_fields_plot(cfg,device,enc,obs_torch):
 
                 # Plotting statistics
                 rw = k + j*nchns
-                ax = axs[rw,i]
+                ax = axs[rw,i] if flts > 8 else axs[rw]
                 ax.set_axis_off()
                 vmx = abs(avg[k,:,:]).max()
                 pnl = ax.imshow(avg[k,:,:],vmin=-vmx,vmax=vmx)
@@ -54,6 +54,7 @@ def save_receptive_fields_plot(cfg,device,enc,obs_torch):
 
                 if k == 0:
                     ax.set_title("Filter: " + str(flt), { 'weight' : 'bold' } )
+    
     pth = cfg.train_dir +  "/" + cfg.experiment + "/receptive-fields-" + str(np.datetime64('now')) + ".png"
     plt.savefig(pth)
 
