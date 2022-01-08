@@ -27,3 +27,6 @@ spreadsheet log for all experiments: https://bit.ly/3E42X9R
 01.02.2022:
 - `lindsey08` crashed in a strange way where samples were being collected but performance stayed constant (maybe related to crash that Kerol reported, since its the same gpu)
 - still no luck training `lindsey` models with `vvs=1` after 6 attempts for 0.3G steps
+
+01.07.2022:
+- `lindsey` models with `vvs=1` and smaller values for `global_channels` (and `retinal_bottleneck`) manage to solve the task (3/3 for now), the model with 2 `global_channels` learned faster than the model with 1, they also have somewhat interpretable receptive fields even when they are not fully trained
