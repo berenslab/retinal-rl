@@ -36,3 +36,4 @@ spreadsheet log for all experiments: https://bit.ly/3E42X9R
 
 01.10.2022:
 - `lindsey` with `vvs=0` on `health_gathering_supreme` seems unable to learn the problem (> 1G samples).
+- Interestingly, `lindsey` with `vvs_depth=0` and 1 channel make good progress on both `battle` and `battle2` (> .5G).
