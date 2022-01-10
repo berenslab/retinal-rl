@@ -32,4 +32,7 @@ spreadsheet log for all experiments: https://bit.ly/3E42X9R
 - `lindsey` models with `vvs=1` and smaller values for `global_channels` (and `retinal_bottleneck`) manage to solve the task (3/3 for now), the model with 2 `global_channels` learned faster than the model with 1, they also have somewhat interpretable receptive fields even when they are not fully trained
 
 01.09.2022:
-- A `lindsey` model with `vvs=0` and 1 channel can solve `health_gathering_supreme` with minimal training. May need to think about how to make the task more complex.
+- A `lindsey` model with `vvs=1` and 1 channel can solve `health_gathering_supreme` with minimal training (2 runs tried). May need to think about how to make the task more complex.
+
+01.10.2022:
+- `lindsey` with `vvs=0` on `health_gathering_supreme` seems unable to learn the problem (> 1G samples).
