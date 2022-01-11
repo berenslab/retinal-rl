@@ -21,6 +21,38 @@ def save_simulation_gif(cfg,imgs):
 
     optimize(pth)
 
+def save_receptive_fields_plot_layerspec(cfg, enc, get_lay=1):
+    
+    lay_ind = (get_lay-1)*2 # conv(get_lay) layer index in enc.conv_head sequential
+    conv_lay = enc.conv_head[lay_ind]
+
+    filt = conv_lay.weight.data.cpu().numpy()
+    (nflts, nchns) = filt.shape[0:2]
+
+    fig, axs = plt.subplots(nchns,nflts, figsize=(2*nflts, 2*nchns))
+
+    for j in range(nflts):
+
+        axs_j = axs[:,j] if nflts >1 else axs
+        
+        for k in range(nchns):
+            
+            this_filt =  filt[j, k, :, :].squeeze()
+            # Plotting statistics
+            ax = axs_j[k] if nchns >1 else axs_j
+            ax.set_axis_off()
+            vmx = abs(this_filt).max()
+            pnl = ax.imshow(this_filt,vmin=-vmx,vmax=vmx)
+            cbar = fig.colorbar(pnl, ax=ax)
+            cbar.ax.tick_params(labelsize=7)
+
+            if k == 0:
+                ax.set_title("Filter: " + str(j), { 'weight' : 'bold' }, fontsize=7)
+    
+    t_stamp =  str(np.datetime64('now')).replace('-','').replace('T','_').replace(':', '')
+    pth = cfg.train_dir +  "/" + cfg.experiment + f"/rf-conv{get_lay}_" + t_stamp + ".png"
+    plt.savefig(pth)
+
 def save_receptive_fields_plot(cfg,device,enc,obs_torch):
 
     isz = list(obs_torch['obs'].size())[1:]
