@@ -2,12 +2,12 @@
 
 Here are the steps I'm currently going through to get the `retina-rl` project working. First [install anaconda or miniconda](https://docs.anaconda.com/anaconda/install/index.html), and then create the environment
 ``` bash
-conda create retina-rl
+conda create --name retina-rl
 conda activate retina-rl
 ```
 I'm using `miniconda`, so some of the following commands might be redundant if you're using `anaconda`.
 
-We use the LTS version of `pytorch` to maximize compatibility
+Now, we use the LTS version of `pytorch` to maximize compatibility
 ```bash
 conda install pytorch torchvision torchaudio cudatoolkit=11.1 -c pytorch-lts -c nvidia
 ```
@@ -18,9 +18,14 @@ pip install vizdoom
 ```
 We'll also need some other tools and libraries
 ```bash
-conda install -c conda-forge matplotlib gxx pyglet imageio
+conda install -c conda-forge matplotlib pyglet imageio
 pip install pygifsicle
 ```
+Finally, there I (Sacha) tend to need the following for my local system to avoid library version mismatches
+```bash
+conda install -c conda-forge gxx
+```
+
 Now clone the repo
 ```bash
 https://github.com/berenslab/retina-rl.git
