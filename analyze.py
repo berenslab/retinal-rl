@@ -81,9 +81,8 @@ def analyze(cfg, max_num_frames=1e3):
     print(enc)
 
     n_conv_lay = len(enc.conv_head)//2 # sequential list
-    for i in range(n_conv_lay):
-        save_receptive_fields_plot_layerspec(cfg, enc, get_lay=i+1)
-
+    for lay in range(1, n_conv_lay+1):
+        save_receptive_fields_plot(cfg,device,enc,lay,obs_torch)
 
     ### Running and saving a simulation
 
