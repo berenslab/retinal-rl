@@ -34,6 +34,7 @@ def register_environments():
     register_environment('apple_gathering_hr100_r30_b0_g0')
     register_environment('apple_gathering_hr100_r30_b2_g100')
     register_environment('apple_gathering_hr100_r30_b2_g100_nb')
+    register_environment('nut_gathering_hr100_n30_t2')
 
 def custom_parse_args(argv=None, evaluation=False):
     """
@@ -48,6 +49,7 @@ def custom_parse_args(argv=None, evaluation=False):
     parser.add_argument('--retinal_bottleneck', type=int, default=4, help='Number of channels in retinal bottleneck')
     parser.add_argument('--vvs_depth', type=int, default=1, help='Number of CNN layers in the ventral stream network')
     parser.add_argument('--kernel_size', type=int, default=7, help='Size of CNN filters')
+    parser.add_argument('--analyze_acts', type=bool, default=False, help='Visualize activations of convolutional layers') # specific for analyze.py
 
     # SampleFactory parse_args function does some additional processing (see comments there)
     cfg = parse_args(argv=argv, evaluation=evaluation, parser=parser)
