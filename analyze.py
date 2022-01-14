@@ -82,7 +82,9 @@ def analyze(cfg, max_num_frames=1e3):
     # Printing encoder stats
     print(enc)
 
-    save_receptive_fields_plot(cfg,device,enc,obs_torch)
+    n_conv_lay = len(enc.conv_head)//2 # sequential list
+    for lay in range(1, n_conv_lay+1):
+        save_receptive_fields_plot(cfg,device,enc,lay,obs_torch)
 
     ### Running and saving a simulation
 
