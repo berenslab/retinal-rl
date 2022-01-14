@@ -71,6 +71,8 @@ def analyze(cfg, max_num_frames=1e3):
     enc = actor_critic.encoder.base_encoder
 
     obs = env.reset()
+    print("Environment Info:")
+    print(env.unwrapped.get_info())
     obs_torch = AttrDict(transform_dict_observations(obs))
     for key, x in obs_torch.items():
         obs_torch[key] = torch.from_numpy(x).to(device).float()
