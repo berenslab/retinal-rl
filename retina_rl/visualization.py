@@ -84,10 +84,10 @@ def spike_triggered_average(dev,enc,lay,flt,rds,isz):
 
     return avg
 
-def save_activations_mp4(cfg, imgs, conv_acts, lay): 
+def save_activations_gif(cfg, imgs, conv_acts, lay): 
     
-    snapshots = np.asarray(conv_acts[lay]) # first layer activations
-    fps = 30 # by default
+    snapshots = np.asarray(conv_acts[lay])
+    fps = 30
     nSeconds = round(len(snapshots)//fps)
     
     nflts = snapshots[0].shape[2]
@@ -131,8 +131,6 @@ def save_activations_mp4(cfg, imgs, conv_acts, lay):
     
     t_stamp =  str(np.datetime64('now')).replace('-','').replace('T','_').replace(':', '')
     pth = cfg.train_dir + "/" + cfg.experiment + f"/act-conv{lay+1}_" + t_stamp + ".gif"
-
-    
     anim.save(pth, fps=fps)
 
     print('Done!')
