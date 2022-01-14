@@ -35,6 +35,7 @@ def register_environments():
     register_environment('apple_gathering_hr100_r30_b2_g100')
     register_environment('apple_gathering_hr100_r30_b2_g100_nb')
     register_environment('nut_gathering_hr100_n30_t2')
+    register_environment('animal_gathering_hr100_g100')
 
 def custom_parse_args(argv=None, evaluation=False):
     """
