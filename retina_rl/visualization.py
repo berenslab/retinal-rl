@@ -3,6 +3,7 @@ from functools import cmp_to_key
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import imageio
 from pygifsicle import optimize
 
@@ -12,7 +13,7 @@ from pygifsicle import optimize
 
 def save_simulation_gif(cfg,imgs, lay=0):
     t_stamp =  str(np.datetime64('now')).replace('-','').replace('T','_').replace(':', '')
-    pth = cfg.train_dir + "/" + cfg.experiment + f"/sim-lay{lay}_" + t_stamp + ".gif"
+    pth = cfg.train_dir + "/" + cfg.experiment + f"/sim_" + t_stamp + ".gif"
 
     wrt = imageio.get_writer(pth, mode='I',fps=35)
 
@@ -82,3 +83,56 @@ def spike_triggered_average(dev,enc,lay,flt,rds,isz):
         avg = np.average(obsns1,axis=0,weights=outs)
 
     return avg
+
+def save_activations_mp4(cfg, imgs, conv_acts, lay): 
+    
+    snapshots = np.asarray(conv_acts[lay]) # first layer activations
+    fps = 30 # by default
+    nSeconds = round(len(snapshots)//fps)
+    
+    nflts = snapshots[0].shape[2]
+    rwsmlt = 2 if nflts > 8 else 1 # number of rows 
+    fltsdv = nflts//rwsmlt + 1 # numer of clumns (+ 1 for rgb image)
+    
+    fig, axs = plt.subplots(rwsmlt,fltsdv,dpi=1, figsize=(128*fltsdv, 72*rwsmlt))
+    
+    ims = []
+    vmaxs = [abs(snapshots[:,:,:,i]).max() for i in range(nflts)]
+    
+    print(f'Visualising activations for conv{lay+1}')
+
+    for t in range(fps*nSeconds):
+        pts = []
+
+        ax = axs[0,0] if rwsmlt>1 else axs[0]
+        im = ax.imshow(imgs[t][:,:,:], interpolation='none', aspect='auto', vmin=-0, vmax=256) # plotting pixels
+        ax.axis('off')
+        ax = axs[1,0] if rwsmlt>1 else axs[0]
+        ax.axis('off')
+        pts.append(im)
+        
+        flt=0 # counter
+        for i in range(fltsdv-1):
+            for j in range(rwsmlt):
+                
+                ax = axs[j, i+1] if rwsmlt>1 else axs[i+1]
+                im = ax.imshow(snapshots[t,:,:,flt], interpolation='none', aspect='auto', vmin=-vmaxs[j], vmax=vmaxs[j]) # plotting activations
+                flt +=1
+                ax.axis('off')
+                pts.append(im)
+
+        ims.append(pts)
+
+        if t % (fps*10) == 0:
+            print('Progress: ', t//fps, '/', nSeconds, ' seconds')
+
+    anim = animation.ArtistAnimation(fig, ims, interval=1000/fps)
+    print('Saving video... (this can take some time for >10s simulations)')
+    
+    t_stamp =  str(np.datetime64('now')).replace('-','').replace('T','_').replace(':', '')
+    pth = cfg.train_dir + "/" + cfg.experiment + f"/act-conv{lay+1}_" + t_stamp + ".gif"
+
+    
+    anim.save(pth, fps=fps)
+
+    print('Done!')

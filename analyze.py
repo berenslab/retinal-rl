@@ -88,7 +88,8 @@ def analyze(cfg, max_num_frames=1e3):
 
     img0 = obs_torch['obs'][0,:,:,:]
     imgs = [np.transpose(img0.cpu().detach().numpy(),(1,2,0)).astype(np.uint8)]
-
+    conv_acts = [ [] for _ in range(n_conv_lay) ]
+    fc_acts = []
     rnn_states = torch.zeros([env.num_agents, get_hidden_size(cfg)], dtype=torch.float32, device=device)
 
     with torch.no_grad():
@@ -116,16 +117,32 @@ def analyze(cfg, max_num_frames=1e3):
                 for key, x in obs_torch.items():
                     obs_torch[key] = torch.from_numpy(x).to(device).float()
 
-                img0 = obs_torch['obs'][0,:,:,:]
+                img0 = obs_torch['obs'][0,:,:,:] # activation of input layer (=pixels)
                 img = np.transpose(img0.cpu().detach().numpy(),(1,2,0)).astype(np.uint8)
                 imgs.append(img)
 
-
+                for lay in range(1,n_conv_lay+1): 
+                    conv_act_torch = enc.conv_head[0:(lay*2)](obs_torch['obs'])[0,:,:,:].permute(1, 2, 0) # activation of intermediate conv layers
+                    conv_act_np = conv_act_torch.cpu().detach().numpy()
+                    conv_acts[lay-1].append(conv_act_np)
+            
+                fc_act_torch = enc.forward(obs_torch['obs']) # activation of output fc layer
+                fc_act_np = fc_act_torch.cpu().detach().numpy()
+                fc_acts.append(fc_act_np) 
                 num_frames += 1
 
     env.close()
 
+    # input layer
     save_simulation_gif(cfg,imgs)
+
+    # intermediate conv layers
+    if cfg.analyze_acts:
+        for lay in range(n_conv_lay):
+            save_activations_gif(cfg, imgs, conv_acts, lay)
+        
+    #TODO: add analysis of output fc layer
+    
     ### Analysis and plotting
 
 def main():
