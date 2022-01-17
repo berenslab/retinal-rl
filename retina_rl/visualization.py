@@ -116,7 +116,7 @@ def save_activations_gif(cfg, imgs, conv_acts, lay):
             for j in range(rwsmlt):
                 
                 ax = axs[j, i+1] if rwsmlt>1 else axs[i+1]
-                im = ax.imshow(snapshots[t,:,:,flt], interpolation='none', aspect='auto', vmin=-vmaxs[j], vmax=vmaxs[j]) # plotting activations
+                im = ax.imshow(snapshots[t,:,:,flt], interpolation='none', aspect='auto', vmin=-vmaxs[flt], vmax=vmaxs[flt]) # plotting activations
                 flt +=1
                 ax.axis('off')
                 pts.append(im)
