@@ -21,9 +21,9 @@ We'll also need some other tools and libraries
 conda install -c conda-forge matplotlib pyglet imageio
 pip install pygifsicle
 ```
-Finally, there I (Sacha) tend to need the following for my local system to avoid library version mismatches
+Finally, if there's a mismatch between the libraries expected by the compiled version of `vizdoom` (as is typically the case on Sacha's system), you can try compiling it from source based on the notes provided [here](https://github.com/alex-petrenko/sample-factory/tree/master/sample_factory/envs/doom).
 ```bash
-conda install -c conda-forge gxx
+conda install -c conda-forge gxx boost=1.76.0
 ```
 
 Now clone the repo

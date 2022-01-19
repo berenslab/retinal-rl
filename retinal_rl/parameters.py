@@ -2,39 +2,33 @@
 retina_rl library
 
 """
-import os
-from os.path import join
-
-from sample_factory.envs.doom.doom_utils import DoomSpec, register_additional_doom_env
-from sample_factory.envs.doom.action_space import doom_action_space_extended
 from sample_factory.algorithms.utils.arguments import arg_parser, parse_args
 
-def register_environment(nm):
+from sample_factory.utils.utils import str2bool
 
-    # absolute path needs to be specified, otherwise Doom will look in the SampleFactory scenarios folder
 
-    spec = DoomSpec(
-            'doom_' + nm,
-            join(os.path.abspath('scenarios'), nm + '.cfg'),  # use your custom cfg here
-            doom_action_space_extended(),
-            reward_scaling=0.01,
-            )
+def add_retinal_env_args(env, parser):
+    p = parser
 
-    print(join(os.path.abspath('scenarios'), nm + '.cfg'))
+    p.add_argument('--timelimit', default=None, type=float, help='Allows to override default match timelimit in minutes')
+    p.add_argument('--res_w', default=128, type=int, help='Game frame width after resize')
+    p.add_argument('--res_h', default=72, type=int, help='Game frame height after resize')
+    p.add_argument('--wide_aspect_ratio', default=False, type=str2bool, help='If true render wide aspect ratio (slower but gives better FOV to the agent)')
 
-    register_additional_doom_env(spec)
 
-def register_environments():
-
-    register_environment('apple_gathering_r25_b25_g250')
-    register_environment('apple_gathering_r30_b0_g0')
-    register_environment('apple_gathering_r30_b0_g100')
-    register_environment('apple_gathering_r30_b2_g0')
-    register_environment('apple_gathering_r30_b2_g100')
-    register_environment('apple_gathering_hr100_r30_b0_g0')
-    register_environment('apple_gathering_hr100_r30_b2_g100')
-    register_environment('apple_gathering_hr100_r30_b2_g100_nb')
-
+def retinal_override_defaults(env, parser):
+    """RL params specific to retinal envs."""
+    parser.set_defaults(
+        encoder_custom='lindsey',
+        hidden_size=512,
+        ppo_clip_value=0.2,  # value used in all experiments in the paper
+        obs_subtract_mean=0.0,
+        obs_scale=255.0,
+        env_frameskip=4,
+        fps=35,
+        exploration_loss='symmetric_kl',
+        exploration_loss_coeff=0.001,
+    )
 def custom_parse_args(argv=None, evaluation=False):
     """
     Parse default SampleFactory arguments and add user-defined arguments on top.

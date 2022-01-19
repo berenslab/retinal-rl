@@ -18,11 +18,13 @@ from sample_factory.envs.create_env import create_env
 from sample_factory.utils.utils import log, AttrDict
 from sample_factory.algorithms.appo.actor_worker import transform_dict_observations
 from sample_factory.algorithms.utils.multi_agent_wrapper import MultiAgentWrapper
-from retina_rl.encoders import register_encoders
-from retina_rl.environment import custom_parse_args,register_environments
+
+from retinal_rl.environment import register_retinal_environment
+from retinal_rl.parameters import custom_parse_args
+from retinal_rl.encoders import register_encoders
 
 # retina-rl
-from retina_rl.visualization import *
+from retinal_rl.visualization import *
 
 
 def analyze(cfg, max_num_frames=1e3):
@@ -132,8 +134,8 @@ def analyze(cfg, max_num_frames=1e3):
 
 def main():
     """Script entry point."""
+    register_retinal_environment()
     register_encoders()
-    register_environments()
     cfg = custom_parse_args(evaluation=True)
     analyze(cfg)
 
