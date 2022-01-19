@@ -15,7 +15,6 @@ def add_retinal_env_args(env, parser):
     p.add_argument('--res_h', default=72, type=int, help='Game frame height after resize')
     p.add_argument('--wide_aspect_ratio', default=False, type=str2bool, help='If true render wide aspect ratio (slower but gives better FOV to the agent)')
 
-
 def retinal_override_defaults(env, parser):
     """RL params specific to retinal envs."""
     parser.set_defaults(
@@ -42,6 +41,7 @@ def custom_parse_args(argv=None, evaluation=False):
     parser.add_argument('--retinal_bottleneck', type=int, default=4, help='Number of channels in retinal bottleneck')
     parser.add_argument('--vvs_depth', type=int, default=1, help='Number of CNN layers in the ventral stream network')
     parser.add_argument('--kernel_size', type=int, default=7, help='Size of CNN filters')
+    parser.add_argument('--analyze_acts', type=bool, default=False, help='Visualize activations of convolutional layers') # specific for analyze.py
 
     # SampleFactory parse_args function does some additional processing (see comments there)
     cfg = parse_args(argv=argv, evaluation=evaluation, parser=parser)
