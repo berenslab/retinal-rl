@@ -118,7 +118,8 @@ class LindseyEncoder(LindseyEncoderBase):
         x = self.base_encoder(main_obs)
         return x
 
-### Linear encoder ('negative control') ###
+
+### Linear encoder ('negative control') - TODO: double-check implementation ###
 
 class LinearEncoderBase(EncoderBase):
     
