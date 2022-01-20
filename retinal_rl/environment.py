@@ -63,8 +63,7 @@ class RetinalEnv(gym.Env):
                  coord_limits=None,
                  max_histogram_length=200,
                  show_automap=False,
-                 async_mode=False,
-                 record_to=None):
+                 async_mode=False):
         self.initialized = False
 
         # essential game data
@@ -99,11 +98,6 @@ class RetinalEnv(gym.Env):
 
         # only created if we call render() method
         self.viewer = None
-
-        # record full episodes using VizDoom recording functionality
-        self.record_to = record_to
-
-        self.is_multiplayer = False  # overridden in derived classes
 
         # (optional) histogram to track positional coverage
         # do not pass coord_limits if you don't need this, to avoid extra calculation
@@ -612,22 +606,3 @@ def register_retinal_environment():
         add_extra_params_func=add_retinal_env_args,
         override_default_params_func=retinal_override_defaults
     )
-
-
-#def register_retinal_scenarios(cfg):
-#
-#    register_scenario('apple_gathering_r25_b25_g250',cfg)
-#    register_scenario('apple_gathering_r30_b0_g0',cfg)
-#    register_scenario('apple_gathering_r30_b0_g100',cfg)
-#    register_scenario('apple_gathering_r30_b2_g0',cfg)
-#    register_scenario('apple_gathering_r30_b2_g100',cfg)
-#    register_scenario('apple_gathering_hr100_r30_b0_g0',cfg)
-#    register_scenario('apple_gathering_hr100_r30_b2_g100',cfg)
-#    register_scenario('apple_gathering_hr100_r30_b2_g100_nb',cfg)
-
-#RETINAL_ENVS = [ RetinalSpec('doom_health_gathering', 'health_gathering.cfg'
-#    , Discrete(1 + 4), 1.0, extra_wrappers=[(DoomGatheringRewardShaping, {})])
-#    , RetinalSpec('retinal_apple_gathering_r25_b25_g250','apple_gathering_r25_b25_g250.cfg'
-#    , Discrete(1 + 4),1.0,extra_wrappers=[(DoomGatheringRewardShaping, {})]) ]
-#
-#
