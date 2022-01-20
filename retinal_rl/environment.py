@@ -18,7 +18,7 @@ from gym.utils import seeding
 
 from sample_factory.utils.utils import log, project_tmp_dir
 from sample_factory.algorithms.utils.spaces.discretized import Discretized
-from sample_factory.envs.doom.action_space import doom_action_space_extended
+from sample_factory.envs.doom.action_space import doom_action_space_basic
 from sample_factory.envs.env_registry import global_env_registry
 from sample_factory.envs.doom.wrappers.observation_space import SetResolutionWrapper, resolutions
 from sample_factory.envs.env_wrappers import ResizeWrapper, RewardScalingWrapper, TimeLimitWrapper, PixelFormatChwWrapper
@@ -63,8 +63,7 @@ class RetinalEnv(gym.Env):
                  coord_limits=None,
                  max_histogram_length=200,
                  show_automap=False,
-                 async_mode=False,
-                 record_to=None):
+                 async_mode=False):
         self.initialized = False
 
         # essential game data
@@ -99,11 +98,6 @@ class RetinalEnv(gym.Env):
 
         # only created if we call render() method
         self.viewer = None
-
-        # record full episodes using VizDoom recording functionality
-        self.record_to = record_to
-
-        self.is_multiplayer = False  # overridden in derived classes
 
         # (optional) histogram to track positional coverage
         # do not pass coord_limits if you don't need this, to avoid extra calculation
@@ -272,18 +266,9 @@ class RetinalEnv(gym.Env):
     def reset(self):
         self._ensure_initialized()
 
-        if self.record_to is not None and not self.is_multiplayer:
-            # does not work in multiplayer (uses different mechanism)
-            if not os.path.exists(self.record_to):
-                os.makedirs(self.record_to)
-
-            demo_path = self.demo_path(self._num_episodes)
-            log.warning('Recording episode demo to %s', demo_path)
-            self.game.new_episode(demo_path)
-        else:
-            if self._num_episodes > 0:
-                # no demo recording (default)
-                self.game.new_episode()
+        if self._num_episodes > 0:
+            # no demo recording (default)
+            self.game.new_episode()
 
         self.state = self.game.get_state()
         img = None
@@ -546,8 +531,8 @@ def generate_retinal_spec(nm0):
     spec = RetinalSpec(
             'retinal_' + nm,
             join(os.path.abspath('scenarios'), nm + '.cfg'),  # use your custom cfg here
-            doom_action_space_extended(),
-            reward_scaling=0.01)
+            doom_action_space_basic(),
+            reward_scaling=1)
 
     return spec
 
@@ -560,7 +545,6 @@ def make_retinal_env(nm, cfg,  **kwargs):
     episode_horizon=None
     fps = cfg.fps if 'fps' in cfg else None
     async_mode = fps == 0
-    print(spec)
 
     env = RetinalEnv(spec.action_space
             , spec.env_spec_file
@@ -612,22 +596,3 @@ def register_retinal_environment():
         add_extra_params_func=add_retinal_env_args,
         override_default_params_func=retinal_override_defaults
     )
-
-
-#def register_retinal_scenarios(cfg):
-#
-#    register_scenario('apple_gathering_r25_b25_g250',cfg)
-#    register_scenario('apple_gathering_r30_b0_g0',cfg)
-#    register_scenario('apple_gathering_r30_b0_g100',cfg)
-#    register_scenario('apple_gathering_r30_b2_g0',cfg)
-#    register_scenario('apple_gathering_r30_b2_g100',cfg)
-#    register_scenario('apple_gathering_hr100_r30_b0_g0',cfg)
-#    register_scenario('apple_gathering_hr100_r30_b2_g100',cfg)
-#    register_scenario('apple_gathering_hr100_r30_b2_g100_nb',cfg)
-
-#RETINAL_ENVS = [ RetinalSpec('doom_health_gathering', 'health_gathering.cfg'
-#    , Discrete(1 + 4), 1.0, extra_wrappers=[(DoomGatheringRewardShaping, {})])
-#    , RetinalSpec('retinal_apple_gathering_r25_b25_g250','apple_gathering_r25_b25_g250.cfg'
-#    , Discrete(1 + 4),1.0,extra_wrappers=[(DoomGatheringRewardShaping, {})]) ]
-#
-#

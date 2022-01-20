@@ -19,15 +19,13 @@ class SimpleEncoderBase(EncoderBase):
         obs_shape = get_obs_shape(obs_space)
         self.kernel_size = 3
 
-        self.conv1 = nn.Conv2d(3, 8, self.kernel_size, stride=2)
-        self.conv2 = nn.Conv2d(8, 16, 2, stride=1)
+        self.conv = nn.Conv2d(3, 16, 5, stride=1)
 
         self.nl = nonlinearity(cfg)
 
         # Preparing Fully Connected Layers
         conv_layers = [
-            self.conv1, self.nl,
-            self.conv2, self.nl,
+            self.conv, self.nl
         ]
 
         self.conv_head = nn.Sequential(*conv_layers)
@@ -35,14 +33,12 @@ class SimpleEncoderBase(EncoderBase):
 
         self.encoder_out_size = cfg.hidden_size
         self.fc1 = nn.Linear(self.conv_head_out_size,self.encoder_out_size)
-        self.nl3 = nonlinearity(cfg)
 
     def forward(self, x):
         # we always work with dictionary observations. Primary observation is available with the key 'obs'
-        x = self.nl(self.conv1(x))
-        x = self.nl(self.conv2(x))
+        x = self.nl(self.conv(x))
         x = x.contiguous().view(-1, self.conv_head_out_size)
-        x = self.nl3(self.fc1(x))
+        x = self.nl(self.fc1(x))
         return x
 
 class SimpleEncoder(SimpleEncoderBase):
@@ -122,17 +118,17 @@ class LindseyEncoder(LindseyEncoderBase):
 ### Linear encoder ('negative control') - TODO: double-check implementation ###
 
 class LinearEncoderBase(EncoderBase):
-    
+
     def __init__(self, cfg, obs_space, timing):
 
         super().__init__(cfg, timing)
-        
+
         # to get input size
         obs_shape = get_obs_shape(obs_space)
         self.input_flat_shape = obs_shape.obs[0]* obs_shape.obs[1]* obs_shape.obs[2] # c * h * w
 
         self.nl = nonlinearity(cfg) # for pixels this doesn't matter as long as it's (r)elu
-        
+
         self.encoder_out_size = cfg.hidden_size
         self.fc1 = nn.Linear(self.input_flat_shape,self.encoder_out_size)
 
@@ -142,7 +138,7 @@ class LinearEncoderBase(EncoderBase):
         return x
 
 class LinearEncoder(LinearEncoderBase):
-    
+
     def __init__(self, cfg, obs_space,timing):
 
         super().__init__(cfg,obs_space,timing)
