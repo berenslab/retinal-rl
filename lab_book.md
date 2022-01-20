@@ -40,3 +40,9 @@ spreadsheet log for all experiments: https://bit.ly/3E42X9R
 
 01.11.2022:
 - `lindsey` with `vvs=0` and default channels can solve health gathering supreme.
+
+01.19.2022:
+- new `gabor_gathering` task is harder but managable, agents take slightly longer to learn
+- set up `retinal_rl` with updated environment on gpu10 and gpu25, works well. Also changed naming conventions for docker crates, conda environment etc.
+- implemented `linear` encoder that feeds pixels straight to the fc layer/rnn (size determined by `hidden_size`)
+- running a set of shorter 0.5G simulations testing the requirement for `hidden_size` in the `gabor_gathering` task (8, 64 and default 512)
