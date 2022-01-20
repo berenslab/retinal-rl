@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import imageio
 from pygifsicle import optimize
+from torch.utils.tensorboard import SummaryWriter
 
 #from torchinfo import summary
 #from captum.attr import NeuronGradient
@@ -59,9 +60,18 @@ def save_receptive_fields_plot(cfg,device,enc,lay,obs_torch):
                 if k == 0:
                     ax.set_title("Filter: " + str(flt), { 'weight' : 'bold' }, fontsize=12*rwsmlt)
     
+
     t_stamp =  str(np.datetime64('now')).replace('-','').replace('T','_').replace(':', '')
+
+    # displaying in tensorboard
+    pth_tb = cfg.train_dir +  "/" + cfg.experiment + '/.summary/0/'
+    writer = torch.utils.tensorboard.SummaryWriter(pth_tb)
+    writer.add_figure(f"rf-conv{lay}", fig) # only show the latest rfs in tb (for comparison across models)
+    writer.close()
+
+    # saving
     pth = cfg.train_dir +  "/" + cfg.experiment + f"/rf-conv{lay}_" + t_stamp + ".png"
-    plt.savefig(pth)
+    plt.savefig(pth)  
 
 
 def spike_triggered_average(dev,enc,lay,flt,rds,isz):

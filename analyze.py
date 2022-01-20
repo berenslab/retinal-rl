@@ -83,6 +83,11 @@ def analyze(cfg, max_num_frames=1e3):
     print("Encoder Stats:")
     # Printing encoder stats
     print(enc)
+    # logging comp graph to tensorboard
+    tb_path = cfg.train_dir +  "/" + cfg.experiment + '/.summary/0/'
+    writer = SummaryWriter(tb_path)
+    writer.add_graph(enc, obs_torch['obs'])
+    writer.close()
 
     n_conv_lay = len(enc.conv_head)//2 # sequential list
     for lay in range(1, n_conv_lay+1):
