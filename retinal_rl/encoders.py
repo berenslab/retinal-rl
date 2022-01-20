@@ -33,13 +33,12 @@ class SimpleEncoderBase(EncoderBase):
 
         self.encoder_out_size = cfg.hidden_size
         self.fc1 = nn.Linear(self.conv_head_out_size,self.encoder_out_size)
-        self.nl3 = nonlinearity(cfg)
 
     def forward(self, x):
         # we always work with dictionary observations. Primary observation is available with the key 'obs'
         x = self.nl(self.conv(x))
         x = x.contiguous().view(-1, self.conv_head_out_size)
-        x = self.nl3(self.fc1(x))
+        x = self.nl(self.fc1(x))
         return x
 
 class SimpleEncoder(SimpleEncoderBase):
