@@ -18,7 +18,7 @@ from gym.utils import seeding
 
 from sample_factory.utils.utils import log, project_tmp_dir
 from sample_factory.algorithms.utils.spaces.discretized import Discretized
-from sample_factory.envs.doom.action_space import doom_action_space_extended
+from sample_factory.envs.doom.action_space import doom_action_space_basic
 from sample_factory.envs.env_registry import global_env_registry
 from sample_factory.envs.doom.wrappers.observation_space import SetResolutionWrapper, resolutions
 from sample_factory.envs.env_wrappers import ResizeWrapper, RewardScalingWrapper, TimeLimitWrapper, PixelFormatChwWrapper
@@ -540,7 +540,7 @@ def generate_retinal_spec(nm0):
     spec = RetinalSpec(
             'retinal_' + nm,
             join(os.path.abspath('scenarios'), nm + '.cfg'),  # use your custom cfg here
-            doom_action_space_extended(),
+            doom_action_space_basic(),
             reward_scaling=0.01)
 
     return spec
