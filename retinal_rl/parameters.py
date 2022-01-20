@@ -19,6 +19,7 @@ def retinal_override_defaults(env, parser):
     """RL params specific to retinal envs."""
     parser.set_defaults(
         encoder_custom='lindsey',
+        algo='APPO',
         hidden_size=512,
         ppo_clip_value=0.2,  # value used in all experiments in the paper
         obs_subtract_mean=0.0,
