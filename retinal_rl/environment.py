@@ -541,7 +541,7 @@ def generate_retinal_spec(nm0):
             'retinal_' + nm,
             join(os.path.abspath('scenarios'), nm + '.cfg'),  # use your custom cfg here
             doom_action_space_basic(),
-            reward_scaling=0.01)
+            reward_scaling=1)
 
     return spec
 
