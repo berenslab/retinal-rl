@@ -46,3 +46,7 @@ spreadsheet log for all experiments: https://bit.ly/3E42X9R
 - set up `retinal_rl` with updated environment on gpu10 and gpu25, works well. Also changed naming conventions for docker crates, conda environment etc.
 - implemented `linear` encoder that feeds pixels straight to the fc layer/rnn (size determined by `hidden_size`)
 - running a set of shorter 0.5G simulations testing the requirement for `hidden_size` in the `gabor_gathering` task (8, 64 and default 512)
+
+
+01.21.2022:
+- `animals` task seems quite challenging. Training with a `vvs_depth=0` produced modest task learning, and interesting receptive fields. Receptive fields appeared to capture specific edge structures of animals. Tried training on `vvs_depth=1` but got stuck in the "walking backwards" local minimum.
