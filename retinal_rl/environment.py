@@ -546,10 +546,12 @@ def ensure_initialized():
 
 class RetinalSpec:
     def __init__(
-            self, name, env_spec_file, action_space, reward_scaling=1.0, default_timeout=-1,
-            respawn_delay=0, timelimit=4.0,
-            extra_wrappers=[(RetinalRewardShaping, {})],
+            self, name, env_spec_file, action_space, reward_scaling, reward_shaping
     ):
+        extra_wrappers= [(RetinalRewardShaping, {})] if reward_shaping else []
+        default_timeout=-1
+        respawn_delay=0
+        timelimit=4.0
         self.name = name
         self.env_spec_file = env_spec_file
         self.action_space = action_space
@@ -562,7 +564,7 @@ class RetinalSpec:
         # expect list of tuples (wrapper_cls, wrapper_kwargs)
         self.extra_wrappers = extra_wrappers
 
-def generate_retinal_spec(nm0,scl):
+def generate_retinal_spec(nm0,scl,shp):
 
     # absolute path needs to be specified, otherwise Doom will look in the SampleFactory scenarios folder
     nm = nm0[8:]
@@ -571,7 +573,8 @@ def generate_retinal_spec(nm0,scl):
             'retinal_' + nm,
             join(os.path.abspath('scenarios'), nm + '.cfg'),  # use your custom cfg here
             doom_action_space_basic(),
-            reward_scaling=scl)
+            scl,
+            shp)
 
     return spec
 
@@ -579,7 +582,7 @@ def generate_retinal_spec(nm0,scl):
 # noinspection PyUnusedLocal
 def make_retinal_env(nm, cfg,  **kwargs):
 
-    spec = generate_retinal_spec(nm,cfg.reward_scale)
+    spec = generate_retinal_spec(nm,cfg.reward_scale,cfg.shape_reward)
 
     episode_horizon=None
     fps = cfg.fps if 'fps' in cfg else None

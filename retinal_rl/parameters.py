@@ -44,6 +44,7 @@ def custom_parse_args(argv=None, evaluation=False):
     parser.add_argument('--vvs_depth', type=int, default=1, help='Number of CNN layers in the ventral stream network')
     parser.add_argument('--kernel_size', type=int, default=7, help='Size of CNN filters')
     parser.add_argument('--analyze_acts', type=bool, default=False, help='Visualize activations of convolutional layers') # specific for analyze.py
+    parser.add_argument('--shape_reward', type=bool, default=True, help='Turns on reward shaping') # specific for analyze.py
 
     # SampleFactory parse_args function does some additional processing (see comments there)
     cfg = parse_args(argv=argv, evaluation=evaluation, parser=parser)
