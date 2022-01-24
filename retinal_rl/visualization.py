@@ -66,7 +66,7 @@ def save_receptive_fields_plot(cfg,device,enc,lay,obs_torch):
     # displaying in tensorboard
     pth_tb = cfg.train_dir +  "/" + cfg.experiment + '/.summary/0/'
     writer = torch.utils.tensorboard.SummaryWriter(pth_tb)
-    writer.add_figure(f"rf-conv{lay}", fig) # only show the latest rfs in tb (for comparison across models)
+    writer.add_figure(f"rf-conv{lay}", fig, close=False) # only show the latest rfs in tb (for comparison across models)
     writer.close()
 
     # saving
