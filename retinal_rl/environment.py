@@ -509,7 +509,7 @@ class RetinalSpec:
     def __init__(
             self, name, env_spec_file, action_space, reward_scaling=1.0, default_timeout=-1,
             respawn_delay=0, timelimit=4.0,
-            extra_wrappers=None,
+            extra_wrappers=[(DoomGatheringRewardShaping, {})],
     ):
         self.name = name
         self.env_spec_file = env_spec_file
