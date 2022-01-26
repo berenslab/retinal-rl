@@ -22,7 +22,6 @@ from sample_factory.envs.doom.action_space import doom_action_space_basic
 from sample_factory.envs.env_registry import global_env_registry
 from sample_factory.envs.doom.wrappers.observation_space import SetResolutionWrapper, resolutions
 from sample_factory.envs.env_wrappers import ResizeWrapper, RewardScalingWrapper, TimeLimitWrapper, PixelFormatChwWrapper
-from sample_factory.envs.doom.wrappers.scenario_wrappers.gathering_reward_shaping import DoomGatheringRewardShaping
 
 from vizdoom.vizdoom import ScreenResolution, DoomGame, Mode, AutomapMode
 
@@ -53,6 +52,46 @@ def doom_lock_file(max_parallel):
     tmp_dir = project_tmp_dir()
     lock_path = join(tmp_dir, lock_filename)
     return lock_path
+
+class RetinalRewardShaping(gym.Wrapper):
+    """Reward shaping specific for gathering scenarios."""
+
+    def __init__(self, env):
+        super().__init__(env)
+        self._prev_health = None
+        self.orig_env_reward = 0.0
+
+    def _reward_shaping(self, info, done):
+        if info is None or done:
+            return 0.0
+
+        curr_health = info.get('HEALTH', 0.0)
+        reward = 0.0
+
+        if self._prev_health is not None:
+            delta = curr_health - self._prev_health
+            if delta > 0.0:
+                reward = 1.0
+
+        self._prev_health = curr_health
+        return reward
+
+    def reset(self):
+        self._prev_health = None
+        self.orig_env_reward = 0.0
+        return self.env.reset()
+
+    def step(self, action):
+        observation, reward, done, info = self.env.step(action)
+        self.orig_env_reward += reward
+        reward += self._reward_shaping(info, done)
+
+        if done:
+            true_reward = self.orig_env_reward
+            info['true_reward'] = true_reward
+
+        return observation, reward, done, info
+
 
 class RetinalEnv(gym.Env):
 
@@ -507,10 +546,12 @@ def ensure_initialized():
 
 class RetinalSpec:
     def __init__(
-            self, name, env_spec_file, action_space, reward_scaling=1.0, default_timeout=-1,
-            respawn_delay=0, timelimit=4.0,
-            extra_wrappers=None,
+            self, name, env_spec_file, action_space, reward_scaling, reward_shaping
     ):
+        extra_wrappers= [(RetinalRewardShaping, {})] if reward_shaping else []
+        default_timeout=-1
+        respawn_delay=0
+        timelimit=4.0
         self.name = name
         self.env_spec_file = env_spec_file
         self.action_space = action_space
@@ -523,7 +564,7 @@ class RetinalSpec:
         # expect list of tuples (wrapper_cls, wrapper_kwargs)
         self.extra_wrappers = extra_wrappers
 
-def generate_retinal_spec(nm0,scl):
+def generate_retinal_spec(nm0,scl,shp):
 
     # absolute path needs to be specified, otherwise Doom will look in the SampleFactory scenarios folder
     nm = nm0[8:]
@@ -532,7 +573,8 @@ def generate_retinal_spec(nm0,scl):
             'retinal_' + nm,
             join(os.path.abspath('scenarios'), nm + '.cfg'),  # use your custom cfg here
             doom_action_space_basic(),
-            reward_scaling=scl)
+            scl,
+            shp)
 
     return spec
 
@@ -540,7 +582,7 @@ def generate_retinal_spec(nm0,scl):
 # noinspection PyUnusedLocal
 def make_retinal_env(nm, cfg,  **kwargs):
 
-    spec = generate_retinal_spec(nm,cfg.reward_scale)
+    spec = generate_retinal_spec(nm,cfg.reward_scale,cfg.shape_reward)
 
     episode_horizon=None
     fps = cfg.fps if 'fps' in cfg else None

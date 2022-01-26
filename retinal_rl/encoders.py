@@ -69,24 +69,24 @@ class LindseyEncoderBase(EncoderBase):
         vvsdpth = cfg.vvs_depth
         krnsz = cfg.kernel_size
 
-        self.nl = nonlinearity(cfg)
+        self.nl_fc = nonlinearity(cfg)
         self.kernel_size = krnsz
 
-
-        self.conv1 = nn.Conv2d(3, nchns, krnsz, stride=1)
-        self.conv2 = nn.Conv2d(nchns, btlchns, krnsz, stride=1)
-
-        # Preparing Fully Connected Layers
-        conv_layers = [ self.conv1, self.nl, self.conv2, self.nl ]
-
-        for i in range(vvsdpth):
-            if i == 0:
-                conv_layers.extend([nn.Conv2d(btlchns, nchns, krnsz, stride=1), self.nl])
-            else:
-                conv_layers.extend([nn.Conv2d(nchns, nchns, krnsz, stride=1), self.nl])
+        # Preparing Conv Layers
+        conv_layers = []
+        self.nls = []
+        for i in range(vvsdpth+2): # +2 for the first 'retinal' layers
+            self.nls.append(nonlinearity(cfg))
+            if i == 0: # 'bipolar cells' ('global channels')
+                conv_layers.extend([nn.Conv2d(3, nchns, krnsz, stride=1), self.nls[i]])
+            elif i == 1: # 'ganglion cells' ('retinal bottleneck')
+                conv_layers.extend([nn.Conv2d(nchns, btlchns, krnsz, stride=1), self.nls[i]])
+            elif i == 2: # 'V1' ('global channels')
+                conv_layers.extend([nn.Conv2d(btlchns, nchns, krnsz, stride=1), self.nls[i]])
+            else: # 'vvs layers'
+                conv_layers.extend([nn.Conv2d(nchns, nchns, krnsz, stride=1), self.nls[i]])
 
         self.conv_head = nn.Sequential(*conv_layers)
-
         obs_shape = get_obs_shape(obs_space)
         self.conv_head_out_size = calc_num_elements(self.conv_head, obs_shape.obs)
         self.encoder_out_size = cfg.hidden_size
@@ -96,7 +96,7 @@ class LindseyEncoderBase(EncoderBase):
         # we always work with dictionary observations. Primary observation is available with the key 'obs'
         x = self.conv_head(x)
         x = x.contiguous().view(-1, self.conv_head_out_size)
-        x = self.nl(self.fc1(x))
+        x = self.nl_fc(self.fc1(x))
         return x
 
 class LindseyEncoder(LindseyEncoderBase):
