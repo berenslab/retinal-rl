@@ -115,7 +115,7 @@ class LindseyEncoder(LindseyEncoderBase):
         return x
 
 
-### Linear encoder ('negative control') - TODO: double-check implementation ###
+### Linear encoder ('negative control') ###
 
 class LinearEncoderBase(EncoderBase):
 
