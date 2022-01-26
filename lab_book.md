@@ -54,4 +54,4 @@ spreadsheet log for all experiments: https://bit.ly/3E42X9R
 - some networks managed to solve the `animal_gathering_3` taks (`3` has some modifications in terms of health values, fewer stimuli and bigger textures compared to the original) rfs seem interesting, but still the simplest architectures can manage
 - implemented some tensorboard compatibility - graph of encoder and saving rf images
 - modified encoder implementation to improve graph + have it defined more 'conventionally'
-- tagged changes with v1.0
+- tagged changes with v1.0 (some incompatibility with previous version due to encoder changes)
