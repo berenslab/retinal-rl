@@ -47,6 +47,11 @@ spreadsheet log for all experiments: https://bit.ly/3E42X9R
 - implemented `linear` encoder that feeds pixels straight to the fc layer/rnn (size determined by `hidden_size`)
 - running a set of shorter 0.5G simulations testing the requirement for `hidden_size` in the `gabor_gathering` task (8, 64 and default 512)
 
-
 01.21.2022:
 - `animals` task seems quite challenging. Training with a `vvs_depth=0` produced modest task learning, and interesting receptive fields. Receptive fields appeared to capture specific edge structures of animals. Tried training on `vvs_depth=1` but got stuck in the "walking backwards" local minimum.
+
+01.26.2022:
+- some networks managed to solve the `animal_gathering_3` taks (`3` has some modifications in terms of health values, fewer stimuli and bigger textures compared to the original) rfs seem interesting, but still the simplest architectures can manage
+- implemented some tensorboard compatibility - graph of encoder and saving rf images
+- modified encoder implementation to improve graph + have it defined more 'conventionally'
+- tagged changes with v1.0
