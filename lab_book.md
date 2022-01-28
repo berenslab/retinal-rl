@@ -55,3 +55,10 @@ spreadsheet log for all experiments: https://bit.ly/3E42X9R
 - implemented some tensorboard compatibility - graph of encoder and saving rf images
 - modified encoder implementation to improve graph + have it defined more 'conventionally'
 - tagged changes with v1.0 (some incompatibility with previous version due to encoder changes)
+
+01.28.2022:
+- also added `mosaic` network from now on also:
+    - changed naming convention, dropping details about reward and task (convention: `network##`)
+    - using `reward_scale = 0.1`
+    - using shaping reward
+    - higher resolution (`144x256`)
