@@ -25,7 +25,6 @@ def save_simulation_gif(cfg,imgs, lay=0):
     optimize(pth)
 
 def save_receptive_fields_plot(cfg,device,enc,lay,obs_torch):
-
     isz = list(obs_torch['obs'].size())[1:]
     outmtx = enc.conv_head[0:(lay*2)](obs_torch['obs'])
     osz = list(outmtx.size())[1:]
