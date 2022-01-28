@@ -43,6 +43,7 @@ def custom_parse_args(argv=None, evaluation=False):
     parser.add_argument('--retinal_bottleneck', type=int, default=4, help='Number of channels in retinal bottleneck')
     parser.add_argument('--vvs_depth', type=int, default=1, help='Number of CNN layers in the ventral stream network')
     parser.add_argument('--kernel_size', type=int, default=7, help='Size of CNN filters')
+    parser.add_argument('--rf_ratio', type=int, default=3, help='Ratio between RFs of first (BC) and second (RGC) convolutional layer in Mosaic network')
     parser.add_argument('--analyze_acts', type=bool, default=False, help='Visualize activations of convolutional layers') # specific for analyze.py
     parser.add_argument('--shape_reward', type=bool, default=True, help='Turns on reward shaping') # specific for analyze.py
 
