@@ -593,7 +593,9 @@ def make_retinal_env(nm, cfg,  **kwargs):
             , skip_frames=cfg.env_frameskip
             , async_mode=async_mode)
 
-    resolution = '256x144' if cfg.wide_aspect_ratio else '160x120'
+    wide_res = '256x144'
+    cfg_res = str(cfg.res_w) + 'x' + str(cfg.res_h)
+    resolution = wide_res if cfg.wide_aspect_ratio else cfg_res
 
     assert resolution in resolutions
 
