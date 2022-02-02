@@ -61,4 +61,7 @@ spreadsheet log for all experiments: https://bit.ly/3E42X9R
     - changed naming convention, dropping details about reward and task (convention: `network##`)
     - using `reward_scale = 0.1`
     - using shaping reward
-    - higher resolution (`144x256`)
+    - can use higher resolution (`144x256`)
+
+02.02.2022:
+- added demo `mnist_gathering` scenario
