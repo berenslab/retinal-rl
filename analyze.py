@@ -103,6 +103,8 @@ def analyze(cfg, max_num_frames=1e3):
     conv_acts = [ [] for _ in range(n_conv_lay) ]
     fc_acts = []
     rnn_states = torch.zeros([env.num_agents, get_hidden_size(cfg)], dtype=torch.float32, device=device)
+    env_infos = []
+
 
     with torch.no_grad():
 
@@ -141,6 +143,7 @@ def analyze(cfg, max_num_frames=1e3):
                 fc_act_torch = enc.forward(obs_torch['obs']) # activation of output fc layer
                 fc_act_np = fc_act_torch.cpu().detach().numpy()
                 fc_acts.append(fc_act_np)
+                env_infos.append(env.unwrapped.get_info()) # to get health and coordinates
                 num_frames += 1
 
     env.close()
@@ -150,10 +153,13 @@ def analyze(cfg, max_num_frames=1e3):
 
     # intermediate conv layers
     if cfg.analyze_acts:
+
         for lay in range(n_conv_lay):
             save_activations_gif(cfg, imgs, conv_acts, lay)
 
     #TODO: add analysis of output fc layer
+    # output fc layer
+    plot_PCA(cfg, imgs, env_infos, fc_acts, n_pcs=50)
 
     ### Analysis and plotting
 
