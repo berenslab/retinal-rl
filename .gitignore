@@ -6,6 +6,7 @@ __pycache__/
 # Training Results (Don't belong in repo)
 _vizdoom.ini
 train_dir
+data/
 
 # Nohup log (when running in background on compute servers)
 nohup*.out
@@ -84,6 +85,7 @@ target/
 # Jupyter Notebook
 .ipynb_checkpoints
 analyze_jm.ipynb
+classify*
 
 # IPython
 profile_default/
