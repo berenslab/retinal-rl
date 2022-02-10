@@ -85,6 +85,10 @@ def analyze(cfg, max_num_frames=1e3):
     # Printing encoder stats
     print("\nEncoder-Stats:")
     print(enc)
+    # saving encoder
+    t_stamp =  str(np.datetime64('now')).replace('-','').replace('T','_').replace(':', '')
+    enc_path = cfg.train_dir + "/" + cfg.experiment + f"/enc_" + t_stamp + ".pt"
+    torch.save(enc, enc_path)
     # logging comp graph to tensorboard
     tb_path = cfg.train_dir +  "/" + cfg.experiment + '/.summary/0/'
     writer = SummaryWriter(tb_path)
