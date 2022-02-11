@@ -8,6 +8,8 @@ import imageio
 from pygifsicle import optimize
 from torch.utils.tensorboard import SummaryWriter
 
+from openTSNE import TSNE
+
 #from torchinfo import summary
 #from captum.attr import NeuronGradient
 
@@ -145,19 +147,23 @@ def save_activations_gif(cfg, imgs, conv_acts, lay):
     print('Done!')
 
      
-def plot_PCA(cfg, imgs, env_infos, fc_acts, n_pcs=8):
+def plot_PCA(cfg, imgs, env_infos, fc_acts, v_acts, n_pcs=64):
     
-    # preprocessing/reformatting health an pixels
+    fc_acts_np = np.concatenate(fc_acts, axis=0) # converting from list to np
+    v_acts_np = np.concatenate(v_acts)
+
+    # preprocessing/reformatting health, value and pixels
     health = np.zeros(len(env_infos))
     pix_vect = np.zeros((len(env_infos), imgs[0].flatten().shape[0]))
 
     for i in range(len(health)):
         health[i] = env_infos[i]['HEALTH']
         pix_vect[i,:] = imgs[i].flatten()
+    
+    # centering and normalising
     health_cent = (health - np.mean(health, axis=0))/np.max(health)
-    
-    fc_acts_np = np.concatenate(fc_acts, axis=0) # converting from list to np
-    
+
+
     # fc activation pca
     pca = torch.pca_lowrank(torch.from_numpy(fc_acts_np), q=n_pcs)
     var_exp = pca[1].numpy()/np.sum(pca[1].numpy())
@@ -170,13 +176,13 @@ def plot_PCA(cfg, imgs, env_infos, fc_acts, n_pcs=8):
     pix_ll_states = pix_pca[0].numpy()[:,0:n_pcs]
     
     health = health_cent*2*np.max(ll_states[:,0]) + np.mean(ll_states[:,0]) #rescale and center to PC1 over time
-    
-    fig, _ = plt.subplots(2, 2, gridspec_kw={'width_ratios': [5, 1], 'height_ratios': [5, 1]}, figsize=(20,10))
+
+    plt.subplots(2, 2, gridspec_kw={'width_ratios': [5, 1], 'height_ratios': [5, 1]}, figsize=(20,10))
     
     # plot of first two PCs
     plt.subplot(2, 2, 1)
-    plt.scatter(ll_states[:,0], ll_states[:,1], s=5, c=t_stamps/1000)
-    plt.colorbar(label="Time (kStamps)")
+    plt.scatter(ll_states[:,0], ll_states[:,1], s=5, c=v_acts_np, cmap='jet')
+    plt.colorbar(label="Value")
     plt.ylabel('PC2')
     plt.xlabel('PC1')
     
@@ -189,19 +195,52 @@ def plot_PCA(cfg, imgs, env_infos, fc_acts, n_pcs=8):
     plt.xlabel('PC number')
 
     # first pc as time series
-    plt.subplot(2, 2, 3)
+    plt.subplot(2, 2, (3,4))
     plt.plot(t_stamps/1000, ll_states[:,0], label='PC1 output')
     plt.plot(t_stamps/1000, pix_ll_states[:,0], label='PC1 pixels')
     plt.plot(t_stamps/1000, health, label='health', c='grey')
     plt.xlabel('Time(kStamps)')
     plt.ylabel('PC1')
     plt.legend()
-
-    # histogram of first PC
-    ax = plt.subplot(2, 2, 4)
-    plt.hist(ll_states[:,0], 50, orientation=u'horizontal',);
     
     # saving
     t_stamp =  str(np.datetime64('now')).replace('-','').replace('T','_').replace(':', '')
     pth = cfg.train_dir +  "/" + cfg.experiment + "/fc_pca_" + t_stamp + ".png"
+    plt.savefig(pth)
+
+def plot_lay_tsne(nn_acts, v_acts, ax):
+    nn_acts_np = np.concatenate(nn_acts, axis=0)
+    v_acts_np = np.concatenate(v_acts)
+
+    tsne = TSNE(
+        perplexity=30,
+        initialization="pca",
+        metric="euclidean",
+        n_jobs=8,
+        random_state=42,
+        verbose=True,
+    )
+
+    embedding = tsne.fit(nn_acts_np)
+
+    #plt.figure(figsize=(10,10))
+    sct = ax.scatter(embedding[:,0], embedding[:,1], s=5, c=v_acts_np,cmap='jet') # AS A SANITY CHECK ALSO COLOR CODE BY TIME (SHOULD MATCH PROBABLY)
+    cbar = plt.colorbar(sct, ax=ax)
+    cbar.set_label(label='Value',size=20)
+    cbar.ax.tick_params(labelsize=50)
+    cbar.set_ticks([])
+    cbar.outline.set_visible(False)
+    ax.set_axis_off()
+
+def plot_tsne(cfg, pix_acts, fc_acts, rnn_acts, v_acts):
+    fig, axs = plt.subplots(1,3,figsize=(40,10))
+    all_acts = [pix_acts, fc_acts, rnn_acts]
+    titles = ['pix_acts', 'fc_acts', 'rnn_acts']
+    for (i, nn_acts) in enumerate(all_acts):
+        plot_lay_tsne(nn_acts, v_acts, axs[i])
+        axs[i].set_title(titles[i])
+    
+    # saving
+    t_stamp =  str(np.datetime64('now')).replace('-','').replace('T','_').replace(':', '')
+    pth = cfg.train_dir +  "/" + cfg.experiment + "/tsne_" + t_stamp + ".png"
     plt.savefig(pth)
