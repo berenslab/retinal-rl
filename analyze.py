@@ -106,6 +106,8 @@ def analyze(cfg, max_num_frames=1e3):
     imgs = [np.transpose(img0.cpu().detach().numpy(),(1,2,0)).astype(np.uint8)]
     conv_acts = [ [] for _ in range(n_conv_lay) ]
     fc_acts = []
+    rnn_acts = []
+    v_acts = []
     rnn_states = torch.zeros([env.num_agents, get_hidden_size(cfg)], dtype=torch.float32, device=device)
     env_infos = []
 
@@ -148,7 +150,15 @@ def analyze(cfg, max_num_frames=1e3):
                 fc_act_np = fc_act_torch.cpu().detach().numpy()
                 fc_acts.append(fc_act_np)
                 env_infos.append(env.unwrapped.get_info()) # to get health and coordinates
+                rnn_act_torch = policy_outputs.rnn_states
+                rnn_acts_np = rnn_act_torch.cpu().detach().numpy()
+                rnn_acts.append(rnn_acts_np) # to get rnn 'hidden state'
+                v_act = actor_critic.critic_linear(policy_outputs.rnn_states) # forward pass of hidden state to get value
+                v_act_np = v_act.cpu().detach().numpy()
+                v_acts.append(v_act_np)
                 num_frames += 1
+
+    pix_acts = [imgs[i].flatten()[None,:] for i in range(len(imgs)-1)] 
 
     env.close()
 
@@ -157,14 +167,14 @@ def analyze(cfg, max_num_frames=1e3):
 
     # intermediate conv layers
     if cfg.analyze_acts:
-
         for lay in range(n_conv_lay):
             save_activations_gif(cfg, imgs, conv_acts, lay)
 
     #TODO: add analysis of output fc layer
     # output fc layer
-    plot_PCA(cfg, imgs, env_infos, fc_acts, n_pcs=50)
-
+    if cfg.analyze_dimred:
+        plot_PCA(cfg, imgs, env_infos, fc_acts, v_acts, n_pcs=50)
+        plot_tsne(cfg, pix_acts, fc_acts, rnn_acts, v_acts)
     ### Analysis and plotting
 
 def main():
