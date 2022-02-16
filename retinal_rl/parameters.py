@@ -44,8 +44,8 @@ def custom_parse_args(argv=None, evaluation=False):
     parser.add_argument('--vvs_depth', type=int, default=1, help='Number of CNN layers in the ventral stream network')
     parser.add_argument('--kernel_size', type=int, default=7, help='Size of CNN filters')
     parser.add_argument('--rf_ratio', type=int, default=3, help='Ratio between RFs of first (BC) and second (RGC) convolutional layer in Mosaic network')
-    parser.add_argument('--analyze_acts', type=bool, default=False, help='Visualize activations of convolutional layers') # specific for analyze.py
-    parser.add_argument('--analyze_dimred', type=bool, default=False, help='Dimensionality reduction for pixel, fully connected and rnn activations via PCA and tSNE') # specific for analyze.py
+    parser.add_argument('--analyze_acts', type=str, default='False', help='Visualize activations via gifs and dimensionality reduction; options: \'environment\', \'mnist\' or \'cifar\'') # specific for analyze.py
+    parser.add_argument('--analyze_max_num_frames', type=int, default=1e3, help='Used for visualising \'environment\' activations (leave as defult otherwise), normally 1e5 works for a nice embedding') # specific for analyze.py
     parser.add_argument('--shape_reward', type=bool, default=True, help='Turns on reward shaping')
 
     # SampleFactory parse_args function does some additional processing (see comments there)
