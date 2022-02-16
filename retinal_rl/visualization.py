@@ -97,7 +97,7 @@ def spike_triggered_average(dev,enc,lay,flt,rds,isz):
 
 def save_activations_gif(cfg, imgs, conv_acts, lay): 
     
-    snapshots = np.asarray(conv_acts[lay])
+    snapshots = np.asarray(conv_acts)
     fps = 30
     nSeconds = round(len(snapshots)//fps)
     
@@ -112,7 +112,7 @@ def save_activations_gif(cfg, imgs, conv_acts, lay):
     
     print(f'Visualising activations for conv{lay+1}')
 
-    for t in range(fps*nSeconds):
+    for t in range(fps*nSeconds-1):
         pts = []
 
         ax = axs[0,0] if rwsmlt>1 else axs[0]
@@ -148,9 +148,11 @@ def save_activations_gif(cfg, imgs, conv_acts, lay):
 
      
 def plot_PCA(cfg, imgs, env_infos, fc_acts, v_acts, n_pcs=64):
-    
-    fc_acts_np = np.concatenate(fc_acts, axis=0) # converting from list to np
-    v_acts_np = np.concatenate(v_acts)
+    rm_env_steps = 500
+    print(f'Removing first {rm_env_steps} to avoid value artefact due to rnn')
+    fc_acts_np = np.concatenate(fc_acts[rm_env_steps:], axis=0) # converting from list to np
+    v_acts_np = np.concatenate(v_acts[rm_env_steps:])
+    env_infos = env_infos[rm_env_steps:]
 
     # preprocessing/reformatting health, value and pixels
     health = np.zeros(len(env_infos))
@@ -181,7 +183,7 @@ def plot_PCA(cfg, imgs, env_infos, fc_acts, v_acts, n_pcs=64):
     
     # plot of first two PCs
     plt.subplot(2, 2, 1)
-    plt.scatter(ll_states[:,0], ll_states[:,1], s=5, c=v_acts_np, cmap='jet')
+    plt.scatter(ll_states[:,0], ll_states[:,1], s=0.1, c=v_acts_np, cmap='jet')
     plt.colorbar(label="Value")
     plt.ylabel('PC2')
     plt.xlabel('PC1')
@@ -208,9 +210,26 @@ def plot_PCA(cfg, imgs, env_infos, fc_acts, v_acts, n_pcs=64):
     pth = cfg.train_dir +  "/" + cfg.experiment + "/fc_pca_" + t_stamp + ".png"
     plt.savefig(pth)
 
+def plot_tsne(cfg, all_acts_dict):
+    nn_acts_plot = ['fc_acts', 'rnn_acts'] # hard-coded which activations to plot
+    
+    _, axs = plt.subplots(1,len(nn_acts_plot),figsize=(40,10))
+
+    for (i, nn_acts) in enumerate(nn_acts_plot):
+        print('\n Running tSNE for: ' + nn_acts)
+        plot_lay_tsne(all_acts_dict[nn_acts], all_acts_dict['v_acts'], axs[i])
+        axs[i].set_title(nn_acts)
+    
+    # saving
+    t_stamp =  str(np.datetime64('now')).replace('-','').replace('T','_').replace(':', '')
+    pth = cfg.train_dir +  "/" + cfg.experiment + "/tsne_" + t_stamp + ".png"
+    plt.savefig(pth)
+
 def plot_lay_tsne(nn_acts, v_acts, ax):
-    nn_acts_np = np.concatenate(nn_acts, axis=0)
-    v_acts_np = np.concatenate(v_acts)
+    rm_env_steps = 500
+    print(f'Removing first {rm_env_steps} to avoid value artefact due to rnn')
+    nn_acts_np = np.concatenate(nn_acts[rm_env_steps:], axis=0)
+    v_acts_np = np.concatenate(v_acts[rm_env_steps:])
 
     tsne = TSNE(
         perplexity=30,
@@ -224,23 +243,10 @@ def plot_lay_tsne(nn_acts, v_acts, ax):
     embedding = tsne.fit(nn_acts_np)
 
     #plt.figure(figsize=(10,10))
-    sct = ax.scatter(embedding[:,0], embedding[:,1], s=5, c=v_acts_np,cmap='jet') # AS A SANITY CHECK ALSO COLOR CODE BY TIME (SHOULD MATCH PROBABLY)
+    sct = ax.scatter(embedding[:,0], embedding[:,1], s=0.1, c=v_acts_np,cmap='jet')
     cbar = plt.colorbar(sct, ax=ax)
     cbar.set_label(label='Value',size=20)
     cbar.ax.tick_params(labelsize=50)
     cbar.set_ticks([])
     cbar.outline.set_visible(False)
     ax.set_axis_off()
-
-def plot_tsne(cfg, pix_acts, fc_acts, rnn_acts, v_acts):
-    fig, axs = plt.subplots(1,3,figsize=(40,10))
-    all_acts = [pix_acts, fc_acts, rnn_acts]
-    titles = ['pix_acts', 'fc_acts', 'rnn_acts']
-    for (i, nn_acts) in enumerate(all_acts):
-        plot_lay_tsne(nn_acts, v_acts, axs[i])
-        axs[i].set_title(titles[i])
-    
-    # saving
-    t_stamp =  str(np.datetime64('now')).replace('-','').replace('T','_').replace(':', '')
-    pth = cfg.train_dir +  "/" + cfg.experiment + "/tsne_" + t_stamp + ".png"
-    plt.savefig(pth)
