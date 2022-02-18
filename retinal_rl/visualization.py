@@ -33,7 +33,13 @@ def save_receptive_fields_plot(cfg,device,enc,lay,obs_torch):
 
     nchns = isz[0]
     flts = osz[0]
-    rds = 2 + (8*(lay-1) + enc.kernel_size) // 2
+
+    if cfg.retinal_stride == 2 and cfg.kernel_size == 9: # lindsay with stride and kernel 9
+        diams = [1, 9, 17, 50]
+        rds = diams[lay]//2 + 2*lay# padding a bit
+    else: # classic lindsay case
+        rds = 2 + (8*(lay-1) + enc.kernel_size) // 2
+
     rwsmlt = 2 if flts > 8 else 1 # rows in rf subplot
     fltsdv = flts//rwsmlt
 
@@ -79,7 +85,7 @@ def spike_triggered_average(dev,enc,lay,flt,rds,isz):
 
     with torch.no_grad():
 
-        btchsz = [25000] + isz
+        btchsz = [50000] + isz
         cnty = (1+btchsz[2])//2
         cntx = (1+btchsz[3])//2
         mny = cnty - rds
@@ -198,9 +204,10 @@ def plot_PCA(cfg, imgs, env_infos, fc_acts, v_acts, n_pcs=64):
 
     # first pc as time series
     plt.subplot(2, 2, (3,4))
-    plt.plot(t_stamps/1000, ll_states[:,0], label='PC1 output')
-    plt.plot(t_stamps/1000, pix_ll_states[:,0], label='PC1 pixels')
-    plt.plot(t_stamps/1000, health, label='health', c='grey')
+    plt.plot(t_stamps/1000, normalize_data(ll_states[:,0]), label='PC1 output')
+    plt.plot(t_stamps/1000, normalize_data(pix_ll_states[:,0]), label='PC1 pixels')
+    plt.plot(t_stamps/1000, normalize_data(health), label='health', c='grey')
+    plt.plot(t_stamps/1000, normalize_data(v_acts_np), label='value', c='red')
     plt.xlabel('Time(kStamps)')
     plt.ylabel('PC1')
     plt.legend()
@@ -209,6 +216,9 @@ def plot_PCA(cfg, imgs, env_infos, fc_acts, v_acts, n_pcs=64):
     t_stamp =  str(np.datetime64('now')).replace('-','').replace('T','_').replace(':', '')
     pth = cfg.train_dir +  "/" + cfg.experiment + "/fc_pca_" + t_stamp + ".png"
     plt.savefig(pth)
+
+def normalize_data(data):
+    return (data - np.min(data)) / (np.max(data) - np.min(data))
 
 def plot_tsne(cfg, all_acts_dict):
     nn_acts_plot = ['fc_acts', 'rnn_acts'] # hard-coded which activations to plot
