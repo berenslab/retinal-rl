@@ -42,7 +42,7 @@ def analyze(cfg):
     # elif cfg.analyze_acts == 'mnist' or cfg.analyze_acts == 'cifar':
     #     get_acts_dataset(enc, cfg.analyze_acts) # define function
     
-    elif cfg.analyze_acts == 'False':  # if anything other than 'False', 'environment', 'mnist' or 'cifar'
+    elif cfg.analyze_acts != 'False':  # if anything other than 'False', 'environment', 'mnist' or 'cifar'
         print('\n\nInvalid cfg.analyze_acts input, terminating script.\n\n')
 
 
