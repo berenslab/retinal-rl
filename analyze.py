@@ -3,6 +3,7 @@ import sys
 
 # Numerics
 import torch
+import torchvision.datasets as datasets
 import numpy as np
 
 # retinal-rl
@@ -38,9 +39,16 @@ def analyze(cfg):
         # visualizing tSNE of fully connected layer and rnn
         plot_tsne(cfg, all_acts_dict)
 
-    # TODO: add 'dataset' input compatibility for analyzing layer activations
-    # elif cfg.analyze_acts == 'mnist' or cfg.analyze_acts == 'cifar':
-    #     get_acts_dataset(enc, cfg.analyze_acts) # define function
+    if cfg.analyze_acts == 'dataset':
+        
+        if cfg.analyze_ds_name == 'CIFAR':
+            rewards_dict = {0:2, 1:1, 2:4, 3:5, 4:7, 5:6, 6:8, 7:9, 8:3, 9:0} # defined by the class-reward assignments in the .wad file
+        elif cfg.analyze_ds_name == 'MNIST':
+            rewards_dict = {0:0, 1:1, 2:2, 3:3, 4:4, 5:5, 6:6, 7:7, 8:8, 9:9} # defined by the class-reward assignments in the .wad file (matching digits in case of mnist)
+
+        all_acts_dict_ds = get_acts_dataset(cfg, enc, cfg.analyze_ds_name, rewards_dict)
+        plot_dimred_ds(cfg, all_acts_dict_ds['fc_acts_np'], all_acts_dict_ds['all_lab_np'])
+        # TODO: add function for classifier analysis
     
     elif cfg.analyze_acts != 'False':  # if anything other than 'False', 'environment', 'mnist' or 'cifar'
         print('\n\nInvalid cfg.analyze_acts input, terminating script.\n\n')
