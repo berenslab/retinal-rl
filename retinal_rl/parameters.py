@@ -46,7 +46,8 @@ def custom_parse_args(argv=None, evaluation=False):
     parser.add_argument('--retinal_stride', type=int, default=1, help='Stride at first two conv layers (\'BC\' and \'RGC\'), doesnt apply to \'VVS\'')
     parser.add_argument('--rf_ratio', type=int, default=3, help='Ratio between RFs of first (\'BC\') and second (\'RGC\') convolutional layer in Mosaic network')
     parser.add_argument('--analyze_acts', type=str, default='False', help='Visualize activations via gifs and dimensionality reduction; options: \'environment\', \'mnist\' or \'cifar\'') # specific for analyze.py
-    parser.add_argument('--analyze_max_num_frames', type=int, default=1e3, help='Used for visualising \'environment\' activations (leave as defult otherwise), normally 1e5 works for a nice embedding') # specific for analyze.py
+    parser.add_argument('--analyze_max_num_frames', type=int, default=1e3, help='Used for visualising \'environment\' activations (leave as defult otherwise), normally 100000 works for a nice embedding, but can take time') # specific for analyze.py
+    parser.add_argument('--analyze_ds_name', type=str, default='CIFAR', help='Used for visualizing responses to dataset (can be \'MNIST\' or \'CIFAR\'') # specific for analyze.py
     parser.add_argument('--shape_reward', type=bool, default=True, help='Turns on reward shaping')
 
     # SampleFactory parse_args function does some additional processing (see comments there)
