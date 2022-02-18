@@ -1,11 +1,13 @@
 # System
 import sys
+import os
 
 # Numerics
 import torch
+import torchvision.datasets as datasets
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
-
+from PIL import Image as im
 # Sample Factory
 from sample_factory.algorithms.appo.learner import LearnerWorker
 from sample_factory.algorithms.utils.action_distributions import ContinuousActionDistribution
@@ -163,3 +165,72 @@ def get_acts_environment(cfg, max_num_frames=1e3):
     all_acts_dict = {'obs_torch':obs_torch, 'imgs':imgs, 'pix_acts':pix_acts, 'conv_acts' : conv_acts, 'fc_acts' : fc_acts, 'rnn_acts':rnn_acts, 'v_acts':v_acts}
 
     return (enc, env_infos, all_acts_dict)
+
+
+def get_acts_dataset(cfg, enc, ds_string, rewards_dict):
+    
+    bck_np = np.load(os.getcwd() + '/data/doom_pad.npy') # saved 'doom-looking' background
+    
+    if ds_string == 'CIFAR':
+        trainset = datasets.CIFAR10(root='./data', train=True, download=True, transform=None)
+        testset = datasets.CIFAR10(root='./data', train=False, download=True, transform=None)
+    elif ds_string == 'MNIST':
+        trainset = datasets.MNIST(root='./data', train=True, download=True, transform=None)
+        testset = datasets.MNIST(root='./data', train=False, download=True, transform=None)
+    
+    print('train set length: ', len(trainset))
+    print('test set length: ', len(testset))
+    
+    # now loop through dataset
+    device = torch.device('cpu' if cfg.device == 'cpu' else 'cuda')
+
+    n_stim = len(trainset)
+    offset = (28,50)
+
+    fc_acts = []
+    all_obs = []
+    all_lab = []
+
+    with torch.no_grad():
+
+        for i in range(n_stim):
+
+                if i % int(n_stim/20) == 0:
+                    print(f'Forward pass through {i}/{n_stim} dataset entries')
+
+                obs = pad_dataset(cfg, i, trainset, bck_np, offset)
+
+                fc_act_torch = enc.forward(obs) # activation of output fc layer
+                fc_act_np = fc_act_torch.cpu().detach().numpy()
+                fc_acts.append(fc_act_np)
+                obs_np = obs.cpu().detach().numpy()
+                all_obs.append(obs_np)
+                all_lab.append(trainset[i][1])
+    
+    # changing labels based on assignments
+    all_lab_assign=[]
+    for label in all_lab:
+        all_lab_assign.append(rewards_dict[label])
+    
+    # converting from list to np
+    fc_acts_np = np.concatenate(fc_acts, axis=0)
+    all_lab_np = np.array(all_lab_assign)
+    all_obs_np = np.concatenate(all_obs, axis=0)
+    all_obs_np_flatten = all_obs_np.reshape(all_obs_np.shape[0],-1)
+    all_obs_np_flatten.shape
+    
+    all_acts_dict = {'all_obs_np_flatten':all_obs_np_flatten, 'fc_acts_np':fc_acts_np, 'all_lab_np':all_lab_np}
+    
+    return all_acts_dict
+
+def pad_dataset(cfg, i, trainset, bck_np, offset): # i:index in dataset, bck_np: numpy array of background (grass/sky), offset:determines position within background
+    device = torch.device('cpu' if cfg.device == 'cpu' else 'cuda')
+    in_im = trainset[i][0]
+    in_np = np.array(np.transpose(in_im, (2,0,1)))
+    out_np = bck_np # background
+    out_np[:,offset[0]:offset[0]+32, offset[1]:offset[1]+32]=in_np # replacing pixels in the middle
+    out_np_t =np.transpose(out_np, (1, 2, 0)) # reformatting for PIL conversion
+    out_im = im.fromarray(out_np_t)
+    out_torch = torch.from_numpy(out_np[None,:,:,:]).float().to(device) 
+    
+    return out_torch # same format as obs_torch['obs']
