@@ -68,6 +68,7 @@ class LindseyEncoderBase(EncoderBase):
         btlchns = cfg.retinal_bottleneck
         vvsdpth = cfg.vvs_depth
         krnsz = cfg.kernel_size
+        retstrd = cfg.retinal_stride # for first two conv layers
 
         self.nl_fc = nonlinearity(cfg)
         self.kernel_size = krnsz
@@ -78,9 +79,9 @@ class LindseyEncoderBase(EncoderBase):
         for i in range(vvsdpth+2): # +2 for the first 'retinal' layers
             self.nls.append(nonlinearity(cfg))
             if i == 0: # 'bipolar cells' ('global channels')
-                conv_layers.extend([nn.Conv2d(3, nchns, krnsz, stride=1), self.nls[i]])
+                conv_layers.extend([nn.Conv2d(3, nchns, krnsz, stride=retstrd), self.nls[i]])
             elif i == 1: # 'ganglion cells' ('retinal bottleneck')
-                conv_layers.extend([nn.Conv2d(nchns, btlchns, krnsz, stride=1), self.nls[i]])
+                conv_layers.extend([nn.Conv2d(nchns, btlchns, krnsz, stride=retstrd), self.nls[i]])
             elif i == 2: # 'V1' ('global channels')
                 conv_layers.extend([nn.Conv2d(btlchns, nchns, krnsz, stride=1), self.nls[i]])
             else: # 'vvs layers'
