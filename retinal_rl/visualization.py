@@ -232,7 +232,7 @@ def plot_tsne(cfg, all_acts_dict):
     
     # saving
     t_stamp =  str(np.datetime64('now')).replace('-','').replace('T','_').replace(':', '')
-    pth = cfg.train_dir +  "/" + cfg.experiment + "/tsne_" + t_stamp + ".png"
+    pth = cfg.train_dir +  "/" + cfg.experiment + "/tsne_env_" + t_stamp + ".png"
     plt.savefig(pth)
 
 def plot_lay_tsne(nn_acts, v_acts, ax):
@@ -260,3 +260,43 @@ def plot_lay_tsne(nn_acts, v_acts, ax):
     cbar.set_ticks([])
     cbar.outline.set_visible(False)
     ax.set_axis_off()
+
+def plot_dimred_ds(cfg, nn_acts_np, all_lab_np): 
+    
+    # computing PCA
+    n_pcs=64
+    pca = torch.pca_lowrank(torch.from_numpy(nn_acts_np), q=n_pcs)
+    ll_states = pca[0].numpy()[:,0:n_pcs]
+   
+    # computing tSNE
+    tsne = TSNE(
+        perplexity=30,
+        initialization="pca",
+        metric="euclidean",
+        n_jobs=8,
+        random_state=42,
+        verbose=True,
+    )
+
+    embedding = tsne.fit(nn_acts_np)
+    
+    # plotting both
+    fig, axs = plt.subplots(1, 2, figsize=(20,10))
+    sct1 = axs[0].scatter(ll_states[:,0], ll_states[:,1], s=0.6, c=all_lab_np,  cmap='jet')
+    axs[0].set_title('PCA')
+    cbar = plt.colorbar(sct1, ax=axs[0])
+    cbar.set_label(label='Stim id',size=20)
+    cbar.outline.set_visible(False)
+    axs[0].set_axis_off()
+
+    sct2 = axs[1].scatter(embedding[:,0], embedding[:,1], s=0.1, c=all_lab_np, cmap='jet')#, c=v_acts_np,cmap='jet') # AS A SANITY CHECK ALSO COLOR CODE BY TIME (SHOULD MATCH PROBABLY)
+    cbar = plt.colorbar(sct2, ax=axs[1])
+    axs[1].set_title('tSNE')
+    cbar.set_label(label='Stim id',size=20)
+    cbar.outline.set_visible(False)
+    axs[1].set_axis_off()
+    
+    # saving
+    t_stamp =  str(np.datetime64('now')).replace('-','').replace('T','_').replace(':', '')
+    pth = cfg.train_dir +  "/" + cfg.experiment + "/tsne_ds_" + t_stamp + ".png"
+    plt.savefig(pth)
