@@ -3,7 +3,6 @@ import sys
 
 # Numerics
 import torch
-import torchvision.datasets as datasets
 import numpy as np
 
 # retinal-rl
@@ -19,7 +18,6 @@ def analyze(cfg):
     
     # getting encoder, environment info and activations of layers during experience
     enc, env_infos, all_acts_dict = get_acts_environment(cfg, max_num_frames=max_num_frames) # all_acts_dict (keys correspond to layers)
-    # TODO: write a similar function here but to get the activations for 'dataset'
 
     # always make simulation gif
     save_simulation_gif(cfg,all_acts_dict['imgs'][:1000]) # only first 1000 frames due to .gif resource limitations
@@ -48,6 +46,7 @@ def analyze(cfg):
 
         all_acts_dict_ds = get_acts_dataset(cfg, enc, cfg.analyze_ds_name, rewards_dict)
         plot_dimred_ds(cfg, all_acts_dict_ds['fc_acts_np'], all_acts_dict_ds['all_lab_np'])
+        
         # TODO: add function for classifier analysis
     
     elif cfg.analyze_acts != 'False':  # if anything other than 'False', 'environment', 'mnist' or 'cifar'
