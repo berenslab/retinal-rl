@@ -153,7 +153,7 @@ def save_activations_gif(cfg, imgs, conv_acts, lay):
     print('Done!')
 
      
-def plot_PCA(cfg, imgs, env_infos, fc_acts, v_acts, n_pcs=64):
+def plot_PCA_env(cfg, imgs, env_infos, fc_acts, v_acts, n_pcs=64):
     rm_env_steps = 500
     print(f'Removing first {rm_env_steps} to avoid value artefact due to rnn')
     fc_acts_np = np.concatenate(fc_acts[rm_env_steps:], axis=0) # converting from list to np
@@ -220,7 +220,7 @@ def plot_PCA(cfg, imgs, env_infos, fc_acts, v_acts, n_pcs=64):
 def normalize_data(data):
     return (data - np.min(data)) / (np.max(data) - np.min(data))
 
-def plot_tsne(cfg, all_acts_dict):
+def plot_tsne_env(cfg, all_acts_dict):
     nn_acts_plot = ['fc_acts', 'rnn_acts'] # hard-coded which activations to plot
     
     _, axs = plt.subplots(1,len(nn_acts_plot),figsize=(40,10))
