@@ -17,25 +17,25 @@ def analyze(cfg):
     device = torch.device('cpu' if cfg.device == 'cpu' else 'cuda') # this line should go above the get_acts_actor function
     
     # getting encoder, environment info and activations of layers during experience
-    enc, env_infos, all_acts_dict = get_acts_environment(cfg, max_num_frames=max_num_frames) # all_acts_dict (keys correspond to layers)
+    enc, env_infos, all_acts_dict_enc = get_acts_environment(cfg, max_num_frames=max_num_frames) # all_acts_dict (keys correspond to layers)
 
     # always make simulation gif
-    save_simulation_gif(cfg,all_acts_dict['imgs'][:1000]) # only first 1000 frames due to .gif resource limitations
+    save_simulation_gif(cfg,all_acts_dict_enc['imgs'][:1000]) # only first 1000 frames due to .gif resource limitations
     
     # always plot receptive fields
     n_conv_lay = len(enc.conv_head)//2
     for lay in range(1, n_conv_lay+1):
-        save_receptive_fields_plot(cfg,device,enc,lay,all_acts_dict['obs_torch'])
+        save_receptive_fields_plot(cfg,device,enc,lay,all_acts_dict_enc['obs_torch'])
 
     # optional analysis (activations in environment and to dataset images)
     if cfg.analyze_acts == 'environment':        
         # visualizing conv layers
         for lay in range(n_conv_lay):
-            save_activations_gif(cfg, all_acts_dict['imgs'][:1000], all_acts_dict['conv_acts'][lay][:1000], lay) # only first 1000 frames due to .gif resource limitations
+            save_activations_gif(cfg, all_acts_dict_enc['imgs'][:1000], all_acts_dict_enc['conv_acts'][lay][:1000], lay) # only first 1000 frames due to .gif resource limitations
         # visualizing PCA of fully connected layer
-        plot_PCA(cfg, all_acts_dict['imgs'], env_infos, all_acts_dict['fc_acts'], all_acts_dict['v_acts'], n_pcs=50)
+        plot_PCA_env(cfg, all_acts_dict_enc['imgs'], env_infos, all_acts_dict_enc['fc_acts'], all_acts_dict_enc['v_acts'], n_pcs=50)
         # visualizing tSNE of fully connected layer and rnn
-        plot_tsne(cfg, all_acts_dict)
+        plot_tsne_env(cfg, all_acts_dict_enc)
 
     if cfg.analyze_acts == 'dataset':
         
