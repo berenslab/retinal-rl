@@ -142,3 +142,5 @@ core*
 
 # downloaded data
 data/obsolete*
+data/cifar*
+data/MNIST*
