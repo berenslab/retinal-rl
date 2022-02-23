@@ -19,7 +19,7 @@ For the scenarios with datasets the naming convention is changed, to just be: `d
 For MNIST `01` is the only one widely used, `02` has the same `.wad` file, the only difference is that it implements an explicit `death_penalty` (see `mnist_gathering_02.cfg`).
 
 The assignments for MNIST gathering are the following:  
-<img width="730" alt="assignments_1" src="https://user-images.githubusercontent.com/53050061/155285361-dc14515b-cf0f-4c49-a9e7-046359091ed0.png">
+<img width="730" alt="assignments_1" src="https://user-images.githubusercontent.com/53050061/155285361-dc14515b-cf0f-4c49-a9e7-046359091ed0.png">  
 Here the particular images given are just example of a category, when spawning stimuli a random image from that category is chosen.
 
 ## CIFAR gathering
@@ -31,6 +31,6 @@ Removing this means that the only source of reward is the agent's health. The `0
 In this case the two most extreme stimuli (trucks and horses) are spawned as barriers instead of pick-ups. 
 
 The assignments for CIFAR gathering are the following:
-<img width="730" alt="image" src=https://user-images.githubusercontent.com/53050061/155293555-b48c8115-3b2f-4819-afd9-6aa35b114ce6.png>
+<img width="730" alt="image" src=https://user-images.githubusercontent.com/53050061/155293555-b48c8115-3b2f-4819-afd9-6aa35b114ce6.png>  
 (In the case of `03` the horses and trucks are of course not associated with any contributions to health since they are barriers).
 
