@@ -3,12 +3,13 @@ From: ubuntu:22.04
 
 %post
 
-    # Update and Misc
+    # Update
     apt -qy update
-    apt install -y kitty-terminfo sl
 
+    # Python
+    apt -y install python3 python3-all-dev pip
 
-    # Dev
+    # VisDoom Depends
     apt install -y \
         cmake \
         libboost-all-dev \
@@ -29,13 +30,12 @@ From: ubuntu:22.04
         gifsicle \
         nasm
 
-    # Python
-    apt -y install python3 python3-all-dev pip
-
-    # PIP
+    # Sample Factory Base
     pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu113
     pip install vizdoom
     pip install sample-factory
+
+    # retinal-rl Extra
     pip install matplotlib pyglet imageio opentsne pygifsicle
 
 
