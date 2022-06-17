@@ -26,6 +26,7 @@ From: ubuntu:22.04
         timidity \
         git \
         tar \
+        gifsicle \
         nasm
 
     # Python
@@ -35,5 +36,6 @@ From: ubuntu:22.04
     pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu113
     pip install vizdoom
     pip install sample-factory
+    pip install matplotlib pyglet imageio opentsne pygifsicle
 
 

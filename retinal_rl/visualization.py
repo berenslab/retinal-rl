@@ -66,7 +66,7 @@ def save_receptive_fields_plot(cfg,device,enc,lay,obs_torch):
 
                 if k == 0:
                     ax.set_title("Filter: " + str(flt), { 'weight' : 'bold' }, fontsize=12*rwsmlt)
-    
+
 
     t_stamp =  str(np.datetime64('now')).replace('-','').replace('T','_').replace(':', '')
 
@@ -78,14 +78,14 @@ def save_receptive_fields_plot(cfg,device,enc,lay,obs_torch):
 
     # saving
     pth = cfg.train_dir +  "/" + cfg.experiment + f"/rf-conv{lay}_" + t_stamp + ".png"
-    plt.savefig(pth)  
+    plt.savefig(pth)
 
 
 def spike_triggered_average(dev,enc,lay,flt,rds,isz):
 
     with torch.no_grad():
 
-        btchsz = [50000] + isz
+        btchsz = [10000] + isz
         cnty = (1+btchsz[2])//2
         cntx = (1+btchsz[3])//2
         mny = cnty - rds
@@ -101,21 +101,21 @@ def spike_triggered_average(dev,enc,lay,flt,rds,isz):
 
     return avg
 
-def save_activations_gif(cfg, imgs, conv_acts, lay): 
-    
+def save_activations_gif(cfg, imgs, conv_acts, lay):
+
     snapshots = np.asarray(conv_acts)
     fps = 30
     nSeconds = round(len(snapshots)//fps)
-    
+
     nflts = snapshots[0].shape[2]
-    rwsmlt = 2 if nflts > 8 else 1 # number of rows 
+    rwsmlt = 2 if nflts > 8 else 1 # number of rows
     fltsdv = nflts//rwsmlt + 1 # numer of clumns (+ 1 for rgb image)
-    
+
     fig, axs = plt.subplots(rwsmlt,fltsdv,dpi=1, figsize=(128*fltsdv, 72*rwsmlt))
-    
+
     ims = []
     vmaxs = [abs(snapshots[:,:,:,i]).max() for i in range(nflts)]
-    
+
     print(f'Visualising activations for conv{lay+1}')
 
     for t in range(fps*nSeconds-1):
@@ -127,11 +127,11 @@ def save_activations_gif(cfg, imgs, conv_acts, lay):
         ax = axs[1,0] if rwsmlt>1 else axs[0]
         ax.axis('off')
         pts.append(im)
-        
+
         flt=0 # counter
         for i in range(fltsdv-1):
             for j in range(rwsmlt):
-                
+
                 ax = axs[j, i+1] if rwsmlt>1 else axs[i+1]
                 im = ax.imshow(snapshots[t,:,:,flt], interpolation='none', aspect='auto', vmin=0, vmax=vmaxs[flt]) # plotting activations
                 flt +=1
@@ -145,14 +145,14 @@ def save_activations_gif(cfg, imgs, conv_acts, lay):
 
     anim = animation.ArtistAnimation(fig, ims, interval=1000/fps)
     print('Saving video... (this can take some time for >10s simulations)')
-    
+
     t_stamp =  str(np.datetime64('now')).replace('-','').replace('T','_').replace(':', '')
     pth = cfg.train_dir + "/" + cfg.experiment + f"/act-conv{lay+1}_" + t_stamp + ".gif"
     anim.save(pth, fps=fps)
 
     print('Done!')
 
-     
+
 def plot_PCA_env(cfg, imgs, env_infos, fc_acts, v_acts, n_pcs=64):
     rm_env_steps = 500
     print(f'Removing first {rm_env_steps} to avoid value artefact due to rnn')
@@ -167,7 +167,7 @@ def plot_PCA_env(cfg, imgs, env_infos, fc_acts, v_acts, n_pcs=64):
     for i in range(len(health)):
         health[i] = env_infos[i]['HEALTH']
         pix_vect[i,:] = imgs[i].flatten()
-    
+
     # centering and normalising
     health_cent = (health - np.mean(health, axis=0))/np.max(health)
 
@@ -177,23 +177,23 @@ def plot_PCA_env(cfg, imgs, env_infos, fc_acts, v_acts, n_pcs=64):
     var_exp = pca[1].numpy()/np.sum(pca[1].numpy())
     ll_states = pca[0].numpy()[:,0:n_pcs]
     t_stamps =np.arange(0, len(ll_states))
-    
+
     # pixel pca
     pix_pca = torch.pca_lowrank(torch.from_numpy(pix_vect), q=n_pcs)
     pix_var_exp = pix_pca[1].numpy()/np.sum(pix_pca[1].numpy())
     pix_ll_states = pix_pca[0].numpy()[:,0:n_pcs]
-    
+
     health = health_cent*2*np.max(ll_states[:,0]) + np.mean(ll_states[:,0]) #rescale and center to PC1 over time
 
     plt.subplots(2, 2, gridspec_kw={'width_ratios': [5, 1], 'height_ratios': [5, 1]}, figsize=(20,10))
-    
+
     # plot of first two PCs
     plt.subplot(2, 2, 1)
     plt.scatter(ll_states[:,0], ll_states[:,1], s=0.1, c=v_acts_np, cmap='jet')
     plt.colorbar(label="Value")
     plt.ylabel('PC2')
     plt.xlabel('PC1')
-    
+
     #scree plot
     plt.subplot(2, 2, 2)
     plt.plot(var_exp, label='PCA on output')
@@ -211,7 +211,7 @@ def plot_PCA_env(cfg, imgs, env_infos, fc_acts, v_acts, n_pcs=64):
     plt.xlabel('Time(kStamps)')
     plt.ylabel('PC1')
     plt.legend()
-    
+
     # saving
     t_stamp =  str(np.datetime64('now')).replace('-','').replace('T','_').replace(':', '')
     pth = cfg.train_dir +  "/" + cfg.experiment + "/fc_pca_" + t_stamp + ".png"
@@ -222,14 +222,14 @@ def normalize_data(data):
 
 def plot_tsne_env(cfg, all_acts_dict):
     nn_acts_plot = ['fc_acts', 'rnn_acts'] # hard-coded which activations to plot
-    
+
     _, axs = plt.subplots(1,len(nn_acts_plot),figsize=(40,10))
 
     for (i, nn_acts) in enumerate(nn_acts_plot):
         print('\n Running tSNE for: ' + nn_acts)
         plot_lay_tsne(all_acts_dict[nn_acts], all_acts_dict['v_acts'], axs[i])
         axs[i].set_title(nn_acts)
-    
+
     # saving
     t_stamp =  str(np.datetime64('now')).replace('-','').replace('T','_').replace(':', '')
     pth = cfg.train_dir +  "/" + cfg.experiment + "/tsne_env_" + t_stamp + ".png"
@@ -261,13 +261,13 @@ def plot_lay_tsne(nn_acts, v_acts, ax):
     cbar.outline.set_visible(False)
     ax.set_axis_off()
 
-def plot_dimred_ds(cfg, nn_acts_np, all_lab_np): 
-    
+def plot_dimred_ds(cfg, nn_acts_np, all_lab_np):
+
     # computing PCA
     n_pcs=64
     pca = torch.pca_lowrank(torch.from_numpy(nn_acts_np), q=n_pcs)
     ll_states = pca[0].numpy()[:,0:n_pcs]
-   
+
     # computing tSNE
     tsne = TSNE(
         perplexity=30,
@@ -279,7 +279,7 @@ def plot_dimred_ds(cfg, nn_acts_np, all_lab_np):
     )
 
     embedding = tsne.fit(nn_acts_np)
-    
+
     # plotting both
     fig, axs = plt.subplots(1, 2, figsize=(20,10))
     sct1 = axs[0].scatter(ll_states[:,0], ll_states[:,1], s=0.6, c=all_lab_np,  cmap='jet')
@@ -295,7 +295,7 @@ def plot_dimred_ds(cfg, nn_acts_np, all_lab_np):
     cbar.set_label(label='Stim id',size=20)
     cbar.outline.set_visible(False)
     axs[1].set_axis_off()
-    
+
     # saving
     t_stamp =  str(np.datetime64('now')).replace('-','').replace('T','_').replace(':', '')
     pth = cfg.train_dir +  "/" + cfg.experiment + "/tsne_ds_" + t_stamp + ".png"
