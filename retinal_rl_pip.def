@@ -1,0 +1,39 @@
+Bootstrap: docker
+From: ubuntu:22.04
+
+%post
+
+    # Update and Misc
+    apt -qy update
+    apt install -y kitty-terminfo sl
+
+
+    # Dev
+    apt install -y \
+        cmake \
+        libboost-all-dev \
+        libsdl2-dev \
+        libfreetype6-dev \
+        libgl1-mesa-dev \
+        libglu1-mesa-dev \
+        libpng-dev \
+        libjpeg-dev \
+        libbz2-dev \
+        libfluidsynth-dev \
+        libgme-dev \
+        libopenal-dev \
+        zlib1g-dev \
+        timidity \
+        git \
+        tar \
+        nasm
+
+    # Python
+    apt -y install python3 python3-all-dev pip
+
+    # PIP
+    pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu113
+    pip install vizdoom
+    pip install sample-factory
+
+
