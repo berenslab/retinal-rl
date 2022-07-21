@@ -1,16 +1,15 @@
-Bootstrap: docker
-From: ubuntu:22.04
+FROM ubuntu:21.10
 
-%post
+ARG DEBIAN_FRONTEND=noninteractive
+ENV TZ=Europe/Berlin
 
+# Aptitude
+RUN \
     # Update
-    apt -qy update
-
+    apt-get update -yq && \
     # Python
-    apt -y install python3 python3-all-dev pip
-
+    apt-get install -yq --no-install-recommends python3 python3-all-dev pip \
     # VisDoom Depends
-    apt install -y \
         cmake \
         libboost-all-dev \
         libsdl2-dev \
@@ -30,12 +29,6 @@ From: ubuntu:22.04
         gifsicle \
         nasm
 
-    # Sample Factory Base
-    pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu113
-    pip install vizdoom
-    pip install sample-factory
-
-    # retinal-rl Extra
-    pip install matplotlib pyglet imageio opentsne pygifsicle
-
-
+# PIP
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
