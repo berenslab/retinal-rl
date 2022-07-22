@@ -1,9 +1,9 @@
 ## Current Installation Procedure
 
-Here are the steps I'm currently going through to get the `retina-rl` project working. First [install anaconda or miniconda](https://docs.anaconda.com/anaconda/install/index.html), and then create the environment
+Here are the steps I'm currently going through to get the `retinal-rl` project working. First [install anaconda or miniconda](https://docs.anaconda.com/anaconda/install/index.html), and then create the environment
 ``` bash
-conda create --name retina-rl python=3.8 pip
-conda activate retina-rl
+conda create --name retinal-rl python=3.8 pip
+conda activate retinal-rl
 ```
 I'm using `miniconda`, so some of the following commands might be redundant if you're using `anaconda`.
 
@@ -28,9 +28,9 @@ conda install -c conda-forge gxx boost
 
 Now clone the repo
 ```bash
-https://github.com/berenslab/retina-rl.git
+https://github.com/berenslab/retinal-rl.git
 ```
-There are three main scripts for working with `retina-rl`:
+There are three main scripts for working with `retinal-rl`:
 
 - `train.py`: Train a model.
 - `analyze.py`: Generate some analyses; right now saves a simulation as a .gif file and renders receptive fields at the output of the first convolutional layer.
