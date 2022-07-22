@@ -1,7 +1,6 @@
 FROM ubuntu:21.10
 
 ARG DEBIAN_FRONTEND=noninteractive
-ENV TZ=Europe/Berlin
 
 # Aptitude
 RUN \
@@ -54,3 +53,6 @@ RUN pip3 install --no-cache-dir --extra-index-url https://download.pytorch.org/w
     # Development
     # apt install -y kitty-terminfo sl neovim zsh fzf
     # pip3 install pyright
+
+ENV DISPLAY=localhost:0.0
+ENV TZ=Europe/Berlin
