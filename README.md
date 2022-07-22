@@ -2,7 +2,7 @@
 
 Here are the steps I'm currently going through to get the `retina-rl` project working. First [install anaconda or miniconda](https://docs.anaconda.com/anaconda/install/index.html), and then create the environment
 ``` bash
-conda create --name retina-rl
+conda create --name retina-rl python=3.8 pip
 conda activate retina-rl
 ```
 I'm using `miniconda`, so some of the following commands might be redundant if you're using `anaconda`.
@@ -21,9 +21,9 @@ We'll also need some other tools and libraries
 conda install -c conda-forge matplotlib pyglet imageio
 pip install pygifsicle
 ```
-Finally, if there's a mismatch between the libraries expected by the compiled version of `vizdoom` (as is typically the case on Sacha's system), you can try compiling it from source based on the notes provided [here](https://github.com/alex-petrenko/sample-factory/tree/master/sample_factory/envs/doom).
+Finally, if you're missing libraries, the following may help:
 ```bash
-conda install -c conda-forge gxx boost=1.76.0
+conda install -c conda-forge gxx boost
 ```
 
 Now clone the repo
