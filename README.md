@@ -21,7 +21,7 @@ We'll also need some other tools and libraries
 conda install -c conda-forge matplotlib pyglet imageio
 pip install pygifsicle
 ```
-Finally, if you're missing libraries, the following may help:
+Finally, if you're missing some fundamental libraries, the following may help:
 ```bash
 conda install -c conda-forge gxx boost
 ```
