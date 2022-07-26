@@ -16,7 +16,7 @@ and then install `sample-factory` and `vizdoom`
 pip install sample-factory
 pip install vizdoom
 ```
-We'll also need some other tools and libraries
+Note, you may require `sample-factory=1.121.4` on a server. We'll also need some other tools and libraries
 ```bash
 conda install -c conda-forge matplotlib pyglet imageio
 pip install pygifsicle
