@@ -19,7 +19,7 @@ def retinal_override_defaults(parser):
         exploration_loss_coeff=0.001,
         reward_scale=0.1,
         with_wandb='True',
-        wandb_tags=['test', 'benchmark', 'doom', 'appo'],
+        wandb_tags=['retinal_rl','appo'],
         wandb_project="retinal_rl"
     )
 
