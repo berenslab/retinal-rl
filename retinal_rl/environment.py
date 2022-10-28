@@ -17,10 +17,9 @@ from gym.spaces import Discrete
 from gym.utils import seeding
 
 from sample_factory.utils.utils import log, project_tmp_dir
-from sample_factory.algorithms.utils.spaces.discretized import Discretized
-from sample_factory.envs.doom.action_space import doom_action_space_basic
-from sample_factory.envs.env_registry import global_env_registry
-from sample_factory.envs.doom.wrappers.observation_space import SetResolutionWrapper, resolutions
+from sample_factory.algo.utils.spaces.discretized import Discretized
+from sample_factory.envs.env_utils import register_env
+from sf_examples.vizdoom_examples.doom.wrappers.observation_space import SetResolutionWrapper, resolutions
 from sample_factory.envs.env_wrappers import ResizeWrapper, RewardScalingWrapper, TimeLimitWrapper, PixelFormatChwWrapper
 
 from vizdoom.vizdoom import ScreenResolution, DoomGame, Mode, AutomapMode
@@ -31,6 +30,50 @@ import time
 from filelock import FileLock, Timeout
 
 from retinal_rl.parameters import add_retinal_env_args,retinal_override_defaults
+
+
+### Doom Copies ###
+
+
+def key_to_action_basic(key):
+    from pynput.keyboard import Key
+
+    table = {Key.left: 0, Key.right: 1, Key.up: 2, Key.down: 3}
+    return table.get(key, None)
+
+
+def doom_turn_and_attack_only():
+    """
+    TURN_LEFT
+    TURN_RIGHT
+    ATTACK
+    """
+    space = gym.spaces.Tuple(
+        (
+            Discrete(3),
+            Discrete(2),
+        )
+    )  # noop, turn left, turn right  # noop, attack
+
+    return space
+
+
+def doom_action_space_basic():
+    """
+    TURN_LEFT
+    TURN_RIGHT
+    MOVE_FORWARD
+    MOVE_BACKWARD
+    """
+    space = gym.spaces.Tuple(
+        (
+            Discrete(3),
+            Discrete(3),
+        )
+    )  # noop, turn left, turn right  # noop, forward, backward
+
+    space.key_to_action = key_to_action_basic
+    return space
 
 ### Core Retinal/Doom Environment ###
 
@@ -632,7 +675,7 @@ def make_retinal_env(nm, cfg,  **kwargs):
 
 def register_retinal_environment():
 
-    global_env_registry().register_env(
+    register_env(
         env_name_prefix='retinal_',
         make_env_func=make_retinal_env,
         add_extra_params_func=add_retinal_env_args,

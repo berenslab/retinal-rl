@@ -2,67 +2,83 @@
 retina_rl library
 
 """
+import torch
 from torch import nn
 from torchvision.transforms import Grayscale
 
-from sample_factory.algorithms.appo.model_utils import register_custom_encoder, EncoderBase, get_obs_shape, nonlinearity
-from sample_factory.algorithms.utils.pytorch_utils import calc_num_elements
+from sample_factory.model.encoder import Encoder
+from sample_factory.algo.utils.torch_utils import calc_num_elements
+from sample_factory.utils.typing import Config, ObsSpace
+from sample_factory.utils.utils import log
 
-### Simple Model ###
-
-class SimpleEncoderBase(EncoderBase):
-
-    def __init__(self, cfg, obs_space, timing):
-
-        super().__init__(cfg, timing)
-
-        obs_shape = get_obs_shape(obs_space)
-        self.kernel_size = 3
-
-        self.conv = nn.Conv2d(3, 16, 5, stride=1)
-
-        self.nl = nonlinearity(cfg)
-
-        # Preparing Fully Connected Layers
-        conv_layers = [
-            self.conv, self.nl
-        ]
-
-        self.conv_head = nn.Sequential(*conv_layers)
-        self.conv_head_out_size = calc_num_elements(self.conv_head, obs_shape.obs)
-
-        self.encoder_out_size = cfg.hidden_size
-        self.fc1 = nn.Linear(self.conv_head_out_size,self.encoder_out_size)
-
-    def forward(self, x):
-        # we always work with dictionary observations. Primary observation is available with the key 'obs'
-        x = self.nl(self.conv(x))
-        x = x.contiguous().view(-1, self.conv_head_out_size)
-        x = self.nl(self.fc1(x))
-        return x
-
-class SimpleEncoder(SimpleEncoderBase):
-
-    def __init__(self, cfg, obs_space,timing):
-
-        super().__init__(cfg,obs_space,timing)
-        self.base_encoder = SimpleEncoderBase(cfg,obs_space,timing)
-
-    def forward(self, obs_dict):
-        # we always work with dictionary observations. Primary observation is available with the key 'obs'
-        main_obs = obs_dict['obs']
-
-        # forward pass through configurable fully connected blocks immediately after the encoder
-        x = self.base_encoder(main_obs)
-        return x
 
 ### Retinal-VVS Model ###
 
-class LindseyEncoderBase(EncoderBase):
 
-    def __init__(self, cfg, obs_space, timing):
+def make_lindsey_encoder(cfg: Config, obs_space: ObsSpace) -> Encoder:
+    """Factory function as required by the API."""
+    return LindseyEncoder(cfg, obs_space)
 
-        super().__init__(cfg, timing)
+
+def activation(cfg: Config) -> nn.Module:
+    if cfg.activation == "elu":
+        return nn.ELU(inplace=True)
+    elif cfg.activation == "relu":
+        return nn.ReLU(inplace=True)
+    elif cfg.activation == "tanh":
+        return nn.Tanh()
+    elif cfg.activation == "linear":
+        return nn.Identity(inplace=True)
+    else:
+        raise Exception("Unknown activation function")
+
+
+class LindseyEncoder(Encoder):
+    def __init__(self, cfg: Config, obs_space: ObsSpace):
+        super().__init__(cfg)
+
+        # reuse the default image encoder
+        #self.basic_encoder = LindseyEncoderBase(cfg, obs_space)
+
+        self.basic_encoder = LindseyEncoderBase(cfg, obs_space["obs"])
+        self.encoder_out_size = self.basic_encoder.get_out_size()
+        self.gs = cfg.greyscale
+
+        self.measurements_head = None
+        if "measurements" in obs_space.keys():
+            self.measurements_head = nn.Sequential(
+                nn.Linear(obs_space["measurements"].shape[0], 128),
+                activation(cfg),
+                nn.Linear(128, 128),
+                activation(cfg),
+            )
+            measurements_out_size = calc_num_elements(self.measurements_head, obs_space["measurements"].shape)
+            self.encoder_out_size += measurements_out_size
+
+        log.debug("Policy head output size: %r", self.get_out_size())
+
+    def forward(self, obs_dict):
+        x = self.basic_encoder(obs_dict["obs"])
+
+        if self.gs:
+            gs = Grayscale(num_output_channels=1) # change compared to vanilla Lindsey
+            x = gs.forward(x) # change compared to vanilla Lindsey
+
+
+        if self.measurements_head is not None:
+            measurements = self.measurements_head(obs_dict["measurements"].float())
+            x = torch.cat((x, measurements), dim=1)
+
+        return x
+
+    def get_out_size(self) -> int:
+        return self.encoder_out_size
+
+class LindseyEncoderBase(Encoder):
+
+    def __init__(self, cfg : Config , obs_space : ObsSpace):
+
+        super().__init__(cfg)
 
         nchns = cfg.global_channels
         btlchns = cfg.retinal_bottleneck
@@ -70,10 +86,7 @@ class LindseyEncoderBase(EncoderBase):
         krnsz = cfg.kernel_size
         retstrd = cfg.retinal_stride # only for first conv layer
 
-        if not cfg.linear_encoder: # choosing activation function (non-linear vs linear)
-            self.nl_fc = nonlinearity(cfg)
-        elif cfg.linear_encoder:
-            self.nl_fc = nn.Identity(inplace=True)
+        self.nl_fc = activation(cfg)
 
         self.kernel_size = krnsz
 
@@ -81,12 +94,9 @@ class LindseyEncoderBase(EncoderBase):
         conv_layers = []
         self.nls = []
         for i in range(vvsdpth+2): # +2 for the first 'retinal' layers
-            
-            if not cfg.linear_encoder: # choosing activation function (non-linear vs linear)
-                self.nls.append(nonlinearity(cfg))
-            elif cfg.linear_encoder:
-                self.nls.append(nn.Identity(inplace=True))
-            
+
+            self.nls.append(activation(cfg))
+
             if i == 0: # 'bipolar cells' ('global channels')
                 conv_layers.extend([nn.Conv2d(3, nchns, krnsz, stride=retstrd), self.nls[i]])
             elif i == 1: # 'ganglion cells' ('retinal bottleneck')
@@ -97,210 +107,16 @@ class LindseyEncoderBase(EncoderBase):
                 conv_layers.extend([nn.Conv2d(nchns, nchns, krnsz, stride=1), self.nls[i]])
 
         self.conv_head = nn.Sequential(*conv_layers)
-        obs_shape = get_obs_shape(obs_space)
-        self.conv_head_out_size = calc_num_elements(self.conv_head, obs_shape.obs)
-        self.encoder_out_size = cfg.hidden_size
+        self.conv_head_out_size = calc_num_elements(self.conv_head, obs_space.shape)
+        self.encoder_out_size = cfg.rnn_size
         self.fc1 = nn.Linear(self.conv_head_out_size,self.encoder_out_size)
 
     def forward(self, x):
-        # we always work with dictionary observations. Primary observation is available with the key 'obs'
+
         x = self.conv_head(x)
         x = x.contiguous().view(-1, self.conv_head_out_size)
         x = self.nl_fc(self.fc1(x))
         return x
 
-class LindseyEncoder(LindseyEncoderBase):
-
-    def __init__(self, cfg, obs_space,timing):
-
-        super().__init__(cfg,obs_space,timing)
-        self.base_encoder = LindseyEncoderBase(cfg,obs_space,timing)
-        print(self)
-
-    def forward(self, obs_dict):
-        # we always work with dictionary observations. Primary observation is available with the key 'obs'
-        main_obs = obs_dict['obs']
-
-        # forward pass through configurable fully connected blocks immediately after the encoder
-        x = self.base_encoder(main_obs)
-        return x
-
-### Greyscale Retinal-VVS Model ### (this could probably be done in a nicer way to avoid code repetition, but this works)
-# this is essentially the same as above, except that the network is 'colorblind' - input gets greyscalled before forward pass, because of that there's also only one input channel in the first conv (for all changes compared to regular Lindsay see comments)
-
-class GreyscaleLindseyEncoderBase(EncoderBase):
-
-    def __init__(self, cfg, obs_space, timing):
-
-        super().__init__(cfg, timing)
-
-        nchns = cfg.global_channels
-        btlchns = cfg.retinal_bottleneck
-        vvsdpth = cfg.vvs_depth
-        krnsz = cfg.kernel_size
-        retstrd = cfg.retinal_stride # only for first conv layer
-
-        self.nl_fc = nonlinearity(cfg)
-        self.kernel_size = krnsz
-
-        # Preparing Conv Layers
-        conv_layers = []
-        self.nls = []
-        for i in range(vvsdpth+2): # +2 for the first 'retinal' layers
-            self.nls.append(nonlinearity(cfg))
-            if i == 0: # 'bipolar cells' ('global channels')
-                conv_layers.extend([nn.Conv2d(1, nchns, krnsz, stride=retstrd), self.nls[i]])
-            elif i == 1: # 'ganglion cells' ('retinal bottleneck')
-                conv_layers.extend([nn.Conv2d(nchns, btlchns, krnsz, stride=1), self.nls[i]])
-            elif i == 2: # 'V1' ('global channels')
-                conv_layers.extend([nn.Conv2d(btlchns, nchns, krnsz, stride=1), self.nls[i]])
-            else: # 'vvs layers'
-                conv_layers.extend([nn.Conv2d(nchns, nchns, krnsz, stride=1), self.nls[i]])
-
-        self.conv_head = nn.Sequential(*conv_layers)
-        obs_shape = get_obs_shape(obs_space)
-        obs_shape['obs'] = (1, obs_shape['obs'][1], obs_shape['obs'][2]) # change compared to vanilla Lindsey
-        self.conv_head_out_size = calc_num_elements(self.conv_head, obs_shape.obs)
-        self.encoder_out_size = cfg.hidden_size
-        self.fc1 = nn.Linear(self.conv_head_out_size,self.encoder_out_size)
-
-    def forward(self, x):
-        # we always work with dictionary observations. Primary observation is available with the key 'obs'
-        gs = Grayscale(num_output_channels=1) # change compared to vanilla Lindsey
-        x = gs.forward(x) # change compared to vanilla Lindsey
-        
-        x = self.conv_head(x)
-        x = x.contiguous().view(-1, self.conv_head_out_size)
-        x = self.nl_fc(self.fc1(x))
-        return x
-
-class GreyscaleLindseyEncoder(GreyscaleLindseyEncoderBase):
-
-    def __init__(self, cfg, obs_space,timing):
-
-        super().__init__(cfg,obs_space,timing)
-        self.base_encoder = GreyscaleLindseyEncoderBase(cfg,obs_space,timing)
-
-    def forward(self, obs_dict):
-        # we always work with dictionary observations. Primary observation is available with the key 'obs'
-        main_obs = obs_dict['obs']
-
-        # forward pass through configurable fully connected blocks immediately after the encoder
-        x = self.base_encoder(main_obs)
-        return x
-
-### MosaicRetinal-VVS Model ###
-
-class MosaicEncoderBase(EncoderBase):
-
-    def __init__(self, cfg, obs_space, timing):
-
-        super().__init__(cfg, timing)
-
-        nchns = cfg.global_channels
-        btlchns = cfg.retinal_bottleneck
-        vvsdpth = cfg.vvs_depth
-
-        # bc layer architecture
-        krnsz1 = cfg.kernel_size
-        strd1 = krnsz1 # mosaic in conv1 (stride has to be the same as kernel)
-        
-        # rgc layer architecture
-        krnsz2 = cfg.rf_ratio # 'how many bcs will one rgc pool'
-        strd2 = krnsz2
-        
-        # v1/vvs layer architecture
-        krnszv = cfg.rf_ratio # TODO: think of good ratio for V1
-        strdv = 1 # there is no mosaic in V1 or higher areas
-        
-        self.nl_fc = nonlinearity(cfg)
-        self.kernel_size = krnsz1 # might be redundant also in lindsey implementation
-
-        # rf sizes/diameters (wrt pixels) - ised for plotting
-
-        # Preparing Conv Layers
-        conv_layers = []
-        self.nls = []
-        for i in range(vvsdpth+2): # +2 for the first 'retinal' layers
-            self.nls.append(nonlinearity(cfg))
-            if i == 0: # 'bipolar cells' ('global channels')
-                conv_layers.extend([nn.Conv2d(3, nchns, krnsz1, stride=strd1), self.nls[i]])
-            elif i == 1: # 'ganglion cells' ('retinal bottleneck')
-                conv_layers.extend([nn.Conv2d(nchns, btlchns, krnsz2, stride=strd2), self.nls[i]])
-            elif i == 2: # 'V1' ('global channels')
-                conv_layers.extend([nn.Conv2d(btlchns, nchns, krnszv, stride=strdv), self.nls[i]])
-            else: # 'vvs layers'
-                conv_layers.extend([nn.Conv2d(nchns, nchns, krnszv, stride=strdv), self.nls[i]])
-
-        self.conv_head = nn.Sequential(*conv_layers)
-        obs_shape = get_obs_shape(obs_space)
-        self.conv_head_out_size = calc_num_elements(self.conv_head, obs_shape.obs)
-        self.encoder_out_size = cfg.hidden_size
-        self.fc1 = nn.Linear(self.conv_head_out_size,self.encoder_out_size)
-
-    def forward(self, x):
-        # we always work with dictionary observations. Primary observation is available with the key 'obs'
-        x = self.conv_head(x)
-        x = x.contiguous().view(-1, self.conv_head_out_size)
-        x = self.nl_fc(self.fc1(x))
-        return x
-
-class MosaicEncoder(MosaicEncoderBase):
-
-    def __init__(self, cfg, obs_space,timing):
-
-        super().__init__(cfg,obs_space,timing)
-        self.base_encoder = MosaicEncoderBase(cfg,obs_space,timing)
-
-    def forward(self, obs_dict):
-        # we always work with dictionary observations. Primary observation is available with the key 'obs'
-        main_obs = obs_dict['obs']
-
-        # forward pass through configurable fully connected blocks immediately after the encoder
-        x = self.base_encoder(main_obs)
-        return x
-
-### Linear encoder ('negative control') ###
-
-class LinearEncoderBase(EncoderBase):
-
-    def __init__(self, cfg, obs_space, timing):
-
-        super().__init__(cfg, timing)
-
-        # to get input size
-        obs_shape = get_obs_shape(obs_space)
-        self.input_flat_shape = obs_shape.obs[0]* obs_shape.obs[1]* obs_shape.obs[2] # c * h * w
-
-        self.nl = nonlinearity(cfg) # for pixels this doesn't matter as long as it's (r)elu
-
-        self.encoder_out_size = cfg.hidden_size
-        self.fc1 = nn.Linear(self.input_flat_shape,self.encoder_out_size)
-
-    def forward(self, x):
-        x = x.contiguous().view(-1, self.input_flat_shape)
-        x = self.nl(self.fc1(x))
-        return x
-
-class LinearEncoder(LinearEncoderBase):
-
-    def __init__(self, cfg, obs_space,timing):
-
-        super().__init__(cfg,obs_space,timing)
-        self.base_encoder = LinearEncoderBase(cfg,obs_space,timing)
-
-    def forward(self, obs_dict):
-        # we always work with dictionary observations. Primary observation is available with the key 'obs'
-        main_obs = obs_dict['obs']
-
-        # forward pass through configurable fully connected blocks immediately after the encoder
-        x = self.base_encoder(main_obs)
-        return x
-
-
-def register_encoders():
-    register_custom_encoder('lindsey', LindseyEncoder)
-    register_custom_encoder('greyscale_lindsey', GreyscaleLindseyEncoder)
-    register_custom_encoder('simple', SimpleEncoder)
-    register_custom_encoder('linear', LinearEncoder)
-    register_custom_encoder('mosaic', MosaicEncoder)
+    def get_out_size(self) -> int:
+        return self.encoder_out_size
