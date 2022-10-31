@@ -9,9 +9,9 @@ from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
 from sample_factory.envs.env_utils import register_env
 from sample_factory.train import run_rl
 
-from sf_examples.vizdoom_examples.doom.doom_params import add_doom_env_args
-from sf_examples.vizdoom_examples.doom.doom_utils import DOOM_ENVS, make_doom_env_from_spec
-from sf_examples.vizdoom_examples.doom.doom_utils import DoomSpec, make_doom_env_from_spec
+from sf_examples.vizdoom.doom.doom_params import add_doom_env_args
+from sf_examples.vizdoom.doom.doom_utils import DOOM_ENVS, make_doom_env_from_spec
+from sf_examples.vizdoom.doom.doom_utils import DoomSpec, make_doom_env_from_spec
 
 from gym.spaces import Discrete
 
@@ -26,6 +26,34 @@ def register_vizdoom_envs():
 
 def register_retinal_models():
     global_model_factory().register_encoder_factory(make_lindsey_encoder)
+
+def register_retinal_env1():
+    # absolute path needs to be specified, otherwise Doom will look in the SampleFactory scenarios folder
+    scenario_absolute_path = join(os.path.dirname(__file__), "scenarios", "appcifar_gathering_01.cfg")
+    spec = DoomSpec(
+        "doom_appcifar",
+        scenario_absolute_path,  # use your custom cfg here
+        doom_action_space_basic(),
+        reward_scaling=0.01,
+    )
+
+    make_env_func = functools.partial(make_doom_env_from_spec, spec)
+    register_env(spec.name, make_env_func)
+
+def register_retinal_env2():
+    # absolute path needs to be specified, otherwise Doom will look in the SampleFactory scenarios folder
+    scenario_absolute_path = join(os.path.dirname(__file__), "scenarios", "apple_gathering_r30_b2_g100.cfg")
+    spec = DoomSpec(
+        "doom_apple_gathering",
+        scenario_absolute_path,  # use your custom cfg here
+        doom_action_space_basic(),
+        reward_scaling=0.01,
+    )
+
+    make_env_func = functools.partial(make_doom_env_from_spec, spec)
+    register_env(spec.name, make_env_func)
+
+
 
 
 def register_vizdoom_components():
@@ -57,20 +85,19 @@ def doom_action_space_basic():
     space.key_to_action = key_to_action_basic
     return space
 
-def register_retinal_env():
+def register_custom_doom_env():
     # absolute path needs to be specified, otherwise Doom will look in the SampleFactory scenarios folder
-    scenario_absolute_path = join(os.path.dirname(__file__), "scenarios", "appcifar_gathering_01.cfg")
+    scenario_absolute_path = join(os.path.dirname(__file__), "custom_env", "custom_doom_env.cfg")
     spec = DoomSpec(
-        "doom_appcifar",
+        "doom_my_custom_env",
         scenario_absolute_path,  # use your custom cfg here
         doom_action_space_basic(),
         reward_scaling=0.01,
     )
 
+    # register the env with Sample Factory
     make_env_func = functools.partial(make_doom_env_from_spec, spec)
     register_env(spec.name, make_env_func)
-
-
 
 def main():
     """Script entry point."""
@@ -84,7 +111,10 @@ def main():
     retinal_override_defaults(parser)
     # second parsing pass yields the final configuration
     cfg = parse_full_cfg(parser)
-    register_retinal_env()
+    register_retinal_env1()
+    register_retinal_env2()
+    register_custom_doom_env()
+
 
     status = run_rl(cfg)
     return status
