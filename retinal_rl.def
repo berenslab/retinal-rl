@@ -37,10 +37,7 @@ From: ubuntu:22.04
     # Sample Factory Base
 
 
-    pip3 install gym==0.25.2
-    pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
-    pip3 install vizdoom
-    pip3 install sample-factory
+    pip3 install vizdoom==1.1.13 sample-factory==2.0.2
 
     # retinal-rl Extra
-    pip3 install matplotlib pyglet imageio opentsne pygifsicle ipython
+    pip3 install matplotlib pyglet imageio opentsne pygifsicle ipython pygame
