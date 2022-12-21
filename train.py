@@ -29,7 +29,7 @@ def register_retinal_models():
 
 def register_retinal_env1():
     # absolute path needs to be specified, otherwise Doom will look in the SampleFactory scenarios folder
-    scenario_absolute_path = join(os.path.dirname(__file__), "scenarios", "appcifar_gathering_01.cfg")
+    scenario_absolute_path = join(os.path.dirname(__file__), "scenarios", "appcifar_apples_gathering_06.cfg")
     spec = DoomSpec(
         "doom_appcifar",
         scenario_absolute_path,  # use your custom cfg here
@@ -42,9 +42,22 @@ def register_retinal_env1():
 
 def register_retinal_env2():
     # absolute path needs to be specified, otherwise Doom will look in the SampleFactory scenarios folder
-    scenario_absolute_path = join(os.path.dirname(__file__), "scenarios", "apple_gathering_r30_b2_g100.cfg")
+    scenario_absolute_path = join(os.path.dirname(__file__), "scenarios", "apple_gathering_02.cfg")
     spec = DoomSpec(
         "doom_apple_gathering",
+        scenario_absolute_path,  # use your custom cfg here
+        doom_action_space_basic(),
+        reward_scaling=0.01,
+    )
+
+    make_env_func = functools.partial(make_doom_env_from_spec, spec)
+    register_env(spec.name, make_env_func)
+
+def register_retinal_env3():
+    # absolute path needs to be specified, otherwise Doom will look in the SampleFactory scenarios folder
+    scenario_absolute_path = join(os.path.dirname(__file__), "scenarios", "mnist_gathering_01.cfg")
+    spec = DoomSpec(
+        "doom_mnist",
         scenario_absolute_path,  # use your custom cfg here
         doom_action_space_basic(),
         reward_scaling=0.01,
@@ -113,6 +126,7 @@ def main():
     cfg = parse_full_cfg(parser)
     register_retinal_env1()
     register_retinal_env2()
+    register_retinal_env3()
     register_custom_doom_env()
 
 

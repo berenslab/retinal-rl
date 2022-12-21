@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: ubuntu:22.04
+From: ubuntu:22.10
 
 %post
 
@@ -12,7 +12,7 @@ From: ubuntu:22.04
     # Python
     apt -y install python3 python3-all-dev pip
 
-    # VisDoom Depends
+    # VizDoom Depends
 
     apt install -y \
         cmake \
@@ -40,4 +40,4 @@ From: ubuntu:22.04
     pip3 install vizdoom==1.1.13 sample-factory==2.0.2
 
     # retinal-rl Extra
-    pip3 install matplotlib pyglet imageio opentsne pygifsicle ipython pygame
+    pip3 install matplotlib imageio opentsne pygifsicle ipython pygame torchvision
