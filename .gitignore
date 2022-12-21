@@ -6,7 +6,14 @@ __pycache__/
 # Training Results (Don't belong in repo)
 _vizdoom.ini
 train_dir
+<<<<<<< HEAD
 scenarios
+=======
+train_dir_non-cosyne
+scenarios_non-priority
+pytorch
+datasets
+>>>>>>> main
 
 # Nohup log (when running in background on compute servers)
 nohup*.out
@@ -90,10 +97,13 @@ target/
 dev_jm*
 classify*
 
+<<<<<<< HEAD
 # large scenarios files
 scenarios/appcifar*
 scenarios/apple_gathering_hr100_r30_b2_g100*
 
+=======
+>>>>>>> main
 # dev
 retinal_rl/helpers*
 retinal_rl/analyze*

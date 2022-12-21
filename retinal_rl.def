@@ -35,9 +35,17 @@ From: ubuntu:22.10
         nasm
 
     # Sample Factory Base
+<<<<<<< HEAD
 
 
     pip3 install vizdoom==1.1.13 sample-factory==2.0.2
+=======
+    pip3 install gym==0.25.2
+
+    pip3 install torch torchvision torchaudio
+    pip3 install vizdoom==1.1.13
+    pip3 install sample-factory==1.123.0
+>>>>>>> main
 
     # retinal-rl Extra
     pip3 install matplotlib imageio opentsne pygifsicle ipython pygame torchvision

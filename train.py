@@ -1,8 +1,7 @@
-import functools
-import sys
 import os
 from os.path import join
-import gym
+import functools
+import sys
 
 from sample_factory.algo.utils.context import global_model_factory
 from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
@@ -13,16 +12,16 @@ from sf_examples.vizdoom.doom.doom_params import add_doom_env_args
 from sf_examples.vizdoom.doom.doom_utils import DOOM_ENVS, make_doom_env_from_spec
 from sf_examples.vizdoom.doom.doom_utils import DoomSpec, make_doom_env_from_spec
 
+import gym
 from gym.spaces import Discrete
 
-from retinal_rl.encoders import make_lindsey_encoder
-from retinal_rl.parameters import retinal_override_defaults,add_retinal_env_args
+from retinal_rl.system.encoders import make_lindsey_encoder
+from retinal_rl.system.parameters import retinal_override_defaults,add_retinal_env_args
 
 def register_vizdoom_envs():
     for env_spec in DOOM_ENVS:
         make_env_func = functools.partial(make_doom_env_from_spec, env_spec)
         register_env(env_spec.name, make_env_func)
-
 
 def register_retinal_models():
     global_model_factory().register_encoder_factory(make_lindsey_encoder)
@@ -132,7 +131,6 @@ def main():
 
     status = run_rl(cfg)
     return status
-
 
 if __name__ == "__main__":
     sys.exit(main())
