@@ -5,6 +5,9 @@ import numpy as np
 import os
 import torch
 import torchvision.datasets as datasets
+from torch import nn
+from torch.utils.data import Dataset
+from torchvision import datasets, transforms
 
 from PIL import Image as im
 
@@ -16,6 +19,17 @@ from sample_factory.algorithms.appo.model import create_actor_critic
 from sample_factory.algorithms.appo.learner import LearnerWorker
 from sample_factory.algorithms.appo.model_utils import get_hidden_size
 from sample_factory.algorithms.appo.actor_worker import transform_dict_observations
+from sample_factory.algorithms.appo.model_utils import get_hidden_size
+from sample_factory.algorithms.utils.algo_utils import EPS # weird dependency?
+from sample_factory.algorithms.utils.action_distributions import get_action_distribution
+
+from torch import nn
+from torch.utils.data import Dataset
+from torchvision import datasets, transforms
+
+from retinal_rl.system.encoders import LindseyEncoderBase
+# imports from sf required to refactor sf to 'pure pytorch'
+
 
 
 # getting environment and actor critic from checkpoint
@@ -205,3 +219,154 @@ def unroll_conv_acts(conv_acts, lay=1):
 
     unroll_acts = acts.reshape(n_ts, n_px, n_ch)
     return unroll_acts
+
+## from here on are post-Cosyne functions/classes (action-analysis and explainability)
+
+
+
+class PaddedMnistDataset(Dataset):
+    def __init__(self, padded_ds, labels_ds):
+        self.all_img = padded_ds
+        self.all_lab = labels_ds
+        
+    def __len__(self):
+        return len(self.all_lab)
+
+    def __getitem__(self, idx):
+        image = self.all_img[:,:,:,idx]
+        label = self.all_lab[idx]
+
+        return image, label
+
+class PytorchActorCritic(nn.Module):
+    def __init__(self, cfg, actor_critic):
+        super().__init__()
+        
+        self.cfg = cfg
+        
+        self.conv_head_out_size = actor_critic.encoder.conv_head_out_size
+        
+        self.conv_head = actor_critic.encoder.base_encoder.conv_head
+        self.fc1 = actor_critic.encoder.base_encoder.fc1 # here we will need to flatten the features before going forward
+        self.nl_fc = actor_critic.encoder.base_encoder.nl_fc
+                
+        self.critic = actor_critic.critic_linear
+        self.actor = actor_critic.action_parameterization.distribution_linear # here we will need two separate networks, for value and actions
+        
+      
+    def forward(self, x):
+        # conv layer 1
+        normalize_obs_torch(x, self.cfg) # this is ommitted by the encoder, but implemented in the forward_head() method of the AC object
+        
+        x = self.conv_head(x)
+        x = x.contiguous().view(-1, self.conv_head_out_size)
+        
+        x = self.fc1(x)
+        x = self.nl_fc(x)
+        
+        # here there would normally be the forward pass on the core, but this is not necessary for a purely feed-forward network
+        
+        if self.cfg.a_or_c == 'a':
+            x = self.actor(x)
+        elif self.cfg.a_or_c == 'c':
+            x = self.critic(x)
+
+        return x
+
+def normalize_obs_torch(obs_torch, cfg):
+    with torch.no_grad():
+        mean = cfg.obs_subtract_mean
+        scale = cfg.obs_scale
+
+        if obs_torch.dtype != torch.float:
+            obs_torch = obs_torch.float()
+
+        if abs(mean) > EPS:
+            obs_torch.sub_(mean)
+
+        if abs(scale - 1.0) > EPS:
+            obs_torch.mul_(1.0 / scale)
+
+class LindseyClassificationEncoder(LindseyEncoderBase): # this is almost the same class definition as LindseyEncoder with only two small additions (*)
+
+    def __init__(self, cfg, obs_space,timing):
+
+        super().__init__(cfg,obs_space,timing)
+        self.base_encoder = LindseyEncoderBase(cfg,obs_space,timing)
+        self.fc_out = nn.Linear(self.encoder_out_size,10) # (*) addition for classification
+        print(self)
+
+    def forward(self, obs_dict):
+        # we always work with dictionary observations. Primary observation is available with the key 'obs'
+        main_obs = obs_dict#['obs']
+
+        # forward pass through configurable fully connected blocks immediately after the encoder
+        x = self.base_encoder(main_obs)
+        x = self.fc_out(x) # (*) addition for classification
+        return x
+
+# this one is re-defined here to overwrite the original version from the library
+def pad_dataset_attribution(cfg, i, trainset, bck_np, downs_fact=1, mnist_offset=(50,46)): # i:index in dataset, bck_np: numpy array of background (grass/sky), offset:determines position within background
+    device = torch.device('cpu' if cfg.device == 'cpu' else 'cuda')
+    in_im = trainset[i][0]
+    in_im = in_im[:,::downs_fact, ::downs_fact] # downsampling if downs_fact > 1
+    if cfg.analyze_ds_name == 'CIFAR':
+        im_hw = int(32/downs_fact)
+        in_np = np.array(np.transpose(in_im, (2,0,1)))
+        offset = (28,50)
+    elif cfg.analyze_ds_name == 'MNIST':
+        im_hw = int(28/downs_fact)
+        in_np = np.array(in_im)*256 # originally they're normalized between 0 and 1
+        offset = mnist_offset
+    out_np = bck_np # background
+    out_np[:,offset[0]:offset[0]+im_hw, offset[1]:offset[1]+im_hw] = in_np # replacing pixels in the middle
+    out_np_t = np.transpose(out_np, (1, 2, 0)) # reformatting for PIL conversion
+    out_im = im.fromarray(out_np_t)
+    out_torch = torch.from_numpy(out_np[None,:,:,:]).float().to(device)
+
+    return out_torch
+
+def get_padded_mnist(cfg, downs_fact=1, mnist_offset=(50,46)):
+    mnist_train = datasets.MNIST(root="./datasets", train=True, transform=transforms.ToTensor(), download=True)
+    mnist_test = datasets.MNIST(root="./datasets", train=False, transform=transforms.ToTensor(), download=True)
+
+    bck_np = np.load(os.getcwd() + '/misc/data/doom_pad.npy') # saved 'doom-looking' background
+
+    padded_ds = torch.zeros((3, cfg.res_h, cfg.res_w, len(mnist_train)))
+    labels_ds = torch.zeros(len(mnist_train))
+
+    for i in range(len(mnist_train)):
+        out = pad_dataset_attribution(cfg, i, mnist_train, bck_np, downs_fact=downs_fact, mnist_offset=mnist_offset).squeeze() # 
+        padded_ds[:,:,:,i] = out
+        labels_ds[i] = mnist_train[i][1]
+        
+    padded_ds = PaddedMnistDataset(padded_ds, labels_ds)
+    
+    return padded_ds
+
+def get_all_action(cfg, env, padded_ds, actor_critic, get_raw_logits=False):
+    device = torch.device('cpu' if cfg.device == 'cpu' else 'cuda')
+    n_stim = len(padded_ds)
+    all_label = np.zeros(n_stim)
+    all_action = np.zeros((actor_critic.actor.out_features, n_stim))
+
+    for im_idx in range(n_stim):
+
+        # preparing image
+        in_image = padded_ds[im_idx][0]
+        in_label = padded_ds[im_idx][1].item()
+        all_label[im_idx] = in_label
+
+        # forward pass on actor
+        action = actor_critic(in_image.to(device))
+        action_dist = get_action_distribution(env.action_space, raw_logits=action)
+        action_dist_p0 = action_dist.distributions[0].probs
+        action_dist_p1 = action_dist.distributions[1].probs
+
+        action_dist_all = np.hstack((action_dist_p0.cpu().detach().numpy()[0], action_dist_p1.cpu().detach().numpy()[0]))
+        all_action[:,im_idx] = action_dist_all
+
+        if get_raw_logits: # overwrite the 0-1 bounded (post softmax) action distribution by the unbounded raw logits before softmax
+            all_action[:,im_idx] = action.cpu().detach().numpy()
+    
+    return all_action, all_label

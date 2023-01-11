@@ -262,3 +262,148 @@ def save_activations_gif(cfg, imgs, conv_acts, lay, vscale=100):
         wandb.log({"video": wandb.Video(pth, fps=35, format="gif")})
 
     print('Done!')
+
+## from here on are post-Cosyne functions/classes (action-analysis and explainability)
+
+def plot_fov_att_overlay_avg(att_out, in_image):
+    plt.plot(dpi=200)
+    
+    att_out_i = torch.mean(att_out,0)
+    vlim = np.max(np.abs(att_out_i.cpu().numpy()))
+
+    plt.title('avg')
+    plt.axis('off')
+    plt.imshow(in_image.detach().numpy().transpose(1,2,0)/256, alpha=0.5)
+    plt.imshow(att_out_i.cpu(), alpha=0.5, cmap='seismic', vmin=-vlim, vmax=vlim)
+
+    plt.show()
+
+def plot_fov_att_overlay_rgb(att_out, in_image):
+    fig, axs = plt.subplots(1,3, dpi=200)
+
+    for i in range(3): # rgb
+        att_out_i = att_out[i,:,:]
+        vlim = np.max(np.abs(att_out_i.cpu().numpy()))
+
+        ch = ('R','G','B')[i]
+        axs[i].set_title(ch)
+        axs[i].axis('off')
+        axs[i].imshow(in_image.detach().numpy().transpose(1,2,0)/256, alpha=0.5)
+        axs[i].imshow(att_out_i.cpu(), alpha=0.5, cmap='seismic', vmin=-vlim, vmax=vlim)
+
+    plt.show()
+
+def plot_fov_att_overlay_avg(att_out, in_image, ax):
+    plt.plot(dpi=200)
+    
+    att_out_i = torch.mean(att_out,0)
+    vlim = np.max(np.abs(att_out_i.cpu().numpy()))
+
+    ax.axis('off')
+    ax.imshow(in_image.detach().numpy().transpose(1,2,0)/256, alpha=0.5)
+    ax.imshow(att_out_i.cpu(), alpha=0.5, cmap='seismic', vmin=-vlim, vmax=vlim)
+
+def plot_att_action(padded_ds, att_method, action_idx):
+    
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    rows = 5
+    cols = 5
+    
+    fig, axs = plt.subplots(rows, cols, dpi=1000, figsize=(cols, rows*(3/4)))
+    
+    count = 0
+    for i in range(rows):
+        for j in range (cols):            
+            in_image = padded_ds[count][0] 
+            attribution = att_method.attribute(in_image.to(device), target=action_idx)
+            # plot_fov_att_overlay_rgb(attribution_gbp, in_image)
+            plot_fov_att_overlay_avg(attribution, in_image, axs[i, j])
+            count += 1
+            
+    plt.suptitle(f'Attribution for action index: {action_idx}', fontsize=7)
+    plt.show()
+
+def plot_example_stim_torch(stim):
+    plt.figure(dpi=50)
+    plt.imshow(stim.detach().numpy().transpose(1,2,0)/256)
+    plt.axis('off')
+    plt.title('example stimulus')
+    plt.show()
+
+def plot_violin_action(all_action, all_label):
+
+    fig, axs = plt.subplots(4,1,figsize=(10,8), dpi=200)
+             
+    for idx_label in range(10):
+        f = axs[0].violinplot(all_action[4,all_label==idx_label], positions=[idx_label], showmeans=False, showmedians=True, showextrema=False)
+        b = axs[1].violinplot(all_action[5,all_label==idx_label], positions=[idx_label], showmeans=False, showmedians=True, showextrema=False)
+        l = axs[2].violinplot(all_action[1,all_label==idx_label], positions=[idx_label], showmeans=False, showmedians=True, showextrema=False)
+        r = axs[3].violinplot(all_action[2,all_label==idx_label], positions=[idx_label], showmeans=False, showmedians=True, showextrema=False)
+        
+        for vplot in [f, b, l, r]: # color coding
+            vplot['cmedians'].set_color('red') if idx_label < 5 else vplot['cmedians'].set_color('green')
+            for pc in vplot['bodies']:
+                pc.set_facecolor('red') if idx_label < 5 else pc.set_facecolor('green')
+                pc.set_edgecolor('black')
+            
+        
+        axs[0].set_title('Forward')
+        axs[1].set_title('Backward')
+        axs[2].set_title('Left')
+        axs[3].set_title('Right')
+        
+        axs[3].set_xlabel('Stimulus ID')
+        axs[0].set_ylabel('Probability')
+        
+        xticks = np.arange(0,10)
+        axs[0].set_xticks([])
+        axs[1].set_xticks([])
+        axs[2].set_xticks([])
+        axs[3].set_xticks(xticks)
+        
+        axs[0].set_ylim((-0.1,1.1))
+        axs[1].set_ylim((-0.1,1.1))
+        axs[2].set_ylim((-0.1,1.1))
+        axs[3].set_ylim((-0.1,1.1))
+
+  
+    plt.suptitle('P(action|stim_category)', size=20)
+        
+    plt.show()
+
+
+def get_vlim_or_all_im(cfg, analyze_out, att_method, target, fixed_vlim=False, vlim_value=None):
+    
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    all_im = []
+    all_vlim = [] # hack to not throw error in case of fixed vlim
+    fig, ax = plt.subplots(1,1,dpi=4, figsize=(cfg.res_w, cfg.res_h))
+    
+    for i in range(0,1000,1):
+        in_image = analyze_out['all_img'][:,:,:,i].transpose(2, 0, 1)
+        in_image = torch.tensor(in_image).float()
+
+        attribution = att_method.attribute(in_image.to(device), target=target)
+
+        att_out = attribution
+
+        att_out_i = torch.mean(att_out,0)
+
+        if not fixed_vlim:
+            vlim = np.max(np.abs(att_out_i.cpu().numpy()))
+            all_vlim.append(vlim)
+
+        elif fixed_vlim:
+            vlim = vlim_value
+            plt.plot(dpi=200)
+            plt.axis('off')
+            im1 = ax.imshow(att_out_i.cpu(), alpha=0.8, cmap='seismic', vmin=-vlim, vmax=vlim)        
+            im2 = ax.imshow(in_image.detach().numpy().transpose(1,2,0)/256, alpha=0.2)
+            all_im.append([im1, im2])
+    # get max vlim across all frames
+    if not fixed_vlim:
+        max_vlim = np.max(all_vlim)
+
+    return max_vlim if not fixed_vlim else (all_im, fig)
