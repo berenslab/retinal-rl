@@ -10,6 +10,14 @@ from sample_factory.model.encoder import Encoder
 from sample_factory.algo.utils.torch_utils import calc_num_elements
 from sample_factory.utils.typing import Config, ObsSpace
 from sample_factory.utils.utils import log
+from sample_factory.algo.utils.context import global_model_factory
+
+
+### Registration ###
+
+
+def register_retinal_models():
+    global_model_factory().register_encoder_factory(make_lindsey_encoder)
 
 
 ### Retinal-VVS Model ###
