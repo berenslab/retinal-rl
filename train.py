@@ -2,9 +2,6 @@ import sys
 from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
 from sample_factory.train import run_rl
 
-from sf_examples.vizdoom.doom.doom_params import add_doom_env_args
-
-
 from retinal_rl.system.encoders import register_retinal_models
 from retinal_rl.system.environment import register_retinal_envs
 from retinal_rl.system.parameters import retinal_override_defaults,add_retinal_env_args
@@ -19,16 +16,13 @@ def main():
     register_retinal_models()
 
     parser, cfg = parse_sf_args()
-    # parameters specific to Doom envs
-    add_doom_env_args(parser)
     add_retinal_env_args(parser)
     # override Doom default values for algo parameters
     retinal_override_defaults(parser)
     # second parsing pass yields the final configuration
     cfg = parse_full_cfg(parser)
-
-
     status = run_rl(cfg)
+
     return status
 
 if __name__ == "__main__":

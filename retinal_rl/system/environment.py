@@ -7,6 +7,7 @@ from sample_factory.envs.env_utils import register_env
 from sf_examples.vizdoom.doom.doom_utils import make_doom_env_from_spec
 from sf_examples.vizdoom.doom.doom_utils import DoomSpec, make_doom_env_from_spec
 
+
 import gym
 from gym.spaces import Discrete
 
