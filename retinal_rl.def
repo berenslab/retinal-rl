@@ -35,7 +35,9 @@ From: ubuntu:22.10
         nasm
 
     # Sample Factory
-    pip3 install vizdoom==1.1.13 sample-factory==2.0.2
+    pip3 install vizdoom sample-factory
 
     # retinal-rl Extra
     pip3 install matplotlib imageio opentsne pygifsicle ipython pygame torchvision
+
+    ln -s /usr/bin/python3 /usr/bin/python

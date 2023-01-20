@@ -1,0 +1,13 @@
+name: distractors
+description: Testing how the presence of distractors effects network performance.
+program: train.py
+method: grid
+parameters:
+  #network:
+  #  values: ["linear", "simple", "complex"]
+  env:
+    values: ["appmnist_apples_gathering_01", "appmnist_apples_gathering_01"]
+  repeat:
+    distribution: "int_uniform"
+    min: 1
+    max: 5
