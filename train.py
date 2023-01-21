@@ -2,7 +2,7 @@ import sys
 from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
 from sample_factory.train import run_rl
 
-from retinal_rl.system.encoders import register_retinal_models
+from retinal_rl.system.encoders import register_retinal_model
 from retinal_rl.system.environment import register_retinal_envs
 from retinal_rl.system.parameters import retinal_override_defaults,add_retinal_env_args
 
@@ -14,7 +14,7 @@ def main():
     """Script entry point."""
     # Register retinal environments and models.
     register_retinal_envs()
-    register_retinal_models()
+    register_retinal_model()
 
     # Two-pass building parser and returning cfg : Namespace
     parser, _ = parse_sf_args()

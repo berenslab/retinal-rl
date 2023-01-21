@@ -16,7 +16,7 @@ from sample_factory.algo.utils.context import global_model_factory
 ### Registration ###
 
 
-def register_retinal_models():
+def register_retinal_model():
     global_model_factory().register_encoder_factory(make_lindsey_encoder)
 
 

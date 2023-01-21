@@ -21,8 +21,6 @@ parameters:
     value: 120
   train_for_env_steps:
     value: 10000000000
-  encoder_custom:
-    value: "lindsey"
   use_rnn:
     value: "False"
   experiment:
