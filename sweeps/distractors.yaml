@@ -14,7 +14,7 @@ parameters:
   num_workers:
     value: 32
   num_envs_per_worker:
-    value: 8
+    value: 16
   wide_aspect_ratio:
     value: False
   res_h:
