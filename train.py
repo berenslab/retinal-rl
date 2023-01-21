@@ -22,9 +22,7 @@ def main():
     add_retinal_env_args(parser)
     cfg = parse_full_cfg(parser)
 
-    print("REPEAT:")
-    print(cfg.repeat)
-
+    # Modify config based on sweep parameters
     if cfg.network == "linear":
         cfg.activation = "linear"
         cfg.global_channels = 16
@@ -50,6 +48,7 @@ def main():
     if cfg.experiment == "auto":
         cfg.experiment = cfg.env + "_" + cfg.network + "_" + str(cfg.repeat)
 
+    # Run simulation
     status = run_rl(cfg)
 
     return status

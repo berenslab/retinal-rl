@@ -13,6 +13,8 @@ parameters:
     max: 5
   num_workers:
     value: 16
+  num_envs_per_worker:
+    value: 8
   wide_aspect_ratio:
     value: False
   res_h:
