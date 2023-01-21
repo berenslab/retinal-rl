@@ -53,3 +53,4 @@ def add_retinal_env_args(parser):
     parser.add_argument('--analyze_max_num_frames', type=int, default=1e3, help='Used for visualising \'environment\' activations (leave as default otherwise), normally 100000 works for a nice embedding, but can take time') # specific for analyze.py
     parser.add_argument('--analyze_ds_name', type=str, default='CIFAR', help='Used for visualizing responses to dataset (can be \'MNIST\' or \'CIFAR\'') # specific for analyze.py
     parser.add_argument('--repeat', type=int, default=1, help="Dummy parameter to indicate which repetition we're at in a wandb sweep") # specific for analyze.py
+    parser.add_argument('--network', default="flexible", choices=["flexible","linear","simple","complex"], help="Override setting that forces various parameters to a given network architecture") # specific for analyze.py

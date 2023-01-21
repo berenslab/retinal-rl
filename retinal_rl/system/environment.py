@@ -46,13 +46,13 @@ def doom_action_space_basic():
 RETINAL_ENVS = [
 
     DoomSpec(
-        "appmnist_apples_gathering_01",
+        "appmnist_apples",
         join(os.getcwd(), "scenarios", "appmnist_apples_gathering_01.cfg"),
         doom_action_space_basic(),
         reward_scaling=0.01,
         ) ,
     DoomSpec(
-        "appmnist_mnist_gathering_01",
+        "appmnist_mnist",
         join(os.getcwd(), "scenarios", "appmnist_mnist_gathering_01.cfg"),
         doom_action_space_basic(),
         reward_scaling=0.01,

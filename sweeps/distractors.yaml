@@ -3,11 +3,29 @@ description: Testing how the presence of distractors effects network performance
 program: train.py
 method: grid
 parameters:
-  #network:
-  #  values: ["linear", "simple", "complex"]
+  network:
+    values: ["linear", "simple", "complex"]
   env:
-    values: ["appmnist_apples_gathering_01", "appmnist_apples_gathering_01"]
+    values: ["appmnist_apples", "appmnist_mnist"]
   repeat:
     distribution: "int_uniform"
     min: 1
     max: 5
+  num_workers:
+    value: 16
+  wide_aspect_ratio:
+    value: False
+  res_h:
+    value: 90
+  res_w:
+    value: 120
+  train_for_env_steps:
+    value: 10000000000
+  encoder_custom:
+    value: "lindsey"
+  use_rnn:
+    value: "False"
+  experiment:
+    value: "auto"
+  train_dir:
+    value: "./train_dir/distractors"

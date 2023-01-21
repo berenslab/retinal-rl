@@ -1,7 +1,6 @@
 import sys
 from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
 from sample_factory.train import run_rl
-from sample_factory.utils.wandb_utils import init_wandb
 
 from retinal_rl.system.encoders import register_retinal_models
 from retinal_rl.system.environment import register_retinal_envs
@@ -23,15 +22,34 @@ def main():
     add_retinal_env_args(parser)
     cfg = parse_full_cfg(parser)
 
-    # Initialize wandb
-    #if cfg.with_wandb:
-
-    #    init_wandb(cfg)  # should be done after modifying configuration
-
-    # Run
-    #cfg.with_wandb = False
     print("REPEAT:")
     print(cfg.repeat)
+
+    if cfg.network == "linear":
+        cfg.activation = "linear"
+        cfg.global_channels = 16
+        cfg.retinal_bottleneck = 1
+        cfg.retinal_stride = 2
+        cfg.vvs_depth = 0
+        cfg.kernel_size = 7
+    elif cfg.network == "simple":
+        cfg.activation = "elu"
+        cfg.global_channels = 16
+        cfg.retinal_bottleneck = 1
+        cfg.retinal_stride = 2
+        cfg.vvs_depth = 0
+        cfg.kernel_size = 7
+    elif cfg.network == "complex":
+        cfg.activation = "elu"
+        cfg.global_channels = 16
+        cfg.retinal_bottleneck = 4
+        cfg.retinal_stride = 2
+        cfg.vvs_depth = 1
+        cfg.kernel_size = 7
+
+    if cfg.experiment == "auto":
+        cfg.experiment = cfg.env + "_" + cfg.network + "_" + str(cfg.repeat)
+
     status = run_rl(cfg)
 
     return status
