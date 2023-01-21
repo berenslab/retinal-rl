@@ -11,8 +11,13 @@ def retinal_override_defaults(parser):
     """RL params specific to retinal envs."""
     parser.set_defaults(
         hidden_size=64,
+        ppo_clip_value=0.2,  # value used in all experiments in the paper
+        obs_subtract_mean=0.0,
+        obs_scale=255.0,
+        env_frameskip=4,
+        fps=35,
         exploration_loss='symmetric_kl',
-        num_envs_per_worker=24,
+        num_envs_per_worker=10,
         batch_size=2048,
         exploration_loss_coeff=0.001,
         reward_scale=0.1,
