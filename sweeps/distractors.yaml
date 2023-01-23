@@ -29,6 +29,6 @@ parameters:
   recurrence:
     value: 1
   experiment:
-    value: "auto"
+    value: "{env}_{network}_{repeat}"
   train_dir:
     value: "./train_dir/distractors"

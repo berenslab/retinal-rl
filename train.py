@@ -45,8 +45,7 @@ def main():
         cfg.vvs_depth = 1
         cfg.kernel_size = 7
 
-    if cfg.experiment == "auto":
-        cfg.experiment = cfg.env + "_" + cfg.network + "_" + str(cfg.repeat)
+    cfg.experiment = cfg.experiment.format(**vars(cfg))
 
     # Run simulation
     status = run_rl(cfg)
