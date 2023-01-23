@@ -22,8 +22,8 @@ def retinal_override_defaults(parser):
         exploration_loss_coeff=0.001,
         reward_scale=0.1,
         with_wandb='True',
-        wandb_tags=['retinal_rl','appo'],
-        wandb_project="retinal_rl"
+        wandb_tags=['retinal-rl','appo'],
+        wandb_project="retinal-rl"
     )
 
 def add_retinal_env_args(parser):

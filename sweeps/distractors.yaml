@@ -2,6 +2,7 @@ name: distractors
 description: Testing how the presence of distractors effects network performance.
 program: train.py
 method: grid
+project: retinal-rl
 parameters:
   network:
     values: ["linear", "simple", "complex"]
@@ -25,6 +26,8 @@ parameters:
     value: 10000000000
   use_rnn:
     value: "False"
+  recurrence:
+    value: 32
   experiment:
     value: "auto"
   train_dir:
