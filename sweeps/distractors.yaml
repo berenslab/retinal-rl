@@ -27,7 +27,7 @@ parameters:
   use_rnn:
     value: "False"
   recurrence:
-    value: 32
+    value: 1
   experiment:
     value: "auto"
   train_dir:
