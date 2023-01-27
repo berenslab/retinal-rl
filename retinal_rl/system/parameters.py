@@ -10,7 +10,6 @@ from sf_examples.vizdoom.doom.doom_params import add_doom_env_args
 def retinal_override_defaults(parser):
     """RL params specific to retinal envs."""
     parser.set_defaults(
-        hidden_size=64,
         ppo_clip_value=0.2,  # value used in all experiments in the paper
         obs_subtract_mean=0.0,
         obs_scale=255.0,
