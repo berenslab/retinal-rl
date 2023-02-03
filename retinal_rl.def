@@ -34,6 +34,11 @@ From: ubuntu:22.10
         gifsicle \
         nasm
 
+    # Misc Depends
+
+    apt install -y \
+        ffmpeg
+
     # Sample Factory
     pip3 install vizdoom sample-factory
 
