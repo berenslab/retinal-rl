@@ -4,15 +4,16 @@ from retinal_rl.system.encoders import register_retinal_model
 from retinal_rl.system.environment import register_retinal_envs
 from retinal_rl.system.parameters import retinal_override_defaults,add_retinal_env_args
 
-from retinal_rl.analysis.util import get_env_ac #, simulate, load_sim_out, get_acts_dataset, unroll_conv_acts
+from retinal_rl.analysis.util import enjoy #, simulate, load_sim_out, get_acts_dataset, unroll_conv_acts
 #from retinal_rl.analysis.statistics import get_class_accuracy
 #from retinal_rl.analysis.plot import save_simulation_gif, plot_all_rf, plot_acts_tsne_stim, plot_dimred_ds_acts, save_activations_gif
 
 from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
 
 def analyze(cfg):
-    env, actor_critic = get_env_ac(cfg)
-    print(actor_critic)
+    #env, actor_critic = get_env_ac(cfg)
+    #print(actor_critic)
+    enjoy(cfg)
     #simulate(cfg, env, actor_critic) # this saves
 
     ## load simulated data

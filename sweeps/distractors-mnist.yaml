@@ -28,8 +28,14 @@ parameters:
     value: "False"
   rnn_size:
     value: 64
+  with_vtrace:
+    value: True
+  normalize_returns:
+    value: False
   recurrence:
-    value: 1
+    value: 32
+  recurrence:
+    value: 32
   experiment:
     value: "{env}_{network}_{repeat}"
   train_dir:

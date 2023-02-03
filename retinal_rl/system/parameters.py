@@ -5,7 +5,7 @@ retina_rl library
 
 from sample_factory.utils.utils import str2bool
 
-from sf_examples.vizdoom.doom.doom_params import add_doom_env_args
+from sf_examples.vizdoom.doom.doom_params import add_doom_env_args,add_doom_env_eval_args
 
 def retinal_override_defaults(parser):
     """RL params specific to retinal envs."""
@@ -34,6 +34,7 @@ def add_retinal_env_args(parser):
 
     # Doom args
     add_doom_env_args(parser)
+    add_doom_env_eval_args(parser)
     # Parse args for rvvs model from Lindsey et al 2019
     parser.add_argument('--global_channels', type=int, default=32, help='Standard number of channels in CNN layers')
     parser.add_argument('--retinal_bottleneck', type=int, default=4, help='Number of channels in retinal bottleneck')
