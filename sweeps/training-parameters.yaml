@@ -1,4 +1,4 @@
-name: distractors
+name: training-parameters
 description: Testing how the presence of distractors effects network performance.
 program: train.py
 method: grid
@@ -11,7 +11,7 @@ parameters:
   repeat:
     distribution: "int_uniform"
     min: 1
-    max: 1
+    max: 2
   num_workers:
     value: 24
   num_envs_per_worker:
@@ -34,7 +34,7 @@ parameters:
     values: [0,0.001,0.1]
   learning_rate:
     values: [0.001,0.0001,0.00001]
-  lr_schule:
+  lr_schedule:
     values: ["constant","kl_adaptive_minibatch"]
   nonlinearity:
     values: ["elu", "relu", "tanh"]
@@ -45,6 +45,6 @@ parameters:
   recurrence:
     value: 32
   experiment:
-    value: "{env}_{network}_{repeat}"
+    value: "{nonlinearity}_{lr_schedule}_{learning_rate}_{exploration_loss_coeff}_{with_vtrace}_{repeat}"
   train_dir:
     value: "./train_dir/training-parameters"

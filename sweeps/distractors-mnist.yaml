@@ -1,4 +1,4 @@
-name: distractors
+name: distractors-mnist
 description: Testing how the presence of distractors effects network performance.
 program: train.py
 method: grid
