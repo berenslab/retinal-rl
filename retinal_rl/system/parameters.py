@@ -14,10 +14,11 @@ def retinal_override_defaults(parser):
         obs_subtract_mean=0.0,
         obs_scale=255.0,
         env_frameskip=4,
+        eval_env_frameskip=1,  # this is for smoother rendering during evaluation
         fps=35,
-        exploration_loss='symmetric_kl',
         num_envs_per_worker=10,
         batch_size=2048,
+        exploration_loss='symmetric_kl',
         exploration_loss_coeff=0.001,
         reward_scale=0.1,
         with_wandb='True',

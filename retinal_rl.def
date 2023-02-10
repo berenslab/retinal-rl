@@ -40,7 +40,7 @@ From: ubuntu:22.10
         ffmpeg
 
     # Sample Factory
-    pip3 install vizdoom sample-factory
+    pip3 install vizdoom==1.1.14 sample-factory==2.0.2
 
     # retinal-rl Extra
     pip3 install matplotlib imageio opentsne pygifsicle ipython pygame torchvision
