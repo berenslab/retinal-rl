@@ -14,7 +14,7 @@ def analyze(cfg):
     #env, actor_critic = get_env_ac(cfg)
     #print(actor_critic)
     ac,env = get_ac_env(cfg)
-    write_onxx(ac,env)
+    write_onxx(cfg,ac,env)
 
     #simulate(cfg, env, actor_critic) # this saves
 

@@ -128,7 +128,7 @@ def get_ac_env(cfg: Config) -> Tuple[ActorCritic, BatchedVecEnv]:
 
     return actor_critic,env
 
-def write_onxx(ac : ActorCritic, env : BatchedVecEnv) -> None:
+def write_onxx(cfg: Config, ac : ActorCritic, env : BatchedVecEnv) -> None:
     """
     Write an onxx file of the saved model.
     """
@@ -141,7 +141,7 @@ def write_onxx(ac : ActorCritic, env : BatchedVecEnv) -> None:
     obs = obs[0]
 
     # Note that onnx can't process dictionary inputs
-    torch.onnx.export(enc,obs,"actor-critic.onnx",verbose=False,input_names=["observation"],output_names=["latent_state"])
+    torch.onnx.export(enc,obs,experiment_dir(cfg) + "/encoder.onnx",verbose=False,input_names=["observation"],output_names=["latent_state"])
 
     #episode_rewards = [deque([], maxlen=100) for _ in range(env.num_agents)]
     #true_objectives = [deque([], maxlen=100) for _ in range(env.num_agents)]
