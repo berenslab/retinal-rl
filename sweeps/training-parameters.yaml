@@ -36,7 +36,7 @@ parameters:
     values: [0.001,0.0001,0.00001]
   lr_schedule:
     values: ["constant","kl_adaptive_minibatch"]
-  nonlinearity:
+  activation:
     values: ["elu", "relu", "tanh"]
   normalize_returns:
     value: False
@@ -45,6 +45,6 @@ parameters:
   recurrence:
     value: 32
   experiment:
-    value: "{nonlinearity}_{lr_schedule}_{learning_rate}_{exploration_loss_coeff}_{with_vtrace}_{repeat}"
+    value: "{activation}_{lr_schedule}_{learning_rate}_{exploration_loss_coeff}_{with_vtrace}_{repeat}"
   train_dir:
     value: "./train_dir/training-parameters"
