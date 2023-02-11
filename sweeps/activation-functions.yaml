@@ -5,7 +5,7 @@ method: grid
 project: retinal-rl
 parameters:
   network:
-    value: "complex"
+    value: None
   env:
     value: "gathering_cifar"
   repeat:
