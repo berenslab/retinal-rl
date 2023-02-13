@@ -7,8 +7,12 @@ project: retinal-rl
 parameters:
 
   # Simulation specification
+  wandb_group:
+    value: "distractors"
+  wandb_job_type:
+    value: "{env}"
   wandb_tags:
-    value: "retinal-rl distractors complex-network"
+    value: "complex-network"
   experiment:
     value: "{env}_{repeat}"
   train_dir:

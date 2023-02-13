@@ -22,6 +22,7 @@ def main():
     add_retinal_env_args(parser)
     cfg = parse_full_cfg(parser)
 
+    cfg.job_type = cfg.job_type.format(**vars(cfg))
     cfg.experiment = cfg.experiment.format(**vars(cfg))
 
     # Run simulation
