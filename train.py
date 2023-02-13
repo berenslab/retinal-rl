@@ -22,29 +22,6 @@ def main():
     add_retinal_env_args(parser)
     cfg = parse_full_cfg(parser)
 
-    # Modify config based on sweep parameters
-    if cfg.network == "linear":
-        cfg.activation = "linear"
-        cfg.global_channels = 16
-        cfg.retinal_bottleneck = 1
-        cfg.retinal_stride = 2
-        cfg.vvs_depth = 0
-        cfg.kernel_size = 7
-    elif cfg.network == "simple":
-        cfg.activation = "elu"
-        cfg.global_channels = 16
-        cfg.retinal_bottleneck = 1
-        cfg.retinal_stride = 2
-        cfg.vvs_depth = 0
-        cfg.kernel_size = 7
-    elif cfg.network == "complex":
-        cfg.activation = "elu"
-        cfg.global_channels = 16
-        cfg.retinal_bottleneck = 4
-        cfg.retinal_stride = 2
-        cfg.vvs_depth = 1
-        cfg.kernel_size = 7
-
     cfg.experiment = cfg.experiment.format(**vars(cfg))
 
     # Run simulation

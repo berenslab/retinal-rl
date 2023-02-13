@@ -4,8 +4,16 @@ program: train.py
 method: grid
 project: retinal-rl
 parameters:
-  network:
-    value: None
+  global_channels:
+    value: 16
+  retinal_bottleneck:
+    value: 4
+  retinal_stride:
+    value: 2
+  vvs_depth:
+    value: 1
+  kernel_size:
+    value: 7
   env:
     value: "gathering_cifar"
   repeat:
