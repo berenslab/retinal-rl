@@ -8,7 +8,7 @@ parameters:
 
   # Simulation specification
   wandb_tags:
-    value: "retinal-rl simple-network"
+    value: "distractors complex-network"
   experiment:
     value: "{env}_{repeat}"
   train_dir:
