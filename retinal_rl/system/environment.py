@@ -52,6 +52,12 @@ RETINAL_ENVS = [
         reward_scaling=0.01,
         ) ,
     DoomSpec(
+        "gathering_gabors",
+        join(os.getcwd(), "scenarios", "gabor_gathering_02.cfg"),
+        doom_action_space_basic(),
+        reward_scaling=0.01,
+        ) ,
+    DoomSpec(
         "gathering_apples",
         join(os.getcwd(), "scenarios", "apple_gathering_02.cfg"),
         doom_action_space_basic(),
