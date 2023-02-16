@@ -32,7 +32,7 @@ parameters:
 
   # Network architecture
   activation:
-    value: "relu"
+    value: "linear"
   global_channels:
     value: 16
   retinal_stride:
