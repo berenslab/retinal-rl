@@ -4,7 +4,7 @@ from retinal_rl.system.encoders import register_retinal_model
 from retinal_rl.system.environment import register_retinal_envs
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 
-from retinal_rl.analysis.util import get_ac_env,save_onxx,save_simulation_data
+from retinal_rl.analysis.processing import get_ac_env,save_onxx,save_simulation_data
 #from retinal_rl.analysis.statistics import get_class_accuracy
 #from retinal_rl.analysis.plot import save_simulation_gif, plot_all_rf, plot_acts_tsne_stim, plot_dimred_ds_acts, save_activations_gif
 

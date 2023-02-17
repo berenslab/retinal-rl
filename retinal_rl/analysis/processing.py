@@ -143,7 +143,6 @@ def save_simulation_data(cfg: Config, actor_critic : ActorCritic, env : BatchedV
                 all_rnn_act[:,num_frames] = rnn_act
                 all_actions[:,num_frames] = actions
                 all_health[num_frames] = health
-                # conv acts is a list
 
                 obs,rew,_,_,_ = env.step(actions)
                 normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
@@ -154,14 +153,12 @@ def save_simulation_data(cfg: Config, actor_critic : ActorCritic, env : BatchedV
                 if num_frames % 100 == 0:
                     log.debug(f"Num frames {num_frames}...")
 
-    analyze_out = {'all_img': all_img,
-                  # 'all_fc_act':all_fc_act,
-                  'all_rnn_act':all_rnn_act,
-                  # 'all_v_act':all_v_act,
-                  'all_actions':all_actions,
-                  'all_health':all_health,
-                  # 'conv_acts': conv_acts
-                  }
+    analyze_out = {
+            'all_img': all_img,
+            'all_rnn_act':all_rnn_act,
+            'all_actions':all_actions,
+            'all_health':all_health,
+            }
 
     np.save(f'{os.getcwd()}/train_dir/{cfg.experiment}/analyze_out.npy', analyze_out, allow_pickle=True)
 
