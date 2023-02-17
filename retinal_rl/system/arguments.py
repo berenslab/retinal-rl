@@ -8,7 +8,7 @@ from sample_factory.utils.utils import str2bool
 from sf_examples.vizdoom.doom.doom_params import add_doom_env_args,add_doom_env_eval_args
 
 def retinal_override_defaults(parser):
-    """RL params specific to retinal envs."""
+    """Overrides for the sample factory CLI defaults."""
     parser.set_defaults(
         # This block shouldn't be messed with without extensive testing
         ppo_clip_value=0.2,
@@ -16,10 +16,6 @@ def retinal_override_defaults(parser):
         obs_scale=255.0,
         env_frameskip=4,
         reward_scale=0.1,
-
-        # Evaluation-mode centric stuff
-        eval_env_frameskip=1,  # this is for smoother rendering during evaluation
-        fps=35,
 
         # Environment defaults we've settled on
         res_h=90,
@@ -29,6 +25,8 @@ def retinal_override_defaults(parser):
         # Wandb stuff
         with_wandb='True',
         wandb_project="retinal-rl",
+        wandb_group="free-range",
+        wandb_job_type="test",
 
         # System specific but we'll still set these defaults
         batch_size=2048,
@@ -43,6 +41,13 @@ def retinal_override_defaults(parser):
         recurrence=32,
         rollout=32,
         use_rnn=False,
+        rnn_size=64,
+
+        # Evaluation-mode stuff
+        eval_env_frameskip=1,  # this is for smoother rendering during evaluation
+        fps=35,
+        max_num_frames=10000,
+        max_num_episodes=100,
     )
 
 def add_retinal_env_args(parser):

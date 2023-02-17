@@ -4,7 +4,7 @@ from sample_factory.train import run_rl
 
 from retinal_rl.system.encoders import register_retinal_model
 from retinal_rl.system.environment import register_retinal_envs
-from retinal_rl.system.parameters import retinal_override_defaults,add_retinal_env_args
+from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args
 
 
 ### Main ###
@@ -22,6 +22,7 @@ def main():
     add_retinal_env_args(parser)
     cfg = parse_full_cfg(parser)
 
+    # Allows reading some config variables from string templates - designed for wandb sweeps.
     cfg.wandb_job_type = cfg.wandb_job_type.format(**vars(cfg))
     cfg.experiment = cfg.experiment.format(**vars(cfg))
 
