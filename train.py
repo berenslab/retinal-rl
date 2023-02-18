@@ -23,7 +23,7 @@ def main():
     cfg = parse_full_cfg(parser)
 
     # Allows reading some config variables from string templates - designed for wandb sweeps.
-    cfg.wandb_job_type = cfg.wandb_job_type.format(**vars(cfg))
+    cfg.train_dir = cfg.train_dir.format(**vars(cfg))
     cfg.experiment = cfg.experiment.format(**vars(cfg))
 
     # Run simulation

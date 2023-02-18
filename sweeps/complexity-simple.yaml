@@ -10,13 +10,11 @@ parameters:
   wandb_group:
     value: "complexity"
   wandb_job_type:
-    value: "{env}"
-  wandb_tags:
-    value: "simple-network"
+    value: "simple"
   experiment:
     value: "{env}_{repeat}"
   train_dir:
-    value: "./train_dir/complexity-simple"
+    value: "train_dir/{wandb_group}-{wandb_job_type}"
   repeat:
     distribution: "int_uniform"
     min: 1
