@@ -2,7 +2,6 @@
 
 from typing import Tuple
 
-import os
 import numpy as np
 import torch
 
@@ -72,11 +71,15 @@ def save_onxx(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv) -> N
     # Note that onnx can't process dictionary inputs and so we can only look at the encoder (and decoder?) separately)
     torch.onnx.export(enc,obs,experiment_dir(cfg) + "/encoder.onnx",verbose=False,input_names=["observation"],output_names=["latent_state"])
 
-def normalized_obs_to_img(normalized_obs):
+def load_simulation(cfg):
+    sim_out = np.load(f'{cfg.train_dir}/{cfg.experiment}/analyze_out.npy', allow_pickle=True).tolist()
+    return sim_out
+
+def obs_to_img(obs):
     """
     Rearrange an image so it can be presented by matplot lib.
     """
-    obs = normalized_obs["obs"]
+    obs = obs["obs"]
     # visualize obs only for the 1st agent
     obs = obs[0]
 
@@ -86,13 +89,13 @@ def normalized_obs_to_img(normalized_obs):
     img = obs.cpu().numpy()
     return img
 
-def save_simulation_data(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv) -> None:
+def save_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv) -> None:
     """
     Save an example simulation.
     """
 
     # Initializing some local variables
-    t_max = int(cfg.analyze_max_num_frames)
+    t_max = int(cfg.max_num_frames)
     env_info = extract_env_info(env, cfg)
     action_repeat: int = cfg.env_frameskip // cfg.eval_env_frameskip
     device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
@@ -136,7 +139,7 @@ def save_simulation_data(cfg: Config, actor_critic : ActorCritic, env : BatchedV
             # Repeating actions during evaluation because we run the simulation at higher FPS
             for _ in range(action_repeat):
 
-                img = normalized_obs_to_img(normalized_obs).astype(np.uint8) # presumeably this second type call is redundant
+                img = obs_to_img(obs)
                 health = env.unwrapped.get_info()['HEALTH'] # environment info (health etc.)
 
                 all_img[:,:,:,num_frames] = img
@@ -160,5 +163,5 @@ def save_simulation_data(cfg: Config, actor_critic : ActorCritic, env : BatchedV
             'all_health':all_health,
             }
 
-    np.save(f'{os.getcwd()}/train_dir/{cfg.experiment}/analyze_out.npy', analyze_out, allow_pickle=True)
+    np.save(f'{cfg.train_dir}/{cfg.experiment}/analyze_out.npy', analyze_out, allow_pickle=True)
 
