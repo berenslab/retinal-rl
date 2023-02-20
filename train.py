@@ -18,8 +18,8 @@ def main():
 
     # Two-pass building parser and returning cfg : Namespace
     parser, _ = parse_sf_args()
-    retinal_override_defaults(parser)
     add_retinal_env_args(parser)
+    retinal_override_defaults(parser)
     cfg = parse_full_cfg(parser)
 
     # Allows reading some config variables from string templates - designed for wandb sweeps.
