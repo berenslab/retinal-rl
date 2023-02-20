@@ -20,7 +20,7 @@ def analyze(cfg):
 
     if cfg.plot:
         sim = load_simulation(cfg)
-        plot_simulation(sim["all_img"])
+        plot_simulation(sim)
 
 
 def main():
@@ -31,9 +31,9 @@ def main():
 
     # Two-pass building parser and returning cfg : Namespace
     parser, _ = parse_sf_args(evaluation=True)
-    retinal_override_defaults(parser)
     add_retinal_env_args(parser)
     add_retinal_env_eval_args(parser)
+    retinal_override_defaults(parser)
     cfg = parse_full_cfg(parser)
 
     # Run analysis

@@ -12,17 +12,127 @@
 #
 #from retinal_rl.analysis.statistics import spike_triggered_average,fit_tsne_1d,fit_tsne,fit_pca,get_stim_coll,row_zscore
 
-import matplotlib.pyplot as plt
 import numpy as np
+from scipy import stats
 
-def plot_simulation(all_img):
+import matplotlib as mpl
+mpl.use("cairo")
+#import matplotlib.style as mplstyle
+#mplstyle.use("fast")
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 
-    img = all_img[:,:,:,100]
+from tqdm.auto import tqdm
 
-    print(img)
-    plt.imshow(img)
-    plt.show()
+def plot_simulation(sim_recs):
 
+    imgs = sim_recs["imgs"]
+    hlths = sim_recs["hlths"]
+    img = imgs[:, :, :, 0]
+    fltimg = np.reshape(img, (-1, 3))
+    t_max = imgs.shape[3]
+    smps = 1000
+
+    mosaic = """
+    aab
+    aac
+    """
+
+    with plt.style.context(
+        "notebooks/tutorial_style.txt"
+    ):
+        fig, ax_dict = plt.subplot_mosaic(
+            mosaic,
+            figsize=(6, 4),
+            facecolor="white",
+            dpi=200,
+            layout="constrained",
+        )
+
+        imax = ax_dict["a"]
+        clrax = ax_dict["b"]
+        hlthax = ax_dict["c"]
+
+        # FoV
+        imax.set_title("Field of View")
+        imax.set_xticks([])
+        imax.set_yticks([])
+        im = imax.imshow(img)
+        imax.spines["top"].set_visible(True)
+        imax.spines["right"].set_visible(True)
+
+        # Colour distribution
+        clrax.set_title("Colour intensities")
+        clrax.set_xlim([0, 255])
+        clrax.set_ylim([0, 0.025])
+        crng = np.linspace(0, 255, smps)
+
+        rkde = stats.gaussian_kde(fltimg[:, 0])
+        gkde = stats.gaussian_kde(fltimg[:, 1])
+        bkde = stats.gaussian_kde(fltimg[:, 2])
+
+        (rline,) = clrax.plot(
+            crng,
+            rkde(crng),
+            color="red",
+        )
+        (gline,) = clrax.plot(
+            crng,
+            gkde(crng),
+            color="green",
+        )
+        (bline,) = clrax.plot(
+            crng,
+            bkde(crng),
+            color="blue",
+        )
+
+        # Health dynamics
+        hlthax.set_title("Health")
+        hlthax.set_xlim([0, t_max])
+        hlthax.set_ylim([0, 100])
+        hrng = np.linspace(0, t_max - 1, t_max)
+
+        (hline1,) = hlthax.plot(
+            hrng,
+            hlths,
+            color="grey",
+        )
+        (hline2,) = hlthax.plot(
+            hrng[0],
+            hlths[0],
+            color="red",
+        )
+
+    def animate(i):
+        img = imgs[:, :, :, i]
+        fltimg = np.reshape(img, (-1, 3))
+
+        rkde = stats.gaussian_kde(fltimg[:, 0])
+        gkde = stats.gaussian_kde(fltimg[:, 1])
+        bkde = stats.gaussian_kde(fltimg[:, 2])
+
+        im.set_array(img)
+
+        rline.set_ydata(rkde(crng))
+        gline.set_ydata(gkde(crng))
+        bline.set_ydata(bkde(crng))
+
+        hline2.set_data(hrng[0:i], hlths[0:i])
+
+
+    anim = FuncAnimation(
+        fig,
+        animate,
+        frames=tqdm( range(0, t_max), desc="Animating simulation",),
+        interval=1000 / 35,
+    )
+
+    anim.save(
+       "foo.mp4",
+       fps=35,
+       extra_args=["-vcodec", "libx264"],
+    )
 
 
 #def save_simulation_gif(cfg, all_img):

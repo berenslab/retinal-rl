@@ -47,7 +47,7 @@ def retinal_override_defaults(parser):
         # Evaluation-mode stuff
         eval_env_frameskip=1,  # this is for smoother rendering during evaluation
         fps=35,
-        max_num_frames=10000,
+        max_num_frames=10500,
         max_num_episodes=100,
     )
 

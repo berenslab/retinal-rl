@@ -19,6 +19,8 @@ from sample_factory.utils.typing import Config
 from sample_factory.utils.utils import experiment_dir, log
 from sample_factory.algo.utils.env_info import extract_env_info
 
+from tqdm.auto import tqdm
+
 def get_ac_env(cfg: Config) -> Tuple[ActorCritic, BatchedVecEnv]:
     """
     Load the model from checkpoint, initialize the environment, and return both.
@@ -72,7 +74,7 @@ def save_onxx(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv) -> N
     torch.onnx.export(enc,obs,experiment_dir(cfg) + "/encoder.onnx",verbose=False,input_names=["observation"],output_names=["latent_state"])
 
 def load_simulation(cfg):
-    sim_out = np.load(f'{cfg.train_dir}/{cfg.experiment}/analyze_out.npy', allow_pickle=True).tolist()
+    sim_out = np.load(f'{cfg.train_dir}/{cfg.experiment}/simulation_records.npy', allow_pickle=True).tolist()
     return sim_out
 
 def obs_to_img(obs):
@@ -101,22 +103,25 @@ def save_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv
     device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
 
     # Initializing stream arrays
-    all_img = np.zeros((cfg.res_h, cfg.res_w, 3, t_max)).astype(np.uint8)
-    all_rnn_act = np.zeros((cfg.rnn_size, t_max))
-    all_actions = np.zeros((2, t_max))
-    all_health = np.zeros(t_max)
+    imgs = np.zeros((cfg.res_h, cfg.res_w, 3, t_max)).astype(np.uint8)
+    rnn_acts = np.zeros((cfg.rnn_size, t_max))
+    acts = np.zeros((2, t_max))
+    hlths = np.zeros(t_max)
+    rwds = np.zeros(t_max)
+    dns = np.zeros(t_max)
 
     # Initializing simulation state
     num_frames = 0
-    num_episodes = 0
     obs,_ = env.reset()
     normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
     rnn_states = torch.zeros([env.num_agents, get_rnn_size(cfg)], dtype=torch.float32, device=device)
+    is_dn=0
+    rwd=0
 
     # Simulation loop
     with torch.no_grad():
 
-        while t_max > num_frames:
+        for num_frames in tqdm( range(0, t_max), desc="Animating simulation") :
 
             # Evaluate policy
             policy_outputs = actor_critic(normalized_obs, rnn_states)
@@ -142,26 +147,27 @@ def save_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv
                 img = obs_to_img(obs)
                 health = env.unwrapped.get_info()['HEALTH'] # environment info (health etc.)
 
-                all_img[:,:,:,num_frames] = img
-                all_rnn_act[:,num_frames] = rnn_act
-                all_actions[:,num_frames] = actions
-                all_health[num_frames] = health
+                imgs[:,:,:,num_frames] = img
+                rnn_acts[:,num_frames] = rnn_act
+                acts[:,num_frames] = actions
+                hlths[num_frames] = health
+                dns[num_frames] = is_dn
+                rwds[num_frames] = rwd
 
-                obs,rew,_,_,_ = env.step(actions)
+
+                obs,rwd,terminated,truncated,_ = env.step(actions)
+                is_dn = truncated | terminated
                 normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
                 actions = np.array(actions)
-                health = env.unwrapped.get_info()['HEALTH'] # environment info (health etc.)
 
-                num_frames += 1
-                if num_frames % 100 == 0:
-                    log.debug(f"Num frames {num_frames}...")
-
-    analyze_out = {
-            'all_img': all_img,
-            'all_rnn_act':all_rnn_act,
-            'all_actions':all_actions,
-            'all_health':all_health,
+    sim_recs = {
+            "imgs": imgs,
+            "rnn_acts":rnn_acts,
+            "acts":acts,
+            "hlths":hlths,
+            "rwds":rwds,
+            "dns":dns,
             }
 
-    np.save(f'{cfg.train_dir}/{cfg.experiment}/analyze_out.npy', analyze_out, allow_pickle=True)
+    np.save(f'{cfg.train_dir}/{cfg.experiment}/simulation_records.npy', sim_recs, allow_pickle=True)
 
