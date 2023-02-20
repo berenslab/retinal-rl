@@ -1,17 +1,30 @@
 import sys
 
-from sample_factory.algorithms.appo.enjoy_appo import enjoy
+from sample_factory.enjoy import enjoy
 
-from retinal_rl.environment import register_retinal_environment
-from retinal_rl.parameters import custom_parse_args
-from retinal_rl.encoders import register_encoders
+from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
+
+from retinal_rl.system.encoders import register_retinal_model
+from retinal_rl.system.environment import register_retinal_envs
+from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args
 
 
 def main():
     """Script entry point."""
-    register_encoders()
-    register_retinal_environment()
-    cfg = custom_parse_args(evaluation=True)
+    # Register retinal environments and models.
+    register_retinal_envs()
+    register_retinal_model()
+
+    # Two-pass building parser and returning cfg : Namespace
+    parser, _ = parse_sf_args(evaluation=True)
+    add_retinal_env_args(parser)
+    retinal_override_defaults(parser)
+    cfg = parse_full_cfg(parser)
+
+    # Allows reading some config variables from string templates - designed for wandb sweeps.
+    cfg.train_dir = cfg.train_dir.format(**vars(cfg))
+    cfg.experiment = cfg.experiment.format(**vars(cfg))
+
     status = enjoy(cfg)
     return status
 

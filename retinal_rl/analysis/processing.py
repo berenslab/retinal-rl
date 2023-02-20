@@ -121,44 +121,51 @@ def save_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv
     # Simulation loop
     with torch.no_grad():
 
-        for num_frames in tqdm( range(0, t_max), desc="Animating simulation") :
+        with tqdm(total=t_max-1, desc="Generating Simulation") as pbar:
 
-            # Evaluate policy
-            policy_outputs = actor_critic(normalized_obs, rnn_states)
-            rnn_states = policy_outputs["new_rnn_states"]
-            actions = policy_outputs["actions"]
+            while num_frames < t_max:
 
-            # Prepare network state for saving
-            rnn_act = rnn_states.cpu().detach().numpy()
+                    # Evaluate policy
+                policy_outputs = actor_critic(normalized_obs, rnn_states)
+                rnn_states = policy_outputs["new_rnn_states"]
+                actions = policy_outputs["actions"]
 
-            # can pass --eval_deterministic=True to CLI in order to argmax the probabilistic actions
-            if cfg.eval_deterministic:
-                action_distribution = actor_critic.action_distribution()
-                actions = argmax_actions(action_distribution)
+                # Prepare network state for saving
+                rnn_act = rnn_states.cpu().detach().numpy()
 
-            # actions shape should be [num_agents, num_actions] even if it's [1, 1]
-            if actions.ndim == 1:
-                actions = unsqueeze_tensor(actions, dim=-1)
-            actions = preprocess_actions(env_info, actions)
+                # can pass --eval_deterministic=True to CLI in order to argmax the probabilistic actions
+                if cfg.eval_deterministic:
+                    action_distribution = actor_critic.action_distribution()
+                    actions = argmax_actions(action_distribution)
 
-            # Repeating actions during evaluation because we run the simulation at higher FPS
-            for _ in range(action_repeat):
+                # actions shape should be [num_agents, num_actions] even if it's [1, 1]
+                if actions.ndim == 1:
+                    actions = unsqueeze_tensor(actions, dim=-1)
+                actions = preprocess_actions(env_info, actions)
 
-                img = obs_to_img(obs)
-                health = env.unwrapped.get_info()['HEALTH'] # environment info (health etc.)
+                # Repeating actions during evaluation because we run the simulation at higher FPS
+                for _ in range(action_repeat):
 
-                imgs[:,:,:,num_frames] = img
-                rnn_acts[:,num_frames] = rnn_act
-                acts[:,num_frames] = actions
-                hlths[num_frames] = health
-                dns[num_frames] = is_dn
-                rwds[num_frames] = rwd
+                    img = obs_to_img(obs)
+                    health = env.unwrapped.get_info()['HEALTH'] # environment info (health etc.)
 
+                    imgs[:,:,:,num_frames] = img
+                    rnn_acts[:,num_frames] = rnn_act
+                    acts[:,num_frames] = actions
+                    hlths[num_frames] = health
+                    dns[num_frames] = is_dn
+                    rwds[num_frames] = rwd
 
-                obs,rwd,terminated,truncated,_ = env.step(actions)
-                is_dn = truncated | terminated
-                normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
-                actions = np.array(actions)
+                    obs,rwd,terminated,truncated,_ = env.step(actions)
+                    is_dn = truncated | terminated
+                    normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
+                    actions = np.array(actions)
+
+                    num_frames += 1
+                    pbar.update(1)
+
+                    if num_frames >= t_max:
+                        break
 
     sim_recs = {
             "imgs": imgs,

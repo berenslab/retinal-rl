@@ -17,8 +17,8 @@ from scipy import stats
 
 import matplotlib as mpl
 mpl.use("cairo")
-#import matplotlib.style as mplstyle
-#mplstyle.use("fast")
+import matplotlib.style as mplstyle
+mplstyle.use("fast")
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
@@ -57,7 +57,7 @@ def plot_simulation(sim_recs):
         imax.set_title("Field of View")
         imax.set_xticks([])
         imax.set_yticks([])
-        im = imax.imshow(img)
+        im = imax.imshow(img,interpolation=None)
         imax.spines["top"].set_visible(True)
         imax.spines["right"].set_visible(True)
 
@@ -71,21 +71,9 @@ def plot_simulation(sim_recs):
         gkde = stats.gaussian_kde(fltimg[:, 1])
         bkde = stats.gaussian_kde(fltimg[:, 2])
 
-        (rline,) = clrax.plot(
-            crng,
-            rkde(crng),
-            color="red",
-        )
-        (gline,) = clrax.plot(
-            crng,
-            gkde(crng),
-            color="green",
-        )
-        (bline,) = clrax.plot(
-            crng,
-            bkde(crng),
-            color="blue",
-        )
+        (rline,) = clrax.plot(crng, rkde(crng), color="red")
+        (gline,) = clrax.plot(crng, gkde(crng), color="green")
+        (bline,) = clrax.plot(crng, bkde(crng), color="blue")
 
         # Health dynamics
         hlthax.set_title("Health")
@@ -93,46 +81,35 @@ def plot_simulation(sim_recs):
         hlthax.set_ylim([0, 100])
         hrng = np.linspace(0, t_max - 1, t_max)
 
-        (hline1,) = hlthax.plot(
-            hrng,
-            hlths,
-            color="grey",
-        )
-        (hline2,) = hlthax.plot(
-            hrng[0],
-            hlths[0],
-            color="red",
-        )
+        (hline1,) = hlthax.plot(hrng, hlths, color="grey", animated=False)
+
+        (hline2,) = hlthax.plot(hrng[0], hlths[0], color="red", animated=True)
 
     def animate(i):
         img = imgs[:, :, :, i]
-        fltimg = np.reshape(img, (-1, 3))
+        #fltimg = np.reshape(img, (-1, 3))
 
-        rkde = stats.gaussian_kde(fltimg[:, 0])
-        gkde = stats.gaussian_kde(fltimg[:, 1])
-        bkde = stats.gaussian_kde(fltimg[:, 2])
+        #rkde = stats.gaussian_kde(fltimg[:, 0])
+        #gkde = stats.gaussian_kde(fltimg[:, 1])
+        #bkde = stats.gaussian_kde(fltimg[:, 2])
 
         im.set_array(img)
 
-        rline.set_ydata(rkde(crng))
-        gline.set_ydata(gkde(crng))
-        bline.set_ydata(bkde(crng))
+        #rline.set_ydata(rkde(crng))
+        #gline.set_ydata(gkde(crng))
+        #bline.set_ydata(bkde(crng))
 
         hline2.set_data(hrng[0:i], hlths[0:i])
+        return (im,hline2)
 
 
-    anim = FuncAnimation(
-        fig,
-        animate,
-        frames=tqdm( range(0, t_max), desc="Animating simulation",),
-        interval=1000 / 35,
-    )
 
-    anim.save(
-       "foo.mp4",
-       fps=35,
-       extra_args=["-vcodec", "libx264"],
-    )
+    anim = FuncAnimation( fig, animate
+                         , frames=tqdm( range(0, t_max), desc="Animating Simulation",)
+                         , interval=1000 / 35, blit=True )
+
+    anim.save("test.mp4", extra_args=["-vcodec", "libx264"],)
+    #anim.save("test.gif")
 
 
 #def save_simulation_gif(cfg, all_img):
