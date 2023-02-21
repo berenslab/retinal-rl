@@ -82,8 +82,10 @@ def add_retinal_env_eval_args(parser):
     # Doom args
     add_doom_env_eval_args(parser)
 
-    parser.add_argument("--simulate", action="store_true", help="Generate an evaluation simulation (generates 'analyze_out.npy' for plotting)")
-    parser.add_argument("--plot", action="store_true", help="Process and plot 'analyze_out.npy'")
+    parser.add_argument("--onnx", action="store_true", help="Writes encoder.onnx into the analysis directory")
+    parser.add_argument("--simulate", action="store_true", help="Generate an evaluation simulation (generates 'analysis_out.npy' for plotting)")
+    parser.add_argument("--plot", action="store_true", help="Plot 'analysis_out.npy'")
+    parser.add_argument("--animate", action="store_true", help="Animate 'analysis_out.npy'")
     #parser.add_argument('--analyze_acts', type=str, default='False', help='Visualize activations via gifs and dimensionality reduction; options: \'environment\', \'mnist\' or \'cifar\'')
     #parser.add_argument('--analyze_max_num_frames', type=int, default=1e3, help='Used for visualising \'environment\' activations (leave as default otherwise), normally 100000 works for a nice embedding, but can take time')
     #parser.add_argument('--analyze_ds_name', type=str, default='CIFAR', help='Used for visualizing responses to dataset (can be \'MNIST\' or \'CIFAR\'')

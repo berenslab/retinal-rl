@@ -21,6 +21,8 @@ from sample_factory.algo.utils.env_info import extract_env_info
 
 from tqdm.auto import tqdm
 
+from retinal_rl.analysis.util import analysis_path
+
 def get_ac_env(cfg: Config) -> Tuple[ActorCritic, BatchedVecEnv]:
     """
     Load the model from checkpoint, initialize the environment, and return both.
@@ -57,25 +59,6 @@ def get_ac_env(cfg: Config) -> Tuple[ActorCritic, BatchedVecEnv]:
     actor_critic.load_state_dict(checkpoint_dict["model"])
 
     return actor_critic,env
-
-def save_onxx(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv) -> None:
-    """
-    Write an onxx file of the saved model.
-    """
-
-    obs, _ = env.reset()
-    normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
-    enc = actor_critic.encoder.basic_encoder
-    obs = normalized_obs["obs"]
-    # visualize obs only for the 1st agent
-    obs = obs[0]
-
-    # Note that onnx can't process dictionary inputs and so we can only look at the encoder (and decoder?) separately)
-    torch.onnx.export(enc,obs,experiment_dir(cfg) + "/encoder.onnx",verbose=False,input_names=["observation"],output_names=["latent_state"])
-
-def load_simulation(cfg):
-    sim_out = np.load(f'{cfg.train_dir}/{cfg.experiment}/simulation_records.npy', allow_pickle=True).tolist()
-    return sim_out
 
 def obs_to_img(obs):
     """
@@ -176,5 +159,7 @@ def save_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv
             "dns":dns,
             }
 
-    np.save(f'{cfg.train_dir}/{cfg.experiment}/simulation_records.npy', sim_recs, allow_pickle=True)
+    np.save(analysis_path(cfg,"simulation_recordings.npy"), sim_recs, allow_pickle=True)
+
+
 

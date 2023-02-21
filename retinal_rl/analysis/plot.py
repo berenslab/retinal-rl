@@ -13,18 +13,17 @@
 #from retinal_rl.analysis.statistics import spike_triggered_average,fit_tsne_1d,fit_tsne,fit_pca,get_stim_coll,row_zscore
 
 import numpy as np
-from scipy import stats
-
 import matplotlib as mpl
 mpl.use("cairo")
-import matplotlib.style as mplstyle
-mplstyle.use("fast")
+
 import matplotlib.pyplot as plt
+plt.style.use('misc/default.mplstyle')
+
 from matplotlib.animation import FuncAnimation
 
 from tqdm.auto import tqdm
 
-def plot_simulation(sim_recs):
+def simulation_plot(sim_recs,animate=False,fps=35):
 
     imgs = sim_recs["imgs"]
     hlths = sim_recs["hlths"]
@@ -36,66 +35,64 @@ def plot_simulation(sim_recs):
     aac
     """
 
-    with plt.style.context(
-        "notebooks/tutorial_style.txt"
-    ):
-        fig, ax_dict = plt.subplot_mosaic(
-            mosaic,
-            figsize=(6, 4),
-            facecolor="white",
-            dpi=200,
-            layout="constrained",
-        )
+    fig, ax_dict = plt.subplot_mosaic(
+        mosaic,
+        figsize=(6, 4),
+        facecolor="white",
+        dpi=200,
+        layout="constrained",
+    )
 
-        imax = ax_dict["a"]
-        clrax = ax_dict["b"]
-        hlthax = ax_dict["c"]
+    imax = ax_dict["a"]
+    clrax = ax_dict["b"]
+    hlthax = ax_dict["c"]
 
-        # FoV
-        imax.set_title("Field of View")
-        imax.set_xticks([])
-        imax.set_yticks([])
-        im = imax.imshow(img0,interpolation=None)
-        imax.spines["top"].set_visible(True)
-        imax.spines["right"].set_visible(True)
+    # FoV
+    imax.set_title("Field of View")
+    imax.set_xticks([])
+    imax.set_yticks([])
+    im = imax.imshow(img0,interpolation=None)
+    imax.spines["top"].set_visible(True)
+    imax.spines["right"].set_visible(True)
 
-        # Colour distribution
-        clrax.set_title("Colour intensities")
-        clrax.set_xlim([0, 255])
-        clrax.set_ylim([0, 0.025])
+    # Colour distribution
+    clrax.set_title("Colour intensities")
+    clrax.set_xlim([0, 255])
+    clrax.set_ylim([0, 0.025])
 
-       # Health dynamics
-        hlthax.set_title("Health")
-        hlthax.set_xlim([0, t_max])
-        hlthax.set_ylim([0, 100])
-        hrng = np.linspace(0, t_max - 1, t_max)
+   # Health dynamics
+    hlthax.set_title("Health")
+    hlthax.set_xlim([0, t_max])
+    hlthax.set_ylim([0, 100])
+    hrng = np.linspace(0, t_max - 1, t_max)
 
-        hlthax.plot(hrng, hlths, color="grey")
+    hlthax.plot(hrng, hlths, color="grey")
 
-        (hline2,) = hlthax.plot(hrng[0], hlths[0], color="red")
+    (hline,) = hlthax.plot(hrng[0], hlths[0], color="red")
 
-    def animate(i):
-        img = imgs[:, :, :, i]
-        #fltimg = np.reshape(img, (-1, 3))
+    if not animate:
 
-        #rkde = stats.gaussian_kde(fltimg[:, 0])
-        #gkde = stats.gaussian_kde(fltimg[:, 1])
-        #bkde = stats.gaussian_kde(fltimg[:, 2])
+        return fig
 
-        im.set_array(img)
+    else:
 
-        #rline.set_ydata(rkde(crng))
-        #gline.set_ydata(gkde(crng))
-        #bline.set_ydata(bkde(crng))
+        def update(i):
 
-        hline2.set_data(hrng[0:i], hlths[0:i])
+            img = imgs[:, :, :, i]
+            im.set_array(img)
 
-    anim = FuncAnimation( fig, animate
-                         , frames=tqdm( range(0, t_max), desc="Animating Simulation",)
-                         , interval=1000 / 35 )
+            #rline.set_ydata(rkde(crng))
+            #gline.set_ydata(gkde(crng))
+            #bline.set_ydata(bkde(crng))
 
-    anim.save("test.mp4", extra_args=["-vcodec", "libx264"],)
-    #anim.save("test.gif")
+            hline.set_data(hrng[0:i], hlths[0:i])
+
+        anim = FuncAnimation( fig, update
+                             , frames=tqdm( range(0, t_max), desc="Animating Simulation" )
+                             , interval=1000 / fps )
+
+        return anim
+        #anim.save("test.gif")
 
 
 #def save_simulation_gif(cfg, all_img):

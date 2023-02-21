@@ -38,7 +38,8 @@ From: ubuntu:22.10
     apt install -y \
         ffmpeg \
         python3-pyqt5 \
-        libcairo2-dev
+        libcairo2-dev \
+        fonts-liberation
 
     # Sample Factory
     pip3 install vizdoom==1.1.14 sample-factory==2.0.2
