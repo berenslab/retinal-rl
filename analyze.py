@@ -4,7 +4,7 @@ from retinal_rl.system.encoders import register_retinal_model
 from retinal_rl.system.environment import register_retinal_envs
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 
-from retinal_rl.analysis.processing import get_ac_env,save_onxx,save_simulation,load_simulation
+from retinal_rl.analysis.simulation import get_ac_env,save_onxx,save_simulation,load_simulation
 from retinal_rl.analysis.plot import plot_simulation
 
 from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args

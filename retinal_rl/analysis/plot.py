@@ -28,10 +28,8 @@ def plot_simulation(sim_recs):
 
     imgs = sim_recs["imgs"]
     hlths = sim_recs["hlths"]
-    img = imgs[:, :, :, 0]
-    fltimg = np.reshape(img, (-1, 3))
+    img0 = imgs[:, :, :, 0]
     t_max = imgs.shape[3]
-    smps = 1000
 
     mosaic = """
     aab
@@ -57,7 +55,7 @@ def plot_simulation(sim_recs):
         imax.set_title("Field of View")
         imax.set_xticks([])
         imax.set_yticks([])
-        im = imax.imshow(img,interpolation=None)
+        im = imax.imshow(img0,interpolation=None)
         imax.spines["top"].set_visible(True)
         imax.spines["right"].set_visible(True)
 
@@ -65,25 +63,16 @@ def plot_simulation(sim_recs):
         clrax.set_title("Colour intensities")
         clrax.set_xlim([0, 255])
         clrax.set_ylim([0, 0.025])
-        crng = np.linspace(0, 255, smps)
 
-        rkde = stats.gaussian_kde(fltimg[:, 0])
-        gkde = stats.gaussian_kde(fltimg[:, 1])
-        bkde = stats.gaussian_kde(fltimg[:, 2])
-
-        (rline,) = clrax.plot(crng, rkde(crng), color="red")
-        (gline,) = clrax.plot(crng, gkde(crng), color="green")
-        (bline,) = clrax.plot(crng, bkde(crng), color="blue")
-
-        # Health dynamics
+       # Health dynamics
         hlthax.set_title("Health")
         hlthax.set_xlim([0, t_max])
         hlthax.set_ylim([0, 100])
         hrng = np.linspace(0, t_max - 1, t_max)
 
-        (hline1,) = hlthax.plot(hrng, hlths, color="grey", animated=False)
+        hlthax.plot(hrng, hlths, color="grey")
 
-        (hline2,) = hlthax.plot(hrng[0], hlths[0], color="red", animated=True)
+        (hline2,) = hlthax.plot(hrng[0], hlths[0], color="red")
 
     def animate(i):
         img = imgs[:, :, :, i]
@@ -100,13 +89,10 @@ def plot_simulation(sim_recs):
         #bline.set_ydata(bkde(crng))
 
         hline2.set_data(hrng[0:i], hlths[0:i])
-        return (im,hline2)
-
-
 
     anim = FuncAnimation( fig, animate
                          , frames=tqdm( range(0, t_max), desc="Animating Simulation",)
-                         , interval=1000 / 35, blit=True )
+                         , interval=1000 / 35 )
 
     anim.save("test.mp4", extra_args=["-vcodec", "libx264"],)
     #anim.save("test.gif")
