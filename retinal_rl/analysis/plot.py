@@ -14,7 +14,7 @@
 
 import numpy as np
 import matplotlib as mpl
-mpl.use("cairo")
+mpl.use("Agg")
 
 import matplotlib.pyplot as plt
 plt.style.use('misc/default.mplstyle')
