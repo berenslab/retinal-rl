@@ -46,22 +46,9 @@ class LindseyEncoder(Encoder):
         super().__init__(cfg)
 
         # reuse the default image encoder
-        #self.basic_encoder = LindseyEncoderBase(cfg, obs_space)
-
         self.basic_encoder = LindseyEncoderBase(cfg, obs_space["obs"])
         self.encoder_out_size = self.basic_encoder.get_out_size()
         self.gs = cfg.greyscale
-
-        self.measurements_head = None
-        if "measurements" in obs_space.keys():
-            self.measurements_head = nn.Sequential(
-                nn.Linear(obs_space["measurements"].shape[0], 128),
-                activation(cfg),
-                nn.Linear(128, 128),
-                activation(cfg),
-            )
-            measurements_out_size = calc_num_elements(self.measurements_head, obs_space["measurements"].shape)
-            self.encoder_out_size += measurements_out_size
 
         log.debug("Policy head output size: %r", self.get_out_size())
 
@@ -71,11 +58,6 @@ class LindseyEncoder(Encoder):
         if self.gs:
             gs = Grayscale(num_output_channels=1) # change compared to vanilla Lindsey
             x = gs.forward(x) # change compared to vanilla Lindsey
-
-
-        if self.measurements_head is not None:
-            measurements = self.measurements_head(obs_dict["measurements"].float())
-            x = torch.cat((x, measurements), dim=1)
 
         return x
 
