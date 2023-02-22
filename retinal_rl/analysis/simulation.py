@@ -21,8 +21,6 @@ from sample_factory.algo.utils.env_info import extract_env_info
 
 from tqdm.auto import tqdm
 
-from retinal_rl.analysis.util import analysis_path
-
 def get_ac_env(cfg: Config) -> Tuple[ActorCritic, BatchedVecEnv]:
     """
     Load the model from checkpoint, initialize the environment, and return both.
@@ -74,7 +72,7 @@ def obs_to_img(obs):
     img = obs.cpu().numpy()
     return img
 
-def save_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv) -> None:
+def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv):
     """
     Save an example simulation.
     """
@@ -91,6 +89,7 @@ def save_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv
     acts = np.zeros((2, t_max))
     hlths = np.zeros(t_max)
     rwds = np.zeros(t_max)
+    crwds = np.zeros(t_max)
     dns = np.zeros(t_max)
 
     # Initializing simulation state
@@ -100,6 +99,7 @@ def save_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv
     rnn_states = torch.zeros([env.num_agents, get_rnn_size(cfg)], dtype=torch.float32, device=device)
     is_dn=0
     rwd=0
+    crwd=0
 
     # Simulation loop
     with torch.no_grad():
@@ -131,6 +131,10 @@ def save_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv
 
                     img = obs_to_img(obs)
                     health = env.unwrapped.get_info()['HEALTH'] # environment info (health etc.)
+                    if is_dn:
+                        crwd=0
+                    else:
+                        crwd+=rwd
 
                     imgs[:,:,:,num_frames] = img
                     rnn_acts[:,num_frames] = rnn_act
@@ -138,6 +142,7 @@ def save_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv
                     hlths[num_frames] = health
                     dns[num_frames] = is_dn
                     rwds[num_frames] = rwd
+                    crwds[num_frames] = crwd
 
                     obs,rwd,terminated,truncated,_ = env.step(actions)
                     is_dn = truncated | terminated
@@ -150,16 +155,15 @@ def save_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv
                     if num_frames >= t_max:
                         break
 
-    sim_recs = {
+    return {
             "imgs": imgs,
             "rnn_acts":rnn_acts,
             "acts":acts,
             "hlths":hlths,
             "rwds":rwds,
+            "crwds":crwds,
             "dns":dns,
             }
-
-    np.save(analysis_path(cfg,"simulation_recordings.npy"), sim_recs, allow_pickle=True)
 
 
 

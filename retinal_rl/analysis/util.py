@@ -9,14 +9,27 @@ from sample_factory.model.actor_critic import ActorCritic
 from sample_factory.utils.typing import Config
 from sample_factory.utils.utils import experiment_dir
 
-def analysis_path(cfg,flnm=None):
+def analysis_path(cfg):
 
-    anapth = experiment_dir(cfg) + "/analysis"
+    return experiment_dir(cfg) + "/analyses"
+
+def data_path(cfg,flnm=None):
+
+    datpth = analysis_path(cfg) + "/data"
 
     if flnm is not None:
-        anapth = anapth + "/" + flnm
+        datpth = datpth + "/" + flnm
 
-    return anapth
+    return datpth
+
+def plot_path(cfg,flnm=None):
+
+    pltpth = analysis_path(cfg) + "/plots"
+
+    if flnm is not None:
+        pltpth = pltpth + "/" + flnm
+
+    return pltpth
 
 
 def save_onxx(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv) -> None:
@@ -29,10 +42,12 @@ def save_onxx(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv) -> N
     enc = actor_critic.encoder.basic_encoder
     obs = normalized_obs["obs"]
     # visualize obs only for the 1st agent
-    obs = obs[0]
 
     # Note that onnx can't process dictionary inputs and so we can only look at the encoder (and decoder?) separately)
-    torch.onnx.export(enc,obs,analysis_path(cfg,"encoder.onnx"),verbose=False,input_names=["observation"],output_names=["latent_state"])
+    torch.onnx.export(enc,(obs,),data_path(cfg,"encoder.onnx"),verbose=False,input_names=["observation"],output_names=["latent_state"])
 
-def load_simulation(cfg : Config):
-    return np.load(analysis_path(cfg,"simulation_recordings.npy"), allow_pickle=True).tolist()
+def save_data(cfg : Config,dat,flnm):
+    np.save(data_path(cfg,flnm), dat, allow_pickle=True)
+
+def load_data(cfg : Config,flnm):
+    return np.load(data_path(cfg,flnm) + ".npy", allow_pickle=True).tolist()

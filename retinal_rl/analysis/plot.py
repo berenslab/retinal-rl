@@ -1,17 +1,3 @@
-#from pygifsicle import optimize
-#import os
-#import imageio
-#import torch
-#from torch.utils import tensorboard
-#import wandb
-#from sample_factory.utils.utils import AttrDict
-#from sample_factory.algorithms.appo.actor_worker import transform_dict_observations
-#import pandas as pd
-#import numpy as np
-#import matplotlib.animation as animation
-#
-#from retinal_rl.analysis.statistics import spike_triggered_average,fit_tsne_1d,fit_tsne,fit_pca,get_stim_coll,row_zscore
-
 import numpy as np
 import matplotlib as mpl
 mpl.use("Agg")
@@ -26,26 +12,33 @@ from tqdm.auto import tqdm
 def simulation_plot(sim_recs,animate=False,fps=35):
 
     imgs = sim_recs["imgs"]
-    hlths = sim_recs["hlths"]
+    hlths0 = sim_recs["hlths"]
+    crwds0 = sim_recs["crwds"]
+    dns = sim_recs["dns"]
+    dndices = np.where(dns)
+    crwds = np.ma.array(crwds0,mask=dns)
+    hlths = np.ma.array(hlths0,mask=dns)
     img0 = imgs[:, :, :, 0]
     t_max = imgs.shape[3]
 
     mosaic = """
-    aab
-    aac
+    aabb
+    aacc
     """
 
     fig, ax_dict = plt.subplot_mosaic(
         mosaic,
-        figsize=(6, 4),
+        figsize=(6, 3),
         facecolor="white",
         dpi=200,
         layout="constrained",
     )
 
     imax = ax_dict["a"]
-    clrax = ax_dict["b"]
+    rwdax = ax_dict["b"]
     hlthax = ax_dict["c"]
+
+    trng = np.linspace(0, t_max - 1, t_max)
 
     # FoV
     imax.set_title("Field of View")
@@ -55,20 +48,26 @@ def simulation_plot(sim_recs,animate=False,fps=35):
     imax.spines["top"].set_visible(True)
     imax.spines["right"].set_visible(True)
 
-    # Colour distribution
-    clrax.set_title("Colour intensities")
-    clrax.set_xlim([0, 255])
-    clrax.set_ylim([0, 0.025])
+    # Rewards
+    r_max = np.max(crwds)
+
+    rwdax.set_title("Cumulative Reward")
+    rwdax.set_xlim([0, t_max])
+    rwdax.set_ylim([0, r_max])
+
+    rwdax.plot(trng, crwds, "k-")
+    rwdax.vlines(dndices, 0, r_max, linestyle="dashed", linewidth=1, color="blue")
+    (rline,) = rwdax.plot(trng[0], crwds[0], "g-", linewidth=1)
 
    # Health dynamics
     hlthax.set_title("Health")
     hlthax.set_xlim([0, t_max])
     hlthax.set_ylim([0, 100])
-    hrng = np.linspace(0, t_max - 1, t_max)
 
-    hlthax.plot(hrng, hlths, color="grey")
+    hlthax.plot(trng, hlths, "k-")
+    hlthax.vlines(dndices, 0, 100, linestyle="dashed", linewidth=1, color="blue")
 
-    (hline,) = hlthax.plot(hrng[0], hlths[0], color="red")
+    (hline,) = hlthax.plot(trng[0], hlths[0], "r-", linewidth=1)
 
     if not animate:
 
@@ -81,36 +80,15 @@ def simulation_plot(sim_recs,animate=False,fps=35):
             img = imgs[:, :, :, i]
             im.set_array(img)
 
-            #rline.set_ydata(rkde(crng))
-            #gline.set_ydata(gkde(crng))
-            #bline.set_ydata(bkde(crng))
-
-            hline.set_data(hrng[0:i], hlths[0:i])
+            rline.set_data(trng[0:i], crwds[0:i])
+            hline.set_data(trng[0:i], hlths[0:i])
 
         anim = FuncAnimation( fig, update
                              , frames=tqdm( range(0, t_max), desc="Animating Simulation" )
                              , interval=1000 / fps )
 
         return anim
-        #anim.save("test.gif")
 
-
-#def save_simulation_gif(cfg, all_img):
-#    t_stamp =  str(np.datetime64('now')).replace('-','').replace('T','_').replace(':', '')
-#    pth = f'{cfg.train_dir}/{cfg.experiment}/sim_{t_stamp}.gif'
-#
-#    wrt = imageio.get_writer(pth, mode='I',fps=35)
-#
-#    with wrt as writer:
-#        for i in range(all_img.shape[3]):
-#            writer.append_data(all_img[:,:,:,i])
-#
-#    optimize(pth)
-
-    # displaying in WandB
-    # if cfg.with_wandb:
-    #     wandb.init(name=cfg.experiment, project=cfg.wandb_project, group='rfs')
-    #     wandb.log({"video": wandb.Video(pth, fps=35, format="gif")})
 
 #def save_receptive_fields_plot(cfg,device,enc,lay,env):
 #

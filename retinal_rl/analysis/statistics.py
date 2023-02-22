@@ -8,6 +8,44 @@ import numpy as np
 
 from openTSNE import TSNE
 
+from retinal_rl.analysis.util import analysis_path
+
+def receptive_fields_plot(cfg,env,enc):
+
+    obs = env.reset() # this is the first observation when agent is spawned
+    device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
+
+    if cfg.greyscale:
+        obs = obs['obs'][:,0,None,:,:] # setting shape of observation to be only single channel
+    else:
+        obs = obs['obs']
+
+    stas = None
+    isz = list(obs.size())[1:]
+    outmtx = enc.conv_head[0:(lay*2)](obs)
+    osz = list(outmtx.size())[1:]
+
+    nchns = isz[0]
+    flts = osz[0]
+
+    if cfg.retinal_stride == 2 and cfg.kernel_size == 9: # lindsay with stride and kernel 9
+        diams = [1, 9, 17, 50]
+        rds = diams[lay]//2 + 2*lay# padding a bit
+    else: # classic lindsay case
+        rds = 2 + (8*(lay-1) + enc.kernel_size) // 2
+
+    rwsmlt = 2 if flts > 8 else 1 # rows in rf subplot
+    fltsdv = flts//rwsmlt
+
+    for
+    for i in range(fltsdv):
+
+        for j in range(rwsmlt):
+
+            flt = i + j*fltsdv
+            avg = spike_triggered_average(device,enc,lay,flt,rds,isz)
+
+    np.save(analysis_path(cfg,"spike_triggered_averages.npy"), stas, allow_pickle=True)
 
 def spike_triggered_average(dev,enc,lay,flt,rds,isz):
 
