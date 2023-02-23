@@ -2,9 +2,7 @@
 retina_rl library
 
 """
-import torch
 from torch import nn
-from torchvision.transforms import Grayscale
 
 from sample_factory.model.encoder import Encoder
 from sample_factory.algo.utils.torch_utils import calc_num_elements
@@ -48,17 +46,11 @@ class LindseyEncoder(Encoder):
         # reuse the default image encoder
         self.basic_encoder = LindseyEncoderBase(cfg, obs_space["obs"])
         self.encoder_out_size = self.basic_encoder.get_out_size()
-        self.gs = cfg.greyscale
 
         log.debug("Policy head output size: %r", self.get_out_size())
 
     def forward(self, obs_dict):
         x = self.basic_encoder(obs_dict["obs"])
-
-        if self.gs:
-            gs = Grayscale(num_output_channels=1) # change compared to vanilla Lindsey
-            x = gs.forward(x) # change compared to vanilla Lindsey
-
         return x
 
     def get_out_size(self) -> int:

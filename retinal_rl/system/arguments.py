@@ -61,15 +61,13 @@ def add_retinal_env_args(parser):
     # Doom args
     add_doom_env_args(parser)
     # Parse args for rvvs model from Lindsey et al 2019
-    parser.add_argument('--global_channels', type=int, default=32, help='Standard number of channels in CNN layers')
+    parser.add_argument('--global_channels', type=int, default=16, help='Standard number of channels in CNN layers')
     parser.add_argument('--retinal_bottleneck', type=int, default=4, help='Number of channels in retinal bottleneck')
     parser.add_argument('--vvs_depth', type=int, default=1, help='Number of CNN layers in the ventral stream network')
     parser.add_argument('--kernel_size', type=int, default=7, help='Size of CNN filters')
     parser.add_argument('--retinal_stride', type=int, default=2, help='Stride at the first conv layer (\'BC\'), doesnt apply to \'VVS\'')
     parser.add_argument( "--activation", default="relu" , choices=["elu", "relu", "tanh", "linear"]
                         , type=str, help="Type of activation function to use.")
-    parser.add_argument("--greyscale", default=False, type=str2bool
-                        , help="Whether to greyscale the input image.")
     parser.add_argument('--repeat', type=int, default=1, help="Dummy parameter to indicate which repetition we're at in a wandb sweep")
 
 def add_retinal_env_eval_args(parser):
