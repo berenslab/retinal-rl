@@ -1,145 +1,212 @@
 import numpy as np
 import torch
+
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 
-import numpy as np
-
 from openTSNE import TSNE
 
-from retinal_rl.analysis.util import analysis_path
+from sample_factory.algo.utils.rl_utils import prepare_and_normalize_obs
 
-def receptive_fields_plot(cfg,env,enc):
+from tqdm.auto import tqdm
 
-    obs = env.reset() # this is the first observation when agent is spawned
-    device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
+def sta_receptive_fields(cfg,env,actor_critic,nbtch=20000,nreps=1000,pad=2):
+    """
+    Returns the receptive fields of every layer of a convnet as computed by spike-triggered averaging.
+    """
 
-    if cfg.greyscale:
-        obs = obs['obs'][:,0,None,:,:] # setting shape of observation to be only single channel
-    else:
-        obs = obs['obs']
+    enc = actor_critic.encoder.basic_encoder
+    dev = torch.device("cpu" if cfg.device == "cpu" else "cuda")
 
-    stas = None
-    isz = list(obs.size())[1:]
-    outmtx = enc.conv_head[0:(lay*2)](obs)
-    osz = list(outmtx.size())[1:]
+    nclrs,nrws,ncls = list(env.observation_space["obs"].shape)
+    cnty = nrws//2
+    cntx = ncls//2
 
-    nchns = isz[0]
-    flts = osz[0]
+    obs = env.observation_space.sample()
+    nobs = prepare_and_normalize_obs(actor_critic, obs)["obs"]
 
-    if cfg.retinal_stride == 2 and cfg.kernel_size == 9: # lindsay with stride and kernel 9
-        diams = [1, 9, 17, 50]
-        rds = diams[lay]//2 + 2*lay# padding a bit
-    else: # classic lindsay case
-        rds = 2 + (8*(lay-1) + enc.kernel_size) // 2
+    btchsz = [nbtch,nclrs,nrws,ncls]
 
-    rwsmlt = 2 if flts > 8 else 1 # rows in rf subplot
-    fltsdv = flts//rwsmlt
+    nlys = cfg.vvs_depth+2
+    stas = {}
 
-    for
-    for i in range(fltsdv):
+    nstps = 0
+    for i in range(nlys): nstps += enc.conv_head[2*i].out_channels
+    nstps = nstps * nreps
 
-        for j in range(rwsmlt):
+    with tqdm(total=nstps, desc="Generating STAs") as pbar:
 
-            flt = i + j*fltsdv
-            avg = spike_triggered_average(device,enc,lay,flt,rds,isz)
+        with torch.no_grad():
 
-    np.save(analysis_path(cfg,"spike_triggered_averages.npy"), stas, allow_pickle=True)
+            for i in range(nlys):
 
-def spike_triggered_average(dev,enc,lay,flt,rds,isz):
+                subenc = enc.conv_head[0:(1+i)*2]
 
-    with torch.no_grad():
+                ochns,oxsz,oysz = subenc(nobs).size()
+                rds = (pad + ((2*i+1) * (enc.kernel_size-1)))//2
+                span = 2*rds
+                mny = cnty - rds
+                mxy = cnty + rds
+                mnx = cntx - rds
+                mxx = cntx + rds
 
-        btchsz = [25000] + isz
-        cnty = (1+btchsz[2])//2
-        cntx = (1+btchsz[3])//2
-        mny = cnty - rds
-        mxy = cnty + rds
-        mnx = cntx - rds
-        mxx = cntx + rds
-        obsns = torch.randn(size=btchsz,device=dev)
-        outmtx = enc.conv_head[0:(lay*2)](obsns) #forward pass
-        outsz = outmtx.size()
-        outs = outmtx[:,flt,outsz[2]//2,outsz[3]//2].cpu()
-        obsns1 = obsns[:,:,mny:mxy,mnx:mxx].cpu()
-        avg = np.average(obsns1,axis=0,weights=outs)
+                lyrnm = "layer-" + str(i)
 
-    return avg
+                stas[lyrnm] = np.zeros((ochns,nclrs,span,span))
 
-def fit_tsne_1d(data):
-    print('fitting 1d-tSNE...')
-    # default openTSNE params
-    tsne = TSNE(
-        n_components=1,
-        perplexity=30,
-        initialization="pca",
-        metric="euclidean",
-        n_jobs=8,
-        random_state=3,
-    )
+                for j in range(ochns):
 
-    tsne_emb = tsne.fit(data)
-    return tsne_emb
+                    for _ in range(nreps):
 
-def fit_tsne(data):
-    print('fitting tSNE...')
-    # default openTSNE params
-    tsne = TSNE(
-        perplexity=30,
-        initialization="pca",
-        metric="euclidean",
-        n_jobs=8,
-        random_state=3,
-    )
+                        obss = torch.randn(size=btchsz,device=dev)
+                        obss1 = obss[:,:,mny:mxy,mnx:mxx].cpu()
+                        outs = subenc(obss)[:,j,oxsz//2,oysz//2].cpu()
 
-    tsne_emb = tsne.fit(data.T)
-    return tsne_emb
+                        pbar.update(1)
 
-def fit_pca(data):
-    print('fitting PCA...')
-    pca=PCA()
-    pca.fit(data)
-    embedding = pca.components_.T
-    var_exp = pca.explained_variance_ratio_
-    return embedding, var_exp
+                        if torch.sum(outs) != 0:
+                            stas[lyrnm][j] += np.average(obss1,axis=0,weights=outs)/nreps
 
-def get_stim_coll(all_health, health_dep=-8, death_dep=30):
+        return stas
 
-    stim_coll = np.diff(all_health)
-    stim_coll[stim_coll == health_dep] = 0 # excluding 'hunger' decrease
-    stim_coll[stim_coll > death_dep] = 0 # excluding decrease due to death
-    stim_coll[stim_coll < -death_dep] = 0
-    return stim_coll
+def mei_receptive_fields(cfg,env,actor_critic,nstps=5000,pad=2):
+    """
+    Returns the receptive fields of every layer of a convnet as computed by maximally exciting inputs.
+    """
 
-# to plot library
-def row_zscore(mat):
-    return (mat - np.mean(mat,1)[:,np.newaxis])/(np.std(mat,1)[:,np.newaxis]+1e-8)
+    enc = actor_critic.encoder.basic_encoder
+    dev = torch.device("cpu" if cfg.device == "cpu" else "cuda")
 
-## linear decoder analysis
-def get_class_accuracy(cfg, ds_out, mode='multi', thr=5, permute=False):
-    # mode can be 'multi' or 'bin', thr determines threshold for binarisation, permute will randomly shuffle labels (to get chance preformance)
+    obs0 = env.observation_space.sample()
+    nobs0 = prepare_and_normalize_obs(actor_critic, obs0)["obs"]
 
-    X = ds_out['all_fc_act'].T
+    nclrs,nrws,ncls = list(env.observation_space["obs"].shape)
+    cnty = nrws//2
+    cntx = ncls//2
 
-    if mode == 'multi':
-        y = ds_out['all_lab']
-    elif mode == 'bin':
-        y = ds_out['all_lab']<thr
+    nlys = cfg.vvs_depth+2
+    meis = {}
 
-    perm_str = '' if not permute else 'permuted '
+    nrfs = 0
+    for i in range(nlys): nrfs += enc.conv_head[2*i].out_channels
 
-    if permute:
-        y = np.random.permutation(y)
+    with tqdm(total=nrfs, desc="Generating MEIs") as pbar:
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
+        for i in range(nlys):
 
-    logreg = LogisticRegression(max_iter=10000)
-    logreg.fit(X_train, y_train)
+            subenc = enc.conv_head[0:(1+i)*2]
+            ochns,oxsz,oysz = subenc(nobs0).size()
+            rds = pad + ((2*i+1) * enc.kernel_size)//2
+            span = 2*rds
+            mny = cnty - rds
+            mxy = cnty + rds
+            mnx = cntx - rds
+            mxx = cntx + rds
 
-    score_train = logreg.score(X_train, y_train)
-    score_test = logreg.score(X_test, y_test)
+            lyrnm = "layer-" + str(i)
 
-    return f'{perm_str}{mode} classification scores:\n  -Train: {np.round(score_train,4)}\n  -Test: {np.round(score_test,4)}\n\n'
+            meis[lyrnm] = np.zeros((ochns,nclrs,span,span))
+
+            for j in range(ochns):
+
+                obs = env.observation_space.sample()
+                nobs = prepare_and_normalize_obs(actor_critic, obs0)["obs"]
+
+                def f(x): return -subenc(x)[j,oxsz//2,oysz//2].cpu()
+
+                nobs.requires_grad_()
+                optimizer = torch.optim.Adam([nobs], lr=0.1)
+
+                for _ in range(nstps):
+
+                    optimizer.zero_grad()
+                    loss = f(nobs)
+                    loss.backward()
+                    optimizer.step()
+                    print(-loss)
+                    if -loss <= 0: break
+                    #list_params.append(params.detach().clone()) #here
+
+                meis[lyrnm][j] = nobs[:,mny:mxy,mnx:mxx].cpu().detach().numpy()
+                pbar.update(1)
+
+        return meis
 
 
+#def fit_tsne_1d(data):
+#    print('fitting 1d-tSNE...')
+#    # default openTSNE params
+#    tsne = TSNE(
+#        n_components=1,
+#        perplexity=30,
+#        initialization="pca",
+#        metric="euclidean",
+#        n_jobs=8,
+#        random_state=3,
+#    )
+#
+#    tsne_emb = tsne.fit(data)
+#    return tsne_emb
+#
+#def fit_tsne(data):
+#    print('fitting tSNE...')
+#    # default openTSNE params
+#    tsne = TSNE(
+#        perplexity=30,
+#        initialization="pca",
+#        metric="euclidean",
+#        n_jobs=8,
+#        random_state=3,
+#    )
+#
+#    tsne_emb = tsne.fit(data.T)
+#    return tsne_emb
+#
+#def fit_pca(data):
+#    print('fitting PCA...')
+#    pca=PCA()
+#    pca.fit(data)
+#    embedding = pca.components_.T
+#    var_exp = pca.explained_variance_ratio_
+#    return embedding, var_exp
+#
+#def get_stim_coll(all_health, health_dep=-8, death_dep=30):
+#
+#    stim_coll = np.diff(all_health)
+#    stim_coll[stim_coll == health_dep] = 0 # excluding 'hunger' decrease
+#    stim_coll[stim_coll > death_dep] = 0 # excluding decrease due to death
+#    stim_coll[stim_coll < -death_dep] = 0
+#    return stim_coll
+#
+## to plot library
+#def row_zscore(mat):
+#    return (mat - np.mean(mat,1)[:,np.newaxis])/(np.std(mat,1)[:,np.newaxis]+1e-8)
+#
+### linear decoder analysis
+#def get_class_accuracy(cfg, ds_out, mode='multi', thr=5, permute=False):
+#    # mode can be 'multi' or 'bin', thr determines threshold for binarisation, permute will randomly shuffle labels (to get chance preformance)
+#
+#    X = ds_out['all_fc_act'].T
+#
+#    if mode == 'multi':
+#        y = ds_out['all_lab']
+#    elif mode == 'bin':
+#        y = ds_out['all_lab']<thr
+#
+#    perm_str = '' if not permute else 'permuted '
+#
+#    if permute:
+#        y = np.random.permutation(y)
+#
+#    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
+#
+#    logreg = LogisticRegression(max_iter=10000)
+#    logreg.fit(X_train, y_train)
+#
+#    score_train = logreg.score(X_train, y_train)
+#    score_test = logreg.score(X_test, y_test)
+#
+#    return f'{perm_str}{mode} classification scores:\n  -Train: {np.round(score_train,4)}\n  -Test: {np.round(score_test,4)}\n\n'
+#
+#

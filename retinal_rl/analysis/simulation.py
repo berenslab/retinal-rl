@@ -16,12 +16,11 @@ from sample_factory.model.actor_critic import create_actor_critic,ActorCritic
 from sample_factory.model.model_utils import get_rnn_size
 from sample_factory.utils.attr_dict import AttrDict
 from sample_factory.utils.typing import Config
-from sample_factory.utils.utils import experiment_dir, log
 from sample_factory.algo.utils.env_info import extract_env_info
 
 from tqdm.auto import tqdm
 
-def get_ac_env(cfg: Config) -> Tuple[ActorCritic, BatchedVecEnv]:
+def get_ac_env(cfg: Config) -> Tuple[ActorCritic,BatchedVecEnv,AttrDict,int]:
     """
     Load the model from checkpoint, initialize the environment, and return both.
     """
@@ -55,8 +54,9 @@ def get_ac_env(cfg: Config) -> Tuple[ActorCritic, BatchedVecEnv]:
     checkpoints = Learner.get_checkpoints(Learner.checkpoint_dir(cfg, policy_id), f"{name_prefix}_*")
     checkpoint_dict = Learner.load_checkpoint(checkpoints, device)
     actor_critic.load_state_dict(checkpoint_dict["model"])
+    nstps = checkpoint_dict["env_steps"]
 
-    return actor_critic,env
+    return actor_critic,env,cfg,nstps
 
 def obs_to_img(obs):
     """

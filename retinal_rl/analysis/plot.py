@@ -9,7 +9,7 @@ from matplotlib.animation import FuncAnimation
 
 from tqdm.auto import tqdm
 
-def simulation_plot(sim_recs,animate=False,fps=35):
+def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35):
 
     imgs = sim_recs["imgs"]
     hlths0 = sim_recs["hlths"]
@@ -18,7 +18,10 @@ def simulation_plot(sim_recs,animate=False,fps=35):
     dndices = np.where(dns)
     crwds = np.ma.array(crwds0,mask=dns)
     hlths = np.ma.array(hlths0,mask=dns)
-    img0 = imgs[:, :, :, 0]
+    if not animate:
+        img0 = imgs[:, :, :, frame_step]
+    else:
+        img0 = imgs[:, :, :, 0]
     t_max = imgs.shape[3]
 
     mosaic = """
@@ -29,9 +32,6 @@ def simulation_plot(sim_recs,animate=False,fps=35):
     fig, ax_dict = plt.subplot_mosaic(
         mosaic,
         figsize=(6, 3),
-        facecolor="white",
-        dpi=200,
-        layout="constrained",
     )
 
     imax = ax_dict["a"]
@@ -84,11 +84,53 @@ def simulation_plot(sim_recs,animate=False,fps=35):
             hline.set_data(trng[0:i], hlths[0:i])
 
         anim = FuncAnimation( fig, update
-                             , frames=tqdm( range(0, t_max), desc="Animating Simulation" )
+                             , frames=tqdm( range(1, t_max), desc="Animating Simulation" )
                              , interval=1000 / fps )
 
         return anim
 
+def receptive_field_plots(rfs):
+    """
+    Returns a figures of the RGB receptive fields for each element from a layer-wise dictionary.
+    """
+
+    figs = {}
+
+    for ky in rfs:
+
+        lyr = rfs[ky]
+        ochns,nclrs,_,_ = lyr.shape
+
+        fig, axs = plt.subplots(
+            nclrs,ochns,
+            figsize=(ochns*1.5, nclrs),
+            )
+
+        clrs = ['Red','Green','Blue']
+        cmaps = ['inferno', 'viridis', 'cividis']
+
+        for i in range(ochns):
+
+            mx = np.amax(lyr[i])
+            mn = np.amin(lyr[i])
+
+            for j in range(nclrs):
+
+                ax = axs[j][i]
+                im = ax.imshow(lyr[i,j,:,:],cmap=cmaps[j],vmin=mn,vmax=mx)
+                ax.set_xticks([])
+                ax.set_yticks([])
+                ax.spines["top"].set_visible(True)
+                ax.spines["right"].set_visible(True)
+
+                if i==0:
+                    fig.colorbar(im, ax=ax,cmap=cmaps[j],label=clrs[j],location="left")
+                else:
+                    fig.colorbar(im, ax=ax,cmap=cmaps[j],location="left")
+
+        figs[ky] = fig
+
+    return figs
 
 #def save_receptive_fields_plot(cfg,device,enc,lay,env):
 #
