@@ -9,6 +9,8 @@ from openTSNE import TSNE
 
 from sample_factory.algo.utils.rl_utils import prepare_and_normalize_obs
 
+from retinal_rl.analysis.util import ValueNetwork
+
 from tqdm.auto import tqdm
 
 def sta_receptive_fields(cfg,env,actor_critic,nbtch=20000,nreps=1000,pad=2):
@@ -69,6 +71,54 @@ def sta_receptive_fields(cfg,env,actor_critic,nbtch=20000,nreps=1000,pad=2):
                             stas[lyrnm][j] += np.average(obss1,axis=0,weights=outs)/nreps
 
         return stas
+
+def row_zscore(mat):
+    return (mat - np.mean(mat,1)[:,np.newaxis])/(np.std(mat,1)[:,np.newaxis]+1e-8)
+
+def fit_tsne_1d(data):
+    print('fitting 1d-tSNE...')
+    # default openTSNE params
+    tsne = TSNE(
+        n_components=1,
+        perplexity=30,
+        initialization="pca",
+        metric="euclidean",
+        n_jobs=8,
+        random_state=3,
+    )
+
+    tsne_emb = tsne.fit(data)
+    return tsne_emb
+
+def fit_tsne(data):
+    print('fitting tSNE...')
+    # default openTSNE params
+    tsne = TSNE(
+        perplexity=30,
+        initialization="pca",
+        metric="euclidean",
+        n_jobs=8,
+        random_state=3,
+    )
+
+    tsne_emb = tsne.fit(data.T)
+    return tsne_emb
+
+def fit_pca(data):
+    print('fitting PCA...')
+    pca=PCA()
+    pca.fit(data)
+    embedding = pca.components_.T
+    var_exp = pca.explained_variance_ratio_
+    return embedding, var_exp
+
+def get_stim_coll(all_health, health_dep=-8, death_dep=30):
+
+    stim_coll = np.diff(all_health)
+    stim_coll[stim_coll == health_dep] = 0 # excluding 'hunger' decrease
+    stim_coll[stim_coll > death_dep] = 0 # excluding decrease due to death
+    stim_coll[stim_coll < -death_dep] = 0
+    return stim_coll
 
 def mei_receptive_fields(cfg,env,actor_critic,nstps=5000,pad=2):
     """
@@ -132,81 +182,3 @@ def mei_receptive_fields(cfg,env,actor_critic,nstps=5000,pad=2):
                 pbar.update(1)
 
         return meis
-
-
-#def fit_tsne_1d(data):
-#    print('fitting 1d-tSNE...')
-#    # default openTSNE params
-#    tsne = TSNE(
-#        n_components=1,
-#        perplexity=30,
-#        initialization="pca",
-#        metric="euclidean",
-#        n_jobs=8,
-#        random_state=3,
-#    )
-#
-#    tsne_emb = tsne.fit(data)
-#    return tsne_emb
-#
-#def fit_tsne(data):
-#    print('fitting tSNE...')
-#    # default openTSNE params
-#    tsne = TSNE(
-#        perplexity=30,
-#        initialization="pca",
-#        metric="euclidean",
-#        n_jobs=8,
-#        random_state=3,
-#    )
-#
-#    tsne_emb = tsne.fit(data.T)
-#    return tsne_emb
-#
-#def fit_pca(data):
-#    print('fitting PCA...')
-#    pca=PCA()
-#    pca.fit(data)
-#    embedding = pca.components_.T
-#    var_exp = pca.explained_variance_ratio_
-#    return embedding, var_exp
-#
-#def get_stim_coll(all_health, health_dep=-8, death_dep=30):
-#
-#    stim_coll = np.diff(all_health)
-#    stim_coll[stim_coll == health_dep] = 0 # excluding 'hunger' decrease
-#    stim_coll[stim_coll > death_dep] = 0 # excluding decrease due to death
-#    stim_coll[stim_coll < -death_dep] = 0
-#    return stim_coll
-#
-## to plot library
-#def row_zscore(mat):
-#    return (mat - np.mean(mat,1)[:,np.newaxis])/(np.std(mat,1)[:,np.newaxis]+1e-8)
-#
-### linear decoder analysis
-#def get_class_accuracy(cfg, ds_out, mode='multi', thr=5, permute=False):
-#    # mode can be 'multi' or 'bin', thr determines threshold for binarisation, permute will randomly shuffle labels (to get chance preformance)
-#
-#    X = ds_out['all_fc_act'].T
-#
-#    if mode == 'multi':
-#        y = ds_out['all_lab']
-#    elif mode == 'bin':
-#        y = ds_out['all_lab']<thr
-#
-#    perm_str = '' if not permute else 'permuted '
-#
-#    if permute:
-#        y = np.random.permutation(y)
-#
-#    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
-#
-#    logreg = LogisticRegression(max_iter=10000)
-#    logreg.fit(X_train, y_train)
-#
-#    score_train = logreg.score(X_train, y_train)
-#    score_test = logreg.score(X_test, y_test)
-#
-#    return f'{perm_str}{mode} classification scores:\n  -Train: {np.round(score_train,4)}\n  -Test: {np.round(score_test,4)}\n\n'
-#
-#

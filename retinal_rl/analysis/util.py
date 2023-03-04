@@ -11,6 +11,12 @@ from sample_factory.model.actor_critic import ActorCritic
 from sample_factory.utils.typing import Config
 from sample_factory.utils.utils import experiment_dir
 
+from torch import nn
+
+
+## Paths ###
+
+
 def analysis_path(cfg,nstps):
 
     return join(experiment_dir(cfg),"analyses",f"env_steps-{nstps}")
@@ -32,6 +38,9 @@ def plot_path(cfg,nstps,flnm=None):
         pltpth = pltpth + "/" + flnm
 
     return pltpth
+
+
+### IO ###
 
 
 def save_onxx(cfg: Config, nstps : int, actor_critic : ActorCritic, env : BatchedVecEnv) -> None:
@@ -59,3 +68,63 @@ def load_data(cfg : Config,nstps,flnm):
     Loads data. Note the use of tolist() is necessary to read dictionaries.
     """
     return np.load(data_path(cfg,nstps,flnm) + ".npy", allow_pickle=True).tolist()
+
+
+### Misc analysis tools ###
+
+
+def obs_dict_to_obs(obs_dct):
+    """
+    Extract observation
+    """
+    obs = obs_dct["obs"]
+    # visualize obs only for the 1st agent
+    return obs[0]
+
+
+def obs_to_img(obs):
+    """
+    Rearrange an image so it can be presented by matplot lib.
+    """
+    # convert to HWC
+    obs = obs.permute(1, 2, 0)
+    # convert to numpy
+    img = obs.cpu().numpy()
+    return img
+
+
+class ValueNetwork(nn.Module):
+
+    """
+    Converts a LindseyEncoder into a feedforward value network that can be easily analyzed by e.g. captum.
+    """
+    def __init__(self, cfg, actor_critic):
+
+        super().__init__()
+
+        self.cfg = cfg
+        self.ac_base = actor_critic
+
+        self.conv_head_out_size = actor_critic.encoder.basic_encoder.conv_head_out_size
+
+        self.conv_head = actor_critic.encoder.basic_encoder.conv_head
+        self.fc1 = actor_critic.encoder.basic_encoder.fc1 # here we will need to flatten the features before going forward
+        self.nl_fc = actor_critic.encoder.basic_encoder.nl_fc
+
+        self.critic = actor_critic.critic_linear
+
+
+    def forward(self, nobs):
+        # conv layer 1
+
+        x = self.conv_head(nobs)
+        x = x.contiguous().view(-1, self.conv_head_out_size)
+
+        x = self.fc1(x)
+        x = self.nl_fc(x)
+
+        x = self.critic(x)
+
+        return x
+
+

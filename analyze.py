@@ -8,7 +8,7 @@ from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_en
 from retinal_rl.analysis.simulation import get_ac_env,generate_simulation
 from retinal_rl.analysis.statistics import mei_receptive_fields,sta_receptive_fields
 from retinal_rl.analysis.util import save_data,load_data,save_onxx,analysis_path,plot_path,data_path
-from retinal_rl.analysis.plot import simulation_plot,receptive_field_plots
+from retinal_rl.analysis.plot import simulation_plot,receptive_field_plots,plot_acts_tsne_stim
 
 from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
 from sample_factory.utils.wandb_utils import init_wandb,finish_wandb
@@ -39,15 +39,24 @@ def analyze(cfg):
 
     if cfg.plot:
 
-        # Single frame of the animation
+        # Load data
         sim_recs = load_data(cfg,envstps,"sim_recs")
+
+        # Single frame of the animation
+        fig = plot_acts_tsne_stim(sim_recs)
+        pth=plot_path(cfg,envstps,"latent-activations.pdf")
+
+        fig.savefig(pth, bbox_inches="tight")
+        if cfg.with_wandb: wandb.log({"latent-activations": wandb.Image(fig)},commit=False)
+
+        # Single frame of the animation
         fig = simulation_plot(sim_recs,frame_step=cfg.frame_step)
         pth=plot_path(cfg,envstps,"simulation-frame.pdf")
 
         fig.savefig(pth, bbox_inches="tight")
         if cfg.with_wandb: wandb.log({"simulation-frame": wandb.Image(fig)},commit=False)
 
-        # STA receptive fielsd
+        # STA receptive fields
         stas = load_data(cfg,envstps,"stas")
         figs = receptive_field_plots(stas)
 

@@ -3,8 +3,6 @@ retina_rl library
 
 """
 
-from sample_factory.utils.utils import str2bool
-
 from sf_examples.vizdoom.doom.doom_params import add_doom_env_args,add_doom_env_eval_args
 
 def retinal_override_defaults(parser):
@@ -66,7 +64,7 @@ def add_retinal_env_args(parser):
     parser.add_argument('--vvs_depth', type=int, default=1, help='Number of CNN layers in the ventral stream network')
     parser.add_argument('--kernel_size', type=int, default=7, help='Size of CNN filters')
     parser.add_argument('--retinal_stride', type=int, default=2, help='Stride at the first conv layer (\'BC\'), doesnt apply to \'VVS\'')
-    parser.add_argument( "--activation", default="relu" , choices=["elu", "relu", "tanh", "linear"]
+    parser.add_argument( "--activation", default="elu" , choices=["elu", "relu", "tanh", "linear"]
                         , type=str, help="Type of activation function to use.")
     parser.add_argument('--repeat', type=int, default=1, help="Dummy parameter to indicate which repetition we're at in a wandb sweep")
 
