@@ -13,7 +13,7 @@ from retinal_rl.analysis.util import ValueNetwork
 
 from tqdm.auto import tqdm
 
-def sta_receptive_fields(cfg,env,actor_critic,nbtch=20000,nreps=1000,pad=2):
+def sta_receptive_fields(cfg,env,actor_critic,nbtch,nreps,pad=5):
     """
     Returns the receptive fields of every layer of a convnet as computed by spike-triggered averaging.
     """

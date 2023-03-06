@@ -31,7 +31,7 @@ def analyze(cfg):
     if cfg.simulate:
         save_onxx(cfg,envstps,ac,env)
 
-        stas = sta_receptive_fields(cfg,env,ac,nreps=cfg.sta_repeats)
+        stas = sta_receptive_fields(cfg,env,ac,nbtch=10000,nreps=cfg.sta_repeats)
         save_data(cfg,envstps,stas,"stas")
 
         sim_recs = generate_simulation(cfg,ac,env)
