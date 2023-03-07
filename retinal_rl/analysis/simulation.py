@@ -20,7 +20,7 @@ from sample_factory.utils.attr_dict import AttrDict
 from sample_factory.utils.typing import Config
 from sample_factory.algo.utils.env_info import extract_env_info
 
-from retinal_rl.analysis.util import obs_dict_to_obs,obs_to_img,ValueNetwork
+from retinal_rl.analysis.util import obs_dict_to_obs,obs_to_img,ValueNetwork,from_float_to_rgb
 
 from tqdm.auto import tqdm
 
@@ -77,8 +77,8 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
 
     # Initializing stream arrays
     imgs = np.zeros((cfg.res_h, cfg.res_w, 3, t_max)).astype(np.uint8)
-    nimgs = np.zeros((cfg.res_h, cfg.res_w, 3, t_max))
-    attrs = np.zeros((cfg.res_h, cfg.res_w, 3, t_max))
+    nimgs = np.zeros((cfg.res_h, cfg.res_w, 3, t_max)).astype(np.uint8)
+    attrs = np.zeros((cfg.res_h, cfg.res_w, 3, t_max)).astype(np.uint8)
     ltnts = np.zeros((cfg.rnn_size, t_max))
     acts = np.zeros((2, t_max))
     hlths = np.zeros(t_max)
@@ -137,8 +137,8 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
                     crwd+=rwd
 
                 imgs[:,:,:,num_frames] = img
-                nimgs[:,:,:,num_frames] = nimg
-                attrs[:,:,:,num_frames] = attrimg
+                nimgs[:,:,:,num_frames] = from_float_to_rgb(nimg)
+                attrs[:,:,:,num_frames] = from_float_to_rgb(attrimg)
                 ltnts[:,num_frames] = ltnt
                 acts[:,num_frames] = actions
                 hlths[num_frames] = health
