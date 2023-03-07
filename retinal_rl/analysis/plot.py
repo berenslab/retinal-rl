@@ -15,9 +15,6 @@ from tqdm.auto import tqdm
 def normalize_data(xs):
     return (xs - np.min(xs)) / (np.max(xs) - np.min(xs))
 
-def from_float_to_rgb(xs):
-    return (255*normalize_data(xs)).astype(np.uint8)
-
 greyscale = np.array([0.299, 0.587, 0.114])
 
 def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35):

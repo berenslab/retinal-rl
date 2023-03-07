@@ -20,9 +20,12 @@ from sample_factory.utils.attr_dict import AttrDict
 from sample_factory.utils.typing import Config
 from sample_factory.algo.utils.env_info import extract_env_info
 
-from retinal_rl.analysis.util import obs_dict_to_obs,obs_to_img,ValueNetwork,from_float_to_rgb
+from retinal_rl.analysis.util import obs_dict_to_obs,obs_to_img,ValueNetwork
 
 from tqdm.auto import tqdm
+
+def from_float_to_rgb(xs):
+    return (255*normalize_data(xs)).astype(np.uint8)
 
 def get_ac_env(cfg: Config) -> Tuple[ActorCritic,BatchedVecEnv,AttrDict,int]:
     """
