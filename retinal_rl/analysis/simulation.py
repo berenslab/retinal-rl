@@ -73,11 +73,11 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
     action_repeat: int = cfg.env_frameskip // cfg.eval_env_frameskip
     device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
     valnet = ValueNetwork(cfg,actor_critic)
-    att_method = Saliency(valnet)
+    att_method = Saliency(valnet,abs=False)
 
     # Initializing stream arrays
     imgs = np.zeros((cfg.res_h, cfg.res_w, 3, t_max)).astype(np.uint8)
-    #nimgs = np.zeros((cfg.res_h, cfg.res_w, 3, t_max)).astype(np.uint8)
+    nimgs = np.zeros((cfg.res_h, cfg.res_w, 3, t_max)).astype(np.uint8)
     attrs = np.zeros((cfg.res_h, cfg.res_w, 3, t_max)).astype(np.uint8)
     ltnts = np.zeros((cfg.rnn_size, t_max))
     acts = np.zeros((2, t_max))
@@ -126,7 +126,7 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
                 attr = att_method.attribute(nobs)
 
                 img = obs_to_img(obs)
-                #nimg = obs_to_img(nobs)
+                nimg = obs_to_img(nobs)
                 attrimg = obs_to_img(attr)
 
                 health = env.unwrapped.get_info()['HEALTH'] # environment info (health etc.)
@@ -137,7 +137,7 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
                     crwd+=rwd
 
                 imgs[:,:,:,num_frames] = img
-                #nimgs[:,:,:,num_frames] = from_float_to_rgb(nimg)
+                nimgs[:,:,:,num_frames] = from_float_to_rgb(nimg)
                 attrs[:,:,:,num_frames] = from_float_to_rgb(attrimg)
                 ltnts[:,num_frames] = ltnt
                 acts[:,num_frames] = actions
@@ -159,7 +159,7 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
 
     return {
             "imgs": imgs,
-            #"nimgs": nimgs,
+            "nimgs": nimgs,
             "attrs": attrs,
             "ltnts": ltnts,
             "acts":acts,
