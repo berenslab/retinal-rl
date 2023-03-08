@@ -49,7 +49,7 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35):
 
     mosaic = """
     aabb
-    aacd
+    aacc
     ddee
     ddee
     """
