@@ -75,7 +75,7 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35):
     imax.spines["top"].set_visible(True)
     imax.spines["right"].set_visible(True)
 
-    Normalized FoV
+    # Normalized FoV
     nimax.set_title("Normalized FoV")
     nimax.set_xticks([])
     nimax.set_yticks([])
