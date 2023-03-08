@@ -8,19 +8,17 @@ plt.style.use('misc/default.mplstyle')
 
 from matplotlib.animation import FuncAnimation
 from retinal_rl.analysis.statistics import fit_tsne_1d,get_stim_coll,row_zscore
+from retinal_rl.analysis.util import normalize_data
+
 
 from tqdm.auto import tqdm
-
-
-def normalize_data(xs):
-    return (xs - np.min(xs)) / (np.max(xs) - np.min(xs))
 
 greyscale = np.array([0.299, 0.587, 0.114])
 
 def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35):
 
     imgs0 = sim_recs["imgs"]
-    nimgs0 = sim_recs["nimgs"]
+    #nimgs0 = sim_recs["nimgs"]
     attrs0 = sim_recs["attrs"]
     hlths0 = sim_recs["hlths"]
     crwds0 = sim_recs["crwds"]
@@ -31,7 +29,7 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35):
     gimgs0 = np.average(imgs,axis=2,weights=greyscale)
 
     gimgs = np.array([gimgs0,gimgs0,gimgs0]).transpose(1,2,0,3)
-    nimgs = normalize_data(nimgs0)
+    #nimgs = normalize_data(nimgs0)
     attrs1 = normalize_data(attrs0)
     attrs = gimgs + attrs1
 
@@ -40,20 +38,18 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35):
 
     if not animate:
         img0 = imgs[:, :, :, frame_step]
-        nimg0 = nimgs[:, :, :, frame_step]
+        #nimg0 = nimgs[:, :, :, frame_step]
         attr0 = attrs[:, :, :, frame_step]
     else:
         img0 = imgs[:, :, :, 0]
-        nimg0 = nimgs[:, :, :, 0]
+        #nimg0 = nimgs[:, :, :, 0]
         attr0 = attrs[:, :, :, 0]
 
     t_max = imgs.shape[3]
 
     mosaic = """
-    aabb
-    aacc
-    ddee
-    ddee
+    ab
+    cd
     """
 
     fig, ax_dict = plt.subplot_mosaic(
@@ -64,8 +60,8 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35):
     imax = ax_dict["a"]
     rwdax = ax_dict["b"]
     hlthax = ax_dict["c"]
-    nimax = ax_dict["d"]
-    attax = ax_dict["e"]
+    #nimax = ax_dict["d"]
+    attax = ax_dict["d"]
 
     trng = np.linspace(0, t_max - 1, t_max)
 
@@ -78,12 +74,12 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35):
     imax.spines["right"].set_visible(True)
 
     # Normalized FoV
-    nimax.set_title("Normalized FoV")
-    nimax.set_xticks([])
-    nimax.set_yticks([])
-    nim = nimax.imshow(nimg0,interpolation=None)
-    nimax.spines["top"].set_visible(True)
-    nimax.spines["right"].set_visible(True)
+    # nimax.set_title("Normalized FoV")
+    # nimax.set_xticks([])
+    # nimax.set_yticks([])
+    # nim = nimax.imshow(nimg0,interpolation=None)
+    # nimax.spines["top"].set_visible(True)
+    # nimax.spines["right"].set_visible(True)
 
     # Attribution
     attax.set_title("Attribution")
@@ -125,8 +121,8 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35):
             img = imgs[:, :, :, i]
             im.set_array(img)
 
-            nimg = nimgs[:, :, :, i]
-            nim.set_array(nimg)
+            #nimg = nimgs[:, :, :, i]
+            #nim.set_array(nimg)
 
             attr = attrs[:, :, :, i]
             att.set_array(attr)

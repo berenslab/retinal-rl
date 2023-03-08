@@ -72,6 +72,11 @@ def load_data(cfg : Config,nstps,flnm):
 
 ### Misc analysis tools ###
 
+def normalize_data(xs):
+    return (xs - np.min(xs)) / (np.max(xs) - np.min(xs))
+
+def from_float_to_rgb(xs):
+    return (255*normalize_data(xs)).astype(np.uint8)
 
 def obs_dict_to_obs(obs_dct):
     """
