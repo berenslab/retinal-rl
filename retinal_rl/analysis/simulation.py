@@ -73,7 +73,7 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
     action_repeat: int = cfg.env_frameskip // cfg.eval_env_frameskip
     device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
     valnet = ValueNetwork(cfg,actor_critic)
-    att_method = GuidedBackprop(valnet)
+    att_method = Saliency(valnet)
 
     # Initializing stream arrays
     imgs = np.zeros((cfg.res_h, cfg.res_w, 3, t_max)).astype(np.uint8)
