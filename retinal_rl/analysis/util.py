@@ -55,7 +55,7 @@ def save_onxx(cfg: Config, nstps : int, actor_critic : ActorCritic, env : Batche
     # visualize obs only for the 1st agent
 
     # Note that onnx can't process dictionary inputs and so we can only look at the encoder (and decoder?) separately)
-    torch.onnx.export(enc,(obs,),data_path(cfg,nstps,"encoder.onnx"),verbose=False,input_names=["observation"],output_names=["latent_state"])
+    torch.onnx.export(torch.unsqueeze(obs,0),data_path(cfg,nstps,"encoder.onnx"),verbose=False,input_names=["observation"],output_names=["latent_state"])
 
 def save_data(cfg : Config,nstps,dat,flnm):
     """
