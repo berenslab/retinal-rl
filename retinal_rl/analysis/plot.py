@@ -181,11 +181,12 @@ def receptive_field_plots(rfs):
         lyr = rfs[ky]
         ochns,nclrs,_,_ = lyr.shape
 
-        fig, axs = plt.subplots(
+        fig, axs0 = plt.subplots(
             nclrs,ochns,
             figsize=(ochns*1.5, nclrs),
             )
 
+        axs = axs0.flat
         clrs = ['Red','Green','Blue']
         cmaps = ['inferno', 'viridis', 'cividis']
 
@@ -196,7 +197,7 @@ def receptive_field_plots(rfs):
 
             for j in range(nclrs):
 
-                ax = axs[j][i]
+                ax = axs[i + ochns * j]
                 im = ax.imshow(lyr[i,j,:,:],cmap=cmaps[j],vmin=mn,vmax=mx)
                 ax.set_xticks([])
                 ax.set_yticks([])
