@@ -43,11 +43,11 @@ def analyze(cfg):
         sim_recs = load_data(cfg,envstps,"sim_recs")
 
         # Single frame of the animation
-         fig = plot_acts_tsne_stim(sim_recs)
-         pth=plot_path(cfg,envstps,"latent-activations.pdf")
+        fig = plot_acts_tsne_stim(sim_recs)
+        pth=plot_path(cfg,envstps,"latent-activations.pdf")
 
-         fig.savefig(pth, bbox_inches="tight")
-         if cfg.with_wandb: wandb.log({"latent-activations": wandb.Image(fig)},commit=False)
+        fig.savefig(pth, bbox_inches="tight")
+        if cfg.with_wandb: wandb.log({"latent-activations": wandb.Image(fig)},commit=False)
 
         # Single frame of the animation
         fig = simulation_plot(sim_recs,frame_step=cfg.frame_step)
