@@ -18,6 +18,9 @@ greyscale = np.array([0.299, 0.587, 0.114])
 
 def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35):
 
+    t_smooth_sigma = 2
+    vlim_factor = 1.5
+
     imgs = sim_recs["imgs"]
     #nimgs0 = sim_recs["nimgs"]
     attrs0 = sim_recs["attrs"]
@@ -29,8 +32,9 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35):
     #imgs = normalize_data(imgs0)
     #gimgs0 = np.average(imgs,axis=2,weights=greyscale)
 
-    attrs0 = gaussian_filter1d(attrs0, t_smooth_sigma, 3)
-    attrs0 = attrs0.astype(float)
+    attrs = gaussian_filter1d(attrs0, t_smooth_sigma, 3)
+    attrs = attrs0.astype(float)
+    vlim = np.max(np.abs(attrs))*vlim_factor
 
     #gimgs = np.array([gimgs0,gimgs0,gimgs0]).transpose(1,2,0,3)
     #nimgs = normalize_data(nimgs0)
@@ -42,21 +46,21 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35):
 
     if not animate:
         img0 = imgs[:, :, :, frame_step]
-        nimg0 = nimgs[:, :, :, frame_step]
+        #nimg0 = nimgs[:, :, :, frame_step]
         attr0 = attrs[:, :, :, frame_step]
     else:
         img0 = imgs[:, :, :, 0]
-        nimg0 = nimgs[:, :, :, 0]
+        #nimg0 = nimgs[:, :, :, 0]
         attr0 = attrs[:, :, :, 0]
 
     t_max = imgs.shape[3]
 
-       mosaic = """
-            aaabb
-            aaabb
-            cccdd
-            cccdd
-            """
+    mosaic = """
+        aaabb
+        aaabb
+        cccdd
+        cccdd
+        """
 
     fig, ax_dict = plt.subplot_mosaic(
         mosaic,
