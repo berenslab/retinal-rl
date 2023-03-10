@@ -52,11 +52,11 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35):
     t_max = imgs.shape[3]
 
        mosaic = """
-    aaabb
-    aaabb
-    cccdd
-    cccdd
-    """
+            aaabb
+            aaabb
+            cccdd
+            cccdd
+            """
 
     fig, ax_dict = plt.subplot_mosaic(
         mosaic,
