@@ -69,9 +69,9 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35):
 
     imax = ax_dict["a"]
     rwdax = ax_dict["b"]
-    hlthax = ax_dict["c"]
+    hlthax = ax_dict["d"]
     #nimax = ax_dict["e"]
-    attax = ax_dict["d"]
+    attax = ax_dict["c"]
 
     trng = np.linspace(0, t_max - 1, t_max)
 
@@ -212,7 +212,8 @@ def receptive_field_plots(rfs):
             for j in range(nclrs):
 
                 ax = axs[i + ochns * j]
-                im = ax.imshow(lyr[i,j,:,:],cmap=cmaps[j],vmin=mn,vmax=mx)
+                hght,wdth = lyr[i,j,:,:].shape
+                im = ax.imshow(lyr[i,j,4:hght-3,4:wdth-3],cmap=cmaps[j],vmin=mn,vmax=mx)
                 ax.set_xticks([])
                 ax.set_yticks([])
                 ax.spines["top"].set_visible(True)
