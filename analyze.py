@@ -31,8 +31,8 @@ def analyze(cfg):
     if cfg.simulate:
         save_onxx(cfg,envstps,ac,env)
 
-        #stas = sta_receptive_fields(cfg,env,ac,nbtch=10000,nreps=cfg.sta_repeats)
-        #save_data(cfg,envstps,stas,"stas")
+        stas = sta_receptive_fields(cfg,env,ac,nbtch=1000,nreps=cfg.sta_repeats)
+        save_data(cfg,envstps,stas,"stas")
 
         sim_recs = generate_simulation(cfg,ac,env)
         save_data(cfg,envstps,sim_recs,"sim_recs")
@@ -43,11 +43,11 @@ def analyze(cfg):
         sim_recs = load_data(cfg,envstps,"sim_recs")
 
         # Single frame of the animation
-        # fig = plot_acts_tsne_stim(sim_recs)
-        # pth=plot_path(cfg,envstps,"latent-activations.pdf")
+        fig = plot_acts_tsne_stim(sim_recs)
+        pth=plot_path(cfg,envstps,"latent-activations.pdf")
 
-        # fig.savefig(pth, bbox_inches="tight")
-        # if cfg.with_wandb: wandb.log({"latent-activations": wandb.Image(fig)},commit=False)
+        fig.savefig(pth, bbox_inches="tight")
+        if cfg.with_wandb: wandb.log({"latent-activations": wandb.Image(fig)},commit=False)
 
         # Single frame of the animation
         fig = simulation_plot(sim_recs,frame_step=cfg.frame_step)
@@ -92,5 +92,5 @@ def main():
     analyze(cfg)
 
 
-if __name__ == '__main__':
-    sys.exit(main())
+    if __name__ == '__main__':
+        sys.exit(main())
