@@ -5,13 +5,14 @@ from retinal_rl.system.encoders import register_retinal_model
 from retinal_rl.system.environment import register_retinal_envs
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 
-from retinal_rl.analysis.simulation import get_ac_env,generate_simulation
+from retinal_rl.analysis.simulation import get_ac_env,generate_simulation,get_checkpoint
 from retinal_rl.analysis.statistics import mei_receptive_fields,sta_receptive_fields
 from retinal_rl.analysis.util import save_data,load_data,save_onxx,analysis_path,plot_path,data_path
 from retinal_rl.analysis.plot import simulation_plot,receptive_field_plots,plot_acts_tsne_stim
 
 from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
 from sample_factory.utils.wandb_utils import init_wandb,finish_wandb
+from sample_factory.utils.utils import log
 
 import wandb
 
@@ -20,8 +21,17 @@ def analyze(cfg):
     # Register retinal environments and models.
     register_retinal_envs()
     register_retinal_model()
-    ac,env,cfg,envstps = get_ac_env(cfg)
-    init_wandb(cfg)
+    checkpoint_dict = get_checkpoint(cfg)
+
+    log.debug("Running analysis: simulate = %s, plot = %s, animate = %s", cfg.simulate, cfg.plot, cfg.animate)
+
+    if checkpoint_dict is None:
+        log.debug("RETINAL RL: No checkpoint found, aborting analysis.")
+        sys.exit(1)
+
+    ac,env,cfg,envstps = get_ac_env(cfg,checkpoint_dict)
+
+    log.debug("RETINAL RL: Checkpoint loaded.")
 
     if not os.path.exists(analysis_path(cfg,envstps)):
         os.makedirs(data_path(cfg,envstps))
@@ -75,11 +85,14 @@ def analyze(cfg):
         if cfg.with_wandb: wandb.log({"simulation-animation": wandb.Video(pth)},commit=False)
 
     env.close()
-    finish_wandb(cfg)
+
+    return 0
 
 
 def main():
     """Script entry point."""
+
+    init_wandb(cfg)
 
     # Two-pass building parser and returning cfg : Namespace
     parser, _ = parse_sf_args(evaluation=True)
@@ -91,6 +104,7 @@ def main():
     # Run analysis
     analyze(cfg)
 
+    finish_wandb(cfg)
 
-    if __name__ == '__main__':
-        sys.exit(main())
+if __name__ == '__main__':
+    sys.exit(main())

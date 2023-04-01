@@ -212,8 +212,8 @@ def receptive_field_plots(rfs):
             for j in range(nclrs):
 
                 ax = axs[i + ochns * j]
-                hght,wdth = lyr[i,j,:,:].shape
-                im = ax.imshow(lyr[i,j,4:hght-3,4:wdth-3],cmap=cmaps[j],vmin=mn,vmax=mx)
+                #hght,wdth = lyr[i,j,:,:].shape
+                im = ax.imshow(lyr[i,j,:,:],cmap=cmaps[j],vmin=mn,vmax=mx)
                 ax.set_xticks([])
                 ax.set_yticks([])
                 ax.spines["top"].set_visible(True)

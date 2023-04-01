@@ -19,6 +19,7 @@ def retinal_override_defaults(parser):
         res_h=90,
         res_w=120,
         wide_aspect_ratio=False,
+        decorrelate_envs_on_one_worker=False,
 
         # Wandb stuff
         with_wandb='True',
@@ -47,7 +48,7 @@ def retinal_override_defaults(parser):
         # Evaluation-mode stuff
         eval_env_frameskip=1,  # this is for smoother rendering during evaluation
         fps=35,
-        max_num_frames=10500,
+        max_num_frames=1050,
         max_num_episodes=100,
     )
 

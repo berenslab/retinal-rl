@@ -24,7 +24,24 @@ from retinal_rl.analysis.util import obs_dict_to_obs,obs_to_img,ValueNetwork,fro
 
 from tqdm.auto import tqdm
 
-def get_ac_env(cfg: Config) -> Tuple[ActorCritic,BatchedVecEnv,AttrDict,int]:
+def get_checkpoint(cfg: Config):
+    """
+    Load the model from checkpoint, initialize the environment, and return both.
+    """
+    #verbose = False
+
+    cfg = load_from_checkpoint(cfg)
+
+    device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
+
+    policy_id = cfg.policy_index
+    name_prefix = dict(latest="checkpoint", best="best")[cfg.load_checkpoint_kind]
+    checkpoints = Learner.get_checkpoints(Learner.checkpoint_dir(cfg, policy_id), f"{name_prefix}_*")
+    checkpoint_dict = Learner.load_checkpoint(checkpoints, device)
+
+    return checkpoint_dict
+
+def get_ac_env(cfg: Config, checkpoint_dict) -> Tuple[ActorCritic,BatchedVecEnv,AttrDict,int]:
     """
     Load the model from checkpoint, initialize the environment, and return both.
     """
@@ -43,20 +60,17 @@ def get_ac_env(cfg: Config) -> Tuple[ActorCritic,BatchedVecEnv,AttrDict,int]:
         cfg, env_config=AttrDict(worker_index=0, vector_index=0, env_id=0), render_mode=render_mode
     )
 
+    actor_critic = create_actor_critic(cfg, env.observation_space, env.action_space)
+    actor_critic.eval()
+
+
     if hasattr(env.unwrapped, "reset_on_init"):
         # reset call ruins the demo recording for VizDoom
         env.unwrapped.reset_on_init = False
 
-    actor_critic = create_actor_critic(cfg, env.observation_space, env.action_space)
-    actor_critic.eval()
-
     device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
-    actor_critic.model_to_device(device)
 
-    policy_id = cfg.policy_index
-    name_prefix = dict(latest="checkpoint", best="best")[cfg.load_checkpoint_kind]
-    checkpoints = Learner.get_checkpoints(Learner.checkpoint_dir(cfg, policy_id), f"{name_prefix}_*")
-    checkpoint_dict = Learner.load_checkpoint(checkpoints, device)
+    actor_critic.model_to_device(device)
     actor_critic.load_state_dict(checkpoint_dict["model"])
     nstps = checkpoint_dict["env_steps"]
 
