@@ -3,6 +3,7 @@
 import numpy as np
 import torch
 
+import os
 from os.path import join
 
 from sample_factory.algo.utils.make_env import BatchedVecEnv
@@ -17,11 +18,32 @@ from torch import nn
 ## Paths ###
 
 
-def analysis_path(cfg,nstps):
+def analysis_root(cfg):
+    """
+    Returns the root analysis directory.
+    """
 
-    return join(experiment_dir(cfg),"analyses",f"env_steps-{nstps}")
+    return join(experiment_dir(cfg),"analyses")
+
+def analysis_path(cfg,nstps):
+    """
+    Returns the path to the analysis directory.
+    """
+    art = analysis_root(cfg)
+
+    return join(art,f"env_steps-{nstps}")
+
+def get_analysis_times(cfg):
+    """
+    Returns the list of analysis times.
+    """
+    art = analysis_root(cfg)
+    return [int(f.split("-")[1]) for f in os.listdir(art)]
 
 def data_path(cfg,nstps,flnm=None):
+    """
+    Returns the path to the data directory.
+    """
 
     datpth = analysis_path(cfg,nstps) + "/data"
 
@@ -31,6 +53,9 @@ def data_path(cfg,nstps,flnm=None):
     return datpth
 
 def plot_path(cfg,nstps,flnm=None):
+    """
+    Returns the path to the plot directory.
+    """
 
     pltpth = analysis_path(cfg,nstps) + "/plots"
 

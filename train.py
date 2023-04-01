@@ -4,7 +4,7 @@ from sample_factory.train import run_rl
 
 from retinal_rl.system.encoders import register_retinal_model
 from retinal_rl.system.environment import register_retinal_envs
-from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args
+from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 
 
 ### Main ###
@@ -17,8 +17,9 @@ def main():
     register_retinal_model()
 
     # Two-pass building parser and returning cfg : Namespace
-    parser, _ = parse_sf_args()
+    parser, _ = parse_sf_args(evaluation=True)
     add_retinal_env_args(parser)
+    add_retinal_env_eval_args(parser)
     retinal_override_defaults(parser)
     cfg = parse_full_cfg(parser)
 

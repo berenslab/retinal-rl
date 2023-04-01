@@ -27,6 +27,8 @@ def retinal_override_defaults(parser):
         wandb_job_type="test",
 
         # System specific but we'll still set these defaults
+
+        train_for_env_steps=int(1e10),
         batch_size=2048,
         num_workers=24,
         num_envs_per_worker=8,
@@ -67,6 +69,7 @@ def add_retinal_env_args(parser):
     parser.add_argument( "--activation", default="elu" , choices=["elu", "relu", "tanh", "linear"]
                         , type=str, help="Type of activation function to use.")
     parser.add_argument('--repeat', type=int, default=1, help="Dummy parameter to indicate which repetition we're at in a wandb sweep")
+    parser.add_argument('--analysis_freq', type=int, default=int(1e9), help="How often to run analysis (in frames). 0 disables live analyses.")
 
 def add_retinal_env_eval_args(parser):
     """
