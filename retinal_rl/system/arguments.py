@@ -70,7 +70,7 @@ def add_retinal_env_args(parser):
     parser.add_argument( "--activation", default="elu" , choices=["elu", "relu", "tanh", "linear"]
                         , type=str, help="Type of activation function to use.")
     parser.add_argument('--repeat', type=int, default=1, help="Dummy parameter to indicate which repetition we're at in a wandb sweep")
-    parser.add_argument('--analysis_freq', type=int, default=int(1e9), help="How often to run analysis (in frames). 0 disables live analyses.")
+    parser.add_argument('--analysis_freq', type=int, default=int(5e8), help="How often to run analysis (in frames). 0 disables live analyses.")
 
 def add_retinal_env_eval_args(parser):
     """
