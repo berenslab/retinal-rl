@@ -10,7 +10,7 @@ from retinal_rl.analysis.statistics import mei_receptive_fields,sta_receptive_fi
 from retinal_rl.analysis.util import save_data,load_data,save_onxx,analysis_path,plot_path,data_path
 from retinal_rl.analysis.plot import simulation_plot,receptive_field_plots,plot_acts_tsne_stim
 
-from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
+from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args,load_from_checkpoint
 from sample_factory.utils.wandb_utils import init_wandb,finish_wandb
 from sample_factory.utils.utils import log
 
@@ -19,8 +19,6 @@ import wandb
 def analyze(cfg):
 
     # Register retinal environments and models.
-    register_retinal_envs()
-    register_retinal_model()
     checkpoint_dict = get_checkpoint(cfg)
 
     log.debug("Running analysis: simulate = %s, plot = %s, animate = %s", cfg.simulate, cfg.plot, cfg.animate)
@@ -92,7 +90,8 @@ def analyze(cfg):
 def main():
     """Script entry point."""
 
-    init_wandb(cfg)
+    register_retinal_envs()
+    register_retinal_model()
 
     # Two-pass building parser and returning cfg : Namespace
     parser, _ = parse_sf_args(evaluation=True)
@@ -100,6 +99,9 @@ def main():
     add_retinal_env_eval_args(parser)
     retinal_override_defaults(parser)
     cfg = parse_full_cfg(parser)
+    cfg = load_from_checkpoint(cfg)
+
+    init_wandb(cfg)
 
     # Run analysis
     analyze(cfg)
