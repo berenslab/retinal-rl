@@ -2,7 +2,7 @@ import sys
 import os
 from multiprocessing import Process
 
-from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
+from sample_factory.cfg.arguments import parse_sf_args, parse_full_cfg
 from sample_factory.train import make_runner
 from sample_factory.utils.typing import Config
 from sample_factory.algo.utils.misc import ExperimentStatus
@@ -51,7 +51,7 @@ class RetinalAlgoObserver(AlgoObserver):
         #    log.debug(f"RETINAL RL: Analysis failed at {total_env_steps} env steps.")
         #    sys.exit(1)
 
-    def on_training_step(self, runner: Runner, training_iteration_since_resume: int) -> None:
+    def on_training_step(self, runner: Runner, _) -> None:
         """Called after each training step."""
 
         if self.current_process is None:
@@ -90,6 +90,21 @@ def run_rl(cfg: Config):
         status = runner.run()
 
     return status
+
+def fill_in_argv_template(argv):
+
+    argv = [a.split('=') for a in argv]
+    # Remove dashes from argv
+    cfg = dict([[a[0].replace("--",""),a[1]] for a in argv])
+    # Replace cfg string templates
+    cfg = {k:v.format(**cfg) for k,v in cfg.items()}
+    # Convert cfg back into argv
+    argv = [f"--{k}={v}" for k,v in cfg.items()]
+
+    return argv
+
+
+
 ### Main ###
 
 
@@ -99,16 +114,21 @@ def main():
     register_retinal_envs()
     register_retinal_model()
 
+    argv = sys.argv[1:]
+    # Convert argv into a dictionary
+    argv = fill_in_argv_template(argv)
+
     # Two-pass building parser and returning cfg : Namespace
-    parser, _ = parse_sf_args(evaluation=True)
+    parser, _ = parse_sf_args(argv,evaluation=True)
     add_retinal_env_args(parser)
     add_retinal_env_eval_args(parser)
     retinal_override_defaults(parser)
-    cfg = parse_full_cfg(parser)
+
+    cfg = parse_full_cfg(parser, argv)
 
     # Allows reading some config variables from string templates - designed for wandb sweeps.
-    cfg.train_dir = cfg.train_dir.format(**vars(cfg))
-    cfg.experiment = cfg.experiment.format(**vars(cfg))
+    # cfg.train_dir = cfg.train_dir.format(**vars(cfg))
+    # cfg.experiment = cfg.experiment.format(**vars(cfg))
 
     # Run simulation
     status = run_rl(cfg)

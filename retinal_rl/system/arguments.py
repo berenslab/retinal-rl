@@ -82,9 +82,9 @@ def add_retinal_env_eval_args(parser):
     # Doom args
     add_doom_env_eval_args(parser)
 
-    parser.add_argument("--simulate", action="store_true", help="Runs simulations and analyses")
-    parser.add_argument("--plot", action="store_true", help="Generate static plots")
-    parser.add_argument("--animate", action="store_true", help="Animate 'analysis_out.npy'")
+    parser.add_argument("--no_simulate", action="store_true", help="Runs simulations and analyses")
+    parser.add_argument("--no_plot", action="store_true", help="Generate static plots")
+    parser.add_argument("--no_animate", action="store_true", help="Animate 'analysis_out.npy'")
     parser.add_argument("--frame_step", type=int, default=0, help="Which frame of the animation to statically plot")
     parser.add_argument("--sta_repeats", type=int, default=100, help="Number of loops in generating STAs")
     #parser.add_argument('--analyze_acts', type=str, default='False', help='Visualize activations via gifs and dimensionality reduction; options: \'environment\', \'mnist\' or \'cifar\'')

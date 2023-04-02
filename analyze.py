@@ -10,7 +10,7 @@ from retinal_rl.analysis.statistics import mei_receptive_fields,sta_receptive_fi
 from retinal_rl.analysis.util import save_data,load_data,save_onxx,analysis_path,plot_path,data_path
 from retinal_rl.analysis.plot import simulation_plot,receptive_field_plots,plot_acts_tsne_stim
 
-from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args,load_from_checkpoint
+from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
 from sample_factory.utils.wandb_utils import init_wandb,finish_wandb
 from sample_factory.utils.utils import log
 
@@ -19,9 +19,9 @@ import wandb
 def analyze(cfg):
 
     # Register retinal environments and models.
-    checkpoint_dict = get_checkpoint(cfg)
+    checkpoint_dict,cfg = get_checkpoint(cfg)
 
-    log.debug("Running analysis: simulate = %s, plot = %s, animate = %s", cfg.simulate, cfg.plot, cfg.animate)
+    log.debug("Running analysis: simulate = %s, plot = %s, animate = %s", not(cfg.no_simulate), not(cfg.no_plot), not(cfg.no_animate))
 
     if checkpoint_dict is None:
         log.debug("RETINAL RL: No checkpoint found, aborting analysis.")
@@ -36,7 +36,7 @@ def analyze(cfg):
         os.makedirs(plot_path(cfg,envstps))
 
     """ Final gluing together of all analyses of interest. """
-    if cfg.simulate:
+    if not (cfg.no_simulate):
         save_onxx(cfg,envstps,ac,env)
 
         stas = sta_receptive_fields(cfg,env,ac,nbtch=1000,nreps=cfg.sta_repeats)
@@ -45,7 +45,7 @@ def analyze(cfg):
         sim_recs = generate_simulation(cfg,ac,env)
         save_data(cfg,envstps,sim_recs,"sim_recs")
 
-    if cfg.plot:
+    if not (cfg.no_plot):
 
         # Load data
         sim_recs = load_data(cfg,envstps,"sim_recs")
@@ -55,14 +55,14 @@ def analyze(cfg):
         pth=plot_path(cfg,envstps,"latent-activations.pdf")
 
         fig.savefig(pth, bbox_inches="tight")
-        if cfg.with_wandb: wandb.log({"latent-activations": wandb.Image(fig)},commit=False)
+        if cfg.with_wandb: wandb.log({"latent-activations": wandb.Image(fig)})
 
         # Single frame of the animation
         fig = simulation_plot(sim_recs,frame_step=cfg.frame_step)
         pth=plot_path(cfg,envstps,"simulation-frame.pdf")
 
         fig.savefig(pth, bbox_inches="tight")
-        if cfg.with_wandb: wandb.log({"simulation-frame": wandb.Image(fig)},commit=False)
+        if cfg.with_wandb: wandb.log({"simulation-frame": wandb.Image(fig)})
 
         # STA receptive fields
         stas = load_data(cfg,envstps,"stas")
@@ -70,9 +70,9 @@ def analyze(cfg):
 
         for ky in figs:
             figs[ky].savefig(plot_path(cfg,envstps,ky + "-sta-receptive-fields.pdf"), bbox_inches="tight")
-            if cfg.with_wandb: wandb.log({ky + "-sta-receptive-fields": wandb.Image(figs[ky])},commit=False)
+            if cfg.with_wandb: wandb.log({ky + "-sta-receptive-fields": wandb.Image(figs[ky])})
 
-    if cfg.animate:
+    if not (cfg.no_animate):
 
         # Animation
         sim_recs = load_data(cfg,envstps,"sim_recs")
@@ -80,7 +80,7 @@ def analyze(cfg):
         pth = plot_path(cfg,envstps,"simulation-animation.mp4")
 
         anim.save(pth, extra_args=["-vcodec", "libx264"] )
-        if cfg.with_wandb: wandb.log({"simulation-animation": wandb.Video(pth)},commit=False)
+        if cfg.with_wandb: wandb.log({"simulation-animation": wandb.Video(pth)})
 
     env.close()
 
@@ -99,7 +99,6 @@ def main():
     add_retinal_env_eval_args(parser)
     retinal_override_defaults(parser)
     cfg = parse_full_cfg(parser)
-    cfg = load_from_checkpoint(cfg)
 
     init_wandb(cfg)
 
