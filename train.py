@@ -63,7 +63,7 @@ class RetinalAlgoObserver(AlgoObserver):
 
             if current_step >= self.steps_complete:
                 # run analysis in a separate process
-                log.debug("RETINAL RL: Launching analysis...",current_step,self.steps_complete)
+                log.debug("RETINAL RL: Launching analysis...")
                 self.current_process = Process(target=self.analyze)
                 self.current_process.start()
 
