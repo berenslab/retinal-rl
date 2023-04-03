@@ -18,10 +18,10 @@ import wandb
 
 def analyze(cfg):
 
+    log.debug("Running analysis: simulate = %s, plot = %s, animate = %s", not(cfg.no_simulate), not(cfg.no_plot), not(cfg.no_animate))
+
     # Register retinal environments and models.
     checkpoint_dict,cfg = get_checkpoint(cfg)
-
-    log.debug("Running analysis: simulate = %s, plot = %s, animate = %s", not(cfg.no_simulate), not(cfg.no_plot), not(cfg.no_animate))
 
     if checkpoint_dict is None:
         log.debug("RETINAL RL: No checkpoint found, aborting analysis.")

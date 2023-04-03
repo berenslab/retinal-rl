@@ -54,10 +54,12 @@ def get_ac_env(cfg: Config, checkpoint_dict) -> Tuple[ActorCritic,BatchedVecEnv,
     # In general we only focus on saving to files
     render_mode = "rgb_array"
 
+    log.debug("RETINAL RL: Making environment...")
     env = make_env_func_batched(
         cfg, env_config=AttrDict(worker_index=0, vector_index=0, env_id=0), render_mode=render_mode
     )
 
+    log.debug("RETINAL RL: Finished making environment, loading actor-critic model...")
     actor_critic = create_actor_critic(cfg, env.observation_space, env.action_space)
     actor_critic.eval()
 
