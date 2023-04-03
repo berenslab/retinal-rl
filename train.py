@@ -63,6 +63,7 @@ class RetinalAlgoObserver(AlgoObserver):
 
             if current_step >= self.steps_complete:
                 # run analysis in a separate process
+                log.debug("RETINAL RL: Launching analysis...",current_step,self.steps_complete)
                 self.current_process = Process(target=self.analyze)
                 self.current_process.start()
 
@@ -125,10 +126,6 @@ def main():
     retinal_override_defaults(parser)
 
     cfg = parse_full_cfg(parser, argv)
-
-    # Allows reading some config variables from string templates - designed for wandb sweeps.
-    # cfg.train_dir = cfg.train_dir.format(**vars(cfg))
-    # cfg.experiment = cfg.experiment.format(**vars(cfg))
 
     # Run simulation
     status = run_rl(cfg)
