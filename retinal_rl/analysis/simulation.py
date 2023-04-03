@@ -60,20 +60,25 @@ def get_ac_env(cfg: Config, checkpoint_dict) -> Tuple[ActorCritic,BatchedVecEnv,
         cfg, env_config=AttrDict(worker_index=0, vector_index=0, env_id=0), render_mode=render_mode
     )
 
-    log.debug("RETINAL RL: Finished making environment, loading actor-critic model...")
-    actor_critic = create_actor_critic(cfg, env.observation_space, env.action_space)
-    actor_critic.eval()
-
-
     if hasattr(env.unwrapped, "reset_on_init"):
         # reset call ruins the demo recording for VizDoom
         env.unwrapped.reset_on_init = False
 
-    device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
+    log.debug("RETINAL RL: Finished making environment, loading actor-critic model...")
+    actor_critic = create_actor_critic(cfg, env.observation_space, env.action_space)
+    actor_critic.eval()
 
+    log.debug("RETINAL RL: Actor-critic initialized...")
+
+    device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
     actor_critic.model_to_device(device)
+
+    log.debug("RETINAL RL: ...copied to device...")
+
     actor_critic.load_state_dict(checkpoint_dict["model"])
     nstps = checkpoint_dict["env_steps"]
+
+    log.debug("RETINAL RL: ...and loaded from checkpoint.")
 
     return actor_critic,env,cfg,nstps
 
