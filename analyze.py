@@ -27,9 +27,11 @@ def analyze(cfg):
         log.debug("RETINAL RL: No checkpoint found, aborting analysis.")
         sys.exit(1)
 
-    log.debug("RETINAL RL: Checkpoint loaded, launching analyses.")
+    log.debug("RETINAL RL: Checkpoint loaded, preparing environment.")
 
     ac,env,cfg,envstps = get_ac_env(cfg,checkpoint_dict)
+
+    log.debug("RETINAL RL: Model and environment loaded, preparing simulation.")
 
     if not os.path.exists(analysis_path(cfg,envstps)):
         os.makedirs(data_path(cfg,envstps))
