@@ -66,6 +66,7 @@ def get_ac_env(cfg: Config, checkpoint_dict) -> Tuple[ActorCritic,BatchedVecEnv,
 
     log.debug("RETINAL RL: Finished making environment, loading actor-critic model...")
     actor_critic = create_actor_critic(cfg, env.observation_space, env.action_space)
+    log.debug("RETINAL RL: ...evaluating actor-critic model...")
     actor_critic.eval()
 
     log.debug("RETINAL RL: Actor-critic initialized...")
