@@ -69,7 +69,7 @@ class RetinalAlgoObserver(AlgoObserver):
 
         else:
             if not self.current_process.is_alive():
-                self.current_process.join()
+                self.current_process.join(timeout=10)
                 if self.current_process.exitcode == 0:
                     self.steps_complete += 1
                 self.current_process = None
