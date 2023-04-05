@@ -66,20 +66,20 @@ def get_ac_env(cfg: Config, checkpoint_dict) -> Tuple[ActorCritic,BatchedVecEnv,
 
     log.debug("RETINAL RL: Finished making environment, loading actor-critic model...")
     actor_critic = create_actor_critic(cfg, env.observation_space, env.action_space)
-    log.debug("RETINAL RL: ...evaluating actor-critic model...")
+    # log.debug("RETINAL RL: ...evaluating actor-critic model...")
     actor_critic.eval()
 
-    log.debug("RETINAL RL: Actor-critic initialized...")
+    # log.debug("RETINAL RL: Actor-critic initialized...")
 
     device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
     actor_critic.model_to_device(device)
 
-    log.debug("RETINAL RL: ...copied to device...")
+    # log.debug("RETINAL RL: ...copied to device...")
 
     actor_critic.load_state_dict(checkpoint_dict["model"])
     nstps = checkpoint_dict["env_steps"]
 
-    log.debug("RETINAL RL: ...and loaded from checkpoint.")
+    # log.debug("RETINAL RL: ...and loaded from checkpoint.")
 
     return actor_critic,env,cfg,nstps
 

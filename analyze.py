@@ -18,6 +18,9 @@ import wandb
 
 def analyze(cfg):
 
+    register_retinal_envs()
+    register_retinal_model()
+
     log.debug("Running analysis: simulate = %s, plot = %s, animate = %s", not(cfg.no_simulate), not(cfg.no_plot), not(cfg.no_animate))
 
     # Register retinal environments and models.
@@ -91,9 +94,6 @@ def analyze(cfg):
 
 def main():
     """Script entry point."""
-
-    register_retinal_envs()
-    register_retinal_model()
 
     # Two-pass building parser and returning cfg : Namespace
     parser, _ = parse_sf_args(evaluation=True)

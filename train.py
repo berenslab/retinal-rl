@@ -1,6 +1,7 @@
 import sys
 import os
-from multiprocessing import Process
+import multiprocessing
+multiprocessing.set_start_method("spawn",force=True)
 
 from sample_factory.cfg.arguments import parse_sf_args, parse_full_cfg
 from sample_factory.train import make_runner
@@ -59,17 +60,17 @@ class RetinalAlgoObserver(AlgoObserver):
             total_env_steps = sum(runner.env_steps.values())
             current_step = total_env_steps // self.freq
 
-            log.debug("RETINAL RL: No analysis running; current_step = %s, steps_complete = %s",current_step,self.steps_complete)
+            #log.debug("RETINAL RL: No analysis running; current_step = %s, steps_complete = %s",current_step,self.steps_complete)
 
             if current_step >= self.steps_complete:
                 # run analysis in a separate process
                 log.debug("RETINAL RL: current_step >= self.steps_complete, launching analysis process...")
-                self.current_process = Process(target=self.analyze)
+                self.current_process = multiprocessing.Process(target=self.analyze)
                 self.current_process.start()
 
         else:
             if not self.current_process.is_alive():
-                self.current_process.join(timeout=10)
+                self.current_process.join()
                 if self.current_process.exitcode == 0:
                     self.steps_complete += 1
                 self.current_process = None
