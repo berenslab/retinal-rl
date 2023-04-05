@@ -45,6 +45,6 @@ From: ubuntu:22.10
     pip3 install vizdoom==1.1.14 sample-factory==2.0.2
 
     # retinal-rl Extra
-    pip3 install matplotlib opentsne pygame torchvision pycairo dpcpp-cpp-rt pyqt5 pyqt6 captum
+    pip3 install matplotlib opentsne pygame torchvision==0.14.1 pycairo dpcpp-cpp-rt pyqt5 pyqt6 captum
 
     ln -s /usr/bin/python3 /usr/bin/python
