@@ -11,10 +11,9 @@ from retinal_rl.analysis.util import save_data,load_data,save_onxx,analysis_path
 from retinal_rl.analysis.plot import simulation_plot,receptive_field_plots,plot_acts_tsne_stim
 
 from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
-from sample_factory.utils.wandb_utils import init_wandb
 from sample_factory.utils.utils import log
 
-import wandb
+#import wandb
 
 def analyze(cfg):
 
@@ -40,13 +39,11 @@ def analyze(cfg):
         os.makedirs(data_path(cfg,envstps))
         os.makedirs(plot_path(cfg,envstps))
 
-    init_wandb(cfg)
-
     """ Final gluing together of all analyses of interest. """
     if not (cfg.no_simulate):
         save_onxx(cfg,envstps,ac,env)
 
-        stas = sta_receptive_fields(cfg,env,ac,nbtch=1000,nreps=cfg.sta_repeats)
+        stas = sta_receptive_fields(cfg,env,ac,nbtch=200,nreps=cfg.sta_repeats)
         save_data(cfg,envstps,stas,"stas")
 
         sim_recs = generate_simulation(cfg,ac,env)
@@ -59,25 +56,24 @@ def analyze(cfg):
 
         # Single frame of the animation
         fig = plot_acts_tsne_stim(sim_recs)
-        pth=plot_path(cfg,envstps,"latent-activations.pdf")
+        pth=plot_path(cfg,envstps,"latent-activations.png")
 
         fig.savefig(pth, bbox_inches="tight")
-        if cfg.with_wandb: wandb.log({"latent-activations": wandb.Image(fig)})
 
         # Single frame of the animation
         fig = simulation_plot(sim_recs,frame_step=cfg.frame_step)
-        pth=plot_path(cfg,envstps,"simulation-frame.pdf")
+        pth=plot_path(cfg,envstps,"simulation-frame.png")
 
         fig.savefig(pth, bbox_inches="tight")
-        if cfg.with_wandb: wandb.log({"simulation-frame": wandb.Image(fig)})
+        #if cfg.with_wandb: wandb.log({"simulation-frame": wandb.Image(fig)})
 
         # STA receptive fields
         stas = load_data(cfg,envstps,"stas")
         figs = receptive_field_plots(stas)
 
         for ky in figs:
-            figs[ky].savefig(plot_path(cfg,envstps,ky + "-sta-receptive-fields.pdf"), bbox_inches="tight")
-            if cfg.with_wandb: wandb.log({ky + "-sta-receptive-fields": wandb.Image(figs[ky])})
+            figs[ky].savefig(plot_path(cfg,envstps,ky + "-sta-receptive-fields.png"), bbox_inches="tight")
+            #if cfg.with_wandb: wandb.log({ky + "-sta-receptive-fields": wandb.Image(figs[ky])})
 
     if not (cfg.no_animate):
 
@@ -87,14 +83,11 @@ def analyze(cfg):
         pth = plot_path(cfg,envstps,"simulation-animation.mp4")
 
         anim.save(pth, extra_args=["-vcodec", "libx264"] )
-        if cfg.with_wandb: wandb.log({"simulation-animation": wandb.Video(pth)})
+        #if cfg.with_wandb: wandb.log({"simulation-animation": wandb.Video(pth)})
 
     env.close()
 
-    wandb.finish()
-
-    sys.exit()
-    #finish_wandb(cfg)
+    return envstps
 
 
 def main():

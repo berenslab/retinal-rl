@@ -1,5 +1,6 @@
 import sys
 import os
+import wandb
 import multiprocessing
 multiprocessing.set_start_method("spawn",force=True)
 
@@ -14,7 +15,7 @@ from sample_factory.utils.utils import log
 from retinal_rl.system.encoders import register_retinal_model
 from retinal_rl.system.environment import register_retinal_envs
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
-from retinal_rl.analysis.util import get_analysis_times,analysis_root
+from retinal_rl.analysis.util import get_analysis_times,analysis_root,plot_path
 
 from analyze import analyze
 
@@ -31,6 +32,7 @@ class RetinalAlgoObserver(AlgoObserver):
         self.cfg = cfg
         self.freq = cfg.analysis_freq
         self.current_process = None
+        self.queue = multiprocessing.Queue()
 
         # get analysis times
         if not os.path.exists(analysis_root(cfg)):
@@ -41,10 +43,11 @@ class RetinalAlgoObserver(AlgoObserver):
         self.last_analysis = max(self.analysis_times,default=-1)
         self.steps_complete = 1 + self.last_analysis // self.freq
 
-    def analyze(self):
+    def analyze(self,queue):
         """Run analysis in a separate process."""
 
-        analyze(self.cfg)
+        envstps = analyze(self.cfg)
+        queue.put(envstps,block=False)
 
     def on_training_step(self, runner: Runner, _) -> None:
         """Called after each training step."""
@@ -59,14 +62,34 @@ class RetinalAlgoObserver(AlgoObserver):
             if current_step >= self.steps_complete:
                 # run analysis in a separate process
                 log.debug("RETINAL RL: current_step >= self.steps_complete, launching analysis process...")
-                self.current_process = multiprocessing.Process(target=self.analyze)
+                self.current_process = multiprocessing.Process(target=self.analyze,args=(self.queue,))
                 self.current_process.start()
 
         else:
             if not self.current_process.is_alive():
-                self.current_process.join()
+
                 if self.current_process.exitcode == 0:
+
+                    log.debug("RETINAL RL: Analysis process finished successfully. Retrieving envstps...")
+                    envstps = self.queue.get()
+
+                    if self.cfg.with_wandb:
+                        log.debug("RETINAL RL: Uploading plots to wandb...")
+
+                        pltpth = plot_path(self.cfg,envstps)
+                        # load all pngs in the plot directory and upload them to wandb
+                        for f in os.listdir(pltpth):
+                            if f.endswith(".png"):
+                                log.debug("RETINAL RL: Uploading %s",f)
+                                wandb.log({f: wandb.Image(os.path.join(pltpth,f))})
+                        # load all mp4 files in the plot directory and upload them to wandb
+                        for f in os.listdir(pltpth):
+                            if f.endswith(".mp4"):
+                                log.debug("RETINAL RL: Uploading %s",f)
+                                wandb.log({f: wandb.Video(os.path.join(pltpth,f))})
+
                     self.steps_complete += 1
+                self.current_process.join()
                 self.current_process = None
 
 
