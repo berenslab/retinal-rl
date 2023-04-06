@@ -46,12 +46,6 @@ class RetinalAlgoObserver(AlgoObserver):
 
         analyze(self.cfg)
 
-        #if ex == 0:
-        #    log.debug(f"RETINAL RL: Analysis complete at {total_env_steps} env steps.")
-        #else:
-        #    log.debug(f"RETINAL RL: Analysis failed at {total_env_steps} env steps.")
-        #    sys.exit(1)
-
     def on_training_step(self, runner: Runner, _) -> None:
         """Called after each training step."""
 
@@ -60,7 +54,7 @@ class RetinalAlgoObserver(AlgoObserver):
             total_env_steps = sum(runner.env_steps.values())
             current_step = total_env_steps // self.freq
 
-            #log.debug("RETINAL RL: No analysis running; current_step = %s, steps_complete = %s",current_step,self.steps_complete)
+            log.debug("RETINAL RL: No analysis running; current_step = %s, steps_complete = %s",current_step,self.steps_complete)
 
             if current_step >= self.steps_complete:
                 # run analysis in a separate process

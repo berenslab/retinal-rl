@@ -6,12 +6,12 @@ from retinal_rl.system.environment import register_retinal_envs
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 
 from retinal_rl.analysis.simulation import get_ac_env,generate_simulation,get_checkpoint
-from retinal_rl.analysis.statistics import mei_receptive_fields,sta_receptive_fields
+from retinal_rl.analysis.statistics import sta_receptive_fields
 from retinal_rl.analysis.util import save_data,load_data,save_onxx,analysis_path,plot_path,data_path
 from retinal_rl.analysis.plot import simulation_plot,receptive_field_plots,plot_acts_tsne_stim
 
 from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
-from sample_factory.utils.wandb_utils import init_wandb,finish_wandb
+from sample_factory.utils.wandb_utils import init_wandb
 from sample_factory.utils.utils import log
 
 import wandb
@@ -39,6 +39,8 @@ def analyze(cfg):
     if not os.path.exists(analysis_path(cfg,envstps)):
         os.makedirs(data_path(cfg,envstps))
         os.makedirs(plot_path(cfg,envstps))
+
+    init_wandb(cfg)
 
     """ Final gluing together of all analyses of interest. """
     if not (cfg.no_simulate):
@@ -89,7 +91,10 @@ def analyze(cfg):
 
     env.close()
 
-    return 0
+    wandb.finish()
+
+    sys.exit()
+    #finish_wandb(cfg)
 
 
 def main():
@@ -102,12 +107,8 @@ def main():
     retinal_override_defaults(parser)
     cfg = parse_full_cfg(parser)
 
-    init_wandb(cfg)
-
     # Run analysis
     analyze(cfg)
-
-    finish_wandb(cfg)
 
 if __name__ == '__main__':
     sys.exit(main())
