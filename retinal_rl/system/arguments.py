@@ -18,7 +18,6 @@ def retinal_override_defaults(parser):
         # Environment defaults we've settled on
         res_h=90,
         res_w=120,
-        wide_aspect_ratio=False,
         decorrelate_envs_on_one_worker=False,
 
         # Wandb stuff
@@ -73,6 +72,7 @@ def add_retinal_env_args(parser):
     parser.add_argument('--analysis_freq', type=int, default=int(5e8), help="How often to run analysis (in frames). 0 disables live analyses.")
     # Whether to observe the algorithm during training
     parser.add_argument("--no_observe", action="store_true", help="Whether to disable live observation of the algorithm during training")
+    parser.add_argument("--resolution", type=str, default="160x120", help="Resolution of the environment")
 
 
 def add_retinal_env_eval_args(parser):
