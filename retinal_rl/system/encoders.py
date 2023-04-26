@@ -138,11 +138,11 @@ class LindseyEncoderBaseMaxPool(Encoder):
             self.nls.append(activation(cfg))
 
             if i == 0: # 'bipolar cells' ('global channels')
-                conv_layers.extend([nn.Conv2d(3, nchns, krnsz, stride=1), nn.MaxPool2d(2), self.nls[i]])
+                conv_layers.extend([nn.Conv2d(3, nchns, krnsz, stride=1), nn.MaxPool2d(3), self.nls[i]])
             elif i == 1: # 'ganglion cells' ('retinal bottleneck')
                 conv_layers.extend([nn.Conv2d(nchns, btlchns, krnsz, stride=1), self.nls[i]])
             elif i == 2: # 'V1' ('global channels')
-                conv_layers.extend([nn.Conv2d(btlchns, nchns, krnsz, stride=1), nn.MaxPool2d(2), self.nls[i]])
+                conv_layers.extend([nn.Conv2d(btlchns, nchns, krnsz, stride=1), nn.MaxPool2d(3), self.nls[i]])
             else: # 'vvs layers'
                 conv_layers.extend([nn.Conv2d(nchns, nchns, krnsz, stride=1), self.nls[i]])
 
