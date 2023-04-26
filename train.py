@@ -99,7 +99,8 @@ class RetinalAlgoObserver(AlgoObserver):
 def run_rl(cfg: Config):
     """Run RL training."""
     cfg, runner = make_runner(cfg)
-    runner.register_observer(RetinalAlgoObserver(cfg))
+    if not(cfg.no_observe):
+        runner.register_observer(RetinalAlgoObserver(cfg))
 
     # here we can register additional message or summary handlers
     # see sf_examples/dmlab/train_dmlab.py for example
@@ -111,7 +112,13 @@ def run_rl(cfg: Config):
     return status
 
 def fill_in_argv_template(argv):
+    """Replace string templates in argv with values from argv."""
 
+    # Separate out boolean flag arguments
+    bool_flags = [a for a in argv if a.startswith("--") and "=" not in a]
+    argv = [a for a in argv if not a.startswith("--") or "=" in a]
+
+    # Convert argv into a dictionary
     argv = [a.split('=') for a in argv]
     # Remove dashes from argv
     cfg = dict([[a[0].replace("--",""),a[1]] for a in argv])
@@ -120,7 +127,7 @@ def fill_in_argv_template(argv):
     # Convert cfg back into argv
     argv = [f"--{k}={v}" for k,v in cfg.items()]
 
-    return argv
+    return argv + bool_flags
 
 
 

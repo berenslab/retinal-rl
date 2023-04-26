@@ -71,6 +71,9 @@ def add_retinal_env_args(parser):
                         , type=str, help="Type of activation function to use.")
     parser.add_argument('--repeat', type=int, default=1, help="Dummy parameter to indicate which repetition we're at in a wandb sweep")
     parser.add_argument('--analysis_freq', type=int, default=int(5e8), help="How often to run analysis (in frames). 0 disables live analyses.")
+    # Whether to observe the algorithm during training
+    parser.add_argument("--no_observe", action="store_true", help="Whether to disable live observation of the algorithm during training")
+
 
 def add_retinal_env_eval_args(parser):
     """
