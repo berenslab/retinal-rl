@@ -1,6 +1,7 @@
 import os
 from os.path import join
 import functools
+from typing import Optional
 
 from sample_factory.envs.env_utils import register_env
 
@@ -63,14 +64,15 @@ RETINAL_ENVS = [
 
 def make_retinal_env_from_spec(spec, _env_name, cfg, env_config, render_mode: Optional[str] = None, **kwargs):
     """
-    Makes a Doom environment from a DoomSpec instance.
-    _env_name is unused but we keep it, so functools.partial(make_doom_env_from_spec, env_spec) can registered
-    in Sample Factory (first argument in make_env_func is expected to be the env_name).
+    Makes a Retinal environment from a DoomSpec instance.
     """
 
-    make_doom_env_impl(spec, cfg=cfg, env_config=env_config, render_mode=render_mode, custom_resolution=cfg.resolution, **kwargs)
+    res = "{cfg.res_w}x{cfg.res_h}".format(cfg=cfg)
+
+    return make_doom_env_impl(spec, cfg=cfg, env_config=env_config, render_mode=render_mode, custom_resolution=res, **kwargs)
 
 def register_retinal_envs():
+
     for env_spec in RETINAL_ENVS:
         make_env_func = functools.partial(make_retinal_env_from_spec, env_spec)
         register_env(env_spec.name, make_env_func)

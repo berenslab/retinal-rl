@@ -16,8 +16,8 @@ def retinal_override_defaults(parser):
         reward_scale=0.1,
 
         # Environment defaults we've settled on
-        res_h=90,
-        res_w=120,
+        res_h=120,
+        res_w=160,
         decorrelate_envs_on_one_worker=False,
 
         # Wandb stuff
@@ -72,7 +72,6 @@ def add_retinal_env_args(parser):
     parser.add_argument('--analysis_freq', type=int, default=int(5e8), help="How often to run analysis (in frames). 0 disables live analyses.")
     # Whether to observe the algorithm during training
     parser.add_argument("--no_observe", action="store_true", help="Whether to disable live observation of the algorithm during training")
-    parser.add_argument("--resolution", type=str, default="160x120", help="Resolution of the environment")
 
 
 def add_retinal_env_eval_args(parser):
@@ -90,6 +89,3 @@ def add_retinal_env_eval_args(parser):
     parser.add_argument("--no_animate", action="store_true", help="Animate 'analysis_out.npy'")
     parser.add_argument("--frame_step", type=int, default=0, help="Which frame of the animation to statically plot")
     parser.add_argument("--sta_repeats", type=int, default=1000, help="Number of loops in generating STAs")
-    #parser.add_argument('--analyze_acts', type=str, default='False', help='Visualize activations via gifs and dimensionality reduction; options: \'environment\', \'mnist\' or \'cifar\'')
-    #parser.add_argument('--analyze_max_num_frames', type=int, default=1e3, help='Used for visualising \'environment\' activations (leave as default otherwise), normally 100000 works for a nice embedding, but can take time')
-    #parser.add_argument('--analyze_ds_name', type=str, default='CIFAR', help='Used for visualizing responses to dataset (can be \'MNIST\' or \'CIFAR\'')
