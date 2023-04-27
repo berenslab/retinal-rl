@@ -61,6 +61,12 @@ def activation(cfg: Config) -> nn.Module:
     else:
         raise Exception("Unknown activation function")
 
+def is_activation(mdl: nn.Module) -> bool:
+    bl = any([isinstance(mdl, nn.ELU)
+        ,isinstance(mdl, nn.ReLU)
+        ,isinstance(mdl, nn.Tanh)
+        ,isinstance(mdl, nn.Identity)])
+    return bl
 
 ### Retinal Encoder ###
 
