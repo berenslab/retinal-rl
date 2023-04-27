@@ -15,10 +15,19 @@ from sample_factory.algo.utils.context import global_model_factory
 ### Registration ###
 
 
-def register_retinal_model():
-    #global_model_factory().register_encoder_factory(make_lindsey_encoder)
-    #global_model_factory().register_encoder_factory(make_maxpool_lindsey_encoder)
-    global_model_factory().register_encoder_factory(make_retinal_encoder)
+def register_retinal_model(cfg):
+    """Registers the retinal model with the global model factory."""
+    if cfg.model == "retinal":
+        log.info("Registering retinal model")
+        global_model_factory().register_encoder_factory(make_retinal_encoder)
+    elif cfg.model == "prototypical":
+        log.info("Registering prototypical model")
+        global_model_factory().register_encoder_factory(make_prototypical_encoder)
+    elif cfg.model == "lindsey":
+        log.info("Registering lindsey model")
+        global_model_factory().register_encoder_factory(make_lindsey_encoder)
+    else:
+        raise Exception("Unknown model type")
 
 
 ### Model make functions ###
@@ -28,9 +37,9 @@ def make_lindsey_encoder(cfg: Config, obs_space: ObsSpace) -> Encoder:
     """Factory function as required by the API."""
     return LindseyEncoder(cfg, obs_space)
 
-def make_maxpool_lindsey_encoder(cfg: Config, obs_space: ObsSpace) -> Encoder:
+def make_prototypical_encoder(cfg: Config, obs_space: ObsSpace) -> Encoder:
     """Factory function as required by the API."""
-    return LindseyEncoderMaxPool(cfg, obs_space)
+    return Prototypical(cfg, obs_space)
 
 def make_retinal_encoder(cfg: Config, obs_space: ObsSpace) -> Encoder:
     """Factory function as required by the API."""
@@ -108,18 +117,18 @@ class RetinalEncoderBase(Encoder):
 
         # bipolar cells
         conv_layers.extend( [ nn.Conv2d(3, self.bipolar_chans, self.kernel_size, padding=self.padding)
-            , nn.AvgPool2d(self.spatial_pooling)
+            , nn.AvgPool2d(self.spatial_pooling,ceil_mode=True)
             , self.activation ] )
         # ganglion cells
         conv_layers.extend( [ nn.Conv2d(self.bipolar_chans, self.rgc_chans, self.kernel_size, padding=self.padding)
-            , nn.AvgPool2d(self.spatial_pooling)
+            , nn.AvgPool2d(self.spatial_pooling,ceil_mode=True)
             , self.activation ] )
         # Retinal bottleneck
         conv_layers.extend( [ nn.Conv2d(self.rgc_chans, self.bottleneck_chans, self.bottleneck_kernel_size)
             , self.activation ] )
         # V1 Simple Cells
         conv_layers.extend( [ nn.Conv2d(self.bottleneck_chans, self.simple_chans, self.kernel_size, padding=self.padding)
-            , nn.MaxPool2d(self.max_pooling)
+            , nn.MaxPool2d(self.max_pooling,ceil_mode=True)
             , self.activation ] )
         # V1 Complex Cells
         # conv_layers.extend( [ nn.Conv2d(self.simple_chans, self.simple_chans, self.kernel_size, padding=self.padding)
@@ -216,36 +225,23 @@ class LindseyEncoderBase(Encoder):
 ### Lindsey based encoder with max pooling for testing ###
 
 
-class LindseyEncoderBaseMaxPool(Encoder):
+class PrototypicalBase(Encoder):
 
     def __init__(self, cfg : Config , obs_space : ObsSpace):
 
         super().__init__(cfg)
 
-        nchns = cfg.global_channels
-        btlchns = cfg.retinal_bottleneck
-        vvsdpth = cfg.vvs_depth
-        krnsz = cfg.kernel_size
-
         self.nl_fc = activation(cfg)
-
-        self.kernel_size = krnsz
+        self.kernel_size = 5
 
         # Preparing Conv Layers
         conv_layers = []
-        self.nls = []
-        for i in range(vvsdpth+2): # +2 for the first 'retinal' layers
 
-            self.nls.append(activation(cfg))
+        self.padding = (self.kernel_size - 1) // 2
 
-            if i == 0: # 'bipolar cells' ('global channels')
-                conv_layers.extend([nn.Conv2d(3, nchns, krnsz, stride=1), nn.MaxPool2d(3), self.nls[i]])
-            elif i == 1: # 'ganglion cells' ('retinal bottleneck')
-                conv_layers.extend([nn.Conv2d(nchns, btlchns, krnsz, stride=1), self.nls[i]])
-            elif i == 2: # 'V1' ('global channels')
-                conv_layers.extend([nn.Conv2d(btlchns, nchns, krnsz, stride=1), nn.MaxPool2d(3), self.nls[i]])
-            else: # 'vvs layers'
-                conv_layers.extend([nn.Conv2d(nchns, nchns, krnsz, stride=1), self.nls[i]])
+        conv_layers.extend([nn.Conv2d(3, 16, self.kernel_size,padding=self.padding), nn.MaxPool2d(2), self.activation])
+        conv_layers.extend([nn.Conv2d(16, 16, self.kernel_size,padding=self.padding), self.activation])
+        conv_layers.extend([nn.Conv2d(16, 8, self.kernel_size,padding=self.padding), nn.MaxPool2d(2), self.activation])
 
         self.conv_head = nn.Sequential(*conv_layers)
         self.conv_head_out_size = calc_num_elements(self.conv_head, obs_space.shape)
@@ -263,14 +259,14 @@ class LindseyEncoderBaseMaxPool(Encoder):
         return self.encoder_out_size
 
 
-class LindseyEncoderMaxPool(Encoder):
+class Prototypical(Encoder):
 
     def __init__(self, cfg: Config, obs_space: ObsSpace):
 
         super().__init__(cfg)
 
         #self.basic_encoder = torch.jit.script(LindseyEncoderBaseMaxPool(cfg, obs_space["obs"]))
-        self.basic_encoder = LindseyEncoderBaseMaxPool(cfg, obs_space["obs"])
+        self.basic_encoder = PrototypicalBase(cfg, obs_space["obs"])
 
         self.encoder_out_size = self.basic_encoder.get_out_size()
 
