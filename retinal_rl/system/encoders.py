@@ -17,10 +17,11 @@ from sample_factory.algo.utils.context import global_model_factory
 
 def register_retinal_model():
     #global_model_factory().register_encoder_factory(make_lindsey_encoder)
-    global_model_factory().register_encoder_factory(make_maxpool_lindsey_encoder)
+    #global_model_factory().register_encoder_factory(make_maxpool_lindsey_encoder)
+    global_model_factory().register_encoder_factory(make_retinal_encoder)
 
 
-### Retinal-VVS Model ###
+### Model make functions ###
 
 
 def make_lindsey_encoder(cfg: Config, obs_space: ObsSpace) -> Encoder:
@@ -31,6 +32,12 @@ def make_maxpool_lindsey_encoder(cfg: Config, obs_space: ObsSpace) -> Encoder:
     """Factory function as required by the API."""
     return LindseyEncoderMaxPool(cfg, obs_space)
 
+def make_retinal_encoder(cfg: Config, obs_space: ObsSpace) -> Encoder:
+    """Factory function as required by the API."""
+    return RetinalEncoder(cfg, obs_space)
+
+
+### Util ###
 
 
 def activation(cfg: Config) -> nn.Module:
@@ -44,6 +51,97 @@ def activation(cfg: Config) -> nn.Module:
         return nn.Identity(inplace=True)
     else:
         raise Exception("Unknown activation function")
+
+
+### Retinal Encoder ###
+
+
+class RetinalEncoder(Encoder):
+    def __init__(self, cfg: Config, obs_space: ObsSpace):
+        super().__init__(cfg)
+
+        #self.basic_encoder = torch.jit.script(LindseyEncoderBase(cfg, obs_space["obs"]))
+        self.basic_encoder = RetinalEncoderBase(cfg, obs_space["obs"])
+
+        self.encoder_out_size = self.basic_encoder.get_out_size()
+
+        log.debug("Policy head output size: %r", self.get_out_size())
+        self.encoder_out_size = self.basic_encoder.get_out_size()
+
+        log.debug("Policy head output size: %r", self.get_out_size())
+
+    def forward(self, obs_dict):
+        x = self.basic_encoder(obs_dict["obs"])
+        return x
+
+    def get_out_size(self) -> int:
+        return self.encoder_out_size
+
+class RetinalEncoderBase(Encoder):
+
+    def __init__(self, cfg : Config , obs_space : ObsSpace):
+
+        super().__init__(cfg)
+
+        # Activation function
+        self.activation = activation(cfg)
+        self.nl_fc = activation(cfg)
+
+        # Number of channels
+        self.bipolar_chans = 5
+        self.rgc_chans = 10
+        self.bottleneck_chans = cfg.retinal_bottleneck
+        self.simple_chans = 3*self.rgc_chans
+        self.complex_chans = self.simple_chans
+
+        # Pooling
+        self.spatial_pooling = 2
+        self.max_pooling = 4
+
+        # Kernel size
+        self.bottleneck_kernel_size = 1
+        self.kernel_size = cfg.kernel_size
+        self.padding = (self.kernel_size - 1) // 2
+
+        # Preparing Conv Layers
+        conv_layers = []
+
+        # bipolar cells
+        conv_layers.extend( [ nn.Conv2d(3, self.bipolar_chans, self.kernel_size, padding=self.padding)
+            , nn.AvgPool2d(self.spatial_pooling)
+            , self.activation ] )
+        # ganglion cells
+        conv_layers.extend( [ nn.Conv2d(self.bipolar_chans, self.rgc_chans, self.kernel_size, padding=self.padding)
+            , nn.AvgPool2d(self.spatial_pooling)
+            , self.activation ] )
+        # Retinal bottleneck
+        conv_layers.extend( [ nn.Conv2d(self.rgc_chans, self.bottleneck_chans, self.bottleneck_kernel_size)
+            , self.activation ] )
+        # V1 Simple Cells
+        conv_layers.extend( [ nn.Conv2d(self.bottleneck_chans, self.simple_chans, self.kernel_size, padding=self.padding)
+            , nn.MaxPool2d(self.max_pooling)
+            , self.activation ] )
+        # V1 Complex Cells
+        # conv_layers.extend( [ nn.Conv2d(self.simple_chans, self.simple_chans, self.kernel_size, padding=self.padding)
+        #     , self.activation ] )
+
+        self.conv_head = nn.Sequential(*conv_layers)
+        self.conv_head_out_size = calc_num_elements(self.conv_head, obs_space.shape)
+        self.encoder_out_size = cfg.rnn_size
+        self.fc1 = nn.Linear(self.conv_head_out_size,self.encoder_out_size)
+
+    def forward(self, x):
+
+        x = self.conv_head(x)
+        x = x.contiguous().view(-1, self.conv_head_out_size)
+        x = self.nl_fc(self.fc1(x))
+        return x
+
+    def get_out_size(self) -> int:
+        return self.encoder_out_size
+
+
+### Retinal-VVS Model ###
 
 
 class LindseyEncoder(Encoder):
@@ -114,7 +212,10 @@ class LindseyEncoderBase(Encoder):
     def get_out_size(self) -> int:
         return self.encoder_out_size
 
-# Copy LindseyEncoderBase to make a version with max pooling at every layer
+
+### Lindsey based encoder with max pooling for testing ###
+
+
 class LindseyEncoderBaseMaxPool(Encoder):
 
     def __init__(self, cfg : Config , obs_space : ObsSpace):
