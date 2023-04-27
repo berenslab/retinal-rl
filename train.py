@@ -98,6 +98,10 @@ class RetinalAlgoObserver(AlgoObserver):
 
 def run_rl(cfg: Config):
     """Run RL training."""
+
+    register_retinal_envs()
+    register_retinal_model(cfg)
+
     cfg, runner = make_runner(cfg)
     if not(cfg.no_observe):
         runner.register_observer(RetinalAlgoObserver(cfg))
@@ -137,15 +141,14 @@ def fill_in_argv_template(argv):
 def main():
     """Script entry point."""
     # Register retinal environments and models.
-    register_retinal_envs()
-    register_retinal_model()
 
     argv = sys.argv[1:]
-    # Convert argv into a dictionary
+    # Replace string templates in argv with values from argv.
     argv = fill_in_argv_template(argv)
 
     # Two-pass building parser and returning cfg : Namespace
-    parser, _ = parse_sf_args(argv,evaluation=True)
+    parser,_ = parse_sf_args(argv,evaluation=True)
+
     add_retinal_env_args(parser)
     add_retinal_env_eval_args(parser)
     retinal_override_defaults(parser)

@@ -1,6 +1,8 @@
 import sys
 import os
 
+import torchscan as ts
+
 from retinal_rl.system.encoders import register_retinal_model
 from retinal_rl.system.environment import register_retinal_envs
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
@@ -18,7 +20,7 @@ from sample_factory.utils.utils import log
 def analyze(cfg):
 
     register_retinal_envs()
-    register_retinal_model()
+    register_retinal_model(cfg)
 
     log.debug("Running analysis: simulate = %s, plot = %s, animate = %s", not(cfg.no_simulate), not(cfg.no_plot), not(cfg.no_animate))
 
@@ -32,6 +34,8 @@ def analyze(cfg):
     log.debug("RETINAL RL: Checkpoint loaded, preparing environment.")
 
     ac,env,cfg,envstps = get_ac_env(cfg,checkpoint_dict)
+
+    ts.summary(ac.encoder.basic_encoder,(3,cfg.res_w,cfg.res_h))
 
     log.debug("RETINAL RL: Model and environment loaded, preparing simulation.")
 
