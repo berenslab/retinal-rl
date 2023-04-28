@@ -58,7 +58,7 @@ def sta_receptive_fields(cfg,env,actor_critic,nbtch,nreps):
                     for _ in range(nreps):
 
                         obss = torch.randn(size=btchsz,device=dev)
-                        obss1 = obss[:,:,mny:mxy+1,mnx:mxx+1].cpu()
+                        obss1 = obss[:,:,mny:mxy,mnx:mxx].cpu()
                         outs = subenc(obss)[:,j,oxsz//2,oysz//2].cpu()
 
                         if torch.sum(outs) != 0:
@@ -66,11 +66,13 @@ def sta_receptive_fields(cfg,env,actor_critic,nbtch,nreps):
 
             elif i==0:
 
-                rfsz =+ enc.conv_head[0].kernel_size[0]
+                rfsz += enc.conv_head[0].kernel_size[0]
 
             else:
 
-                rfsz += enc.conv_head[i].kernel_size[0]-1
+                ksz = enc.conv_head[i].kernel_size
+                if not(isinstance(ksz,int)): ksz = ksz[0]
+                rfsz += ksz-1
 
 
     return stas

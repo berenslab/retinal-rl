@@ -49,14 +49,14 @@ def make_retinal_encoder(cfg: Config, obs_space: ObsSpace) -> Encoder:
 ### Util ###
 
 
-def activation(cfg: Config) -> nn.Module:
-    if cfg.activation == "elu":
+def activation(act) -> nn.Module:
+    if act == "elu":
         return nn.ELU(inplace=True)
-    elif cfg.activation == "relu":
+    elif act == "relu":
         return nn.ReLU(inplace=True)
-    elif cfg.activation == "tanh":
+    elif act == "tanh":
         return nn.Tanh()
-    elif cfg.activation == "linear":
+    elif act == "linear":
         return nn.Identity(inplace=True)
     else:
         raise Exception("Unknown activation function")
@@ -99,8 +99,8 @@ class RetinalEncoderBase(Encoder):
         super().__init__(cfg)
 
         # Activation function
-        self.activation = activation(cfg)
-        self.nl_fc = activation(cfg)
+        self.act_name = cfg.activation
+        self.nl_fc = activation(cfg.activation)
 
         # Number of channels
         self.bipolar_chans = 8
@@ -122,23 +122,24 @@ class RetinalEncoderBase(Encoder):
         conv_layers = []
 
         # bipolar cells
-        conv_layers.extend( [ nn.Conv2d(3, self.bipolar_chans, self.kernel_size, padding=self.padding)
-            , nn.AvgPool2d(self.spatial_pooling,ceil_mode=True)
-            , self.activation ] )
+        conv_layers.extend(
+                [ nn.Conv2d(3, self.bipolar_chans, self.kernel_size, padding=self.padding)
+                    , nn.AvgPool2d(self.spatial_pooling,ceil_mode=True)
+                    , activation(self.act_name) ] )
         # ganglion cells
-        conv_layers.extend( [ nn.Conv2d(self.bipolar_chans, self.rgc_chans, self.kernel_size, padding=self.padding)
-            , nn.AvgPool2d(self.spatial_pooling,ceil_mode=True)
-            , self.activation ] )
+        conv_layers.extend(
+                [ nn.Conv2d(self.bipolar_chans, self.rgc_chans, self.kernel_size, padding=self.padding)
+                    , nn.AvgPool2d(self.spatial_pooling,ceil_mode=True)
+                    , activation(self.act_name) ] )
         # Retinal bottleneck
-        conv_layers.extend( [ nn.Conv2d(self.rgc_chans, self.bottleneck_chans, self.bottleneck_kernel_size)
-            , self.activation ] )
-        # V1 Simple Cells
-        conv_layers.extend( [ nn.Conv2d(self.bottleneck_chans, self.simple_chans, self.kernel_size, padding=self.padding)
-            , nn.MaxPool2d(self.max_pooling,ceil_mode=True)
-            , self.activation ] )
-        # V1 Complex Cells
-        # conv_layers.extend( [ nn.Conv2d(self.simple_chans, self.simple_chans, self.kernel_size, padding=self.padding)
-        #     , self.activation ] )
+        conv_layers.extend(
+                [ nn.Conv2d(self.rgc_chans, self.bottleneck_chans, self.bottleneck_kernel_size)
+                    , activation(self.act_name) ] )
+        # V1 Cells
+        conv_layers.extend(
+                [ nn.Conv2d(self.bottleneck_chans, self.simple_chans, self.kernel_size, padding=self.padding)
+                    , nn.MaxPool2d(self.max_pooling,ceil_mode=True)
+                    , activation(self.act_name) ] )
 
         self.conv_head = nn.Sequential(*conv_layers)
         self.conv_head_out_size = calc_num_elements(self.conv_head, obs_space.shape)
@@ -201,7 +202,7 @@ class LindseyEncoderBase(Encoder):
         self.nls = []
         for i in range(vvsdpth+2): # +2 for the first 'retinal' layers
 
-            self.nls.append(activation(cfg))
+            self.nls.append(activation(cfg.activation))
 
             if i == 0: # 'bipolar cells' ('global channels')
                 conv_layers.extend([nn.Conv2d(3, nchns, krnsz, stride=retstrd), self.nls[i]])
@@ -238,6 +239,7 @@ class PrototypicalBase(Encoder):
         super().__init__(cfg)
 
         self.nl_fc = activation(cfg)
+        self.act_name = cfg.activation
         self.kernel_size = 5
 
         # Preparing Conv Layers
@@ -245,9 +247,17 @@ class PrototypicalBase(Encoder):
 
         self.padding = (self.kernel_size - 1) // 2
 
-        conv_layers.extend([nn.Conv2d(3, 16, self.kernel_size,padding=self.padding), nn.MaxPool2d(2), self.activation])
-        conv_layers.extend([nn.Conv2d(16, 16, self.kernel_size,padding=self.padding), self.activation])
-        conv_layers.extend([nn.Conv2d(16, 8, self.kernel_size,padding=self.padding), nn.MaxPool2d(2), self.activation])
+        conv_layers.extend(
+                [nn.Conv2d(3, 16, self.kernel_size,padding=self.padding)
+                    , nn.MaxPool2d(2)
+                    , activation(self.act_name) ])
+        conv_layers.extend(
+                [nn.Conv2d(16, 16, self.kernel_size,padding=self.padding)
+                    , activation(self.act_name) ])
+        conv_layers.extend(
+                [nn.Conv2d(16, 8, self.kernel_size,padding=self.padding)
+                    , nn.MaxPool2d(2)
+                    , activation(self.act_name) ])
 
         self.conv_head = nn.Sequential(*conv_layers)
         self.conv_head_out_size = calc_num_elements(self.conv_head, obs_space.shape)
