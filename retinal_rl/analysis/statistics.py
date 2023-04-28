@@ -8,7 +8,7 @@ from openTSNE import TSNE
 from sample_factory.algo.utils.rl_utils import prepare_and_normalize_obs
 
 from torch_receptive_field import receptive_field
-from retinal_rl.analysis.encoders import is_activation
+from retinal_rl.system.encoders import is_activation
 
 from tqdm.auto import tqdm
 

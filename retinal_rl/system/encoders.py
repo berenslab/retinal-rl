@@ -17,13 +17,13 @@ from sample_factory.algo.utils.context import global_model_factory
 
 def register_retinal_model(cfg):
     """Registers the retinal model with the global model factory."""
-    if cfg.model == "retinal":
+    if cfg.encoder == "retinal":
         log.info("Registering retinal model")
         global_model_factory().register_encoder_factory(make_retinal_encoder)
-    elif cfg.model == "prototypical":
+    elif cfg.encoder == "prototypical":
         log.info("Registering prototypical model")
         global_model_factory().register_encoder_factory(make_prototypical_encoder)
-    elif cfg.model == "lindsey":
+    elif cfg.encoder == "lindsey":
         log.info("Registering lindsey model")
         global_model_factory().register_encoder_factory(make_lindsey_encoder)
     else:
@@ -103,14 +103,14 @@ class RetinalEncoderBase(Encoder):
         self.nl_fc = activation(cfg)
 
         # Number of channels
-        self.bipolar_chans = 5
-        self.rgc_chans = 10
+        self.bipolar_chans = 8
+        self.rgc_chans = 24
         self.bottleneck_chans = cfg.retinal_bottleneck
-        self.simple_chans = 3*self.rgc_chans
+        self.simple_chans = 4*self.rgc_chans
         self.complex_chans = self.simple_chans
 
         # Pooling
-        self.spatial_pooling = 2
+        self.spatial_pooling = 3
         self.max_pooling = 4
 
         # Kernel size
