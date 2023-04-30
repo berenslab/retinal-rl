@@ -83,7 +83,7 @@ def get_ac_env(cfg: Config, checkpoint_dict) -> Tuple[ActorCritic,BatchedVecEnv,
 
     return actor_critic,env,cfg,nstps
 
-def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv):
+def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv,prgrs : bool):
     """
     Save an example simulation.
     """
@@ -117,7 +117,7 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
     crwd=0
 
     # Simulation loop
-    with tqdm(total=t_max-1, desc="Generating Simulation") as pbar:
+    with tqdm(total=t_max-1, desc="Generating Simulation", disable=not(prgrs)) as pbar:
 
         while num_frames < t_max:
 

@@ -16,7 +16,7 @@ from tqdm.auto import tqdm
 
 greyscale = np.array([0.299, 0.587, 0.114])
 
-def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35):
+def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35,prgrs=True):
 
     t_smooth_sigma = 2
     vlim_factor = 1.5
@@ -147,7 +147,7 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35):
             hline.set_data(trng[0:i], hlths[0:i])
 
         anim = FuncAnimation( fig, update
-                             , frames=tqdm( range(1, t_max), desc="Animating Simulation" )
+                             , frames=tqdm( range(1, t_max) ,disable=not(prgrs), desc="Animating Simulation" )
                              , interval=1000 / fps )
 
         return anim

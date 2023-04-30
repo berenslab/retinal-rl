@@ -8,7 +8,7 @@ from retinal_rl.system.environment import register_retinal_envs
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 
 from retinal_rl.analysis.simulation import get_ac_env,generate_simulation,get_checkpoint
-from retinal_rl.analysis.statistics import sta_receptive_fields
+from retinal_rl.analysis.statistics import gaussian_noise_stas
 from retinal_rl.analysis.util import save_data,load_data,save_onxx,analysis_path,plot_path,data_path
 from retinal_rl.analysis.plot import simulation_plot,receptive_field_plots,plot_acts_tsne_stim
 
@@ -17,7 +17,7 @@ from sample_factory.utils.utils import log
 
 #import wandb
 
-def analyze(cfg):
+def analyze(cfg,progress_bar=True):
 
     register_retinal_envs()
     register_retinal_model(cfg)
@@ -46,15 +46,20 @@ def analyze(cfg):
 
     """ Final gluing together of all analyses of interest. """
     if not (cfg.no_simulate):
+
+        log.debug("RETINAL RL: Running analysis simulations.")
+
         save_onxx(cfg,envstps,ac,env)
 
-        stas = sta_receptive_fields(cfg,env,ac,nbtch=200,nreps=cfg.sta_repeats)
+        stas = gaussian_noise_stas(cfg,env,ac,nbtch=200,nreps=cfg.sta_repeats,prgrs=progress_bar)
         save_data(cfg,envstps,stas,"stas")
 
-        sim_recs = generate_simulation(cfg,ac,env)
+        sim_recs = generate_simulation(cfg,ac,env,prgrs=progress_bar)
         save_data(cfg,envstps,sim_recs,"sim_recs")
 
     if not (cfg.no_plot):
+
+        log.debug("RETINAL RL: Plotting analysis simulations.")
 
         # Load data
         sim_recs = load_data(cfg,envstps,"sim_recs")
@@ -66,7 +71,7 @@ def analyze(cfg):
         fig.savefig(pth, bbox_inches="tight")
 
         # Single frame of the animation
-        fig = simulation_plot(sim_recs,frame_step=cfg.frame_step)
+        fig = simulation_plot(sim_recs,frame_step=cfg.frame_step,prgrs=progress_bar)
         pth=plot_path(cfg,envstps,"simulation-frame.png")
 
         fig.savefig(pth, bbox_inches="tight")
@@ -82,9 +87,11 @@ def analyze(cfg):
 
     if not (cfg.no_animate):
 
+        log.debug("RETINAL RL: Animating analysis simulations.")
+
         # Animation
         sim_recs = load_data(cfg,envstps,"sim_recs")
-        anim = simulation_plot(sim_recs,animate=True,fps=cfg.fps)
+        anim = simulation_plot(sim_recs,animate=True,fps=cfg.fps,prgrs=progress_bar)
         pth = plot_path(cfg,envstps,"simulation-animation.mp4")
 
         anim.save(pth, extra_args=["-vcodec", "libx264"] )

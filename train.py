@@ -10,7 +10,7 @@ from sample_factory.utils.typing import Config
 from sample_factory.algo.utils.misc import ExperimentStatus
 
 from sample_factory.algo.runners.runner import AlgoObserver, Runner
-from sample_factory.utils.utils import log
+from sample_factory.utils.utils import log,debug_log_every_n
 
 from retinal_rl.system.encoders import register_retinal_model
 from retinal_rl.system.environment import register_retinal_envs
@@ -46,7 +46,7 @@ class RetinalAlgoObserver(AlgoObserver):
     def analyze(self,queue):
         """Run analysis in a separate process."""
 
-        envstps = analyze(self.cfg)
+        envstps = analyze(self.cfg,progress_bar=False)
         queue.put(envstps,block=False)
 
     def on_training_step(self, runner: Runner, _) -> None:
@@ -57,7 +57,8 @@ class RetinalAlgoObserver(AlgoObserver):
             total_env_steps = sum(runner.env_steps.values())
             current_step = total_env_steps // self.freq
 
-            log.debug("RETINAL RL: No analysis running; current_step = %s, steps_complete = %s",current_step,self.steps_complete)
+            msg = "RETINAL RL: No analysis running. current_step = %d, steps_complete = %d" % (current_step,self.steps_complete)
+            debug_log_every_n(20,msg)
 
             if current_step >= self.steps_complete:
                 # run analysis in a separate process
