@@ -58,7 +58,7 @@ class RetinalAlgoObserver(AlgoObserver):
             current_step = total_env_steps // self.freq
 
             msg = "RETINAL RL: No analysis running. current_step = %d, steps_complete = %d" % (current_step,self.steps_complete)
-            debug_log_every_n(20,msg)
+            debug_log_every_n(100,msg)
 
             if current_step >= self.steps_complete:
                 # run analysis in a separate process

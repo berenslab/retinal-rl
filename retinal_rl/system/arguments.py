@@ -30,7 +30,7 @@ def retinal_override_defaults(parser):
 
         train_for_env_steps=int(1e10),
         batch_size=2048,
-        num_workers=24,
+        num_workers=20,
         num_envs_per_worker=8,
 
         # All of these have been through some testing, and work as good defaults

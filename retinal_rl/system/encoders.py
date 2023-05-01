@@ -103,14 +103,13 @@ class RetinalEncoderBase(Encoder):
         self.nl_fc = activation(cfg.activation)
 
         # Number of channels
-        self.bipolar_chans = 8
-        self.rgc_chans = 24
+        self.bipolar_chans = cfg.global_channels
+        self.rgc_chans = 2*self.bipolar_chans
         self.bottleneck_chans = cfg.retinal_bottleneck
-        self.simple_chans = 4*self.rgc_chans
-        self.complex_chans = self.simple_chans
+        self.v1_chans = 2*self.rgc_chans
 
         # Pooling
-        self.spatial_pooling = 3
+        self.spatial_pooling = 2
         self.max_pooling = 4
 
         # Kernel size
@@ -124,12 +123,12 @@ class RetinalEncoderBase(Encoder):
         # bipolar cells
         conv_layers.extend(
                 [ nn.Conv2d(3, self.bipolar_chans, self.kernel_size, padding=self.padding)
-                    , nn.AvgPool2d(self.spatial_pooling,ceil_mode=True)
+                    , nn.MaxPool2d(self.spatial_pooling,ceil_mode=True)
                     , activation(self.act_name) ] )
         # ganglion cells
         conv_layers.extend(
                 [ nn.Conv2d(self.bipolar_chans, self.rgc_chans, self.kernel_size, padding=self.padding)
-                    , nn.AvgPool2d(self.spatial_pooling,ceil_mode=True)
+                    , nn.MaxPool2d(self.spatial_pooling,ceil_mode=True)
                     , activation(self.act_name) ] )
         # Retinal bottleneck
         conv_layers.extend(
@@ -137,7 +136,7 @@ class RetinalEncoderBase(Encoder):
                     , activation(self.act_name) ] )
         # V1 Cells
         conv_layers.extend(
-                [ nn.Conv2d(self.bottleneck_chans, self.simple_chans, self.kernel_size, padding=self.padding)
+                [ nn.Conv2d(self.bottleneck_chans, self.v1_chans, self.kernel_size, padding=self.padding)
                     , nn.MaxPool2d(self.max_pooling,ceil_mode=True)
                     , activation(self.act_name) ] )
 
