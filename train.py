@@ -105,7 +105,7 @@ def run_rl(cfg: Config):
     """Run RL training."""
 
     cfg, runner = make_runner(cfg)
-    if not(cfg.no_observe):
+    if cfg.online_analysis:
         runner.register_observer(RetinalAlgoObserver(cfg))
 
     # here we can register additional message or summary handlers

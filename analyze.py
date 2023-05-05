@@ -18,9 +18,9 @@ from sample_factory.utils.utils import log
 def analyze(cfg,progress_bar=True):
 
     register_retinal_envs()
-    register_retinal_model(cfg)
+    register_retinal_model()
 
-    log.debug("Running analysis: simulate = %s, plot = %s, animate = %s", not(cfg.no_simulate), not(cfg.no_plot), not(cfg.no_animate))
+    log.debug("Running analysis: simulate = %s, plot = %s, animate = %s", cfg.simulate, cfg.plot, cfg.animate)
 
     # Register retinal environments and models.
     checkpoint_dict,cfg = get_checkpoint(cfg)
@@ -40,7 +40,7 @@ def analyze(cfg,progress_bar=True):
         os.makedirs(plot_path(cfg,envstps))
 
     """ Final gluing together of all analyses of interest. """
-    if not (cfg.no_simulate):
+    if cfg.simulate:
 
         log.debug("RETINAL RL: Running analysis simulations.")
 
@@ -52,7 +52,7 @@ def analyze(cfg,progress_bar=True):
         sim_recs = generate_simulation(cfg,ac,env,prgrs=progress_bar)
         save_data(cfg,envstps,sim_recs,"sim_recs")
 
-    if not (cfg.no_plot):
+    if cfg.plot:
 
         log.debug("RETINAL RL: Plotting analysis simulations.")
 
@@ -80,7 +80,7 @@ def analyze(cfg,progress_bar=True):
             figs[ky].savefig(plot_path(cfg,envstps,ky + "-sta-receptive-fields.png"), bbox_inches="tight")
             #if cfg.with_wandb: wandb.log({ky + "-sta-receptive-fields": wandb.Image(figs[ky])})
 
-    if not (cfg.no_animate):
+    if cfg.animate:
 
         log.debug("RETINAL RL: Animating analysis simulations.")
 
