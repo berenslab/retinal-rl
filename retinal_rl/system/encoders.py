@@ -56,7 +56,7 @@ def activation(act) -> nn.Module:
         return nn.ReLU(inplace=True)
     elif act == "tanh":
         return nn.Tanh()
-    elif act == "linear":
+    elif act == "identity":
         return nn.Identity(inplace=True)
     else:
         raise Exception("Unknown activation function")
@@ -104,16 +104,16 @@ class RetinalEncoderBase(Encoder):
 
         # Number of channels
         self.bipolar_chans = cfg.global_channels
-        self.rgc_chans = 2*self.bipolar_chans
+        self.rgc_chans = self.bipolar_chans
         self.bottleneck_chans = cfg.retinal_bottleneck
-        self.v1_chans = 2*self.rgc_chans
+        self.v1_chans = self.rgc_chans
 
         # Pooling
         self.spatial_pooling = 2
         self.max_pooling = 4
 
         # Kernel size
-        self.bottleneck_kernel_size = 1
+        self.bottleneck_kernel_size = cfg.kernel_size
         self.kernel_size = cfg.kernel_size
         self.padding = (self.kernel_size - 1) // 2
 
@@ -123,16 +123,17 @@ class RetinalEncoderBase(Encoder):
         # bipolar cells
         conv_layers.extend(
                 [ nn.Conv2d(3, self.bipolar_chans, self.kernel_size, padding=self.padding)
-                    , nn.MaxPool2d(self.spatial_pooling,ceil_mode=True)
-                    , activation(self.act_name) ] )
+                    , activation(self.act_name)
+                    , nn.AvgPool2d(self.spatial_pooling,ceil_mode=True) ] )
         # ganglion cells
         conv_layers.extend(
                 [ nn.Conv2d(self.bipolar_chans, self.rgc_chans, self.kernel_size, padding=self.padding)
-                    , nn.MaxPool2d(self.spatial_pooling,ceil_mode=True)
+                    , nn.AvgPool2d(self.spatial_pooling,ceil_mode=True)
                     , activation(self.act_name) ] )
-        # Retinal bottleneck
+        # LGN cells
         conv_layers.extend(
                 [ nn.Conv2d(self.rgc_chans, self.bottleneck_chans, self.bottleneck_kernel_size)
+                    , nn.AvgPool2d(self.spatial_pooling,ceil_mode=True)
                     , activation(self.act_name) ] )
         # V1 Cells
         conv_layers.extend(

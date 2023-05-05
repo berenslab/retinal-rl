@@ -68,7 +68,7 @@ def add_retinal_env_args(parser):
     parser.add_argument('--retinal_stride', type=int, default=2, help='Stride at the first conv layer (\'BC\'), doesnt apply to \'VVS\'')
     parser.add_argument( "--encoder", default="retinal" , choices=["retinal", "prototypical", "lindsey"]
                         , type=str, help="Type of encoder network architecture.")
-    parser.add_argument( "--activation", default="elu" , choices=["elu", "relu", "tanh", "linear"]
+    parser.add_argument( "--activation", default="elu" , choices=["elu", "relu", "tanh", "identity"]
                         , type=str, help="Type of activation function to use.")
     parser.add_argument('--repeat', type=int, default=1, help="Dummy parameter to indicate which repetition we're at in a wandb sweep")
     parser.add_argument('--analysis_freq', type=int, default=int(5e8), help="How often to run analysis (in frames). 0 disables live analyses.")
