@@ -2,6 +2,7 @@
 
 import numpy as np
 import torch
+from math import floor
 
 import os
 from os.path import join
@@ -121,6 +122,103 @@ def obs_to_img(obs):
     # convert to numpy
     img = obs.cpu().numpy()
     return img
+
+
+### Network Tools ###
+
+
+def activation(act) -> nn.Module:
+    if act == "elu":
+        return nn.ELU(inplace=True)
+    elif act == "relu":
+        return nn.ReLU(inplace=True)
+    elif act == "tanh":
+        return nn.Tanh()
+    elif act == "identity":
+        return nn.Identity(inplace=True)
+    else:
+        raise Exception("Unknown activation function")
+
+def is_activation(mdl: nn.Module) -> bool:
+    bl = any([isinstance(mdl, nn.ELU)
+        ,isinstance(mdl, nn.ReLU)
+        ,isinstance(mdl, nn.Tanh)
+        ,isinstance(mdl, nn.Identity)])
+    return bl
+
+
+def double_up(x):
+    if isinstance(x,int): return (x,x)
+    else: return x
+
+
+def encoder_out_size(mdls,hght0,wdth0):
+    """
+    Compute the size of the encoder output, where mdls is the list of encoder
+    modules.
+    """
+
+    hght = hght0
+    wdth = wdth0
+
+    # iterate over modules that are not activations
+    for mdl in mdls:
+        if is_activation(mdl): continue
+
+        krnsz = double_up(mdl.kernel_size)
+        strd = double_up(mdl.stride)
+        pad = double_up(mdl.padding)
+        # print geometry
+        print(f"kernel size: {krnsz}")
+        print(f"stride: {strd}")
+        print(f"padding: {pad}")
+
+        hght = floor((hght - krnsz[0] + 2*pad[0])/strd[0] + 1)
+        wdth = floor((wdth - krnsz[1] + 2*pad[1])/strd[1] + 1)
+
+    return hght,wdth
+
+def rf_size_and_start(mdls,hidx,widx):
+    """
+    Compute the receptive field size and start for each layer of the encoder,
+    where mdls is the list of encoder modules.
+    """
+    hrf_size = 1
+    hrf_scale = 1
+    hrf_start = 0
+
+    wrf_size = 1
+    wrf_scale = 1
+    wrf_start = 0
+
+    hmn = hidx
+    wmn = widx
+
+    for mdl in mdls:
+
+        if is_activation(mdl): continue
+
+        hksz,wksz = double_up(mdl.kernel_size)
+        hstrd,wstrd = double_up(mdl.stride)
+        hpad,wpad = double_up(mdl.padding)
+
+
+        hrf_size += (hksz-1)*hrf_scale
+        wrf_size += (wksz-1)*wrf_scale
+
+        hrf_start += hpad*hrf_scale
+        wrf_start += wpad*wrf_scale
+
+        hrf_scale *= hstrd
+        wrf_scale *= wstrd
+
+        hmn=hidx*hrf_scale - hrf_start
+        wmn=widx*wrf_scale - wrf_start
+
+    return hrf_size,wrf_size,hmn,wmn
+
+
+### Value Network ###
 
 
 class ValueNetwork(nn.Module):

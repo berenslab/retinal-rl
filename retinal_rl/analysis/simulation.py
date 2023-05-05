@@ -21,7 +21,7 @@ from sample_factory.utils.typing import Config
 from sample_factory.algo.utils.env_info import extract_env_info
 from sample_factory.utils.utils import log
 
-from retinal_rl.analysis.util import obs_dict_to_obs,obs_to_img,ValueNetwork,from_float_to_rgb
+from retinal_rl.util import obs_dict_to_obs,obs_to_img,ValueNetwork
 
 from tqdm.auto import tqdm
 

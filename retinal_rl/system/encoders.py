@@ -4,12 +4,15 @@ retina_rl library
 """
 #import torch
 from torch import nn
+from collections import OrderedDict
 
 from sample_factory.model.encoder import Encoder
 from sample_factory.algo.utils.torch_utils import calc_num_elements
 from sample_factory.utils.typing import Config, ObsSpace
 from sample_factory.utils.utils import log
 from sample_factory.algo.utils.context import global_model_factory
+
+from retinal_rl.util import activation
 
 
 ### Registration ###
@@ -35,28 +38,6 @@ def make_encoder(cfg: Config, obs_space: ObsSpace) -> Encoder:
 
 
 
-
-### Util ###
-
-
-def activation(act) -> nn.Module:
-    if act == "elu":
-        return nn.ELU(inplace=True)
-    elif act == "relu":
-        return nn.ReLU(inplace=True)
-    elif act == "tanh":
-        return nn.Tanh()
-    elif act == "identity":
-        return nn.Identity(inplace=True)
-    else:
-        raise Exception("Unknown activation function")
-
-def is_activation(mdl: nn.Module) -> bool:
-    bl = any([isinstance(mdl, nn.ELU)
-        ,isinstance(mdl, nn.ReLU)
-        ,isinstance(mdl, nn.Tanh)
-        ,isinstance(mdl, nn.Identity)])
-    return bl
 
 ### Retinal Encoder ###
 
@@ -92,46 +73,42 @@ class RetinalEncoderBase(Encoder):
         self.act_name = cfg.activation
         self.nl_fc = activation(cfg.activation)
 
-        # Number of channels
-        self.bipolar_chans = cfg.global_channels
-        self.rgc_chans = self.bipolar_chans
-        self.bottleneck_chans = cfg.retinal_bottleneck
-        self.v1_chans = self.rgc_chans
+        # Saving parameters
+        self.gchans = cfg.global_channels
+        self.bchans = cfg.retinal_bottleneck
+        self.krnsz = cfg.kernel_size
 
         # Pooling
-        self.spatial_pooling = 2
-        self.max_pooling = 4
+        self.spool = 2
+        self.mpool = 4
 
-        # Kernel size
-        self.bottleneck_kernel_size = cfg.kernel_size
-        self.kernel_size = cfg.kernel_size
-        self.padding = (self.kernel_size - 1) // 2
+        # Padding
+        self.cpad = (self.krnsz - 1) // 2
+        self.spad = (self.spool - 1) // 2
+        self.mpad = (self.mpool - 1) // 2
 
         # Preparing Conv Layers
-        conv_layers = []
+        conv_layers = OrderedDict(
 
-        # bipolar cells
-        conv_layers.extend(
-                [ nn.Conv2d(3, self.bipolar_chans, self.kernel_size, padding=self.padding)
-                    , activation(self.act_name)
-                    , nn.AvgPool2d(self.spatial_pooling,ceil_mode=True) ] )
-        # ganglion cells
-        conv_layers.extend(
-                [ nn.Conv2d(self.bipolar_chans, self.rgc_chans, self.kernel_size, padding=self.padding)
-                    , nn.AvgPool2d(self.spatial_pooling,ceil_mode=True)
-                    , activation(self.act_name) ] )
-        # LGN cells
-        conv_layers.extend(
-                [ nn.Conv2d(self.rgc_chans, self.bottleneck_chans, self.bottleneck_kernel_size)
-                    , nn.AvgPool2d(self.spatial_pooling,ceil_mode=True)
-                    , activation(self.act_name) ] )
-        # V1 Cells
-        conv_layers.extend(
-                [ nn.Conv2d(self.bottleneck_chans, self.v1_chans, self.kernel_size, padding=self.padding)
-                    , nn.MaxPool2d(self.max_pooling,ceil_mode=True)
-                    , activation(self.act_name) ] )
+                [ ('bp_filters', nn.Conv2d(3, self.gchans, self.krnsz, padding=self.cpad))
+                , ('bp_outputs', activation(self.act_name))
+                , ('bp_averages', nn.AvgPool2d(self.spool,padding=self.spad))
 
-        self.conv_head = nn.Sequential(*conv_layers)
+                , ('rgc_filters', nn.Conv2d(self.gchans, self.gchans, self.krnsz, padding=self.cpad))
+                , ('rgc_outputs', activation(self.act_name))
+                , ('rgc_averages', nn.AvgPool2d(self.spool,padding=self.spad))
+
+                , ('lgn_filters', nn.Conv2d(self.gchans, self.bchans, self.krnsz, self.cpad))
+                , ('lgn_outputs', activation(self.act_name))
+                , ('lgn_averages', nn.AvgPool2d(self.spool,padding=self.spad))
+
+                , ('v1_filters', nn.Conv2d(self.bchans, self.gchans, self.krnsz, padding=self.cpad))
+                , ('simple_outputs', activation(self.act_name))
+                , ('complex_outputs', nn.MaxPool2d(self.mpool,padding=self.mpad))
+
+                ] )
+
+        self.conv_head = nn.Sequential(conv_layers)
         self.conv_head_out_size = calc_num_elements(self.conv_head, obs_space.shape)
         self.encoder_out_size = cfg.rnn_size
         self.fc1 = nn.Linear(self.conv_head_out_size,self.encoder_out_size)

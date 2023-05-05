@@ -8,7 +8,6 @@ plt.style.use('misc/default.mplstyle')
 
 from matplotlib.animation import FuncAnimation
 from retinal_rl.analysis.statistics import fit_tsne_1d,get_stim_coll,row_zscore
-from retinal_rl.analysis.util import normalize_data
 
 from scipy.ndimage import gaussian_filter1d
 

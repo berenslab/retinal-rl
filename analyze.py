@@ -7,7 +7,7 @@ from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_en
 
 from retinal_rl.analysis.simulation import get_ac_env,generate_simulation,get_checkpoint
 from retinal_rl.analysis.statistics import gaussian_noise_stas
-from retinal_rl.analysis.util import save_data,load_data,save_onxx,analysis_path,plot_path,data_path
+from retinal_rl.util import save_data,load_data,save_onxx,analysis_path,plot_path,data_path
 from retinal_rl.analysis.plot import simulation_plot,receptive_field_plots,plot_acts_tsne_stim
 
 from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args

@@ -4,6 +4,7 @@ import wandb
 import multiprocessing
 multiprocessing.set_start_method("spawn",force=True)
 import torchscan as ts
+import torch
 
 
 from sample_factory.cfg.arguments import parse_sf_args, parse_full_cfg
@@ -19,7 +20,8 @@ from sample_factory.algo.utils.make_env import make_env_func_batched
 from retinal_rl.system.encoders import register_retinal_model,make_encoder
 from retinal_rl.system.environment import register_retinal_envs
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
-from retinal_rl.analysis.util import get_analysis_times,analysis_root,plot_path
+
+from retinal_rl.util import get_analysis_times,analysis_root,plot_path,encoder_out_size,rf_size_and_start
 
 from analyze import analyze
 
@@ -165,10 +167,10 @@ def main():
             )
 
     obs_space = test_env.observation_space
-    enc = make_encoder(cfg,obs_space)
+    enc = make_encoder(cfg,obs_space).basic_encoder
 
     print("Encoder summary:")
-    ts.summary(enc.basic_encoder,(3,cfg.res_w,cfg.res_h),receptive_field=True)
+    ts.summary(enc,(3,cfg.res_h,cfg.res_w),receptive_field=True) #,effective_rf_stats=True)
 
     # Run simulation
     if not(cfg.dry_run):

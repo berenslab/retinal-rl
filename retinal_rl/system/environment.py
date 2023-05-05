@@ -38,8 +38,6 @@ def doom_action_space_basic():
     space.key_to_action = key_to_action_basic
     return space
 
-### Retinal AlgoObserver ###
-
 ### Retinal Environments ###
 
 def retinal_doomspec(scnr,flnm):

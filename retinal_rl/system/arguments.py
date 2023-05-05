@@ -65,9 +65,9 @@ def add_retinal_env_args(parser):
     add_doom_env_args(parser)
     # Parse args for rvvs model from Lindsey et al 2019
     parser.add_argument('--global_channels', type=int, default=16, help='Standard number of channels in CNN layers')
-    parser.add_argument('--retinal_bottleneck', type=int, default=4, help='Number of channels in retinal bottleneck')
+    parser.add_argument('--retinal_bottleneck', type=int, default=16, help='Number of channels in retinal bottleneck')
     parser.add_argument('--vvs_depth', type=int, default=1, help='Number of CNN layers in the ventral stream network')
-    parser.add_argument('--kernel_size', type=int, default=7, help='Size of CNN filters')
+    parser.add_argument('--kernel_size', type=int, default=3, help='Size of CNN filters')
     parser.add_argument('--retinal_stride', type=int, default=1, help='Stride at the first conv layer (\'BC\'), doesnt apply to \'VVS\'')
     parser.add_argument( "--encoder", default="retinal" , choices=["retinal", "prototypical", "lindsey"]
                         , type=str, help="Type of encoder network architecture.")

@@ -8,7 +8,7 @@ from openTSNE import TSNE
 from sample_factory.algo.utils.rl_utils import prepare_and_normalize_obs
 from tqdm import tqdm
 
-from retinal_rl.system.encoders import is_activation
+from retinal_rl.util import is_activation,encoder_out_size,rf_size_and_start
 
 def gaussian_noise_stas(cfg,env,actor_critic,nbtch,nreps,prgrs):
     """
@@ -18,78 +18,55 @@ def gaussian_noise_stas(cfg,env,actor_critic,nbtch,nreps,prgrs):
     enc = actor_critic.encoder.basic_encoder
     dev = torch.device("cpu" if cfg.device == "cpu" else "cuda")
 
-    nclrs,nrws,ncls = list(env.observation_space["obs"].shape)
+    nclrs,hght,wdth = list(env.observation_space["obs"].shape)
 
     obs = env.observation_space.sample()
     nobs = prepare_and_normalize_obs(actor_critic, obs)["obs"]
 
-    btchsz = [nbtch,nclrs,nrws,ncls]
-
-    hrf_size = 1
-    hrf_scale = 1
-    hrf_shift = 0
-
-    wrf_size = 1
-    wrf_scale = 1
-    wrf_shift = 0
-
+    btchsz = [nbtch,nclrs,hght,wdth]
 
     stas = {}
-    lyridx = 0
+
+    repttl = len(enc.conv_head) * nreps
+    mdls = []
 
     with torch.no_grad():
 
-        for i in tqdm(range(len(enc.conv_head)),desc="Generating STAs",disable=not(prgrs)):
+        with tqdm(total=repttl,desc="Generating STAs",disable=not(prgrs)) as pbar:
 
-            if is_activation(enc.conv_head[i]):
+            for mdl in enc.conv_head:
 
-                subenc = enc.conv_head[0:i+1]
+                mdls.append(mdl)
+                subenc = torch.nn.Sequential(*mdls)
 
-                ochns,hsz,wsz = subenc(nobs).size()
+                if is_activation(mdl):
 
-                hidx = hsz//2
-                widx = wsz//2
+                    ochns = mdl.out_channels
+                    hsz,wsz = encoder_out_size(subenc,hght,wdth)
 
-                hmn=hidx*hrf_scale - hrf_shift
-                hmx=hmn + hrf_size
+                    hidx = hsz//2
+                    widx = wsz//2
 
-                wmn=widx*wrf_scale - wrf_shift
-                wmx=wmn + wrf_size
+                    hrf_size,hmn,wrf_size,wmn = rf_size_and_start(subenc,hidx,widx)
 
-                lyrnm = "layer-" + str(lyridx)
-                lyridx += 1
+                    hmx=hmn + hrf_size
+                    wmx=wmn + wrf_size
+                    lyrnm = mdl.name
 
-                stas[lyrnm] = np.zeros((ochns,nclrs,hrf_size,wrf_size))
-
-                for j in range(ochns):
+                    stas[lyrnm] = np.zeros((ochns,nclrs,hrf_size,wrf_size))
 
                     for _ in range(nreps):
 
-                        obss = torch.randn(size=btchsz,device=dev)
-                        obss1 = obss[:,:,hmn:hmx,wmn:wmx].cpu()
-                        outs = subenc(obss)[:,j,hidx,widx].cpu()
+                        pbar.update(1)
 
-                        if torch.sum(outs) != 0:
-                            stas[lyrnm][j] += np.average(obss1,axis=0,weights=outs)/nreps
+                        for j in range(ochns):
 
-            else:
+                            obss = torch.randn(size=btchsz,device=dev)
+                            obss1 = obss[:,:,hmn:hmx,wmn:wmx].cpu()
+                            outs = subenc(obss)[:,j,hidx,widx].cpu()
 
-                def double_up(x):
-                    if isinstance(x,int): return (x,x)
-                    else: return x
-
-                hksz,wksz = double_up(enc.conv_head[i].kernel_size)
-                hstrd,wstrd = double_up(enc.conv_head[i].stride)
-                hpad,wpad = double_up(enc.conv_head[i].padding)
-
-                hrf_size += (hksz-1)*hrf_scale
-                wrf_size += (wksz-1)*wrf_scale
-
-                hrf_shift += hpad*hrf_scale
-                wrf_shift += wpad*wrf_scale
-
-                hrf_scale *= hstrd
-                wrf_scale *= wstrd
+                            if torch.sum(outs) != 0:
+                                stas[lyrnm][j] += np.average(obss1,axis=0,weights=outs)/nreps
 
     return stas
 
