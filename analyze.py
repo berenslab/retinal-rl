@@ -77,7 +77,7 @@ def analyze(cfg,progress_bar=True):
         figs = receptive_field_plots(stas)
 
         for ky in figs:
-            figs[ky].savefig(plot_path(cfg,envstps,ky + "-sta-receptive-fields.png"), bbox_inches="tight")
+            figs[ky].savefig(plot_path(cfg,envstps,ky + "-sta-rfs.png"), bbox_inches="tight")
             #if cfg.with_wandb: wandb.log({ky + "-sta-receptive-fields": wandb.Image(figs[ky])})
 
     if cfg.animate:

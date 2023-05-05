@@ -2,7 +2,7 @@
 
 import numpy as np
 import torch
-from math import floor
+from math import floor,ceil
 
 import os
 from os.path import join
@@ -163,18 +163,20 @@ def encoder_out_size(mdls,hght0,wdth0):
 
     # iterate over modules that are not activations
     for mdl in mdls:
+
         if is_activation(mdl): continue
 
         krnsz = double_up(mdl.kernel_size)
         strd = double_up(mdl.stride)
         pad = double_up(mdl.padding)
-        # print geometry
-        print(f"kernel size: {krnsz}")
-        print(f"stride: {strd}")
-        print(f"padding: {pad}")
 
-        hght = floor((hght - krnsz[0] + 2*pad[0])/strd[0] + 1)
-        wdth = floor((wdth - krnsz[1] + 2*pad[1])/strd[1] + 1)
+        # if max or average pooling layer then ceil else floor
+        if isinstance(mdl,nn.MaxPool2d) or isinstance(mdl,nn.AvgPool2d):
+            hght = ceil((hght - krnsz[0] + 2*pad[0])/strd[0] + 1)
+            wdth = ceil((wdth - krnsz[1] + 2*pad[1])/strd[1] + 1)
+        else:
+            hght = floor((hght - krnsz[0] + 2*pad[0])/strd[0] + 1)
+            wdth = floor((wdth - krnsz[1] + 2*pad[1])/strd[1] + 1)
 
     return hght,wdth
 
@@ -201,7 +203,6 @@ def rf_size_and_start(mdls,hidx,widx):
         hksz,wksz = double_up(mdl.kernel_size)
         hstrd,wstrd = double_up(mdl.stride)
         hpad,wpad = double_up(mdl.padding)
-
 
         hrf_size += (hksz-1)*hrf_scale
         wrf_size += (wksz-1)*wrf_scale

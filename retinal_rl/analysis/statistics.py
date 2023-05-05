@@ -19,9 +19,7 @@ def gaussian_noise_stas(cfg,env,actor_critic,nbtch,nreps,prgrs):
     dev = torch.device("cpu" if cfg.device == "cpu" else "cuda")
 
     nclrs,hght,wdth = list(env.observation_space["obs"].shape)
-
-    obs = env.observation_space.sample()
-    nobs = prepare_and_normalize_obs(actor_critic, obs)["obs"]
+    ochns = nclrs
 
     btchsz = [nbtch,nclrs,hght,wdth]
 
@@ -34,39 +32,40 @@ def gaussian_noise_stas(cfg,env,actor_critic,nbtch,nreps,prgrs):
 
         with tqdm(total=repttl,desc="Generating STAs",disable=not(prgrs)) as pbar:
 
-            for mdl in enc.conv_head:
+            for lyrnm, mdl in enc.conv_head.named_children():
 
                 mdls.append(mdl)
                 subenc = torch.nn.Sequential(*mdls)
 
-                if is_activation(mdl):
-
+                # check if mdl has out channels
+                if hasattr(mdl,'out_channels'):
                     ochns = mdl.out_channels
-                    hsz,wsz = encoder_out_size(subenc,hght,wdth)
+                hsz,wsz = encoder_out_size(subenc,hght,wdth)
 
-                    hidx = hsz//2
-                    widx = wsz//2
+                hidx = hsz//2
+                widx = wsz//2
 
-                    hrf_size,hmn,wrf_size,wmn = rf_size_and_start(subenc,hidx,widx)
+                hrf_size,wrf_size,hmn,wmn = rf_size_and_start(subenc,hidx,widx)
 
-                    hmx=hmn + hrf_size
-                    wmx=wmn + wrf_size
-                    lyrnm = mdl.name
+                hmx=hmn + hrf_size
+                wmx=wmn + wrf_size
 
-                    stas[lyrnm] = np.zeros((ochns,nclrs,hrf_size,wrf_size))
+                print(hmn,hmx,wmn,wmx)
 
-                    for _ in range(nreps):
+                stas[lyrnm] = np.zeros((ochns,nclrs,hrf_size,wrf_size))
 
-                        pbar.update(1)
+                for _ in range(nreps):
 
-                        for j in range(ochns):
+                    pbar.update(1)
 
-                            obss = torch.randn(size=btchsz,device=dev)
-                            obss1 = obss[:,:,hmn:hmx,wmn:wmx].cpu()
-                            outs = subenc(obss)[:,j,hidx,widx].cpu()
+                    for j in range(ochns):
 
-                            if torch.sum(outs) != 0:
-                                stas[lyrnm][j] += np.average(obss1,axis=0,weights=outs)/nreps
+                        obss = torch.randn(size=btchsz,device=dev)
+                        obss1 = obss[:,:,hmn:hmx,wmn:wmx].cpu()
+                        outs = subenc(obss)[:,j,hidx,widx].cpu()
+
+                        if torch.sum(outs) != 0:
+                            stas[lyrnm][j] += np.average(obss1,axis=0,weights=outs)/nreps
 
     return stas
 

@@ -45,7 +45,7 @@ def retinal_override_defaults(parser):
         recurrence=32,
         rollout=32,
         use_rnn=False,
-        rnn_size=64,
+        rnn_size=32,
 
         # Evaluation-mode stuff
         eval_env_frameskip=1,  # this is for smoother rendering during evaluation

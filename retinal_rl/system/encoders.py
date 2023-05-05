@@ -84,27 +84,27 @@ class RetinalEncoderBase(Encoder):
 
         # Padding
         self.cpad = (self.krnsz - 1) // 2
-        self.spad = (self.spool - 1) // 2
-        self.mpad = (self.mpool - 1) // 2
+        # self.spad = (self.spool - 1) // 2
+        # self.mpad = (self.mpool - 1) // 2
 
         # Preparing Conv Layers
         conv_layers = OrderedDict(
 
                 [ ('bp_filters', nn.Conv2d(3, self.gchans, self.krnsz, padding=self.cpad))
                 , ('bp_outputs', activation(self.act_name))
-                , ('bp_averages', nn.AvgPool2d(self.spool,padding=self.spad))
+                , ('bp_averages', nn.AvgPool2d(self.spool, ceil_mode=True))
 
                 , ('rgc_filters', nn.Conv2d(self.gchans, self.gchans, self.krnsz, padding=self.cpad))
                 , ('rgc_outputs', activation(self.act_name))
-                , ('rgc_averages', nn.AvgPool2d(self.spool,padding=self.spad))
+                , ('rgc_averages', nn.AvgPool2d(self.spool, ceil_mode=True))
 
                 , ('lgn_filters', nn.Conv2d(self.gchans, self.bchans, self.krnsz, self.cpad))
                 , ('lgn_outputs', activation(self.act_name))
-                , ('lgn_averages', nn.AvgPool2d(self.spool,padding=self.spad))
+                , ('lgn_averages', nn.AvgPool2d(self.spool, ceil_mode=True))
 
                 , ('v1_filters', nn.Conv2d(self.bchans, self.gchans, self.krnsz, padding=self.cpad))
                 , ('simple_outputs', activation(self.act_name))
-                , ('complex_outputs', nn.MaxPool2d(self.mpool,padding=self.mpad))
+                , ('complex_outputs', nn.MaxPool2d(self.mpool, ceil_mode=True))
 
                 ] )
 
