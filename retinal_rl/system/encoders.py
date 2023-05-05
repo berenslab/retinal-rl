@@ -15,35 +15,25 @@ from sample_factory.algo.utils.context import global_model_factory
 ### Registration ###
 
 
-def register_retinal_model(cfg):
+def register_retinal_model():
     """Registers the retinal model with the global model factory."""
-    if cfg.encoder == "retinal":
-        log.info("Registering retinal model")
-        global_model_factory().register_encoder_factory(make_retinal_encoder)
-    elif cfg.encoder == "prototypical":
-        log.info("Registering prototypical model")
-        global_model_factory().register_encoder_factory(make_prototypical_encoder)
-    elif cfg.encoder == "lindsey":
-        log.info("Registering lindsey model")
-        global_model_factory().register_encoder_factory(make_lindsey_encoder)
-    else:
-        raise Exception("Unknown model type")
-
+    global_model_factory().register_encoder_factory(make_encoder)
 
 ### Model make functions ###
 
 
-def make_lindsey_encoder(cfg: Config, obs_space: ObsSpace) -> Encoder:
-    """Factory function as required by the API."""
-    return LindseyEncoder(cfg, obs_space)
+def make_encoder(cfg: Config, obs_space: ObsSpace) -> Encoder:
+    """defines the encoder constructor."""
+    if cfg.encoder == "retinal":
+        return RetinalEncoder(cfg, obs_space)
+    elif cfg.encoder == "prototypical":
+        return Prototypical(cfg, obs_space)
+    elif cfg.encoder == "lindsey":
+        return LindseyEncoder(cfg, obs_space)
+    else:
+        raise Exception("Unknown model type")
 
-def make_prototypical_encoder(cfg: Config, obs_space: ObsSpace) -> Encoder:
-    """Factory function as required by the API."""
-    return Prototypical(cfg, obs_space)
 
-def make_retinal_encoder(cfg: Config, obs_space: ObsSpace) -> Encoder:
-    """Factory function as required by the API."""
-    return RetinalEncoder(cfg, obs_space)
 
 
 ### Util ###

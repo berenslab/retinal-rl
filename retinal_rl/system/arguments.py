@@ -5,6 +5,9 @@ retina_rl library
 
 from sf_examples.vizdoom.doom.doom_params import add_doom_env_args,add_doom_env_eval_args
 
+from sample_factory.utils.utils import str2bool
+
+
 def retinal_override_defaults(parser):
     """Overrides for the sample factory CLI defaults."""
     parser.set_defaults(
@@ -65,15 +68,15 @@ def add_retinal_env_args(parser):
     parser.add_argument('--retinal_bottleneck', type=int, default=4, help='Number of channels in retinal bottleneck')
     parser.add_argument('--vvs_depth', type=int, default=1, help='Number of CNN layers in the ventral stream network')
     parser.add_argument('--kernel_size', type=int, default=7, help='Size of CNN filters')
-    parser.add_argument('--retinal_stride', type=int, default=2, help='Stride at the first conv layer (\'BC\'), doesnt apply to \'VVS\'')
+    parser.add_argument('--retinal_stride', type=int, default=1, help='Stride at the first conv layer (\'BC\'), doesnt apply to \'VVS\'')
     parser.add_argument( "--encoder", default="retinal" , choices=["retinal", "prototypical", "lindsey"]
                         , type=str, help="Type of encoder network architecture.")
     parser.add_argument( "--activation", default="elu" , choices=["elu", "relu", "tanh", "identity"]
                         , type=str, help="Type of activation function to use.")
     parser.add_argument('--repeat', type=int, default=1, help="Dummy parameter to indicate which repetition we're at in a wandb sweep")
     parser.add_argument('--analysis_freq', type=int, default=int(5e8), help="How often to run analysis (in frames). 0 disables live analyses.")
-    # Whether to observe the algorithm during training
-    parser.add_argument("--no_observe", action="store_true", help="Whether to disable live observation of the algorithm during training")
+    parser.add_argument("--online_analysis", default=True,type=str2bool, help="Whether to run online analyses of the model during training")
+    parser.add_argument("--dry_run", default=False, type=str2bool, help="Only perform a dry run of the config and network analysis, without training or evaluation")
 
 
 def add_retinal_env_eval_args(parser):
@@ -86,8 +89,8 @@ def add_retinal_env_eval_args(parser):
     # Doom args
     add_doom_env_eval_args(parser)
 
-    parser.add_argument("--no_simulate", action="store_true", help="Runs simulations and analyses")
-    parser.add_argument("--no_plot", action="store_true", help="Generate static plots")
-    parser.add_argument("--no_animate", action="store_true", help="Animate 'analysis_out.npy'")
+    parser.add_argument("--simulate", default=True, type=str2bool, help="Runs simulations and analyses")
+    parser.add_argument("--plot", default=True, type=str2bool, help="Generate static plots")
+    parser.add_argument("--animate", default=True, type=str2bool, help="Animate 'analysis_out.npy'")
     parser.add_argument("--frame_step", type=int, default=0, help="Which frame of the animation to statically plot")
     parser.add_argument("--sta_repeats", type=int, default=1000, help="Number of loops in generating STAs")

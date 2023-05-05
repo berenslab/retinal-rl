@@ -3,16 +3,20 @@ import os
 import wandb
 import multiprocessing
 multiprocessing.set_start_method("spawn",force=True)
+import torchscan as ts
+
 
 from sample_factory.cfg.arguments import parse_sf_args, parse_full_cfg
 from sample_factory.train import make_runner
 from sample_factory.utils.typing import Config
 from sample_factory.algo.utils.misc import ExperimentStatus
+from sample_factory.utils.attr_dict import AttrDict
 
 from sample_factory.algo.runners.runner import AlgoObserver, Runner
 from sample_factory.utils.utils import log,debug_log_every_n
+from sample_factory.algo.utils.make_env import make_env_func_batched
 
-from retinal_rl.system.encoders import register_retinal_model
+from retinal_rl.system.encoders import register_retinal_model,make_encoder
 from retinal_rl.system.environment import register_retinal_envs
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 from retinal_rl.analysis.util import get_analysis_times,analysis_root,plot_path
@@ -100,9 +104,6 @@ class RetinalAlgoObserver(AlgoObserver):
 def run_rl(cfg: Config):
     """Run RL training."""
 
-    register_retinal_envs()
-    register_retinal_model(cfg)
-
     cfg, runner = make_runner(cfg)
     if not(cfg.no_observe):
         runner.register_observer(RetinalAlgoObserver(cfg))
@@ -142,7 +143,10 @@ def fill_in_argv_template(argv):
 def main():
     """Script entry point."""
     # Register retinal environments and models.
+    register_retinal_envs()
+    register_retinal_model()
 
+    # Parsing args
     argv = sys.argv[1:]
     # Replace string templates in argv with values from argv.
     argv = fill_in_argv_template(argv)
@@ -156,10 +160,21 @@ def main():
 
     cfg = parse_full_cfg(parser, argv)
 
-    # Run simulation
-    status = run_rl(cfg)
+    test_env = make_env_func_batched( cfg
+            , env_config=AttrDict(worker_index=0, vector_index=0, env_id=0), render_mode="rgb_array"
+            )
 
-    return status
+    obs_space = test_env.observation_space
+    enc = make_encoder(cfg,obs_space)
+
+    print("Encoder summary:")
+    ts.summary(enc.basic_encoder,(3,cfg.res_w,cfg.res_h),receptive_field=True)
+
+    # Run simulation
+    if not(cfg.dry_run):
+
+        status = run_rl(cfg)
+        return status
 
 if __name__ == "__main__":
     sys.exit(main())
