@@ -36,7 +36,7 @@ def analyze(cfg,progress_bar=True):
     ac,env,cfg,envstps = get_ac_env(cfg,checkpoint_dict)
 
     print("Encoder summary:")
-    ts.summary(ac.encoder.basic_encoder,(3,cfg.res_w,cfg.res_h))
+    ts.summary(ac.encoder.basic_encoder,(3,cfg.res_w,cfg.res_h),receptive_field=True,effective_rf_stats=True)
 
     log.debug("RETINAL RL: Model and environment loaded, preparing simulation.")
 
