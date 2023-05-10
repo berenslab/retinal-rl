@@ -33,51 +33,60 @@ def analyze(cfg,progress_bar=True):
 
     ac,env,cfg,envstps = get_ac_env(cfg,checkpoint_dict)
 
+    if cfg.analysis_name is None:
+        ana_name = "env_steps-" + str(envstps)
+    else:
+        ana_name = cfg.analysis_name
+
     log.debug("RETINAL RL: Model and environment loaded, preparing simulation.")
 
-    if not os.path.exists(analysis_path(cfg,envstps)):
-        os.makedirs(data_path(cfg,envstps))
-        os.makedirs(plot_path(cfg,envstps))
+    if not os.path.exists(analysis_path(cfg,ana_name)):
+        os.makedirs(data_path(cfg,ana_name))
+        os.makedirs(plot_path(cfg,ana_name))
+
+    save_onxx(cfg,ana_name,ac,env)
 
     """ Final gluing together of all analyses of interest. """
     if cfg.simulate:
 
         log.debug("RETINAL RL: Running analysis simulations.")
 
-        save_onxx(cfg,envstps,ac,env)
+        sim_recs = generate_simulation(cfg,ac,env,prgrs=progress_bar)
+        save_data(cfg,ana_name,sim_recs,"sim_recs")
+
+    if cfg.receptive_fields:
+
+        log.debug("RETINAL RL: Analyzing receptive fields.")
 
         stas = gaussian_noise_stas(cfg,env,ac,nbtch=200,nreps=cfg.sta_repeats,prgrs=progress_bar)
-        save_data(cfg,envstps,stas,"stas")
-
-        sim_recs = generate_simulation(cfg,ac,env,prgrs=progress_bar)
-        save_data(cfg,envstps,sim_recs,"sim_recs")
+        save_data(cfg,ana_name,stas,"stas")
 
     if cfg.plot:
 
         log.debug("RETINAL RL: Plotting analysis simulations.")
 
         # Load data
-        sim_recs = load_data(cfg,envstps,"sim_recs")
+        sim_recs = load_data(cfg,ana_name,"sim_recs")
 
         # Single frame of the animation
         fig = plot_acts_tsne_stim(sim_recs)
-        pth=plot_path(cfg,envstps,"latent-activations.png")
+        pth=plot_path(cfg,ana_name,"latent-activations.png")
 
         fig.savefig(pth, bbox_inches="tight")
 
         # Single frame of the animation
         fig = simulation_plot(sim_recs,frame_step=cfg.frame_step,prgrs=progress_bar)
-        pth=plot_path(cfg,envstps,"simulation-frame.png")
+        pth=plot_path(cfg,ana_name,"simulation-frame.png")
 
         fig.savefig(pth, bbox_inches="tight")
         #if cfg.with_wandb: wandb.log({"simulation-frame": wandb.Image(fig)})
 
         # STA receptive fields
-        stas = load_data(cfg,envstps,"stas")
+        stas = load_data(cfg,ana_name,"stas")
         figs = receptive_field_plots(stas)
 
         for ky in figs:
-            figs[ky].savefig(plot_path(cfg,envstps,ky + "-sta-rfs.png"), bbox_inches="tight")
+            figs[ky].savefig(plot_path(cfg,ana_name,ky + "-sta-rfs.png"), bbox_inches="tight")
             #if cfg.with_wandb: wandb.log({ky + "-sta-receptive-fields": wandb.Image(figs[ky])})
 
     if cfg.animate:
@@ -85,9 +94,9 @@ def analyze(cfg,progress_bar=True):
         log.debug("RETINAL RL: Animating analysis simulations.")
 
         # Animation
-        sim_recs = load_data(cfg,envstps,"sim_recs")
+        sim_recs = load_data(cfg,ana_name,"sim_recs")
         anim = simulation_plot(sim_recs,animate=True,fps=cfg.fps,prgrs=progress_bar)
-        pth = plot_path(cfg,envstps,"simulation-animation.mp4")
+        pth = plot_path(cfg,ana_name,"simulation-animation.mp4")
 
         anim.save(pth, extra_args=["-vcodec", "libx264"] )
         #if cfg.with_wandb: wandb.log({"simulation-animation": wandb.Video(pth)})

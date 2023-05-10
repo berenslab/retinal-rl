@@ -69,7 +69,7 @@ def add_retinal_env_args(parser):
     parser.add_argument('--vvs_depth', type=int, default=1, help='Number of CNN layers in the ventral stream network')
     parser.add_argument('--kernel_size', type=int, default=3, help='Size of CNN filters')
     parser.add_argument('--retinal_stride', type=int, default=1, help='Stride at the first conv layer (\'BC\'), doesnt apply to \'VVS\'')
-    parser.add_argument( "--encoder", default="retinal" , choices=["retinal", "prototypical", "lindsey"]
+    parser.add_argument( "--network", default="retinal" , choices=["retinal", "prototypical", "lindsey"]
                         , type=str, help="Type of encoder network architecture.")
     parser.add_argument( "--activation", default="elu" , choices=["elu", "relu", "tanh", "identity"]
                         , type=str, help="Type of activation function to use.")
@@ -89,6 +89,8 @@ def add_retinal_env_eval_args(parser):
     # Doom args
     add_doom_env_eval_args(parser)
 
+    parser.add_argument("--analysis_name", default=None, help="Name of the analysis directory. If None, sets based on number of training steps.")
+    parser.add_argument("--receptive_fields", default=True, type=str2bool, help="Analyze receptive fields of network.")
     parser.add_argument("--simulate", default=True, type=str2bool, help="Runs simulations and analyses")
     parser.add_argument("--plot", default=True, type=str2bool, help="Generate static plots")
     parser.add_argument("--animate", default=True, type=str2bool, help="Animate 'analysis_out.npy'")

@@ -1,11 +1,10 @@
 ### Util for preparing simulations and data for analysis
 
 from typing import Tuple
-
 import numpy as np
 import torch
-
-from captum.attr import Saliency #, GuidedBackprop, Occlusion, IntegratedGradients, Deconvolution
+from tqdm.auto import tqdm
+from captum.attr import IntegratedGradients
 
 from sample_factory.algo.learning.learner import Learner
 from sample_factory.algo.sampling.batched_sampling import preprocess_actions
@@ -21,9 +20,7 @@ from sample_factory.utils.typing import Config
 from sample_factory.algo.utils.env_info import extract_env_info
 from sample_factory.utils.utils import log
 
-from retinal_rl.util import obs_dict_to_obs,obs_to_img,ValueNetwork
-
-from tqdm.auto import tqdm
+from retinal_rl.util import obs_dict_to_obs,obs_to_img,ValueNetwork,from_float_to_rgb
 
 def get_checkpoint(cfg: Config):
     """
@@ -94,7 +91,7 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
     action_repeat: int = cfg.env_frameskip // cfg.eval_env_frameskip
     device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
     valnet = ValueNetwork(cfg,actor_critic)
-    att_method = Saliency(valnet)
+    att_method = IntegratedGradients(valnet)
 
     # Initializing stream arrays
     imgs = np.zeros((cfg.res_h, cfg.res_w, 3, t_max)).astype(np.uint8)
@@ -144,7 +141,11 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
 
                 obs = obs_dict_to_obs(obs_dict)
                 nobs = obs_dict_to_obs(nobs_dict)
-                attr = att_method.attribute(nobs) #,abs=False)
+
+                nobs1 = torch.unsqueeze(nobs,0)
+
+                attr = att_method.attribute(nobs1,n_steps=500) #,abs=False)
+                attr = torch.squeeze(attr,0)
 
                 img = obs_to_img(obs)
                 nimg = obs_to_img(nobs)
@@ -177,6 +178,12 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
 
                 if num_frames >= t_max:
                     break
+
+    # Clip attrs to 95th percentile
+    attrs = abs(attrs)
+
+    attrs = from_float_to_rgb(attrs)
+    nimgs = from_float_to_rgb(nimgs)
 
     return {
             "imgs": imgs,

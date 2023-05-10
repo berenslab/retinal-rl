@@ -1,15 +1,14 @@
 import numpy as np
-import torch
 import matplotlib as mpl
 mpl.use("Agg")
 
 import matplotlib.pyplot as plt
 plt.style.use('misc/default.mplstyle')
 
+from PIL import Image
+from torchvision.transforms.functional import adjust_contrast
 from matplotlib.animation import FuncAnimation
 from retinal_rl.analysis.statistics import fit_tsne_1d,get_stim_coll,row_zscore
-
-from scipy.ndimage import gaussian_filter1d
 
 from tqdm.auto import tqdm
 
@@ -17,39 +16,21 @@ greyscale = np.array([0.299, 0.587, 0.114])
 
 def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35,prgrs=True):
 
-    t_smooth_sigma = 2
-    vlim_factor = 1.5
-
     imgs = sim_recs["imgs"]
-    #nimgs0 = sim_recs["nimgs"]
-    attrs0 = sim_recs["attrs"]
+    attrs = sim_recs["attrs"]
     hlths0 = sim_recs["hlths"]
     crwds0 = sim_recs["crwds"]
     dns = sim_recs["dns"]
     dndices = np.where(dns)
-
-    #imgs = normalize_data(imgs0)
-    #gimgs0 = np.average(imgs,axis=2,weights=greyscale)
-
-    attrs = gaussian_filter1d(attrs0, t_smooth_sigma, 3)
-    attrs = attrs0.astype(float)
-    vlim = np.max(np.abs(attrs))*vlim_factor
-
-    #gimgs = np.array([gimgs0,gimgs0,gimgs0]).transpose(1,2,0,3)
-    #nimgs = normalize_data(nimgs0)
-    #attrs1 = normalize_data(attrs0)
-    #attrs = gimgs + attrs1
 
     crwds = np.ma.array(crwds0,mask=dns)
     hlths = np.ma.array(hlths0,mask=dns)
 
     if not animate:
         img0 = imgs[:, :, :, frame_step]
-        #nimg0 = nimgs[:, :, :, frame_step]
         attr0 = attrs[:, :, :, frame_step]
     else:
         img0 = imgs[:, :, :, 0]
-        #nimg0 = nimgs[:, :, :, 0]
         attr0 = attrs[:, :, :, 0]
 
     t_max = imgs.shape[3]
@@ -69,7 +50,6 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35,prgrs=True):
     imax = ax_dict["a"]
     rwdax = ax_dict["b"]
     hlthax = ax_dict["d"]
-    #nimax = ax_dict["e"]
     attax = ax_dict["c"]
 
     trng = np.linspace(0, t_max - 1, t_max)
@@ -82,14 +62,6 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35,prgrs=True):
     imax.spines["top"].set_visible(True)
     imax.spines["right"].set_visible(True)
 
-    # Normalized FoV
-    # nimax.set_title("Normalized FoV")
-    # nimax.set_xticks([])
-    # nimax.set_yticks([])
-    # nim = nimax.imshow(nimg0,interpolation=None)
-    # nimax.spines["top"].set_visible(True)
-    # nimax.spines["right"].set_visible(True)
-
     # Attribution
     attax.set_title("Attribution")
     attax.set_xticks([])
@@ -97,8 +69,8 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35,prgrs=True):
     attax.spines["top"].set_visible(True)
     attax.spines["right"].set_visible(True)
 
-    att_img = attax.imshow(img0)
-    att = attax.imshow(np.mean(attr0, 2),interpolation=None, alpha=0.9, cmap='seismic', vmin=-vlim, vmax=vlim)
+    attr0 = Image.fromarray(attr0)
+    att = attax.imshow(attr0)
 
     # Rewards
     r_max = np.max(crwds)
@@ -132,15 +104,13 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35,prgrs=True):
             img = imgs[:, :, :, i]
             im.set_array(img)
 
-            # nimg = nimgs[:, :, :, i]
-            # nim.set_array(nimg)
-
             attr = attrs[:, :, :, i]
+            # Convert attr to PIL Image
+            attr = Image.fromarray(attr)
+            # Double contrast
+            attr = adjust_contrast(attr, 2)
+
             att.set_array(attr)
-
-            att.set_array(np.mean(attr,2))#-np.median(np.mean(attr, 2)))
-            att_img.set_array(img)
-
 
             rline.set_data(trng[0:i], crwds[0:i])
             hline.set_data(trng[0:i], hlths[0:i])
@@ -172,7 +142,6 @@ def plot_acts_tsne_stim(sim_recs): # plot sorted activations
 
     # plot
     fig = plt.figure(figsize=(10,3), dpi = 400)
-    #plt.imshow(data, cmap='bwr', interpolation='nearest', aspect='auto')
     plt.imshow(data, cmap='viridis', interpolation='nearest', aspect='auto', vmin=-4, vmax=4)
     plt.colorbar()
     plt.vlines(pos_col, 0, data.shape[0], color='grey', linewidth=0.3, linestyle='--')

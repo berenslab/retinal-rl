@@ -27,11 +27,11 @@ def register_retinal_model():
 
 def make_encoder(cfg: Config, obs_space: ObsSpace) -> Encoder:
     """defines the encoder constructor."""
-    if cfg.encoder == "retinal":
+    if cfg.network == "retinal":
         return RetinalEncoder(cfg, obs_space)
-    elif cfg.encoder == "prototypical":
+    elif cfg.network == "prototypical":
         return Prototypical(cfg, obs_space)
-    elif cfg.encoder == "lindsey":
+    elif cfg.network == "lindsey":
         return LindseyEncoder(cfg, obs_space)
     else:
         raise Exception("Unknown model type")
@@ -103,8 +103,8 @@ class RetinalEncoderBase(Encoder):
                 , ('lgn_averages', nn.AvgPool2d(self.spool, ceil_mode=True))
 
                 , ('v1_filters', nn.Conv2d(self.bchans, self.gchans, self.krnsz, padding=self.cpad))
-                , ('simple_outputs', activation(self.act_name))
-                , ('complex_outputs', nn.MaxPool2d(self.mpool, ceil_mode=True))
+                , ('v1_simple_outputs', activation(self.act_name))
+                , ('v1_complex_outputs', nn.MaxPool2d(self.mpool, ceil_mode=True))
 
                 ] )
 
@@ -205,28 +205,24 @@ class PrototypicalBase(Encoder):
 
         super().__init__(cfg)
 
-        self.nl_fc = activation(cfg)
+        self.nl_fc = activation(cfg.activation)
         self.act_name = cfg.activation
-        self.kernel_size = 5
+        #self.krnsz = cfg.kernel_size
+        #self.gchans = cfg.global_channels
+        #self.pad = (self.krnsz - 1) // 2
 
         # Preparing Conv Layers
-        conv_layers = []
+        # [[input_channels, 32, 8, 4], [32, 64, 4, 2], [64, 128, 3, 2]]
+        conv_layers = OrderedDict(
+                [ ('conv1_filters', nn.Conv2d(3, 32, 8, stride=4))
+                , ('conv1_output', activation(self.act_name))
+                , ('conv2_filters', nn.Conv2d(32, 64, 4, stride=2))
+                , ('conv2_output', activation(self.act_name))
+                , ('conv3_filters', nn.Conv2d(64, 128, 3, stride=2))
+                , ('conv3_output', activation(self.act_name))
+                ] )
 
-        self.padding = (self.kernel_size - 1) // 2
-
-        conv_layers.extend(
-                [nn.Conv2d(3, 16, self.kernel_size,padding=self.padding)
-                    , nn.MaxPool2d(2)
-                    , activation(self.act_name) ])
-        conv_layers.extend(
-                [nn.Conv2d(16, 16, self.kernel_size,padding=self.padding)
-                    , activation(self.act_name) ])
-        conv_layers.extend(
-                [nn.Conv2d(16, 8, self.kernel_size,padding=self.padding)
-                    , nn.MaxPool2d(2)
-                    , activation(self.act_name) ])
-
-        self.conv_head = nn.Sequential(*conv_layers)
+        self.conv_head = nn.Sequential(conv_layers)
         self.conv_head_out_size = calc_num_elements(self.conv_head, obs_space.shape)
         self.encoder_out_size = cfg.rnn_size
         self.fc1 = nn.Linear(self.conv_head_out_size,self.encoder_out_size)

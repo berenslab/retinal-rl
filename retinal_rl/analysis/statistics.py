@@ -5,10 +5,9 @@ from sklearn.decomposition import PCA
 
 from openTSNE import TSNE
 
-from sample_factory.algo.utils.rl_utils import prepare_and_normalize_obs
 from tqdm import tqdm
 
-from retinal_rl.util import is_activation,encoder_out_size,rf_size_and_start
+from retinal_rl.util import encoder_out_size,rf_size_and_start
 
 def gaussian_noise_stas(cfg,env,actor_critic,nbtch,nreps,prgrs):
     """
@@ -49,8 +48,6 @@ def gaussian_noise_stas(cfg,env,actor_critic,nbtch,nreps,prgrs):
 
                 hmx=hmn + hrf_size
                 wmx=wmn + wrf_size
-
-                print(hmn,hmx,wmn,wmx)
 
                 stas[lyrnm] = np.zeros((ochns,nclrs,hrf_size,wrf_size))
 
@@ -101,13 +98,6 @@ def fit_tsne(data):
     tsne_emb = tsne.fit(data.T)
     return tsne_emb
 
-def fit_pca(data):
-    print('fitting PCA...')
-    pca=PCA()
-    pca.fit(data)
-    embedding = pca.components_.T
-    var_exp = pca.explained_variance_ratio_
-    return embedding, var_exp
 
 def get_stim_coll(all_health, health_dep=-8, death_dep=30):
 
@@ -117,6 +107,14 @@ def get_stim_coll(all_health, health_dep=-8, death_dep=30):
     stim_coll[stim_coll < -death_dep] = 0
     return stim_coll
 
+#def fit_pca(data):
+#    print('fitting PCA...')
+#    pca=PCA()
+#    pca.fit(data)
+#    embedding = pca.components_.T
+#    var_exp = pca.explained_variance_ratio_
+#    return embedding, var_exp
+#
 #def mei_receptive_fields(cfg,env,actor_critic,nstps=5000,pad=2):
 #    """
 #    Returns the receptive fields of every layer of a convnet as computed by maximally exciting inputs.

@@ -122,10 +122,6 @@ def run_rl(cfg: Config):
 def fill_in_argv_template(argv):
     """Replace string templates in argv with values from argv."""
 
-    # Separate out boolean flag arguments
-    bool_flags = [a for a in argv if a.startswith("--") and "=" not in a]
-    argv = [a for a in argv if not a.startswith("--") or "=" in a]
-
     # Convert argv into a dictionary
     argv = [a.split('=') for a in argv]
     # Remove dashes from argv
@@ -135,7 +131,7 @@ def fill_in_argv_template(argv):
     # Convert cfg back into argv
     argv = [f"--{k}={v}" for k,v in cfg.items()]
 
-    return argv + bool_flags
+    return argv
 
 
 

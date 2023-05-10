@@ -26,39 +26,44 @@ def analysis_root(cfg):
 
     return join(experiment_dir(cfg),"analyses")
 
-def analysis_path(cfg,nstps):
+def analysis_path(cfg,ana_name):
     """
     Returns the path to the analysis directory.
     """
     art = analysis_root(cfg)
 
-    return join(art,f"env_steps-{nstps}")
+    return join(art,ana_name)
 
 def get_analysis_times(cfg):
     """
     Returns the list of analysis times.
     """
     art = analysis_root(cfg)
-    return [int(f.split("-")[1]) for f in os.listdir(art)]
+    # list directories
+    drs = os.listdir(art)
+    # filter out directories that don't start with "env_steps-"
+    drs = [d for d in drs if d.startswith("env_steps-")]
 
-def data_path(cfg,nstps,flnm=None):
+    return [int(f.split("-")[1]) for f in drs]
+
+def data_path(cfg,ana_name,flnm=None):
     """
     Returns the path to the data directory.
     """
 
-    datpth = analysis_path(cfg,nstps) + "/data"
+    datpth = analysis_path(cfg,ana_name) + "/data"
 
     if flnm is not None:
         datpth = datpth + "/" + flnm
 
     return datpth
 
-def plot_path(cfg,nstps,flnm=None):
+def plot_path(cfg,ana_name,flnm=None):
     """
     Returns the path to the plot directory.
     """
 
-    pltpth = analysis_path(cfg,nstps) + "/plots"
+    pltpth = analysis_path(cfg,ana_name) + "/plots"
 
     if flnm is not None:
         pltpth = pltpth + "/" + flnm
@@ -69,7 +74,7 @@ def plot_path(cfg,nstps,flnm=None):
 ### IO ###
 
 
-def save_onxx(cfg: Config, nstps : int, actor_critic : ActorCritic, env : BatchedVecEnv) -> None:
+def save_onxx(cfg: Config, ana_name : str, actor_critic : ActorCritic, env : BatchedVecEnv) -> None:
     """
     Write an onxx file of the saved model.
     """
@@ -81,19 +86,19 @@ def save_onxx(cfg: Config, nstps : int, actor_critic : ActorCritic, env : Batche
     # visualize obs only for the 1st agent
 
     # Note that onnx can't process dictionary inputs and so we can only look at the encoder (and decoder?) separately)
-    torch.onnx.export(enc,torch.unsqueeze(obs,0),data_path(cfg,nstps,"encoder.onnx"),verbose=False,input_names=["observation"],output_names=["latent_state"])
+    torch.onnx.export(enc,torch.unsqueeze(obs,0),data_path(cfg,ana_name,"encoder.onnx"),verbose=False,input_names=["observation"],output_names=["latent_state"])
 
-def save_data(cfg : Config,nstps,dat,flnm):
+def save_data(cfg : Config,ana_name,dat,flnm):
     """
     Saves data. 'dat' should probably be a dictionary.
     """
-    np.save(data_path(cfg,nstps,flnm), dat, allow_pickle=True)
+    np.save(data_path(cfg,ana_name,flnm), dat, allow_pickle=True)
 
-def load_data(cfg : Config,nstps,flnm):
+def load_data(cfg : Config,ana_name,flnm):
     """
     Loads data. Note the use of tolist() is necessary to read dictionaries.
     """
-    return np.load(data_path(cfg,nstps,flnm) + ".npy", allow_pickle=True).tolist()
+    return np.load(data_path(cfg,ana_name,flnm) + ".npy", allow_pickle=True).tolist()
 
 
 ### Misc analysis tools ###
