@@ -6,14 +6,12 @@ from retinal_rl.system.environment import register_retinal_envs
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 
 from retinal_rl.analysis.simulation import get_ac_env,generate_simulation,get_checkpoint
-from retinal_rl.analysis.statistics import gaussian_noise_stas
+from retinal_rl.analysis.statistics import gaussian_noise_stas,gradient_receptive_fields
 from retinal_rl.util import save_data,load_data,save_onxx,analysis_path,plot_path,data_path
 from retinal_rl.analysis.plot import simulation_plot,receptive_field_plots,plot_acts_tsne_stim
 
 from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
 from sample_factory.utils.utils import log
-
-#import wandb
 
 def analyze(cfg,progress_bar=True):
 
@@ -42,7 +40,8 @@ def analyze(cfg,progress_bar=True):
 
     if not os.path.exists(analysis_path(cfg,ana_name)):
         os.makedirs(data_path(cfg,ana_name))
-        os.makedirs(plot_path(cfg,ana_name))
+        os.makedirs(os.path.join(plot_path(cfg,ana_name),"sta_rfs"))
+        os.makedirs(os.path.join(plot_path(cfg,ana_name),"grad_rfs"))
 
     save_onxx(cfg,ana_name,ac,env)
 
@@ -60,6 +59,9 @@ def analyze(cfg,progress_bar=True):
 
         stas = gaussian_noise_stas(cfg,env,ac,nbtch=200,nreps=cfg.sta_repeats,prgrs=progress_bar)
         save_data(cfg,ana_name,stas,"stas")
+
+        grads = gradient_receptive_fields(cfg,env,ac,prgrs=progress_bar)
+        save_data(cfg,ana_name,grads,"grads")
 
     if cfg.plot:
 
@@ -79,15 +81,21 @@ def analyze(cfg,progress_bar=True):
         pth=plot_path(cfg,ana_name,"simulation-frame.png")
 
         fig.savefig(pth, bbox_inches="tight")
-        #if cfg.with_wandb: wandb.log({"simulation-frame": wandb.Image(fig)})
 
         # STA receptive fields
         stas = load_data(cfg,ana_name,"stas")
         figs = receptive_field_plots(stas)
 
         for ky in figs:
-            figs[ky].savefig(plot_path(cfg,ana_name,ky + "-sta-rfs.png"), bbox_inches="tight")
-            #if cfg.with_wandb: wandb.log({ky + "-sta-receptive-fields": wandb.Image(figs[ky])})
+            figs[ky].savefig(plot_path(cfg,ana_name,"sta_rfs/" + ky + ".png"), bbox_inches="tight")
+
+        # Gradient receptive fields
+        grads = load_data(cfg,ana_name,"grads")
+        figs = receptive_field_plots(grads)
+
+        for ky in figs:
+            figs[ky].savefig(plot_path(cfg,ana_name,"grad_rfs/" + ky + ".png"), bbox_inches="tight")
+
 
     if cfg.animate:
 
@@ -99,7 +107,6 @@ def analyze(cfg,progress_bar=True):
         pth = plot_path(cfg,ana_name,"simulation-animation.mp4")
 
         anim.save(pth, extra_args=["-vcodec", "libx264"] )
-        #if cfg.with_wandb: wandb.log({"simulation-animation": wandb.Video(pth)})
 
     env.close()
 

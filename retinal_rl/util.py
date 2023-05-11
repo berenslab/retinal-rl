@@ -201,10 +201,6 @@ def rf_size_and_start(mdls,hidx,widx):
     hmn = hidx
     wmn = widx
 
-    # print out hidx and widx
-    #print("hidx: ",hidx)
-    #print("widx: ",widx)
-
     for mdl in mdls:
 
         if is_activation(mdl): continue
@@ -212,9 +208,6 @@ def rf_size_and_start(mdls,hidx,widx):
         hksz,wksz = double_up(mdl.kernel_size)
         hstrd,wstrd = double_up(mdl.stride)
         hpad,wpad = double_up(mdl.padding)
-        # print pads
-        print("hpad: ",hpad)
-        print("wpad: ",wpad)
 
         hrf_size += (hksz-1)*hrf_scale
         wrf_size += (wksz-1)*wrf_scale
@@ -227,14 +220,6 @@ def rf_size_and_start(mdls,hidx,widx):
 
         hmn=hidx*hrf_scale - hrf_shift
         wmn=widx*wrf_scale - wrf_shift
-
-    # print out scales and shifts, hmn and wmn
-    #print("hrf_scale: ",hrf_scale)
-    #print("wrf_scale: ",wrf_scale)
-    #print("hrf_shift: ",hrf_shift)
-    #print("wrf_shift: ",wrf_shift)
-    #print("hmn: ",hmn)
-    #print("wmn: ",wmn)
 
     return hrf_size,wrf_size,hmn,wmn
 

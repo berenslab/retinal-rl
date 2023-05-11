@@ -1,9 +1,9 @@
 import numpy as np
 import torch
 
-from sklearn.decomposition import PCA
-
 from openTSNE import TSNE
+
+from captum.attr import NeuronGradient
 
 from tqdm import tqdm
 
@@ -41,8 +41,8 @@ def gaussian_noise_stas(cfg,env,actor_critic,nbtch,nreps,prgrs):
                     ochns = mdl.out_channels
                 hsz,wsz = encoder_out_size(subenc,hght,wdth)
 
-                hidx = hsz//2
-                widx = wsz//2
+                hidx = (hsz-1)//2
+                widx = (wsz-1)//2
 
                 hrf_size,wrf_size,hmn,wmn = rf_size_and_start(subenc,hidx,widx)
 
@@ -65,6 +65,62 @@ def gaussian_noise_stas(cfg,env,actor_critic,nbtch,nreps,prgrs):
                             stas[lyrnm][j] += np.average(obss1,axis=0,weights=outs)/nreps
 
     return stas
+
+def gradient_receptive_fields(cfg,env,actor_critic,prgrs):
+    """
+    Returns the receptive fields of every layer of a convnet as computed by neural gradients.
+    """
+
+    enc = actor_critic.encoder.basic_encoder
+    dev = torch.device("cpu" if cfg.device == "cpu" else "cuda")
+
+    nclrs,hght,wdth = list(env.observation_space["obs"].shape)
+    ochns = nclrs
+
+    imgsz = [1,nclrs,hght,wdth]
+    # Obs requires grad
+    obs = torch.zeros(size=imgsz,device=dev,requires_grad=True)
+
+    stas = {}
+
+    repttl = len(enc.conv_head)
+    mdls = []
+
+    with torch.no_grad():
+
+        with tqdm(total=repttl,desc="Generating Attributions",disable=not(prgrs)) as pbar:
+
+            for lyrnm, mdl in enc.conv_head.named_children():
+
+                gradient_calculator = NeuronGradient(enc,mdl)
+                mdls.append(mdl)
+                subenc = torch.nn.Sequential(*mdls)
+
+                # check if mdl has out channels
+                if hasattr(mdl,'out_channels'):
+                    ochns = mdl.out_channels
+                hsz,wsz = encoder_out_size(subenc,hght,wdth)
+
+                hidx = (hsz-1)//2
+                widx = (wsz-1)//2
+
+                hrf_size,wrf_size,hmn,wmn = rf_size_and_start(subenc,hidx,widx)
+
+                hmx=hmn + hrf_size
+                wmx=wmn + wrf_size
+
+                stas[lyrnm] = np.zeros((ochns,nclrs,hrf_size,wrf_size))
+
+                pbar.update(1)
+
+                for j in range(ochns):
+
+                    grad = gradient_calculator.attribute(obs,(j,hidx,widx))[0,:,hmn:hmx,wmn:wmx].cpu().numpy()
+
+                    stas[lyrnm][j] = grad
+
+    return stas
+
 
 def row_zscore(mat):
     return (mat - np.mean(mat,1)[:,np.newaxis])/(np.std(mat,1)[:,np.newaxis]+1e-8)
