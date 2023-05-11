@@ -12,7 +12,7 @@ from sample_factory.utils.typing import Config, ObsSpace
 from sample_factory.utils.utils import log
 from sample_factory.algo.utils.context import global_model_factory
 
-from retinal_rl.util import activation
+from retinal_rl.util import activation,padder
 
 
 ### Registration ###
@@ -75,34 +75,34 @@ class RetinalEncoderBase(Encoder):
 
         # Saving parameters
         self.gchans = cfg.global_channels
-        self.bchans = cfg.retinal_bottleneck
-        self.krnsz = cfg.kernel_size
+        if cfg.retinal_bottleneck is not None:
+            self.bchans = cfg.retinal_bottleneck
+        else:
+            self.bchans = cfg.global_channels*2
 
         # Pooling
-        self.spool = 2
+        self.spool = 3
         self.mpool = 4
 
         # Padding
-        self.cpad = (self.krnsz - 1) // 2
-        # self.spad = (self.spool - 1) // 2
-        # self.mpad = (self.mpool - 1) // 2
+        self.spad = 0 # padder(self.spool)
+        self.mpad = 0 # padder(self.mpool)
 
         # Preparing Conv Layers
         conv_layers = OrderedDict(
 
-                [ ('bp_filters', nn.Conv2d(3, self.gchans, self.krnsz, padding=self.cpad))
+                [ ('bp_filters', nn.Conv2d(3, self.gchans, self.spool, padding=self.spad))
                 , ('bp_outputs', activation(self.act_name))
                 , ('bp_averages', nn.AvgPool2d(self.spool, ceil_mode=True))
 
-                , ('rgc_filters', nn.Conv2d(self.gchans, self.gchans, self.krnsz, padding=self.cpad))
+                , ('rgc_filters', nn.Conv2d(self.gchans, self.gchans*2, self.spool, padding=self.spad))
                 , ('rgc_outputs', activation(self.act_name))
                 , ('rgc_averages', nn.AvgPool2d(self.spool, ceil_mode=True))
 
-                , ('lgn_filters', nn.Conv2d(self.gchans, self.bchans, self.krnsz, self.cpad))
-                , ('lgn_outputs', activation(self.act_name))
-                , ('lgn_averages', nn.AvgPool2d(self.spool, ceil_mode=True))
+                , ('btl_filters', nn.Conv2d(self.gchans*2, self.bchans, 1))
+                , ('btl_outputs', activation(self.act_name))
 
-                , ('v1_filters', nn.Conv2d(self.bchans, self.gchans, self.krnsz, padding=self.cpad))
+                , ('v1_filters', nn.Conv2d(self.bchans, self.gchans*4, self.mpool, padding=self.mpad))
                 , ('v1_simple_outputs', activation(self.act_name))
                 , ('v1_complex_outputs', nn.MaxPool2d(self.mpool, ceil_mode=True))
 

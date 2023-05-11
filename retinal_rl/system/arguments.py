@@ -65,7 +65,7 @@ def add_retinal_env_args(parser):
     add_doom_env_args(parser)
     # Parse args for rvvs model from Lindsey et al 2019
     parser.add_argument('--global_channels', type=int, default=16, help='Standard number of channels in CNN layers')
-    parser.add_argument('--retinal_bottleneck', type=int, default=16, help='Number of channels in retinal bottleneck')
+    parser.add_argument('--retinal_bottleneck', type=int, default=None, help='Number of channels in retinal bottleneck (None is a default which is interpreted by the selected encoder)')
     parser.add_argument('--vvs_depth', type=int, default=1, help='Number of CNN layers in the ventral stream network')
     parser.add_argument('--kernel_size', type=int, default=3, help='Size of CNN filters')
     parser.add_argument('--retinal_stride', type=int, default=1, help='Stride at the first conv layer (\'BC\'), doesnt apply to \'VVS\'')
@@ -95,4 +95,4 @@ def add_retinal_env_eval_args(parser):
     parser.add_argument("--plot", default=True, type=str2bool, help="Generate static plots")
     parser.add_argument("--animate", default=True, type=str2bool, help="Animate 'analysis_out.npy'")
     parser.add_argument("--frame_step", type=int, default=0, help="Which frame of the animation to statically plot")
-    parser.add_argument("--sta_repeats", type=int, default=1000, help="Number of loops in generating STAs")
+    parser.add_argument("--sta_repeats", type=int, default=200, help="Number of loops in generating STAs")

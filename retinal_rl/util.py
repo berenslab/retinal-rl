@@ -224,6 +224,9 @@ def rf_size_and_start(mdls,hidx,widx):
     return hrf_size,wrf_size,hmn,wmn
 
 
+def padder(krnsz):
+    return (krnsz - 1) // 2
+
 ### Value Network ###
 
 
