@@ -175,8 +175,8 @@ def encoder_out_size(mdls,hght0,wdth0):
         strd = double_up(mdl.stride)
         pad = double_up(mdl.padding)
 
-        # if max or average pooling layer then ceil else floor
-        if isinstance(mdl,nn.MaxPool2d) or isinstance(mdl,nn.AvgPool2d):
+        # if has a ceil mode
+        if hasattr(mdl,"ceil_mode") and mdl.ceil_mode:
             hght = ceil((hght - krnsz[0] + 2*pad[0])/strd[0] + 1)
             wdth = ceil((wdth - krnsz[1] + 2*pad[1])/strd[1] + 1)
         else:
@@ -192,14 +192,18 @@ def rf_size_and_start(mdls,hidx,widx):
     """
     hrf_size = 1
     hrf_scale = 1
-    hrf_start = 0
+    hrf_shift = 0
 
     wrf_size = 1
     wrf_scale = 1
-    wrf_start = 0
+    wrf_shift = 0
 
     hmn = hidx
     wmn = widx
+
+    # print out hidx and widx
+    #print("hidx: ",hidx)
+    #print("widx: ",widx)
 
     for mdl in mdls:
 
@@ -208,18 +212,29 @@ def rf_size_and_start(mdls,hidx,widx):
         hksz,wksz = double_up(mdl.kernel_size)
         hstrd,wstrd = double_up(mdl.stride)
         hpad,wpad = double_up(mdl.padding)
+        # print pads
+        print("hpad: ",hpad)
+        print("wpad: ",wpad)
 
         hrf_size += (hksz-1)*hrf_scale
         wrf_size += (wksz-1)*wrf_scale
 
-        hrf_start += hpad*hrf_scale
-        wrf_start += wpad*wrf_scale
+        hrf_shift += hpad*hrf_scale
+        wrf_shift += wpad*wrf_scale
 
         hrf_scale *= hstrd
         wrf_scale *= wstrd
 
-        hmn=hidx*hrf_scale - hrf_start
-        wmn=widx*wrf_scale - wrf_start
+        hmn=hidx*hrf_scale - hrf_shift
+        wmn=widx*wrf_scale - wrf_shift
+
+    # print out scales and shifts, hmn and wmn
+    #print("hrf_scale: ",hrf_scale)
+    #print("wrf_scale: ",wrf_scale)
+    #print("hrf_shift: ",hrf_shift)
+    #print("wrf_shift: ",wrf_shift)
+    #print("hmn: ",hmn)
+    #print("wmn: ",wmn)
 
     return hrf_size,wrf_size,hmn,wmn
 
