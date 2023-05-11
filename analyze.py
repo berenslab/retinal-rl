@@ -1,6 +1,8 @@
 import sys
 import os
 
+import matplotlib.pyplot as plt
+
 from retinal_rl.system.encoders import register_retinal_model
 from retinal_rl.system.environment import register_retinal_envs
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
@@ -75,26 +77,33 @@ def analyze(cfg,progress_bar=True):
         pth=plot_path(cfg,ana_name,"latent-activations.png")
 
         fig.savefig(pth, bbox_inches="tight")
+        plt.close()
 
         # Single frame of the animation
         fig = simulation_plot(sim_recs,frame_step=cfg.frame_step,prgrs=progress_bar)
         pth=plot_path(cfg,ana_name,"simulation-frame.png")
 
         fig.savefig(pth, bbox_inches="tight")
+        plt.close()
 
         # STA receptive fields
         stas = load_data(cfg,ana_name,"stas")
-        figs = receptive_field_plots(stas)
 
-        for ky in figs:
-            figs[ky].savefig(plot_path(cfg,ana_name,"sta_rfs/" + ky + ".png"), bbox_inches="tight")
+        for ky in stas:
 
-        # Gradient receptive fields
+            lyr = stas[ky]
+            fig = receptive_field_plots(lyr)
+            fig.savefig(plot_path(cfg,ana_name,"sta_rfs/" + ky + ".png"), bbox_inches="tight")
+            plt.close()
+
         grads = load_data(cfg,ana_name,"grads")
-        figs = receptive_field_plots(grads)
 
-        for ky in figs:
-            figs[ky].savefig(plot_path(cfg,ana_name,"grad_rfs/" + ky + ".png"), bbox_inches="tight")
+        for ky in grads:
+
+            lyr = grads[ky]
+            fig = receptive_field_plots(lyr)
+            fig.savefig(plot_path(cfg,ana_name,"grad_rfs/" + ky + ".png"), bbox_inches="tight")
+            plt.close()
 
 
     if cfg.animate:

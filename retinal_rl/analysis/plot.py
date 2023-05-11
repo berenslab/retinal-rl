@@ -151,47 +151,40 @@ def plot_acts_tsne_stim(sim_recs): # plot sorted activations
 
     return fig
 
-def receptive_field_plots(rfs):
+def receptive_field_plots(lyr):
     """
     Returns a figures of the RGB receptive fields for each element from a layer-wise dictionary.
     """
 
-    figs = {}
+    ochns,nclrs,_,_ = lyr.shape
 
-    for ky in rfs:
+    fig, axs0 = plt.subplots(
+        nclrs,ochns,
+        figsize=(ochns*1.5, nclrs),
+        )
 
-        lyr = rfs[ky]
-        ochns,nclrs,_,_ = lyr.shape
+    axs = axs0.flat
+    clrs = ['Red','Green','Blue']
+    cmaps = ['inferno', 'viridis', 'cividis']
 
-        fig, axs0 = plt.subplots(
-            nclrs,ochns,
-            figsize=(ochns*1.5, nclrs),
-            )
+    for i in range(ochns):
 
-        axs = axs0.flat
-        clrs = ['Red','Green','Blue']
-        cmaps = ['inferno', 'viridis', 'cividis']
+        mx = np.amax(lyr[i])
+        mn = np.amin(lyr[i])
 
-        for i in range(ochns):
+        for j in range(nclrs):
 
-            mx = np.amax(lyr[i])
-            mn = np.amin(lyr[i])
+            ax = axs[i + ochns * j]
+            #hght,wdth = lyr[i,j,:,:].shape
+            im = ax.imshow(lyr[i,j,:,:],cmap=cmaps[j],vmin=mn,vmax=mx)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.spines["top"].set_visible(True)
+            ax.spines["right"].set_visible(True)
 
-            for j in range(nclrs):
+            if i==0:
+                fig.colorbar(im, ax=ax,cmap=cmaps[j],label=clrs[j],location="left")
+            else:
+                fig.colorbar(im, ax=ax,cmap=cmaps[j],location="left")
 
-                ax = axs[i + ochns * j]
-                #hght,wdth = lyr[i,j,:,:].shape
-                im = ax.imshow(lyr[i,j,:,:],cmap=cmaps[j],vmin=mn,vmax=mx)
-                ax.set_xticks([])
-                ax.set_yticks([])
-                ax.spines["top"].set_visible(True)
-                ax.spines["right"].set_visible(True)
-
-                if i==0:
-                    fig.colorbar(im, ax=ax,cmap=cmaps[j],label=clrs[j],location="left")
-                else:
-                    fig.colorbar(im, ax=ax,cmap=cmaps[j],location="left")
-
-        figs[ky] = fig
-
-    return figs
+    return fig

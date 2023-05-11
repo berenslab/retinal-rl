@@ -79,21 +79,35 @@ class RetinalAlgoObserver(AlgoObserver):
 
                     log.debug("RETINAL RL: Analysis process finished successfully. Retrieving envstps...")
                     envstps = self.queue.get()
+                    ana_name = "env_steps-" + str(envstps)
 
                     if self.cfg.with_wandb:
                         log.debug("RETINAL RL: Uploading plots to wandb...")
 
-                        pltpth = plot_path(self.cfg,envstps)
-                        # load all pngs in the plot directory and upload them to wandb
-                        for f in os.listdir(pltpth):
-                            if f.endswith(".png"):
-                                log.debug("RETINAL RL: Uploading %s",f)
-                                wandb.log({f: wandb.Image(os.path.join(pltpth,f))})
-                        # load all mp4 files in the plot directory and upload them to wandb
-                        for f in os.listdir(pltpth):
-                            if f.endswith(".mp4"):
-                                log.debug("RETINAL RL: Uploading %s",f)
-                                wandb.log({f: wandb.Video(os.path.join(pltpth,f))})
+                        pltpth = plot_path(self.cfg,ana_name)
+                        # Recursively list all files in pltpth
+                        for path, _, files in os.walk(pltpth):
+                            # upload all pngs to wandb
+                            for f in files:
+                                if f.endswith(".png"):
+                                    log.debug("RETINAL RL: Uploading %s",f)
+                                    wandb.log({f: wandb.Image(os.path.join(path,f))})
+                            # Upload video to wandb
+                            for f in files:
+                                if f.endswith(".mp4"):
+                                    log.debug("RETINAL RL: Uploading %s",f)
+                                    wandb.log({f: wandb.Video(os.path.join(path,f))})
+
+
+                        #for f in os.listdir(pltpth):
+                        #    if f.endswith(".png"):
+                        #        log.debug("RETINAL RL: Uploading %s",f)
+                        #        wandb.log({f: wandb.Image(os.path.join(pltpth,f))})
+                        ## load all mp4 files in the plot directory and upload them to wandb
+                        #for f in os.listdir(pltpth):
+                        #    if f.endswith(".mp4"):
+                        #        log.debug("RETINAL RL: Uploading %s",f)
+                        #        wandb.log({f: wandb.Video(os.path.join(pltpth,f))})
 
                     self.steps_complete += 1
                 self.current_process.join()
