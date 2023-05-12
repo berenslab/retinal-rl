@@ -1,4 +1,4 @@
-name: complexity-complex
+name: complexity
 description: Sweeping performance of models of increasing complexity on a variety of tasks.
 program: train.py
 method: grid

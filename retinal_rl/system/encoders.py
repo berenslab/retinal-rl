@@ -12,7 +12,7 @@ from sample_factory.utils.typing import Config, ObsSpace
 from sample_factory.utils.utils import log
 from sample_factory.algo.utils.context import global_model_factory
 
-from retinal_rl.util import activation,padder
+from retinal_rl.util import activation,padder,encoder_out_size
 
 
 ### Registration ###
@@ -74,11 +74,14 @@ class RetinalEncoderBase(Encoder):
         self.nl_fc = activation(cfg.activation)
 
         # Saving parameters
-        self.gchans = cfg.global_channels
+        self.bp_chans = cfg.global_channels
+        self.rgc_chans = self.bp_chans*2
+        self.v1_chans = self.rgc_chans*2
+
         if cfg.retinal_bottleneck is not None:
-            self.bchans = cfg.retinal_bottleneck
+            self.btl_chans = cfg.retinal_bottleneck
         else:
-            self.bchans = cfg.global_channels*2
+            self.btl_chans = self.rgc_chans
 
         # Pooling
         self.spool = 3
@@ -91,25 +94,27 @@ class RetinalEncoderBase(Encoder):
         # Preparing Conv Layers
         conv_layers = OrderedDict(
 
-                [ ('bp_filters', nn.Conv2d(3, self.gchans, self.spool, padding=self.spad))
+                [ ('bp_filters', nn.Conv2d(3, self.bp_chans, self.spool, padding=self.spad))
                 , ('bp_outputs', activation(self.act_name))
                 , ('bp_averages', nn.AvgPool2d(self.spool, ceil_mode=True))
 
-                , ('rgc_filters', nn.Conv2d(self.gchans, self.gchans*2, self.spool, padding=self.spad))
+                , ('rgc_filters', nn.Conv2d(self.bp_chans, self.rgc_chans, self.spool, padding=self.spad))
                 , ('rgc_outputs', activation(self.act_name))
                 , ('rgc_averages', nn.AvgPool2d(self.spool, ceil_mode=True))
 
-                , ('btl_filters', nn.Conv2d(self.gchans*2, self.bchans, 1))
+                , ('btl_filters', nn.Conv2d(self.rgc_chans, self.btl_chans, 1))
                 , ('btl_outputs', activation(self.act_name))
 
-                , ('v1_filters', nn.Conv2d(self.bchans, self.gchans*4, self.mpool, padding=self.mpad))
+                , ('v1_filters', nn.Conv2d(self.btl_chans, self.v1_chans, self.mpool, padding=self.mpad))
                 , ('v1_simple_outputs', activation(self.act_name))
                 , ('v1_complex_outputs', nn.MaxPool2d(self.mpool, ceil_mode=True))
 
                 ] )
 
         self.conv_head = nn.Sequential(conv_layers)
-        self.conv_head_out_size = calc_num_elements(self.conv_head, obs_space.shape)
+
+        cout_hght,cout_wdth = encoder_out_size(self.conv_head, *obs_space.shape[1:])
+        self.conv_head_out_size = cout_hght*cout_wdth*self.v1_chans
         self.encoder_out_size = cfg.rnn_size
         self.fc1 = nn.Linear(self.conv_head_out_size,self.encoder_out_size)
 
