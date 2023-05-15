@@ -52,9 +52,6 @@ class RetinalEncoder(Encoder):
         self.encoder_out_size = self.basic_encoder.get_out_size()
 
         log.debug("Policy head output size: %r", self.get_out_size())
-        self.encoder_out_size = self.basic_encoder.get_out_size()
-
-        log.debug("Policy head output size: %r", self.get_out_size())
 
     def forward(self, obs_dict):
         x = self.basic_encoder(obs_dict["obs"])
