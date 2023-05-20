@@ -1,4 +1,4 @@
-name: rnn-complexity
+name: cifar-rnn
 description: Sweeping performance of models of increasing complexity on a variety of tasks.
 program: train.py
 method: grid
@@ -8,7 +8,7 @@ parameters:
 
   # Simulation specification
   wandb_group:
-    value: "rnn-complexity"
+    value: "cifar-rnn"
   wandb_job_type:
     value: "rnn-{use_rnn}"
   experiment:
@@ -36,7 +36,7 @@ parameters:
   use_rnn:
     values: ["False","True"]
   rnn_size:
-    value: [16,32,64]
+    values: [16,32,64]
 
   # Training
   train_for_env_steps:
@@ -48,7 +48,7 @@ parameters:
 
   # Hardware
   num_workers:
-    value: 24
+    value: 20
   num_envs_per_worker:
     value: 8
   rollout:
