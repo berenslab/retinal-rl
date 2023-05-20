@@ -50,7 +50,7 @@ def retinal_override_defaults(parser):
         # Evaluation-mode stuff
         eval_env_frameskip=1,  # this is for smoother rendering during evaluation
         fps=35,
-        max_num_frames=1050,
+        max_num_frames=1000,
         max_num_episodes=100,
     )
 
@@ -74,7 +74,7 @@ def add_retinal_env_args(parser):
     parser.add_argument( "--activation", default="elu" , choices=["elu", "relu", "tanh", "identity"]
                         , type=str, help="Type of activation function to use.")
     parser.add_argument('--repeat', type=int, default=1, help="Dummy parameter to indicate which repetition we're at in a wandb sweep")
-    parser.add_argument('--analysis_freq', type=int, default=int(5e8), help="How often to run analysis (in frames). 0 disables live analyses.")
+    parser.add_argument('--analysis_freq', type=int, default=int(2e9), help="How often to run analysis (in frames)")
     parser.add_argument("--online_analysis", default=True,type=str2bool, help="Whether to run online analyses of the model during training")
     parser.add_argument("--dry_run", default=False, type=str2bool, help="Only perform a dry run of the config and network analysis, without training or evaluation")
 

@@ -73,11 +73,11 @@ def analyze(cfg,progress_bar=True):
         sim_recs = load_data(cfg,ana_name,"sim_recs")
 
         # Single frame of the animation
-        fig = plot_acts_tsne_stim(sim_recs)
-        pth=plot_path(cfg,ana_name,"latent-activations.png")
+        # fig = plot_acts_tsne_stim(sim_recs)
+        # pth=plot_path(cfg,ana_name,"latent-activations.png")
 
-        fig.savefig(pth, bbox_inches="tight")
-        plt.close()
+        # fig.savefig(pth, bbox_inches="tight")
+        # plt.close()
 
         # Single frame of the animation
         fig = simulation_plot(sim_recs,frame_step=cfg.frame_step,prgrs=progress_bar)
@@ -93,7 +93,7 @@ def analyze(cfg,progress_bar=True):
 
             lyr = stas[ky]
             fig = receptive_field_plots(lyr)
-            fig.savefig(plot_path(cfg,ana_name,"sta_rfs/" + ky + ".png"), bbox_inches="tight")
+            fig.savefig(plot_path(cfg,ana_name,"sta_rfs/" + ky + "-sta.png"), bbox_inches="tight")
             plt.close()
 
         grads = load_data(cfg,ana_name,"grads")
@@ -102,7 +102,7 @@ def analyze(cfg,progress_bar=True):
 
             lyr = grads[ky]
             fig = receptive_field_plots(lyr)
-            fig.savefig(plot_path(cfg,ana_name,"grad_rfs/" + ky + ".png"), bbox_inches="tight")
+            fig.savefig(plot_path(cfg,ana_name,"grad_rfs/" + ky + "-grad.png"), bbox_inches="tight")
             plt.close()
 
 

@@ -20,6 +20,7 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35,prgrs=True):
     attrs = sim_recs["attrs"]
     hlths0 = sim_recs["hlths"]
     crwds0 = sim_recs["crwds"]
+    ltnts = sim_recs["ltnts"]
     dns = sim_recs["dns"]
     dndices = np.where(dns)
 
@@ -36,10 +37,10 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35,prgrs=True):
     t_max = imgs.shape[3]
 
     mosaic = """
-        aaabb
-        aaabb
-        cccdd
-        cccdd
+        aabbb
+        aabbb
+        ccddd
+        ccddd
         """
 
     fig, ax_dict = plt.subplot_mosaic(
@@ -49,8 +50,11 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35,prgrs=True):
 
     imax = ax_dict["a"]
     rwdax = ax_dict["b"]
-    hlthax = ax_dict["d"]
+    ltntax = ax_dict["d"]
     attax = ax_dict["c"]
+
+    # Twin rwdax
+    hlthax = rwdax.twinx()
 
     trng = np.linspace(0, t_max - 1, t_max)
 
@@ -72,26 +76,64 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35,prgrs=True):
     attr0 = Image.fromarray(attr0)
     att = attax.imshow(attr0)
 
-    # Rewards
+    # Health and Rewards
     r_max = np.max(crwds)
 
-    rwdax.set_title("Cumulative Reward")
+    rwdax.set_title("Reward/Health")
     rwdax.set_xlim([0, t_max])
     rwdax.set_ylim([0, r_max])
 
     rwdax.plot(trng, crwds, "k-")
     rwdax.vlines(dndices, 0, r_max, linestyle="dashed", linewidth=1, color="blue")
     (rline,) = rwdax.plot(trng[0], crwds[0], "g-", linewidth=1)
+    # add right spine to reward axes
+    rwdax.spines["right"].set_visible(True)
+
+    rwdax.set_xlabel('Time (Frames)')
+    rwdax.set_ylabel('Cumulative Reward')
 
    # Health dynamics
-    hlthax.set_title("Health")
     hlthax.set_xlim([0, t_max])
     hlthax.set_ylim([0, 100])
 
     hlthax.plot(trng, hlths, "k-")
     hlthax.vlines(dndices, 0, 100, linestyle="dashed", linewidth=1, color="blue")
+    hlthax.set_ylabel('Instantaneous Health')
 
     (hline,) = hlthax.plot(trng[0], hlths[0], "r-", linewidth=1)
+
+
+    # Latent dynamics
+
+    # zscore
+    data=row_zscore(ltnts)
+
+    data=ltnts
+    # get tSNE sorting and resort data
+    embedding = fit_tsne_1d(data)
+    temp = np.argsort(embedding[:,0])
+    data = data[temp,:]
+    print(np.amax(data))
+    print(np.amin(data))
+
+    # get stimulus collection times
+    pos_col = np.where(np.sign(get_stim_coll(hlths)) == 1)
+    neg_col = np.where(np.sign(get_stim_coll(hlths)) == -1)
+
+    # plot
+    ltntax.imshow(data, cmap='viridis', interpolation='nearest', aspect='auto', vmin=-4, vmax=4)
+    #ltntax.colorbar()
+    ltntax.vlines(pos_col, 0, data.shape[0], color='grey', linewidth=0.3, linestyle='--')
+    ltntax.vlines(neg_col, 0, data.shape[0], color='black', linewidth=0.3, linestyle=':')
+    # Add x and y labels to latent plot
+    ltntax.set_xlabel('Time (Frames)')
+    ltntax.set_ylabel('Sorted Neuron ID')
+    # Set y range to number of neurons
+    ltntax.set_ylim([0, data.shape[0]])
+
+    # Add vertical line to latent plot
+    vl = ltntax.axvline(frame_step, color='red', linewidth=1, linestyle='-')
+
 
     if not animate:
 
@@ -114,6 +156,8 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35,prgrs=True):
 
             rline.set_data(trng[0:i], crwds[0:i])
             hline.set_data(trng[0:i], hlths[0:i])
+
+            vl.set_xdata(i)
 
         anim = FuncAnimation( fig, update
                              , frames=tqdm( range(1, t_max) ,disable=not(prgrs), desc="Animating Simulation" )
@@ -143,7 +187,7 @@ def plot_acts_tsne_stim(sim_recs): # plot sorted activations
     # plot
     fig = plt.figure(figsize=(10,3), dpi = 400)
     plt.imshow(data, cmap='viridis', interpolation='nearest', aspect='auto', vmin=-4, vmax=4)
-    plt.colorbar()
+    #plt.colorbar()
     plt.vlines(pos_col, 0, data.shape[0], color='grey', linewidth=0.3, linestyle='--')
     plt.vlines(neg_col, 0, data.shape[0], color='black', linewidth=0.3, linestyle=':')
     plt.xlabel('Time (stamps)')
