@@ -12,7 +12,7 @@ parameters:
   wandb_job_type:
     value: "rnn-{use_rnn}"
   experiment:
-    value: "rnn-{use_rnn}_chans-{global_channels}_repeat-{repeat}"
+    value: "rnn-{use_rnn}_size-{rnn_size}_chans-{global_channels}_repeat-{repeat}"
   train_dir:
     value: "train_dir/{wandb_group}"
   repeat:
