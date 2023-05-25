@@ -22,6 +22,7 @@ def register_retinal_model():
     """Registers the retinal model with the global model factory."""
     global_model_factory().register_encoder_factory(make_encoder)
 
+
 ### Model make functions ###
 
 
@@ -35,8 +36,6 @@ def make_encoder(cfg: Config, obs_space: ObsSpace) -> Encoder:
         return LindseyEncoder(cfg, obs_space)
     else:
         raise Exception("Unknown model type")
-
-
 
 
 ### Retinal Encoder ###
