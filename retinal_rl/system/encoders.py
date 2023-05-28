@@ -12,7 +12,7 @@ from sample_factory.utils.typing import Config, ObsSpace
 from sample_factory.utils.utils import log
 from sample_factory.algo.utils.context import global_model_factory
 
-from retinal_rl.util import activation,padder,encoder_out_size
+from retinal_rl.util import activation,encoder_out_size
 
 
 ### Registration ###
