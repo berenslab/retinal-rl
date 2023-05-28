@@ -10,7 +10,7 @@ from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_en
 from retinal_rl.analysis.simulation import get_ac_env,generate_simulation,get_checkpoint
 from retinal_rl.analysis.statistics import gaussian_noise_stas,gradient_receptive_fields
 from retinal_rl.util import save_data,load_data,save_onxx,analysis_path,plot_path,data_path
-from retinal_rl.analysis.plot import simulation_plot,receptive_field_plots,plot_acts_tsne_stim
+from retinal_rl.analysis.plot import simulation_plot,receptive_field_plots
 
 from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
 from sample_factory.utils.utils import log
@@ -43,8 +43,6 @@ def analyze(cfg,progress_bar=True):
 
     if not os.path.exists(analysis_path(cfg,ana_name)):
         os.makedirs(data_path(cfg,ana_name))
-        os.makedirs(os.path.join(plot_path(cfg,ana_name),"sta_rfs"))
-        os.makedirs(os.path.join(plot_path(cfg,ana_name),"grad_rfs"))
 
     save_onxx(cfg,ana_name,ac,env)
 
@@ -61,6 +59,8 @@ def analyze(cfg,progress_bar=True):
         log.debug("RETINAL RL: Analyzing receptive fields.")
 
         for alg in rf_algs:
+
+            os.makedirs(os.path.join(plot_path(cfg,ana_name),alg+"_rfs"))
 
             if alg == "stas":
                 stas = gaussian_noise_stas(cfg,env,ac,nbtch=200,nreps=cfg.sta_repeats,prgrs=progress_bar)
@@ -99,7 +99,7 @@ def analyze(cfg,progress_bar=True):
 
                 lyr = rfs[ky]
                 fig = receptive_field_plots(lyr)
-                fig.savefig(plot_path(cfg,ana_name,"sta_rfs/" + ky + "-sta.png"), bbox_inches="tight")
+                fig.savefig(plot_path(cfg,ana_name,alg+"_rfs/" + alg + "-" + ky + ".png"), bbox_inches="tight")
                 plt.close()
 
     if cfg.animate:
