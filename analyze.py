@@ -38,6 +38,7 @@ def analyze(cfg,progress_bar=True):
     else:
         ana_name = cfg.analysis_name
 
+    rf_algs = ["grads"]
     log.debug("RETINAL RL: Model and environment loaded, preparing simulation.")
 
     if not os.path.exists(analysis_path(cfg,ana_name)):
@@ -59,11 +60,15 @@ def analyze(cfg,progress_bar=True):
 
         log.debug("RETINAL RL: Analyzing receptive fields.")
 
-        stas = gaussian_noise_stas(cfg,env,ac,nbtch=200,nreps=cfg.sta_repeats,prgrs=progress_bar)
-        save_data(cfg,ana_name,stas,"stas")
+        for alg in rf_algs:
 
-        grads = gradient_receptive_fields(cfg,env,ac,prgrs=progress_bar)
-        save_data(cfg,ana_name,grads,"grads")
+            if alg == "stas":
+                stas = gaussian_noise_stas(cfg,env,ac,nbtch=200,nreps=cfg.sta_repeats,prgrs=progress_bar)
+                save_data(cfg,ana_name,stas,"stas")
+
+            if alg == "grads":
+                grads = gradient_receptive_fields(cfg,env,ac,prgrs=progress_bar)
+                save_data(cfg,ana_name,grads,"grads")
 
     if cfg.plot:
 
@@ -86,25 +91,16 @@ def analyze(cfg,progress_bar=True):
         fig.savefig(pth, bbox_inches="tight")
         plt.close()
 
-        # STA receptive fields
-        stas = load_data(cfg,ana_name,"stas")
+        for alg in rf_algs:
 
-        for ky in stas:
+            rfs = load_data(cfg,ana_name,alg)
 
-            lyr = stas[ky]
-            fig = receptive_field_plots(lyr)
-            fig.savefig(plot_path(cfg,ana_name,"sta_rfs/" + ky + "-sta.png"), bbox_inches="tight")
-            plt.close()
+            for ky in rfs.keys():
 
-        grads = load_data(cfg,ana_name,"grads")
-
-        for ky in grads:
-
-            lyr = grads[ky]
-            fig = receptive_field_plots(lyr)
-            fig.savefig(plot_path(cfg,ana_name,"grad_rfs/" + ky + "-grad.png"), bbox_inches="tight")
-            plt.close()
-
+                lyr = rfs[ky]
+                fig = receptive_field_plots(lyr)
+                fig.savefig(plot_path(cfg,ana_name,"sta_rfs/" + ky + "-sta.png"), bbox_inches="tight")
+                plt.close()
 
     if cfg.animate:
 
