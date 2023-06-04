@@ -8,7 +8,7 @@ parameters:
 
   # Simulation specification
   wandb_group:
-    value: "algorithms-test"
+    value: "softplus-test"
   wandb_job_type:
     value: "rnn-{use_rnn}"
   experiment:
