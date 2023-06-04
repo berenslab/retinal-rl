@@ -139,6 +139,8 @@ def activation(act) -> nn.Module:
         return nn.ReLU(inplace=True)
     elif act == "tanh":
         return nn.Tanh()
+    elif act == "softplus":
+        return nn.Softplus()
     elif act == "identity":
         return nn.Identity(inplace=True)
     else:
