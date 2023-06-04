@@ -1,4 +1,4 @@
-name: algorithms-test
+name: softplus-test
 description: Sweeping performance of models of increasing complexity on a variety of tasks.
 program: train.py
 method: grid
@@ -12,7 +12,7 @@ parameters:
   wandb_job_type:
     value: "rnn-{use_rnn}"
   experiment:
-    value: "rnn-{use_rnn}_act-{activation}_vtrace-{with_vtrace}_normret_{normalize_returns}_optimizer-{optimizer}-repeat-{repeat}"
+    value: "rnn-{use_rnn}_act_vtrace-{with_vtrace}_normret_{normalize_returns}_optimizer-{optimizer}-repeat-{repeat}"
   train_dir:
     value: "train_dir/{wandb_group}"
   repeat:
@@ -30,7 +30,7 @@ parameters:
 
   # Network architecture
   activation:
-    values: ["relu","elu"]
+    value: "softplus"
   global_channels:
     value: 16
   use_rnn:
