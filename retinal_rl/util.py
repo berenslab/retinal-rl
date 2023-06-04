@@ -148,9 +148,10 @@ def activation(act) -> nn.Module:
 
 def is_activation(mdl: nn.Module) -> bool:
     bl = any([isinstance(mdl, nn.ELU)
-        ,isinstance(mdl, nn.ReLU)
-        ,isinstance(mdl, nn.Tanh)
-        ,isinstance(mdl, nn.Identity)])
+              ,isinstance(mdl, nn.ReLU)
+              ,isinstance(mdl, nn.Tanh)
+              ,isinstance(mdl, nn.Softplus)
+              ,isinstance(mdl, nn.Identity)])
     return bl
 
 
