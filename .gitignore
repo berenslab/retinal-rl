@@ -3,18 +3,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Large scale resources
+scenarios/resources/graphics/mnist
+scenarios/resources/graphics/cifar-10
+scenarios/resources/graphics/cifar-100
+
 # Training Results (Don't belong in repo)
 _vizdoom.ini
 train_dir
-<<<<<<< HEAD
-scenarios
-=======
-train_dir_non-cosyne
-scenarios_non-priority
-pytorch
-datasets
->>>>>>> main
-
 # Nohup log (when running in background on compute servers)
 nohup*.out
 log_train*.out
