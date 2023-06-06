@@ -181,6 +181,9 @@ def main():
 
     print("Encoder summary:")
     ts.summary(enc,(3,cfg.res_h,cfg.res_w),receptive_field=True) #,effective_rf_stats=True)
+    print("\nEnvironment wrappers:\n")
+    # Get string representation of environment wrappers
+    print(test_env)
 
     # Run simulation
     if not(cfg.dry_run):
