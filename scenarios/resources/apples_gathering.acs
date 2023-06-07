@@ -36,6 +36,7 @@ function void SpawnPoison(void) {
     Spawn("BlueApple", random(wall_min+1.0,wall_max-1.0), random(wall_min+1.0,wall_max-1.0), 20.0,poison_tid);
     SetThingSpecial(poison_tid, ACS_ExecuteAlways, 2, "MAP01", -25);
 }
+
 function void SpawnTorchTree(void) {   
 
     while(Spawn("TorchTree", random(wall_min+1.0,wall_max-1.0), random(wall_min+1.0,wall_max-1.0), 20.0,tree_tid)==0);

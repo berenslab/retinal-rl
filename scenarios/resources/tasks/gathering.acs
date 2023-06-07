@@ -1,0 +1,116 @@
+// Directives
+#include "zcommon.acs"
+
+// Global Variables
+global int 0:reward;
+global int 1:shaping_reward;
+
+// Arena settings
+int spawn_delay = 25;
+int wall_min  = -1000.0;
+int wall_max = 1000.0;
+
+// Food and Poison settings
+int food1_tid = 100;
+int food2_tid = 101;
+int food3_tid = 102;
+int food4_tid = 103;
+int food5_tid = 104;
+int poison1_tid = 105;
+int poison2_tid = 106;
+int poison3_tid = 107;
+int poison4_tid = 108;
+int poison5_tid = 109;
+
+int food_health_array[10] = {5,10,15,20,25,-5,-10,-15,-20,-25};
+
+int start_food_quantity = 20;
+int start_poison_quantity = 10;
+int start_tree_quantity = 0;
+
+// Obstacles
+int tree_tid = 43; //43 - 'TorchTree' is re-textured as grass
+
+// Functions for spawning Food and Poison (defined in the decorate files)
+function void SpawnFood(void) {   
+
+    Spawn("RedApple", random(wall_min+1.0,wall_max-1.0), random(wall_min+1.0,wall_max-1.0), 20.0,medikit_tid);
+    SetThingSpecial(medikit_tid, ACS_ExecuteAlways, 2, "MAP01", 25);
+}
+
+function void SpawnPoison(void) {   
+
+    Spawn("BlueApple", random(wall_min+1.0,wall_max-1.0), random(wall_min+1.0,wall_max-1.0), 20.0,poison_tid);
+    SetThingSpecial(poison_tid, ACS_ExecuteAlways, 2, "MAP01", -25);
+}
+
+function void SpawnTorchTree(void) {   
+
+    while(Spawn("TorchTree", random(wall_min+1.0,wall_max-1.0), random(wall_min+1.0,wall_max-1.0), 20.0,tree_tid)==0);
+
+}
+
+// Scripts that define map behaviour
+script 1 OPEN {
+
+    reward = 0;
+
+    for(int i =0;i<start_food_quantity;++i) {
+
+        SpawnFood();
+    }
+
+    for(i =0;i<start_poison_quantity;++i) {
+
+        SpawnPoison();
+    }
+
+    for(i =0;i<start_tree_quantity;++i) {
+
+        SpawnTorchTree();
+    }
+
+    while(1)
+    {
+        SpawnFood();
+        SpawnPoison();
+        delay(spawn_delay);
+        SpawnFood();
+        delay(spawn_delay);
+    }
+
+}
+script 2 (int effect)
+{
+    shaping_reward += 4*effect;
+    Thing_Damage(0,-effect,MOD_SUICIDE);
+}
+
+script 4 ENTER
+{
+    int target_id = random(10,21);
+    SetActorPosition(0, GetActorX(target_id), GetActorY(target_id), 0.0, 0);
+    SetActorAngle(0,random(0.0,1.0));
+    shaping_reward = 0;
+    ClearInventory();
+
+
+}
+
+// getting health and shaping reward based on that
+
+script 5 ENTER
+{
+
+    while(true)
+    {
+
+        int curr_health = PlayerHealth();
+        curr_health = curr_health * 100;
+        reward = reward + curr_health;
+        //print(s:"This is reward: ", d:reward);
+        //print(s:"This is reward: ", d:reward);
+        delay(1);
+
+    }
+}

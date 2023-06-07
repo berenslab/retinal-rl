@@ -4,9 +4,9 @@ __pycache__/
 *$py.class
 
 # Large scale resources
-scenarios/resources/graphics/mnist
-scenarios/resources/graphics/cifar-10
-scenarios/resources/graphics/cifar-100
+scenarios/resources/textures/mnist/*/*.png
+scenarios/resources/textures/cifar-10/*/*.png
+scenarios/resources/textures/cifar-100/*/*.png
 
 # Training Results (Don't belong in repo)
 _vizdoom.ini
