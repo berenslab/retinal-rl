@@ -1,25 +1,17 @@
-ACTOR Poison : Health
+ACTOR BlueApple : Inventory
 {
-  +COUNTITEM
   +INVENTORY.ALWAYSPICKUP
-  Inventory.Amount -25 //this doesn't work of course ....
-  Inventory.MaxAmount 100
-  //Inventory.PickupMessage "Picked up a poison!"
   States
   {
   Spawn:
     BAPP A -1
-    Loop
+    Stop
   }
 }
 
-ACTOR CustomMedikit : Health
+ACTOR RedApple : Inventory
 {
   +INVENTORY.ALWAYSPICKUP
-  Inventory.Amount 16
-  Inventory.MaxAmount 100
-  //Inventory.PickupMessage "$GOTMEDIKIT" // "Picked up a medikit."
-  //Health.LowMessage 25, "$GOTMEDINEED" // "Picked up a medikit that you REALLY need!"
   States
   {
   Spawn:
