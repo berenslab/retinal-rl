@@ -1,0 +1,38 @@
+// Directives
+#import "tasks/gathering.acs"
+#include "zcommon.acs"
+
+function void randomFood(void) {
+    int fid = randomFoodIndex();
+    SpawnFood(fid,"RedApple");
+}
+
+function void randomPoison(void) {
+    int pid = randomPoisonIndex();
+    SpawnFood(pid,"BlueApple");
+}
+
+// World defining scripts
+script "Apple Spawning" OPEN {
+
+    reward = 0;
+    int i;
+
+    for(i =0;i<start_food_quantity;++i) { randomFood(); }
+    for(i =0;i<start_poison_quantity;++i) { randomPoison(); }
+
+    while(1)
+    {
+        delay(spawn_delay);
+        randomFood();
+
+        delay(spawn_delay);
+        randomPoison();
+
+        delay(spawn_delay);
+        randomFood();
+    }
+
+}
+
+

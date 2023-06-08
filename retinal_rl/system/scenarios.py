@@ -71,8 +71,11 @@ def cifar100_preload():
 def create_base_wad():
 
     bpth = "scenarios/resources/base"
-    wad = omg.WAD()
+    strct = omg.defstruct
+    strct = [[omg.MarkerGroup, 'libraries', omg.Lump, 'A']] + strct
+    wad = omg.WAD(structure=strct)
 
+    print(wad.structure)
     grspth = osp.join(bpth,"grass.png")
     wndpth = osp.join(bpth,"wind.png")
 
@@ -94,17 +97,30 @@ def create_base_wad():
 
 def make_scenario(task="gathering",texture="apples"):
 
+    # take first 8 letters of task and capitalize
+    lbonm = task[:8].upper()
+    lbinm = lbonm[:5] + "SRC"
+    scnnm = task + "_" + texture
+
     wad,mpgrp = create_base_wad()
 
-    tskpth = "scenarios/resources/tasks"
-    txtpth = osp.join("scenarios/resources/textures",texture)
+    rscpth = "scenarios/resources"
+    tskpth = osp.join(rscpth,"tasks")
+    txtpth = osp.join(rscpth,"textures",texture)
 
     rappth = osp.join(txtpth,"red_apple.png")
     bappth = osp.join(txtpth,"blue_apple.png")
     decpth = osp.join(txtpth,"apples.decorate")
 
-    scrpth = osp.join(tskpth,task + ".acs")
-    behpth = osp.join(tskpth,task + ".o")
+    bhipth = osp.join(rscpth,scnnm + ".acs")
+    bhopth = osp.join(rscpth,scnnm + ".o")
+
+    lbipth = osp.join(tskpth,task + ".acs")
+    lbopth = osp.join(tskpth,task + ".o")
+
+    # Compile ACS
+    subprocess.call(["acc", "-i","/usr/share/acc", bhipth, bhopth])
+    subprocess.call(["acc", "-i","/usr/share/acc", lbipth, lbopth])
 
     # Sprites
     wad.sprites['RAPPA0'] = omg.Graphic(from_file=rappth)
@@ -113,16 +129,25 @@ def make_scenario(task="gathering",texture="apples"):
     # Decorate
     wad.data['DECORATE'] = omg.Lump(from_file=decpth)
 
-    # Compile ACS
-    subprocess.call(["acc", "-i","/usr/share/acc", scrpth, behpth])
+    # Libraries
+    wad.libraries[lbinm] = omg.Lump(from_file=lbipth)
+    wad.libraries[lbonm] = omg.Lump(from_file=lbopth)
+
 
     # Map
-    mpgrp['SCRIPTS'] = omg.Lump(from_file=scrpth)
-    mpgrp['BEHAVIOR'] = omg.Lump(from_file=behpth)
+    mpgrp['SCRIPTS'] = omg.Lump(from_file=bhipth)
+    mpgrp['BEHAVIOR'] = omg.Lump(from_file=bhopth)
+    wad.udmfmaps["MAP01"] = omg.UMapEditor(mpgrp).to_lumps()
 
     # Cleanup
-    wad.udmfmaps["MAP01"] = omg.UMapEditor(mpgrp).to_lumps()
-    
-    wad.to_file(osp.join("scenarios",task + "_" + texture + ".wad"))
-    
-    os.remove(behpth)
+    os.remove(bhopth)
+    os.remove(lbopth)
+
+    # Save to file
+    wio = omg.WadIO(osp.join("scenarios",scnnm + ".wad"))
+    write_order = omg.write_order
+    write_order = ["libraries"] + write_order
+
+    for group in write_order:
+        wad.__dict__[group].save_wadio(wio, use_free=False)
+    wio.save()

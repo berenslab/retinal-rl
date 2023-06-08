@@ -1,4 +1,5 @@
 // Directives
+#library "GATHERIN"
 #include "zcommon.acs"
 
 // Global Variables
@@ -13,92 +14,46 @@ int wall_max = 1000.0;
 // Food health by food id
 int food_health_array[10] = {5,10,15,20,25,-5,-10,-15,-20,-25};
 
-
 int start_food_quantity = 20;
 int start_poison_quantity = 10;
 
-// Spawning Food by food id
-function str GetFoodActor(int fid) {
-
-    str act;
-
-    if (fid < 5) {
-        act = "RedApple";
-    } 
-    else {
-        act = "BlueApple";
-    }
-    return act;
-}
-
 // Causes health/damage to player when item picked up; amount based on food id
-script "FoodEffect" (int fid)
-{
+script "FoodEffect" (int fid) {
     int effect = food_health_array[fid];
     shaping_reward += 4*effect;
     Thing_Damage(0,-effect,MOD_SUICIDE);
 }
 
 // Spawning Food by food id
-function void SpawnFood(int fid) {
+function void SpawnFood(int fid, str act) {
 
     int tid = UniqueTID();
-    str act = GetFoodActor(fid);
-
     Spawn(act, random(wall_min+1.0,wall_max-1.0), random(wall_min+1.0,wall_max-1.0), 20.0,tid);
     SetThingSpecial(tid, ACS_NamedExecuteAlways, "FoodEffect", 0, fid);
 }
 
-// Spawn random food
-function void RandomFood(void) {
+// Random food index
+function int randomFoodIndex(void) {
     int fid = random(0,4);
-    SpawnFood(fid);
+    return fid;
 }
 
-// Spawn random poisonous food
-function void RandomPoison(void) {
+// Random poisonous food index
+function int randomPoisonIndex(void) {
     int pid = random(5,9);
-    SpawnFood(pid);
+    return pid;
 }
 
-// World defining scripts
-script "Pre-Agent Script" OPEN {
+script "Agent Monitoring" ENTER {
 
-    reward = 0;
-
-    for(int i =0;i<start_food_quantity;++i) {
-
-        RandomFood();
-    }
-
-    for(i =0;i<start_poison_quantity;++i) {
-
-        RandomPoison();
-    }
-
-    while(1)
-    {
-        RandomFood();
-        RandomPoison();
-        delay(spawn_delay);
-        RandomFood();
-        delay(spawn_delay);
-    }
-
-}
-
-script "Post-Agent Script" ENTER
-{
-    int act_x = random(-100,100);
-    int act_y = random(-100,100);
+    int act_x = random(wall_min,wall_max);
+    int act_y = random(wall_min,wall_max);
     SetActorPosition(0, act_x, act_y, 0.0, 0);
     SetActorAngle(0,random(0.0,1.0));
     shaping_reward = 0;
     ClearInventory();
 
-    while(true)
-    {
-
+    while(true) {
         int curr_health = PlayerHealth();
         curr_health = curr_health * 100;
         reward = reward + curr_health;
