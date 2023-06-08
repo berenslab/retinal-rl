@@ -101,7 +101,7 @@ def make_scenario(task="gathering",texture="apples"):
 
     rappth = osp.join(txtpth,"red_apple.png")
     bappth = osp.join(txtpth,"blue_apple.png")
-    decpth = osp.join(txtpth,"DECORATE.txt")
+    decpth = osp.join(txtpth,"apples.decorate")
 
     scrpth = osp.join(tskpth,task + ".acs")
     behpth = osp.join(tskpth,task + ".o")

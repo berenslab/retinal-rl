@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# WADs
+*.wad
+
 # Large scale resources
 scenarios/resources/textures/mnist/*/*.png
 scenarios/resources/textures/cifar-10/*/*.png

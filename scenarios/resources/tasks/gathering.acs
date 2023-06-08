@@ -22,32 +22,36 @@ int poison3_tid = 107;
 int poison4_tid = 108;
 int poison5_tid = 109;
 
+int medikit_tid = 110;
+int poison_tid = 111;
+
 int food_health_array[10] = {5,10,15,20,25,-5,-10,-15,-20,-25};
+
+
+// BEGINNING OF APPLES LIBRARY
+str food_actor_array[10][1] = {{"RedApple"},{"RedApple"},{"RedApple"},{"RedApple"},{"RedApple"},{"BlueApple"},{"BlueApple"},{"BlueApple"},{"BlueApple"},{"BlueApple"}};
 
 int start_food_quantity = 20;
 int start_poison_quantity = 10;
-int start_tree_quantity = 0;
 
-// Obstacles
-int tree_tid = 43; //43 - 'TorchTree' is re-textured as grass
+// Functions for spawning Food
+function void SpawnFood(int fid) {
 
-// Functions for spawning Food and Poison (defined in the decorate files)
-function void SpawnFood(void) {   
+    int tid = UniqueTID();
+    str act = food_actor_array[fid][0];
 
-    Spawn("RedApple", random(wall_min+1.0,wall_max-1.0), random(wall_min+1.0,wall_max-1.0), 20.0,medikit_tid);
-    SetThingSpecial(medikit_tid, ACS_ExecuteAlways, 2, "MAP01", 25);
+    Spawn(act, random(wall_min+1.0,wall_max-1.0), random(wall_min+1.0,wall_max-1.0), 20.0,tid);
+    SetThingSpecial(tid, ACS_NamedExecuteAlways, "FoodEffect", 0, fid);
 }
 
-function void SpawnPoison(void) {   
-
-    Spawn("BlueApple", random(wall_min+1.0,wall_max-1.0), random(wall_min+1.0,wall_max-1.0), 20.0,poison_tid);
-    SetThingSpecial(poison_tid, ACS_ExecuteAlways, 2, "MAP01", -25);
+function void RandomFood(void) {
+    int fid = random(0,4);
+    SpawnFood(fid);
 }
 
-function void SpawnTorchTree(void) {   
-
-    while(Spawn("TorchTree", random(wall_min+1.0,wall_max-1.0), random(wall_min+1.0,wall_max-1.0), 20.0,tree_tid)==0);
-
+function void RandomPoison(void) {
+    int pid = random(5,9);
+    SpawnFood(pid);
 }
 
 // Scripts that define map behaviour
@@ -57,34 +61,31 @@ script 1 OPEN {
 
     for(int i =0;i<start_food_quantity;++i) {
 
-        SpawnFood();
+        RandomFood();
     }
 
     for(i =0;i<start_poison_quantity;++i) {
 
-        SpawnPoison();
-    }
-
-    for(i =0;i<start_tree_quantity;++i) {
-
-        SpawnTorchTree();
+        RandomPoison();
     }
 
     while(1)
     {
-        SpawnFood();
-        SpawnPoison();
+        RandomFood();
+        RandomPoison();
         delay(spawn_delay);
-        SpawnFood();
+        RandomFood();
         delay(spawn_delay);
     }
 
 }
-script 2 (int effect)
+script "FoodEffect" (int fid)
 {
+    int effect = food_health_array[fid];
     shaping_reward += 4*effect;
     Thing_Damage(0,-effect,MOD_SUICIDE);
 }
+
 
 script 4 ENTER
 {
