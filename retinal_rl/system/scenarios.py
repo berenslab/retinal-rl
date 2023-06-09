@@ -81,11 +81,8 @@ def cifar100_preload():
 def create_base_wad():
 
     bpth = "scenarios/resources/base"
-    strct = omg.defstruct
-    strct = [[omg.MarkerGroup, 'libraries', omg.Lump, 'A']] + strct
-    wad = omg.WAD(structure=strct)
+    wad = omg.WAD()
 
-    print(wad.structure)
     grspth = osp.join(bpth,"grass.png")
     wndpth = osp.join(bpth,"wind.png")
 
@@ -153,10 +150,4 @@ def make_scenario(task="gathering",texture="apples"):
     os.remove(lbopth)
 
     # Save to file
-    wio = omg.WadIO(osp.join("scenarios",scnnm + ".wad"))
-    write_order = omg.write_order
-    write_order = ["libraries"] + write_order
-
-    for group in write_order:
-        wad.__dict__[group].save_wadio(wio, use_free=False)
-    wio.save()
+    wad.to_file(osp.join("scenarios",task + "_" + texture + ".wad"))
