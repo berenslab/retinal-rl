@@ -11,6 +11,11 @@ from torchvision.datasets import MNIST
 from torchvision.datasets import CIFAR10
 from torchvision.datasets import CIFAR100
 
+
+
+### Loading Datasets ###
+
+
 def mnist_preload():
     # check if scenarios/resources/textures/mnist exists
     if not osp.exists("scenarios/resources/textures/mnist"):
@@ -67,6 +72,11 @@ def cifar100_preload():
         shutil.rmtree("scenarios/resources/textures/cifar-100/cifar-100-python", ignore_errors=True)
     else:
         print("cifar-100 dir exists, files not downloaded")
+
+
+
+### Creating Scenarios ###
+
 
 def create_base_wad():
 
@@ -132,7 +142,6 @@ def make_scenario(task="gathering",texture="apples"):
     # Libraries
     wad.libraries[lbinm] = omg.Lump(from_file=lbipth)
     wad.libraries[lbonm] = omg.Lump(from_file=lbopth)
-
 
     # Map
     mpgrp['SCRIPTS'] = omg.Lump(from_file=bhipth)

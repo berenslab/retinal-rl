@@ -57,5 +57,6 @@ From: ubuntu:22.10
   pip3 install vizdoom==1.1.14 sample-factory==2.0.2
 
   # retinal-rl Extra
-  pip3 install matplotlib opentsne pygame torchvision==0.14.1 pycairo dpcpp-cpp-rt pyqt5 pyqt6 captum torchscan omgifol num2words
+  pip3 install matplotlib opentsne pygame torchvision==0.14.1 pycairo dpcpp-cpp-rt pyqt5 pyqt6 captum torchscan num2words
+  pip3 install git+https://github.com/alex404/omgifol.git
 

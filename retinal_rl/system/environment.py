@@ -53,6 +53,7 @@ RETINAL_ENVS = [
     retinal_doomspec("gathering_cifar", "cifar_gathering_01.cfg"),
     retinal_doomspec("gathering_gabors", "gabor_gathering_02.cfg"),
     retinal_doomspec("gathering_apples", "apple_gathering_02.cfg"),
+    retinal_doomspec("gathering_apples2", "gathering_apples.cfg"),
     retinal_doomspec("gathering_mnist", "mnist_gathering_01.cfg"),
     retinal_doomspec("appmnist_apples", "appmnist_apples_gathering_01.cfg"),
     retinal_doomspec("appmnist_mnist", "appmnist_mnist_gathering_01.cfg")

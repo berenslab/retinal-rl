@@ -4,7 +4,6 @@
 
 // Global Variables
 global int 0:reward;
-global int 1:shaping_reward;
 
 // Arena settings
 int spawn_delay = 25;
@@ -20,7 +19,6 @@ int start_poison_quantity = 10;
 // Causes health/damage to player when item picked up; amount based on food id
 script "FoodEffect" (int fid) {
     int effect = food_health_array[fid];
-    shaping_reward += 4*effect;
     Thing_Damage(0,-effect,MOD_SUICIDE);
 }
 
@@ -50,7 +48,6 @@ script "Agent Monitoring" ENTER {
     int act_y = random(wall_min,wall_max);
     SetActorPosition(0, act_x, act_y, 0.0, 0);
     SetActorAngle(0,random(0.0,1.0));
-    shaping_reward = 0;
     ClearInventory();
 
     while(true) {
