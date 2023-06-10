@@ -28,9 +28,6 @@ script "Apple Spawning" OPEN {
 
         delay(spawn_delay);
         randomPoison();
-
-        delay(spawn_delay);
-        randomFood();
     }
 
 }

@@ -114,6 +114,5 @@ texturefloor="GRASS";
 textureceiling="F_SKY1";
 heightceiling=128;
 lightlevel=255;
-special=83;
 }
 

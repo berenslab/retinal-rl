@@ -6,9 +6,13 @@
 global int 0:reward;
 
 // Arena settings
-int spawn_delay = 25;
+int spawn_delay = 20;
 int wall_min  = -1000.0;
 int wall_max = 1000.0;
+
+// Frequency and amount of metabolic damage
+int meta_ticks = 2;
+int meta_damage = 1;
 
 // Food health by food id
 int food_health_array[10] = {5,10,15,20,25,-5,-10,-15,-20,-25};
@@ -50,10 +54,18 @@ script "Agent Monitoring" ENTER {
     SetActorAngle(0,random(0.0,1.0));
     ClearInventory();
 
+    int tcks = 0;
+
     while(true) {
         int curr_health = PlayerHealth();
         curr_health = curr_health * 100;
         reward = reward + curr_health;
+        if (tcks == meta_ticks) {
+            Thing_Damage(0,meta_damage);
+            tcks = 0;
+        } else {
+            tcks = tcks + 1;
+        }
         delay(1);
     }
 }
