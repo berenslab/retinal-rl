@@ -3,6 +3,7 @@ import shutil
 import subprocess
 
 from num2words import num2words
+from glob import glob
 import os.path as osp
 
 import omg
@@ -102,8 +103,134 @@ def create_base_wad():
 
     return wad,mpgrp
 
-def make_scenario(task="gathering",texture="apples"):
 
+### Building Decorate Files ###
+
+# ACTOR BlueApple : Inventory
+# {
+#     +INVENTORY.ALWAYSPICKUP
+#     States
+#         {
+#         Spawn:
+#             BAPP A -1
+#             Stop
+#         }
+# }
+
+food_names = ["Nourishment_" + str(i) for i in range(1,6)] + ["Poison_" + str(i) for i in range(1,6)]
+
+def food_code(i,j):
+    # Convert k to caps alpha string
+    return chr(65 + i) + texture_code(j)
+
+def texture_code(j):
+    # Convert k to a 3-digit alpha all-caps string
+    return chr(65 + j // 26 ** 2) + chr(65 + (j // 26) % 26) + chr(65 + j % 26)
+
+def decorate_food(food_idx,num_foods):
+
+    # Multiline string for beginning of decorate file
+    decorate = """ACTOR {0} : Inventory
+    {{
+        +INVENTORY.ALWAYSPICKUP
+        States
+            {{""".format(food_names[food_idx])
+
+    for j in range(num_foods):
+        decorate += """
+            Tex{0}:
+                {0} A -1""".format(food_code(food_idx,j))
+
+    decorate += """
+            }
+    }\n\n"""
+
+    return decorate
+
+### Texture Packs ###
+
+def apple_pngss():
+
+    fdss = [["scenarios/resources/textures/apples/red_apple.png"] for _ in range(5)]
+    psss = [["scenarios/resources/textures/apples/blue_apple.png"] for _ in range(5)]
+
+    return fdss + psss
+
+# def mnist_dirs():
+#
+#     pngs = []
+#     for td in texture_dirs:
+#         pngs += glob(osp.join(td,"*.png"))
+
+def load_textures(wad,food_idx,pngs):
+
+    num_foods = len(pngs)
+
+    for j,png in enumerate(pngs):
+        code = food_code(food_idx,j) + "A0"
+        wad.sprites[code] = omg.Graphic(from_file=png)
+
+    return num_foods
+
+def make_scenario(task="gathering",texture="apples",pngss=None):
+
+    # Scenario name
+    scnnm = task + "_" + texture
+
+    if pngss is None:
+        if texture == "apples":
+            pngss = apple_pngss()
+        else:
+            raise ValueError("Texture pack not recognized")
+
+    # Library path names
+    lbonm = task[:8].upper()
+    lbinm = lbonm[:5] + "SRC"
+
+    wad,mpgrp = create_base_wad()
+
+    decorate = ""
+
+    for food_idx in range(len(food_names)):
+        num_foods = load_textures(wad,food_idx,pngss[food_idx])
+        decorate += decorate_food(food_idx,num_foods)
+
+    # Decorate
+    wad.data['DECORATE'] = omg.Lump(data=decorate.encode('utf-8'))
+
+    rscpth = "scenarios/resources"
+    tskpth = osp.join(rscpth,"tasks")
+
+    bhipth = osp.join(rscpth,scnnm + ".acs")
+    bhopth = osp.join(rscpth,scnnm + ".o")
+
+    lbipth = osp.join(tskpth,task + ".acs")
+    lbopth = osp.join(tskpth,task + ".o")
+
+    # Compile ACS
+    subprocess.call(["acc", "-i","/usr/share/acc", bhipth, bhopth])
+    subprocess.call(["acc", "-i","/usr/share/acc", lbipth, lbopth])
+
+    # Libraries
+    wad.data[lbinm] = omg.Lump(from_file=lbipth)
+    wad.libraries[lbonm] = omg.Lump(from_file=lbopth)
+
+    # Map
+    mpgrp['SCRIPTS'] = omg.Lump(from_file=bhipth)
+    mpgrp['BEHAVIOR'] = omg.Lump(from_file=bhopth)
+    wad.udmfmaps["MAP01"] = omg.UMapEditor(mpgrp).to_lumps()
+
+    # Cleanup
+    os.remove(bhopth)
+    os.remove(lbopth)
+
+    # Save to file
+    wad.to_file(osp.join("scenarios",task + "_" + texture + ".wad"))
+
+def make_gathering_apples():
+
+    task="gathering"
+    texture="apples"
     # take first 8 letters of task and capitalize
     lbonm = task[:8].upper()
     lbinm = lbonm[:5] + "SRC"

@@ -6,7 +6,7 @@ def main():
     #mnist_preload()
     #cifar10_preload()
     #cifar100_preload()
-    make_scenario("gathering","apples")
+    make_scenario()
 
 if __name__ == '__main__':
     sys.exit(main())

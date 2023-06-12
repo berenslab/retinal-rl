@@ -1,5 +1,6 @@
 map MAP01 "Example sky 1"
 {
 sky1 = "WIND"
+AllowFreelook
 music = "D_RUNNIN"
 }

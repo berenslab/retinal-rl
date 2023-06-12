@@ -2,34 +2,15 @@
 #import "tasks/gathering.acs"
 #include "zcommon.acs"
 
-function void randomFood(void) {
-    int fid = randomFoodIndex();
-    SpawnFood(fid,"RedApple");
+script "Load Texture Information" OPEN {
+    num_states[0] = 1;
+    num_states[1] = 1;
+    num_states[2] = 1;
+    num_states[3] = 1;
+    num_states[4] = 1;
+    num_states[5] = 1;
+    num_states[6] = 1;
+    num_states[7] = 1;
+    num_states[8] = 1;
+    num_states[9] = 1;
 }
-
-function void randomPoison(void) {
-    int pid = randomPoisonIndex();
-    SpawnFood(pid,"BlueApple");
-}
-
-// World defining scripts
-script "Apple Spawning" OPEN {
-
-    reward = 0;
-    int i;
-
-    for(i =0;i<start_food_quantity;++i) { randomFood(); }
-    for(i =0;i<start_poison_quantity;++i) { randomPoison(); }
-
-    while(1)
-    {
-        delay(spawn_delay);
-        randomFood();
-
-        delay(spawn_delay);
-        randomPoison();
-    }
-
-}
-
-

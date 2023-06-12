@@ -1,9 +1,13 @@
 // Directives
+
 #library "GATHERIN"
 #include "zcommon.acs"
 
+// Variables
+
 // Global Variables
 global int 0:reward;
+global int 1:num_states[];
 
 // Arena settings
 int spawn_delay = 20;
@@ -16,9 +20,12 @@ int meta_damage = 1;
 
 // Food health by food id
 int food_health_array[10] = {5,10,15,20,25,-5,-10,-15,-20,-25};
+str food_names[10] = {"Nourishment_1","Nourishment_2","Nourishment_3","Nourishment_4","Nourishment_5","Poison_1","Poison_2","Poison_3","Poison_4","Poison_5"};
 
-int start_food_quantity = 20;
+int start_nourishment_quantity = 20;
 int start_poison_quantity = 10;
+
+// Food creation
 
 // Causes health/damage to player when item picked up; amount based on food id
 script "FoodEffect" (int fid) {
@@ -27,23 +34,89 @@ script "FoodEffect" (int fid) {
 }
 
 // Spawning Food by food id
-function void SpawnFood(int fid, str act) {
+function void SpawnFood(int fid) {
 
     int tid = UniqueTID();
+    str act = food_names[fid];
+
+    str state_num = random(0,num_states[fid] - 1);
+    str code = foodCode(fid,state_num);
+    str state = StrParam(s:"Tex",s:code);
+    //print(s:state);
     Spawn(act, random(wall_min+1.0,wall_max-1.0), random(wall_min+1.0,wall_max-1.0), 20.0,tid);
     SetThingSpecial(tid, ACS_NamedExecuteAlways, "FoodEffect", 0, fid);
+    SetActorState(tid, state);
 }
 
-// Random food index
+// Food Codes
+
+str alphas = "ABCDEFGHIJKLMNPQRSTUVWXYZ";
+
+function str textureCode(int j) {
+
+    int lett_one = GetChar(alphas, j / (26*26) );
+    int lett_two = GetChar(alphas,(j/26) % 26);
+    int lett_thr = GetChar(alphas,j % 26);
+    str code = StrParam(c:lett_one, c:lett_two, c:lett_thr);
+
+    return code;
+}
+
+function str foodCode(int fid, int j) {
+
+    str food_code = GetChar(alphas,fid);
+    str txt_code = textureCode(j);
+    str code = strParam(c:food_code, s:txt_code);
+
+    return code;
+}
+
+// Randomization food generation
+
 function int randomFoodIndex(void) {
-    int fid = random(0,4);
+    int fid = random(0,9);
     return fid;
+}
+
+function int randomNourishmentIndex(void) {
+    int nid = random(0,4);
+    return nid;
 }
 
 // Random poisonous food index
 function int randomPoisonIndex(void) {
     int pid = random(5,9);
     return pid;
+}
+
+function void randomFood(void) {
+    int fid = randomFoodIndex();
+    SpawnFood(fid);
+}
+
+function void randomNourishment(void) {
+    int nid = randomNourishmentIndex();
+    SpawnFood(nid);
+}
+
+function void randomPoison(void) {
+    int pid = randomPoisonIndex();
+    SpawnFood(pid);
+}
+
+// Environment behaviour
+script "Food Spawning" OPEN {
+
+    reward = 0;
+    int i;
+
+    for(i =0;i<start_nourishment_quantity;++i) { randomNourishment(); }
+    for(i =0;i<start_poison_quantity;++i) { randomPoison(); }
+
+    while(1) {
+        delay(spawn_delay);
+        randomFood();
+    }
 }
 
 script "Agent Monitoring" ENTER {
