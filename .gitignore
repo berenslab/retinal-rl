@@ -7,9 +7,7 @@ __pycache__/
 *.wad
 
 # Large scale resources
-scenarios/resources/textures/mnist/*/*.png
-scenarios/resources/textures/cifar-10/*/*.png
-scenarios/resources/textures/cifar-100/*/*.png
+scenarios/resources/textures
 
 # Training Results (Don't belong in repo)
 _vizdoom.ini

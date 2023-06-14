@@ -16,8 +16,23 @@ from torchvision.datasets import CIFAR100
 
 ### Loading Datasets ###
 
+def load_apples():
+    # check if scenarios/resources/textures/apples exists
+    if not osp.exists("scenarios/resources/textures/apples"):
+        # if not, create it
+        os.makedirs("scenarios/resources/textures/apples")
+        # download apple images
+        rappth = "scenarios/resources/base/apples/red_apple.png"
+        bappth = "scenarios/resources/base/apples/blue_apple.png"
 
-def mnist_preload():
+        # copy red apple to scenarios/resources/textures/apples/nourishment-{1-5} and blue apples to poisson-{1-5}
+        for i in range(1,6):
+            os.makedirs("scenarios/resources/textures/apples/Nourishment_" + str(i))
+            shutil.copyfile(rappth, "scenarios/resources/textures/apples/Nourishment_" + str(i) + "/apple.png")
+            os.makedirs("scenarios/resources/textures/apples/Poison_" + str(i))
+            shutil.copyfile(bappth, "scenarios/resources/textures/apples/Poison_" + str(i) + "/apple.png")
+
+def load_mnist():
     # check if scenarios/resources/textures/mnist exists
     if not osp.exists("scenarios/resources/textures/mnist"):
     # if not, create it
@@ -36,7 +51,7 @@ def mnist_preload():
     else:
         print("mnist dir exists, files not downloaded)")
 
-def cifar10_preload():
+def load_cifar10():
     # check if scenarios/resources/textures/cifar-10 exists
     if not osp.exists("scenarios/resources/textures/cifar-10"):
         # if not, create it
@@ -55,7 +70,7 @@ def cifar10_preload():
     else:
         print("cifar-10 dir exists, files not downloaded")
 
-def cifar100_preload():
+def load_cifar100():
     # check if scenarios/resources/textures/cifar-100 exists
     if not osp.exists("scenarios/resources/textures/cifar-100"):
         # if not, create it
@@ -106,20 +121,7 @@ def create_base_wad():
 
 ### Building Decorate Files ###
 
-# ACTOR BlueApple : Inventory
-# {
-#     +INVENTORY.ALWAYSPICKUP
-#     States
-#         {
-#         Spawn:
-#             BAPP A -1
-#             Stop
-#         }
-# }
-
-food_names = ["Nourishment_" + str(i) for i in range(1,6)] + ["Poison_" + str(i) for i in range(1,6)]
-
-def food_code(i,j):
+def object_code(i,j):
     # Convert k to caps alpha string
     return chr(65 + i) + texture_code(j)
 
@@ -127,19 +129,19 @@ def texture_code(j):
     # Convert k to a 3-digit alpha all-caps string
     return chr(65 + j // 26 ** 2) + chr(65 + (j // 26) % 26) + chr(65 + j % 26)
 
-def decorate_food(food_idx,num_foods):
+def decorate_object(object_idx,object_name,num_textures):
 
     # Multiline string for beginning of decorate file
     decorate = """ACTOR {0} : Inventory
     {{
         +INVENTORY.ALWAYSPICKUP
         States
-            {{""".format(food_names[food_idx])
+            {{""".format(object_name)
 
-    for j in range(num_foods):
+    for j in range(num_textures):
         decorate += """
             Tex{0}:
-                {0} A -1""".format(food_code(food_idx,j))
+                {0} A -1""".format(object_code(object_idx,j))
 
     decorate += """
             }
@@ -149,51 +151,43 @@ def decorate_food(food_idx,num_foods):
 
 ### Texture Packs ###
 
-def apple_pngss():
-
-    fdss = [["scenarios/resources/textures/apples/red_apple.png"] for _ in range(5)]
-    psss = [["scenarios/resources/textures/apples/blue_apple.png"] for _ in range(5)]
-
-    return fdss + psss
-
 # def mnist_dirs():
 #
 #     pngs = []
 #     for td in texture_dirs:
 #         pngs += glob(osp.join(td,"*.png"))
 
-def load_textures(wad,food_idx,pngs):
+def load_textures(wad,object_idx,pngs):
 
-    num_foods = len(pngs)
+    num_textures = len(pngs)
 
     for j,png in enumerate(pngs):
-        code = food_code(food_idx,j) + "A0"
+        code = object_code(object_idx,j) + "A0"
         wad.sprites[code] = omg.Graphic(from_file=png)
 
-    return num_foods
+    return num_textures
 
-def make_scenario(task="gathering",texture="apples",pngss=None):
+def make_scenario(task="gathering",texture="apples"):
 
     # Scenario name
     scnnm = task + "_" + texture
 
-    if pngss is None:
-        if texture == "apples":
-            pngss = apple_pngss()
-        else:
-            raise ValueError("Texture pack not recognized")
+    txtdr = osp.join("scenarios/resources/textures",texture)
+    # Get object_names from base directory names in texture directory
+    object_names = [d for d in os.listdir(txtdr) if osp.isdir(osp.join(txtdr,d))]
 
     # Library path names
     lbonm = task[:8].upper()
     lbinm = lbonm[:5] + "SRC"
 
+
     wad,mpgrp = create_base_wad()
 
     decorate = ""
 
-    for food_idx in range(len(food_names)):
-        num_foods = load_textures(wad,food_idx,pngss[food_idx])
-        decorate += decorate_food(food_idx,num_foods)
+    for object_idx in range(len(object_names)):
+        num_foods = load_textures(wad,object_idx,pngss[object_idx])
+        decorate += decorate_food(object_idx,num_foods)
 
     # Decorate
     wad.data['DECORATE'] = omg.Lump(data=decorate.encode('utf-8'))
