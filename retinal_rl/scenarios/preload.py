@@ -18,6 +18,14 @@ def preload_apples():
         # and copy apple images from resources/base
         shutil.copytree("resources/base/apples","resources/textures/apples")
 
+def preload_obstacles():
+    if not osp.exists("resources/textures/obstacles"):
+        shutil.copytree("resources/base/obstacles","resources/textures/obstacles")
+
+def preload_gabors():
+    if not osp.exists("resources/textures/gabors"):
+        shutil.copytree("resources/base/gabors","resources/textures/gabors")
+
 def preload_mnist():
     # check if resources/textures/mnist exists
     if not osp.exists("resources/textures/mnist"):
@@ -33,9 +41,6 @@ def preload_mnist():
 
         # remove all downloaded data except for the pngs
         shutil.rmtree("resources/textures/mnist/MNIST", ignore_errors=True)
-
-    else:
-        print("mnist dir exists, files not downloaded)")
 
 def preload_cifar10():
     # check if resources/textures/cifar-10 exists
@@ -53,8 +58,6 @@ def preload_cifar10():
         # remove all downloaded data except for the pngs
         os.remove("resources/textures/cifar-10/cifar-10-python.tar.gz")
         shutil.rmtree("resources/textures/cifar-10/cifar-10-batches-py", ignore_errors=True)
-    else:
-        print("cifar-10 dir exists, files not downloaded")
 
 def preload_cifar100():
     # check if resources/textures/cifar-100 exists
@@ -72,5 +75,3 @@ def preload_cifar100():
         # remove all downloaded data except for the pngs
         os.remove("resources/textures/cifar-100/cifar-100-python.tar.gz")
         shutil.rmtree("resources/textures/cifar-100/cifar-100-python", ignore_errors=True)
-    else:
-        print("cifar-100 dir exists, files not downloaded")

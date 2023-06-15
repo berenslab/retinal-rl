@@ -183,7 +183,6 @@ def make_scenario(scnnm):
             for pngpth in pngpths:
                 pngs += glob(osp.join(rscpth,"textures",pngpth))
 
-            print("PNG List")
             print(pngs)
             num_textures = len(pngs)
             load_textures(wad,actor_idx,pngs)
