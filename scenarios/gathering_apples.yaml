@@ -1,7 +1,7 @@
 name: 'gathering_apples'
 metabolic:
-  delay: 1
-  damage: 2
+  delay: 4
+  damage: 1
 nourishment:
   init: 20
   delay: 20
@@ -29,29 +29,32 @@ nourishment:
 poison:
   init: 10
   delay: 20
-  poison-1:
-    damage: 5
-    textures:
-      - 'apples/blue_apple.png'
-  poison-2:
-    damage: 10
-    textures:
-      - 'apples/blue_apple.png'
-  poison-3:
-    damage: 15
-    textures:
-      - 'apples/blue_apple.png'
-  poison-4:
-    damage: 20
-    textures:
-      - 'apples/blue_apple.png'
-  poison-5:
-    damage: 25
-    textures:
-      - 'apples/blue_apple.png'
-obstacles:
+  actors:
+    poison-1:
+      damage: 5
+      textures:
+        - 'apples/blue_apple.png'
+    poison-2:
+      damage: 10
+      textures:
+        - 'apples/blue_apple.png'
+    poison-3:
+      damage: 15
+      textures:
+        - 'apples/blue_apple.png'
+    poison-4:
+      damage: 20
+      textures:
+        - 'apples/blue_apple.png'
+    poison-5:
+      damage: 25
+      textures:
+        - 'apples/blue_apple.png'
+obstacle:
   init: 0
   delay: 0
-distractors:
+  actors: []
+distractor:
   init: 0
   delay: 0
+  actors: []

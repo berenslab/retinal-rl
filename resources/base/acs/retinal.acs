@@ -36,15 +36,10 @@ global int 15:distractor_init;
 global int 16:distractor_delay;
 
 // Local variables
-// Offsets
-int poison_offset = nourishment_unique;
-int obstacle_offset = poison_offset + poison_unique;
-int distractor_offset = obstacle_offset + obstacles_unique;
 
 // Arena settings
 int wall_min  = -1000.0;
 int wall_max = 1000.0;
-
 
 // Spawning actor by index
 function void SpawnActor(int oid) {
@@ -85,28 +80,31 @@ function str objectCode(int oid, int j) {
 
 // Random object generation
 
-function int randomNourishment(void) {
-    int oid = random(0,num_nourish);
-    SpawnFood(oid);
+function void randomNourishment(void) {
+    int oid = random(0,nourishment_unique);
+    SpawnActor(oid);
 }
 
-function int randomPoison(void) {
+function void randomPoison(void) {
+    int poison_offset = nourishment_unique;
     int oid = random(poison_offset,poison_unique);
-    SpawnFood(oid);
+    SpawnActor(oid);
 }
 
-function int randomObstacle(void) {
+function void randomObstacle(void) {
+    int obstacle_offset = nourishment_unique + poison_unique;
     int oid = random(obstacle_offset,obstacle_unique);
-    SpawnFood(oid);
+    SpawnActor(oid);
 }
 
-function int randomDistractor(void) {
-    int oid = random(distractor_offset,distract_unique);
-    SpawnFood(oid);
+function void randomDistractor(void) {
+    int distractor_offset = nourishment_unique + poison_unique + obstacle_unique;
+    int oid = random(distractor_offset,distractor_unique);
+    SpawnActor(oid);
 }
 
 // Environment behaviour
-script "Nourishment Spawning" OPEN {
+script "Nourishment Spawning" ENTER {
 
     reward = 0;
 
@@ -120,37 +118,37 @@ script "Nourishment Spawning" OPEN {
     }
 }
 
-script "Poison Spawning" OPEN {
+script "Poison Spawning" ENTER {
 
     int i;
 
     for(i=0;i<poison_init;++i) { randomPoison(); }
 
-    while(true) {
+    while(poison_delay > 0) {
         delay(poison_delay);
         randomPoison();
     }
 }
 
-script "Obstacle Spawning" OPEN {
+script "Obstacle Spawning" ENTER {
 
     int i;
 
     for(i=0;i<obstacle_init;++i) { randomObstacle(); }
 
-    while(true) {
+    while(obstacle_delay > 0) {
         delay(obstacle_delay);
         randomObstacle();
     }
 }
 
-script "Distractor Spawning" OPEN {
+script "Distractor Spawning" ENTER {
 
     int i;
 
     for(i=0;i<distractor_init;++i) { randomDistractor(); }
 
-    while(true) {
+    while(distractor_delay > 0) {
         delay(distractor_delay);
         randomDistractor();
     }
@@ -158,7 +156,7 @@ script "Distractor Spawning" OPEN {
 
 script "Agent Metabolism" ENTER {
 
-    while(true) {
+    while(metabolic_delay > 0) {
         delay(metabolic_delay);
         Thing_Damage(0,metabolic_damage);
     }
