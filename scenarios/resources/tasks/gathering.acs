@@ -7,7 +7,8 @@
 
 // Global Variables
 global int 0:reward;
-global int 1:num_states[];
+global int 1:num_objects[];
+global int 1:num_textures[];
 
 // Arena settings
 int spawn_delay = 20;
@@ -33,19 +34,19 @@ script "FoodEffect" (int fid) {
     Thing_Damage(0,-effect,MOD_SUICIDE);
 }
 
-// Spawning Food by food id
+// Spawning actor by index
 function void SpawnFood(int fid) {
 
     int tid = UniqueTID();
     str act = food_names[fid];
 
-    str state_num = random(0,num_states[fid] - 1);
-    str code = foodCode(fid,state_num);
-    str state = StrParam(s:"Tex",s:code);
+    str texture_num = random(0,num_textures[fid] - 1);
+    str code = objectCode(fid,texture_num);
+    str texture = StrParam(s:"Tex",s:code);
     //print(s:state);
     Spawn(act, random(wall_min+1.0,wall_max-1.0), random(wall_min+1.0,wall_max-1.0), 20.0,tid);
     SetThingSpecial(tid, ACS_NamedExecuteAlways, "FoodEffect", 0, fid);
-    SetActorState(tid, state);
+    SetActorState(tid, texture);
 }
 
 // Food Codes
@@ -62,7 +63,7 @@ function str textureCode(int j) {
     return code;
 }
 
-function str foodCode(int fid, int j) {
+function str objectCode(int fid, int j) {
 
     str food_code = GetChar(alphas,fid);
     str txt_code = textureCode(j);

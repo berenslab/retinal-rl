@@ -13,8 +13,8 @@ from torchvision.datasets import CIFAR10
 from torchvision.datasets import CIFAR100
 
 
-
 ### Loading Datasets ###
+
 
 def load_apples():
     # check if scenarios/resources/textures/apples exists
@@ -90,7 +90,6 @@ def load_cifar100():
         print("cifar-100 dir exists, files not downloaded")
 
 
-
 ### Creating Scenarios ###
 
 
@@ -121,7 +120,7 @@ def create_base_wad():
 
 ### Building Decorate Files ###
 
-def object_code(i,j):
+def actor_code(i,j):
     # Convert k to caps alpha string
     return chr(65 + i) + texture_code(j)
 
@@ -129,19 +128,19 @@ def texture_code(j):
     # Convert k to a 3-digit alpha all-caps string
     return chr(65 + j // 26 ** 2) + chr(65 + (j // 26) % 26) + chr(65 + j % 26)
 
-def decorate_object(object_idx,object_name,num_textures):
+def decorate_actor(actor_idx,actor_name,num_textures):
 
     # Multiline string for beginning of decorate file
     decorate = """ACTOR {0} : Inventory
     {{
         +INVENTORY.ALWAYSPICKUP
         States
-            {{""".format(object_name)
+            {{""".format(actor_name)
 
     for j in range(num_textures):
         decorate += """
             Tex{0}:
-                {0} A -1""".format(object_code(object_idx,j))
+                {0} A -1""".format(actor_code(actor_idx,j))
 
     decorate += """
             }
@@ -151,18 +150,12 @@ def decorate_object(object_idx,object_name,num_textures):
 
 ### Texture Packs ###
 
-# def mnist_dirs():
-#
-#     pngs = []
-#     for td in texture_dirs:
-#         pngs += glob(osp.join(td,"*.png"))
-
-def load_textures(wad,object_idx,pngs):
+def load_textures(wad,actor_idx,pngs):
 
     num_textures = len(pngs)
 
     for j,png in enumerate(pngs):
-        code = object_code(object_idx,j) + "A0"
+        code = actor_code(actor_idx,j) + "A0"
         wad.sprites[code] = omg.Graphic(from_file=png)
 
     return num_textures
@@ -173,21 +166,27 @@ def make_scenario(task="gathering",texture="apples"):
     scnnm = task + "_" + texture
 
     txtdr = osp.join("scenarios/resources/textures",texture)
-    # Get object_names from base directory names in texture directory
-    object_names = [d for d in os.listdir(txtdr) if osp.isdir(osp.join(txtdr,d))]
+    # Get actor_names from base directory names in texture directory
+    actor_names = [d for d in os.listdir(txtdr) if osp.isdir(osp.join(txtdr,d))]
+
+    pngss = []
+    # Get all pngs in each actor directory
+    for actor_name in actor_names:
+        actdr = osp.join(txtdr,actor_name)
+        pngs = [osp.join(actdr,f) for f in os.listdir(actdr) if osp.isfile(osp.join(actdr,f)) and f.endswith(".png")]
+        pngss.append(pngs)
 
     # Library path names
     lbonm = task[:8].upper()
     lbinm = lbonm[:5] + "SRC"
 
-
     wad,mpgrp = create_base_wad()
 
     decorate = ""
 
-    for object_idx in range(len(object_names)):
-        num_foods = load_textures(wad,object_idx,pngss[object_idx])
-        decorate += decorate_food(object_idx,num_foods)
+    for actor_idx,actor_name in enumerate(actor_names):
+        num_textures = load_textures(wad,actor_idx,pngss[actor_idx])
+        decorate += decorate_actor(actor_idx,actor_name,num_textures)
 
     # Decorate
     wad.data['DECORATE'] = omg.Lump(data=decorate.encode('utf-8'))
