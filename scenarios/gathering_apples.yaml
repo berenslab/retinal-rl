@@ -1,0 +1,47 @@
+name: 'gathering_apples'
+metabolic:
+  delay: 1
+  damage: 2
+nourishment:
+  init: 20
+  delay: 20
+poison:
+  init: 10
+  delay: 20
+obstacles:
+  init: 0
+  delay: 0
+distractors:
+  init: 0
+  delay: 0
+actors:
+  nourishment-1:
+    type: 'nourishment'
+    healing: 5
+  nourishment-2:
+    type: 'nourishment'
+    healing: 10
+  nourishment-3:
+    type: 'nourishment'
+    healing: 15
+  nourishment-4:
+    type: 'nourishment'
+    healing: 20
+  nourishment-5:
+    type: 'nourishment'
+    healing: 25
+  poison-1:
+    type: 'poison'
+    damage: 5
+  poison-2:
+    type: 'poison'
+    damage: 10
+  poison-3:
+    type: 'poison'
+    damage: 15
+  poison-4:
+    type: 'poison'
+    damage: 20
+  poison-5:
+    type: 'poison'
+    damage: 25
