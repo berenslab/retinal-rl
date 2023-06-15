@@ -6,50 +6,61 @@
 // Variables
 
 // Global Variables
+// Reward
 global int 0:reward;
-global int 1:num_objects[];
-global int 1:num_textures[];
+
+// Frequency and amount of metabolic damage
+global int 1:meta_delay = 1;
+global int 2:meta_damage = 2;
+global str 3:actor_names[];
+global str 4:actor_num_textures[];
+
+// Nourishment variables
+global int 5:nourish_unique;
+global int 6:nourish_init;
+global int 7:nourish_delay;
+
+// Poison variables
+global int 8:poison_unique;
+global int 9:poison_init;
+global int 10:poison_delay;
+
+// Obstacle variables
+global int 11:obstacle_unique;
+global int 12:obstacle_init;
+global int 13:obstacle_delay;
+
+// Distractor variables
+global int 14:distract_unique;
+global int 15:distract_init;
+global int 16:distract_delay;
+
+// Local variables
+// Offsets
+int poison_offset = nourish_unique;
+int obstacle_offset = poison_offset + poison_unique;
+int distract_offset = obstacle_offset + obstacles_unique;
 
 // Arena settings
-int spawn_delay = 20;
 int wall_min  = -1000.0;
 int wall_max = 1000.0;
 
-// Frequency and amount of metabolic damage
-int meta_ticks = 2;
-int meta_damage = 1;
-
-// Food health by food id
-int food_health_array[10] = {5,10,15,20,25,-5,-10,-15,-20,-25};
-str food_names[10] = {"Nourishment_1","Nourishment_2","Nourishment_3","Nourishment_4","Nourishment_5","Poison_1","Poison_2","Poison_3","Poison_4","Poison_5"};
-
-int start_nourishment_quantity = 20;
-int start_poison_quantity = 10;
-
-// Food creation
-
-// Causes health/damage to player when item picked up; amount based on food id
-script "FoodEffect" (int fid) {
-    int effect = food_health_array[fid];
-    Thing_Damage(0,-effect,MOD_SUICIDE);
-}
 
 // Spawning actor by index
-function void SpawnFood(int fid) {
+function void SpawnActor(int oid) {
 
     int tid = UniqueTID();
-    str act = food_names[fid];
+    str act = actor_names[oid];
 
-    str texture_num = random(0,num_textures[fid] - 1);
-    str code = objectCode(fid,texture_num);
+    str texture_num = random(0,actor_num_textures[oid] - 1);
+    str code = objectCode(oid,texture_num);
     str texture = StrParam(s:"Tex",s:code);
     //print(s:state);
     Spawn(act, random(wall_min+1.0,wall_max-1.0), random(wall_min+1.0,wall_max-1.0), 20.0,tid);
-    SetThingSpecial(tid, ACS_NamedExecuteAlways, "FoodEffect", 0, fid);
     SetActorState(tid, texture);
 }
 
-// Food Codes
+// Object Codes
 
 str alphas = "ABCDEFGHIJKLMNPQRSTUVWXYZ";
 
@@ -63,64 +74,97 @@ function str textureCode(int j) {
     return code;
 }
 
-function str objectCode(int fid, int j) {
+function str objectCode(int oid, int j) {
 
-    str food_code = GetChar(alphas,fid);
+    str food_code = GetChar(alphas,oid);
     str txt_code = textureCode(j);
     str code = strParam(c:food_code, s:txt_code);
 
     return code;
 }
 
-// Randomization food generation
+// Random object generation
 
-function int randomFoodIndex(void) {
-    int fid = random(0,9);
-    return fid;
+function int randomNourishment(void) {
+    int oid = random(0,num_nourish);
+    SpawnFood(oid);
 }
 
-function int randomNourishmentIndex(void) {
-    int nid = random(0,4);
-    return nid;
+function int randomPoison(void) {
+    int oid = random(poison_offset,poison_unique);
+    SpawnFood(oid);
 }
 
-// Random poisonous food index
-function int randomPoisonIndex(void) {
-    int pid = random(5,9);
-    return pid;
+function int randomObstacle(void) {
+    int oid = random(obstacle_offset,obstacle_unique);
+    SpawnFood(oid);
 }
 
-function void randomFood(void) {
-    int fid = randomFoodIndex();
-    SpawnFood(fid);
-}
-
-function void randomNourishment(void) {
-    int nid = randomNourishmentIndex();
-    SpawnFood(nid);
-}
-
-function void randomPoison(void) {
-    int pid = randomPoisonIndex();
-    SpawnFood(pid);
+function int randomDistractor(void) {
+    int oid = random(distract_offset,distract_unique);
+    SpawnFood(oid);
 }
 
 // Environment behaviour
-script "Food Spawning" OPEN {
+script "Nourishment Spawning" OPEN {
 
     reward = 0;
+
     int i;
 
-    for(i =0;i<start_nourishment_quantity;++i) { randomNourishment(); }
-    for(i =0;i<start_poison_quantity;++i) { randomPoison(); }
+    for(i=0;i<nourish_init;++i) { randomNourishment(); }
 
-    while(1) {
-        delay(spawn_delay);
-        randomFood();
+    while(true) {
+        delay(nourish_delay);
+        randomNourishment();
     }
 }
 
-script "Agent Monitoring" ENTER {
+script "Poison Spawning" OPEN {
+
+    int i;
+
+    for(i=0;i<poison_init;++i) { randomPoison(); }
+
+    while(true) {
+        delay(poison_delay);
+        randomPoison();
+    }
+}
+
+script "Obstacle Spawning" OPEN {
+
+    int i;
+
+    for(i=0;i<obstacle_init;++i) { randomObstacle(); }
+
+    while(true) {
+        delay(obstacle_delay);
+        randomObstacle();
+    }
+}
+
+script "Distractor Spawning" OPEN {
+
+    int i;
+
+    for(i=0;i<distract_init;++i) { randomDistractor(); }
+
+    while(true) {
+        delay(distract_delay);
+        randomDistractor();
+    }
+}
+
+script "Agent Metabolism" ENTER {
+
+    while(true) {
+        delay(meta_delay);
+        Thing_Damage(0,meta_damage);
+    }
+}
+
+script "Agent Initialization" ENTER {
 
     int act_x = random(wall_min,wall_max);
     int act_y = random(wall_min,wall_max);
@@ -134,12 +178,7 @@ script "Agent Monitoring" ENTER {
         int curr_health = PlayerHealth();
         curr_health = curr_health * 100;
         reward = reward + curr_health;
-        if (tcks == meta_ticks) {
-            Thing_Damage(0,meta_damage);
-            tcks = 0;
-        } else {
-            tcks = tcks + 1;
-        }
         delay(1);
     }
 }
+
