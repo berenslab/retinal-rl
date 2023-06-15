@@ -1,6 +1,6 @@
 // Directives
 
-#library "GATHERIN"
+#library "RETINAL"
 #include "zcommon.acs"
 
 // Variables
@@ -10,15 +10,15 @@
 global int 0:reward;
 
 // Frequency and amount of metabolic damage
-global int 1:meta_delay;
-global int 2:meta_damage;
+global int 1:metabolic_delay;
+global int 2:metabolic_damage;
 global str 3:actor_names[];
 global str 4:actor_num_textures[];
 
 // Nourishment variables
-global int 5:nourish_unique;
-global int 6:nourish_init;
-global int 7:nourish_delay;
+global int 5:nourishment_unique;
+global int 6:nourishment_init;
+global int 7:nourishment_delay;
 
 // Poison variables
 global int 8:poison_unique;
@@ -31,15 +31,15 @@ global int 12:obstacle_init;
 global int 13:obstacle_delay;
 
 // Distractor variables
-global int 14:distract_unique;
-global int 15:distract_init;
-global int 16:distract_delay;
+global int 14:distractor_unique;
+global int 15:distractor_init;
+global int 16:distractor_delay;
 
 // Local variables
 // Offsets
-int poison_offset = nourish_unique;
+int poison_offset = nourishment_unique;
 int obstacle_offset = poison_offset + poison_unique;
-int distract_offset = obstacle_offset + obstacles_unique;
+int distractor_offset = obstacle_offset + obstacles_unique;
 
 // Arena settings
 int wall_min  = -1000.0;
@@ -101,7 +101,7 @@ function int randomObstacle(void) {
 }
 
 function int randomDistractor(void) {
-    int oid = random(distract_offset,distract_unique);
+    int oid = random(distractor_offset,distract_unique);
     SpawnFood(oid);
 }
 
@@ -112,10 +112,10 @@ script "Nourishment Spawning" OPEN {
 
     int i;
 
-    for(i=0;i<nourish_init;++i) { randomNourishment(); }
+    for(i=0;i<nourishment_init;++i) { randomNourishment(); }
 
     while(true) {
-        delay(nourish_delay);
+        delay(nourishment_delay);
         randomNourishment();
     }
 }
@@ -148,10 +148,10 @@ script "Distractor Spawning" OPEN {
 
     int i;
 
-    for(i=0;i<distract_init;++i) { randomDistractor(); }
+    for(i=0;i<distractor_init;++i) { randomDistractor(); }
 
     while(true) {
-        delay(distract_delay);
+        delay(distractor_delay);
         randomDistractor();
     }
 }
@@ -159,8 +159,8 @@ script "Distractor Spawning" OPEN {
 script "Agent Metabolism" ENTER {
 
     while(true) {
-        delay(meta_delay);
-        Thing_Damage(0,meta_damage);
+        delay(metabolic_delay);
+        Thing_Damage(0,metabolic_damage);
     }
 }
 

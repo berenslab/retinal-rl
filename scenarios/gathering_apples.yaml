@@ -5,43 +5,53 @@ metabolic:
 nourishment:
   init: 20
   delay: 20
+  actors:
+    nourishment-1:
+      healing: 5
+      textures:
+        - 'apples/red_apple.png'
+    nourishment-2:
+      healing: 10
+      textures:
+        - 'apples/red_apple.png'
+    nourishment-3:
+      healing: 15
+      textures:
+        - 'apples/red_apple.png'
+    nourishment-4:
+      healing: 20
+      textures:
+        - 'apples/red_apple.png'
+    nourishment-5:
+      healing: 25
+      textures:
+        - 'apples/red_apple.png'
 poison:
   init: 10
   delay: 20
+  poison-1:
+    damage: 5
+    textures:
+      - 'apples/blue_apple.png'
+  poison-2:
+    damage: 10
+    textures:
+      - 'apples/blue_apple.png'
+  poison-3:
+    damage: 15
+    textures:
+      - 'apples/blue_apple.png'
+  poison-4:
+    damage: 20
+    textures:
+      - 'apples/blue_apple.png'
+  poison-5:
+    damage: 25
+    textures:
+      - 'apples/blue_apple.png'
 obstacles:
   init: 0
   delay: 0
 distractors:
   init: 0
   delay: 0
-actors:
-  nourishment-1:
-    type: 'nourishment'
-    healing: 5
-  nourishment-2:
-    type: 'nourishment'
-    healing: 10
-  nourishment-3:
-    type: 'nourishment'
-    healing: 15
-  nourishment-4:
-    type: 'nourishment'
-    healing: 20
-  nourishment-5:
-    type: 'nourishment'
-    healing: 25
-  poison-1:
-    type: 'poison'
-    damage: 5
-  poison-2:
-    type: 'poison'
-    damage: 10
-  poison-3:
-    type: 'poison'
-    damage: 15
-  poison-4:
-    type: 'poison'
-    damage: 20
-  poison-5:
-    type: 'poison'
-    damage: 25
