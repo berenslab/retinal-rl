@@ -1,9 +1,0 @@
-ACTOR a : Health
-{
-  +COUNTITEM
-  +INVENTORY.ALWAYSPICKUP
-  Inventory.Amount -25 //this doesn't work of course ....
-  Inventory.MaxAmount 100
-  //Inventory.PickupMessage "Picked up a poison!"
-  States
-  {

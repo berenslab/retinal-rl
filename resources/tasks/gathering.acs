@@ -10,8 +10,8 @@
 global int 0:reward;
 
 // Frequency and amount of metabolic damage
-global int 1:meta_delay = 1;
-global int 2:meta_damage = 2;
+global int 1:meta_delay;
+global int 2:meta_damage;
 global str 3:actor_names[];
 global str 4:actor_num_textures[];
 
