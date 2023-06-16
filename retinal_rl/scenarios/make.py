@@ -1,5 +1,4 @@
 import os
-from glob import glob
 import subprocess
 import os.path as osp
 
@@ -122,40 +121,9 @@ def make_decorate(cfg,actor_name,typ,actor_idx,num_textures):
 
     return decorate
 
-### Loading Textures ###
-
-def load_textures(wad,actor_idx,pngs):
-
-    for j,png in enumerate(pngs):
-        code = actor_code(actor_idx,j) + "A0"
-        wad.sprites[code] = omg.Lump(from_file=png)
 
 ### Creating Scenarios ###
 
-
-def create_base_wad():
-
-    bpth = "resources/base"
-    wad = omg.WAD()
-
-    grspth = osp.join(bpth,"grass.png")
-    wndpth = osp.join(bpth,"wind.png")
-
-    tmppth = osp.join(bpth,"TEXTMAP.txt")
-    mpipth = osp.join(bpth,"MAPINFO.txt")
-
-    # Flats
-    wad.ztextures['GRASS'] = omg.Lump(from_file=grspth)
-
-    # Data
-    wad.data['WIND'] = omg.Lump(from_file=wndpth)
-    wad.data['MAPINFO'] = omg.Lump(from_file=mpipth)
-
-    # Map preparation
-    mpgrp = omg.LumpGroup()
-    mpgrp['TEXTMAP'] = omg.Lump(from_file=tmppth)
-
-    return wad,mpgrp
 
 def make_scenario(scnnm):
 
