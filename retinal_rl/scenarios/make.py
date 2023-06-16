@@ -140,7 +140,8 @@ def make_scenario(scnnm):
     itxtdr = osp.join(rscdr,"textures")
 
     # Output Directories
-    oroot = osp.join(scndr,scnnm)
+    blddr = osp.join(scndr,"build")
+    oroot = osp.join(blddr,scnnm)
     oacsdr = osp.join(oroot,"acs")
     omapdr = osp.join(oroot,"maps")
     osptdr = osp.join(oroot,"sprites")
@@ -261,6 +262,12 @@ def make_scenario(scnnm):
     # add doom_scenario_path to beginning of cfg
     with open(osp.join(scndr,cnfnm),'r') as f:
         cfgtxt = f.read()
-    cfgtxt = "doom_scenario_path = " + scnnm + "\n\n" + cfgtxt
+    cfgtxt = """# Settings copied from resources/base/vizdoom.cfg
+doom_scenario_path = {0}.zip
+
+""".format(scnnm) + cfgtxt
     with open(osp.join(scndr,cnfnm),'w') as f:
         f.write(cfgtxt)
+
+    # zip build and save to scenarios
+    shutil.make_archive(osp.join(scndr,scnnm),'zip',oroot)
