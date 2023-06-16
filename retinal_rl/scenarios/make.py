@@ -158,6 +158,7 @@ def make_scenario(scnnm):
     rscpth = "resources"
     bspth = osp.join(rscpth,"base")
     acspth = osp.join(bspth,"acs")
+    txtdr = osp.join(rscpth,"textures")
 
     bhipth = osp.join(acspth,scnnm + ".acs")
     bhopth = osp.join(acspth,scnnm + ".o")
@@ -179,7 +180,17 @@ def make_scenario(scnnm):
             # get all pngs listend in pngpths and subdirs
             pngs = []
             for pngpth in pngpths:
-                pngs += glob(osp.join(rscpth,"textures",pngpth))
+                fllpth = osp.join(txtdr,pngpth)
+                # if pngpth is a png, add it
+                if pngpth.endswith(".png"):
+                    pngs.append(fllpth)
+                elif osp.isdir(fllpth):
+                    # if pngpth is a directory, recursively add all pngs
+                    for root, _, files in os.walk(fllpth):
+                        for file in files:
+                            if file.endswith(".png"):
+                                pngs.append(osp.join(root,file))
+                
 
             num_textures = len(pngs)
             load_textures(wad,actor_idx,pngs)

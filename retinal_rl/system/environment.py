@@ -51,6 +51,8 @@ def retinal_doomspec(scnr,flnm):
 RETINAL_ENVS = [
 
     retinal_doomspec("gathering_apples", "gathering_apples.cfg"),
+    retinal_doomspec("gathering_gabors", "gathering_gabors.cfg"),
+    retinal_doomspec("gathering_mnist", "gathering_mnist.cfg"),
 
 ]
 

@@ -11,6 +11,8 @@ def main():
     preload_cifar10()
     preload_cifar100()
     make_scenario("gathering_apples")
+    make_scenario("gathering_gabors")
+    make_scenario("gathering_mnist")
 
 if __name__ == '__main__':
     sys.exit(main())
