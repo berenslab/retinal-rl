@@ -57,6 +57,7 @@ function void SpawnActor(int oid) {
 
 // Object Codes
 
+str aalphas = "ABCDEGHIJKLMNPQRSTUVWXYZ";
 str alphas = "ABCDEFGHIJKLMNPQRSTUVWXYZ";
 
 function str textureCode(int j) {
@@ -71,7 +72,7 @@ function str textureCode(int j) {
 
 function str objectCode(int oid, int j) {
 
-    str food_code = GetChar(alphas,oid);
+    str food_code = GetChar(aalphas,oid);
     str txt_code = textureCode(j);
     str code = strParam(c:food_code, s:txt_code);
 

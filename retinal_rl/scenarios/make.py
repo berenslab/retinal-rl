@@ -79,8 +79,11 @@ decorate_pre['distractor'] = """ACTOR {0} : CustomInventory {{
     States {{\n"""
 
 def actor_code(i,j):
-    # Convert k to caps alpha string
-    return chr(65 + i) + texture_code(j)
+    # Convert k to caps alpha string but skip 'F'
+    if i >= 5:
+        return chr(65 + 1 + i) + texture_code(j)
+    else:
+        return chr(65 + i) + texture_code(j)
 
 def texture_code(j):
     # Convert k to a 3-digit alpha all-caps string
