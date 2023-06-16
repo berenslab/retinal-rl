@@ -62,21 +62,17 @@ decorate_pre = {}
 decorate_pre['nourishment'] = """ACTOR {0} : CustomInventory {{
     +INVENTORY.ALWAYSPICKUP
     States {{
-        Spawn:
-            TNT1 A 0 A_CheckBlock("Spawn",0,AAPTR_DEFAULT, 10, 10, 0, 10)
         Pickup:
             TNT1 A 0 HealThing({1})
             Stop\n"""
 decorate_pre['poison'] = """ACTOR {0} : CustomInventory {{
     +INVENTORY.ALWAYSPICKUP
     States {{
-        Spawn:
-            TNT1 A 0 A_CheckBlock("Spawn",0,AAPTR_DEFAULT, 10, 10, 0, 10)
         Pickup:
             TNT1 A 0 DamageThing({1})
             Stop\n"""
 decorate_pre['obstacle'] = """ACTOR {0} : TorchTree {{
-    Radius 32
+    Radius 24
     States {{\n"""
 decorate_pre['distractor'] = """ACTOR {0} : CustomInventory {{
     +INVENTORY.ALWAYSPICKUP
