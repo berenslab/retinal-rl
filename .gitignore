@@ -9,6 +9,9 @@ __pycache__/
 # Large scale resources
 resources/textures
 
+# built
+scenarios
+
 # Training Results (Don't belong in repo)
 _vizdoom.ini
 train_dir
@@ -93,18 +96,6 @@ target/
 .ipynb_checkpoints
 dev_jm*
 classify*
-
-<<<<<<< HEAD
-# large scenarios files
-scenarios/appcifar*
-scenarios/apple_gathering_hr100_r30_b2_g100*
-
-=======
->>>>>>> main
-# dev
-retinal_rl/helpers*
-retinal_rl/analyze*
-retinal_rl/plot*
 
 # IPython
 profile_default/
