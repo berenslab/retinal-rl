@@ -20,7 +20,7 @@ parameters:
     min: 1
     max: 2
   env:
-    value: "gathering_apples"
+    value: "gathering_gabors"
   wide_aspect_ratio:
     value: False
   res_h:

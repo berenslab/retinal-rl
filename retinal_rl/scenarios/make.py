@@ -190,6 +190,7 @@ def make_scenario(scnnm):
                         for file in files:
                             if file.endswith(".png"):
                                 pngs.append(osp.join(root,file))
+            pngs = pngs[:4000]
                 
 
             num_textures = len(pngs)

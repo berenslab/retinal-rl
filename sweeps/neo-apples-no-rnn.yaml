@@ -8,13 +8,13 @@ parameters:
 
   # Simulation specification
   wandb_group:
-    value: "neo-apples-no-rnn"
+    value: "neo-apples"
   wandb_job_type:
     value: "no-rnn"
   experiment:
     value: "act-{activation}_repeat-{repeat}"
   train_dir:
-    value: "train_dir/{wandb_group}"
+    value: "train_dir/{wandb_group}-{wandb_job_type}"
   repeat:
     distribution: "int_uniform"
     min: 1

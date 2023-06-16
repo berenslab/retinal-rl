@@ -33,11 +33,11 @@ poison:
     poison-1:
       damage: 5
       textures:
-        - 'mnist/one'
+        - 'mnist/five'
     poison-2:
       damage: 10
       textures:
-        - 'mnist/two'
+        - 'mnist/four'
     poison-3:
       damage: 15
       textures:
@@ -45,11 +45,11 @@ poison:
     poison-4:
       damage: 20
       textures:
-        - 'mnist/four'
+        - 'mnist/two'
     poison-5:
       damage: 25
       textures:
-        - 'mnist/five'
+        - 'mnist/one'
 obstacle:
   init: 40
   delay: 0
