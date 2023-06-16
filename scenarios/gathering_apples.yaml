@@ -1,10 +1,10 @@
 name: 'gathering_apples'
 metabolic:
-  delay: 4
+  delay: 3
   damage: 1
 nourishment:
   init: 20
-  delay: 10
+  delay: 50
   actors:
     nourishment-1:
       healing: 5
@@ -27,8 +27,8 @@ nourishment:
       textures:
         - 'apples/red_apple.png'
 poison:
-  init: 20
-  delay: 10
+  init: 10
+  delay: 50
   actors:
     poison-1:
       damage: 5
@@ -51,8 +51,8 @@ poison:
       textures:
         - 'apples/blue_apple.png'
 obstacle:
-  init: 20
-  delay: 10
+  init: 40
+  delay: 0
   actors:
     obstacle-1:
       textures:
