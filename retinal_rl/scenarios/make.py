@@ -43,7 +43,7 @@ script "Load Config Information" OPEN {{
     {0}_delay = {3};
     """.format(typ,len(xcfg['actors']),xcfg['init'],xcfg['delay'])
 
-    acs += "\n// Loading arrays"
+    acs += "\n    // Loading arrays"
 
     for i,(actor_name,num_textures) in enumerate(zip(actor_names,actor_num_textures)):
         acs += """
@@ -71,10 +71,7 @@ decorate_pre['poison'] = """ACTOR {0} : CustomInventory {{
         Pickup:
             TNT1 A 0 DamageThing({1})
             Stop\n"""
-decorate_pre['obstacle'] = """ACTOR {0} {{
-    Radius 30
-    Height 300
-    +SOLID
+decorate_pre['obstacle'] = """ACTOR {0} : TorchTree {{
     States {{\n"""
 decorate_pre['distractor'] = """ACTOR {0} : CustomInventory {{
     +INVENTORY.ALWAYSPICKUP
@@ -120,7 +117,7 @@ def load_textures(wad,actor_idx,pngs):
 
     for j,png in enumerate(pngs):
         code = actor_code(actor_idx,j) + "A0"
-        wad.sprites[code] = omg.Graphic(from_file=png)
+        wad.sprites[code] = omg.Lump(from_file=png)
 
 ### Creating Scenarios ###
 
@@ -137,7 +134,7 @@ def create_base_wad():
     mpipth = osp.join(bpth,"MAPINFO.txt")
 
     # Flats
-    wad.ztextures['GRASS'] = omg.Graphic(from_file=grspth)
+    wad.ztextures['GRASS'] = omg.Lump(from_file=grspth)
 
     # Data
     wad.data['WIND'] = omg.Lump(from_file=wndpth)
@@ -183,7 +180,6 @@ def make_scenario(scnnm):
             for pngpth in pngpths:
                 pngs += glob(osp.join(rscpth,"textures",pngpth))
 
-            print(pngs)
             num_textures = len(pngs)
             load_textures(wad,actor_idx,pngs)
             decorate += make_decorate(cfg,actor_name,typ,actor_idx,num_textures)

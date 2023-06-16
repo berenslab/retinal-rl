@@ -4,7 +4,7 @@ metabolic:
   damage: 1
 nourishment:
   init: 20
-  delay: 20
+  delay: 10
   actors:
     nourishment-1:
       healing: 5
@@ -27,8 +27,8 @@ nourishment:
       textures:
         - 'apples/red_apple.png'
 poison:
-  init: 10
-  delay: 20
+  init: 20
+  delay: 10
   actors:
     poison-1:
       damage: 5
@@ -51,9 +51,12 @@ poison:
       textures:
         - 'apples/blue_apple.png'
 obstacle:
-  init: 0
-  delay: 0
-  actors: []
+  init: 20
+  delay: 10
+  actors:
+    obstacle-1:
+      textures:
+        - 'obstacles/tree.png'
 distractor:
   init: 0
   delay: 0

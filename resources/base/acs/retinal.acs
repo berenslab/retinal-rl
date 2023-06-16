@@ -50,7 +50,7 @@ function void SpawnActor(int oid) {
     str texture_num = random(0,actor_num_textures[oid] - 1);
     str code = objectCode(oid,texture_num);
     str texture = StrParam(s:"Tex",s:code);
-    //print(s:state);
+    print(s:act);
     Spawn(act, random(wall_min+1.0,wall_max-1.0), random(wall_min+1.0,wall_max-1.0), 20.0,tid);
     SetActorState(tid, texture);
 }
@@ -81,26 +81,27 @@ function str objectCode(int oid, int j) {
 // Random object generation
 
 function void randomNourishment(void) {
-    int oid = random(0,nourishment_unique);
+    int oid = random(0,nourishment_unique-1);
     SpawnActor(oid);
 }
 
 function void randomPoison(void) {
     int poison_offset = nourishment_unique;
-    int oid = random(poison_offset,poison_unique);
-    SpawnActor(oid);
+    int oid = random(0,poison_unique-1);
+    SpawnActor(oid+poison_offset);
 }
 
 function void randomObstacle(void) {
     int obstacle_offset = nourishment_unique + poison_unique;
-    int oid = random(obstacle_offset,obstacle_unique);
-    SpawnActor(oid);
+    int oid = random(0,obstacle_unique-1);
+    print(s:"Spawning obstacle");
+    SpawnActor(oid+obstacle_offset);
 }
 
 function void randomDistractor(void) {
     int distractor_offset = nourishment_unique + poison_unique + obstacle_unique;
-    int oid = random(distractor_offset,distractor_unique);
-    SpawnActor(oid);
+    int oid = random(0,distractor_unique-1);
+    SpawnActor(oid+distractor_offset);
 }
 
 // Environment behaviour
@@ -112,7 +113,7 @@ script "Nourishment Spawning" ENTER {
 
     for(i=0;i<nourishment_init;++i) { randomNourishment(); }
 
-    while(true) {
+    while(nourishment_delay) {
         delay(nourishment_delay);
         randomNourishment();
     }
