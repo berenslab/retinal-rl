@@ -10,7 +10,7 @@ __pycache__/
 resources/textures
 
 # built
-scenarios
+/scenarios/
 
 # Training Results (Don't belong in repo)
 _vizdoom.ini
