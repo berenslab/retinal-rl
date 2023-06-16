@@ -5,6 +5,7 @@ import os.path as osp
 
 import yaml
 import omg
+import shutil
 
 
 ### Load Config ###
@@ -24,7 +25,7 @@ def make_acs(cfg,actor_names,actor_num_textures):
 
     # Directives
     acs +="""// Directives
-#import "retinal.acs"
+#import "acs/retinal.acs"
 #include "zcommon.acs"
 
 script "Load Config Information" OPEN {{
@@ -190,7 +191,7 @@ def make_scenario(scnnm):
                         for file in files:
                             if file.endswith(".png"):
                                 pngs.append(osp.join(root,file))
-            pngs = pngs[:4000]
+            pngs = pngs[:1000]
                 
 
             num_textures = len(pngs)
@@ -229,3 +230,128 @@ def make_scenario(scnnm):
 
     # Save to file
     wad.to_file(osp.join("scenarios",scnnm + ".wad"))
+
+def make_scenario2(scnnm):
+
+    # Preloading
+    cfg = load_config(scnnm)
+
+    rscdr = "resources"
+
+    # Inupt Directories
+    ibsdr = osp.join(rscdr,"base")
+    iacsdr = osp.join(ibsdr,"acs")
+    itxtdr = osp.join(rscdr,"textures")
+
+    # Output Directories
+    oroot = osp.join("resources/build",scnnm)
+    oacsdr = osp.join(oroot,"acs")
+    omapdr = osp.join(oroot,"maps")
+    osptdr = osp.join(oroot,"sprites")
+    otxtdr = osp.join(oroot,"textures")
+
+    # Remove exiting root directory
+    if osp.exists(oroot):
+        shutil.rmtree(oroot)
+
+    # Create Directories
+    os.makedirs(oroot,exist_ok=True)
+    os.makedirs(oacsdr,exist_ok=True)
+    os.makedirs(omapdr,exist_ok=True)
+    os.makedirs(osptdr,exist_ok=True)
+    os.makedirs(otxtdr,exist_ok=True)
+
+    # Textures
+    shutil.copy(osp.join(ibsdr,"grass.png"),osp.join(otxtdr,"GRASS.png"))
+    shutil.copy(osp.join(ibsdr,"wind.png"), osp.join(otxtdr,"WIND.png"))
+
+    # Copy Data to Root
+    shutil.copy(osp.join(ibsdr,"MAPINFO.txt"), osp.join(oroot,"MAPINFO.txt"))
+
+    # Building decorate and loading textures
+
+    decorate = ""
+    actor_names = []
+    actor_num_textures = []
+
+    actor_idx = 0
+    for typ in object_types:
+        for actor_name in cfg[typ]['actors']:
+
+            pngpths = cfg[typ]['actors'][actor_name]['textures']
+            # get all pngs listend in pngpths and subdirs
+            pngs = []
+            for pngpth in pngpths:
+                fllpth = osp.join(itxtdr,pngpth)
+                # if pngpth is a png, add it
+                if pngpth.endswith(".png"):
+                    pngs.append(fllpth)
+                elif osp.isdir(fllpth):
+                    # if pngpth is a directory, recursively add all pngs
+                    for root, _, files in os.walk(fllpth):
+                        for file in files:
+                            if file.endswith(".png"):
+                                pngs.append(osp.join(root,file))
+            pngs = pngs
+                
+
+            num_textures = len(pngs)
+
+            for j,png in enumerate(pngs):
+                code = actor_code(actor_idx,j) + "A0"
+                # Copy png to sprite pth
+                shutil.copy(png,osp.join(osptdr,code + ".png"))
+
+            decorate += make_decorate(cfg,actor_name,typ,actor_idx,num_textures)
+
+            actor_idx += 1
+            actor_names.append(actor_name)
+            actor_num_textures.append(num_textures)
+
+    # Write decorate to root
+    with open(osp.join(oroot,"DECORATE.txt"),'w') as f:
+        f.write(decorate)
+
+
+    ## ACS ##
+
+    # Defining paths
+
+    bhipth = osp.join(oroot,scnnm + ".acs")
+    bhopth = osp.join(oroot,scnnm + ".o")
+
+    lbipth = osp.join(iacsdr,"retinal.acs")
+    lbopth = osp.join(oacsdr,"RETINAL")
+
+    # Copy retinal to acs pth
+    shutil.copy(lbipth,oacsdr)
+
+    tmppth = osp.join(ibsdr,"TEXTMAP.txt")
+
+    # Write ACS
+    with open(bhipth,'w') as f:
+        acs = make_acs(cfg,actor_names,actor_num_textures)
+        f.write(acs)
+
+    # Compile ACS
+    subprocess.call(["acc", "-i","/usr/share/acc", bhipth, bhopth])
+    subprocess.call(["acc", "-i","/usr/share/acc", lbipth, lbopth])
+
+    # Map Wad
+
+    wad = omg.WAD()
+    mpgrp = omg.LumpGroup()
+
+    mpgrp['TEXTMAP'] = omg.Lump(from_file=tmppth)
+    mpgrp['SCRIPTS'] = omg.Lump(from_file=bhipth)
+    mpgrp['BEHAVIOR'] = omg.Lump(from_file=bhopth)
+    wad.udmfmaps["MAP01"] = omg.UMapEditor(mpgrp).to_lumps()
+
+    # Cleanup
+    os.remove(bhopth)
+
+    # Save wad to map dir
+    wad.to_file(osp.join(omapdr,"MAP01.wad"))
+
+    # Zip root dir
+    shutil.make_archive(osp.join("scenarios",scnnm), 'zip', oroot)
