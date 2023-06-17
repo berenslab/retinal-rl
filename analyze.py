@@ -4,7 +4,7 @@ import os
 import matplotlib.pyplot as plt
 
 from retinal_rl.system.encoders import register_retinal_model
-from retinal_rl.system.environment import register_retinal_envs
+from retinal_rl.system.environment import register_retinal_env
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 
 from retinal_rl.analysis.simulation import get_ac_env,generate_simulation,get_checkpoint
@@ -17,7 +17,7 @@ from sample_factory.utils.utils import log
 
 def analyze(cfg,progress_bar=True):
 
-    register_retinal_envs()
+    register_retinal_env(cfg.env)
     register_retinal_model()
 
     log.debug("Running analysis: simulate = %s, plot = %s, animate = %s", cfg.simulate, cfg.plot, cfg.animate)

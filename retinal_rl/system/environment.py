@@ -48,15 +48,6 @@ def retinal_doomspec(scnr,flnm):
                     , extra_wrappers=[]
                     )
 
-RETINAL_ENVS = [
-
-    retinal_doomspec("gathering_apples", "gathering_apples.cfg"),
-    retinal_doomspec("gathering_gabors", "gathering_gabors.cfg"),
-    retinal_doomspec("gathering_mnist", "gathering_mnist.cfg"),
-
-]
-
-
 def make_retinal_env_from_spec(spec, _env_name, cfg, env_config, render_mode: Optional[str] = None, **kwargs):
     """
     Makes a Retinal environment from a DoomSpec instance.
@@ -66,8 +57,10 @@ def make_retinal_env_from_spec(spec, _env_name, cfg, env_config, render_mode: Op
 
     return make_doom_env_impl(spec, cfg=cfg, env_config=env_config, render_mode=render_mode, custom_resolution=res, **kwargs)
 
-def register_retinal_envs():
+def register_retinal_env(scnnm):
 
-    for env_spec in RETINAL_ENVS:
-        make_env_func = functools.partial(make_retinal_env_from_spec, env_spec)
-        register_env(env_spec.name, make_env_func)
+    cfgnm = scnnm + ".cfg"
+
+    env_spec = retinal_doomspec(scnnm, cfgnm)
+    make_env_func = functools.partial(make_retinal_env_from_spec, env_spec)
+    register_env(env_spec.name, make_env_func)

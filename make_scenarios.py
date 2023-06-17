@@ -10,9 +10,10 @@ def main():
     preload_mnist()
     preload_cifar10()
     preload_cifar100()
-    make_scenario("obstacles_apples")
-    make_scenario("obstacles_gabors")
-    make_scenario("obstacles_mnist")
+    make_scenario("obstructed_apples")
+    make_scenario("obstructed_gabors")
+    make_scenario("obstructed_mnist")
+    make_scenario("obstructed_cifar10")
 
 if __name__ == '__main__':
     sys.exit(main())

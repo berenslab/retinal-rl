@@ -18,7 +18,7 @@ from sample_factory.utils.utils import log,debug_log_every_n
 from sample_factory.algo.utils.make_env import make_env_func_batched
 
 from retinal_rl.system.encoders import register_retinal_model,make_encoder
-from retinal_rl.system.environment import register_retinal_envs
+from retinal_rl.system.environment import register_retinal_env
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 
 from retinal_rl.util import get_analysis_times,analysis_root,plot_path,encoder_out_size,rf_size_and_start
@@ -155,8 +155,6 @@ def fill_in_argv_template(argv):
 def main():
     """Script entry point."""
     # Register retinal environments and models.
-    register_retinal_envs()
-    register_retinal_model()
 
     # Parsing args
     argv = sys.argv[1:]
@@ -164,13 +162,16 @@ def main():
     argv = fill_in_argv_template(argv)
 
     # Two-pass building parser and returning cfg : Namespace
-    parser,_ = parse_sf_args(argv,evaluation=True)
+    parser,cfg = parse_sf_args(argv,evaluation=True)
 
     add_retinal_env_args(parser)
     add_retinal_env_eval_args(parser)
     retinal_override_defaults(parser)
 
     cfg = parse_full_cfg(parser, argv)
+
+    register_retinal_env(cfg.env)
+    register_retinal_model()
 
     test_env = make_env_func_batched( cfg
             , env_config=AttrDict(worker_index=0, vector_index=0, env_id=0), render_mode="rgb_array"
