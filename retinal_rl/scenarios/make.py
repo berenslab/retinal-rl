@@ -128,7 +128,7 @@ def make_decorate(cfg,actor_name,typ,actor_idx,num_textures):
 ### Creating Scenarios ###
 
 
-def make_scenario(scnnm):
+def make_scenario(scnnm,clean=True):
 
     # Preloading
     cfg = load_config(scnnm)
@@ -274,3 +274,11 @@ doom_scenario_path = {0}.zip
 
     # zip build and save to scenarios
     shutil.make_archive(osp.join(scndr,scnnm),'zip',oroot)
+
+    # If clean flag is set, remove build directory
+    if clean:
+        shutil.rmtree(oroot)
+        # Also if the build directory is empty, remove it too
+        if len(os.listdir(blddr)) == 0:
+            shutil.rmtree(blddr)
+
