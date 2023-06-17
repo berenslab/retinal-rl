@@ -17,9 +17,11 @@ from torchvision.datasets import CIFAR100
 ### Util ###
 
 
-# set offset for pngs based on zdooms grAb chunk
-def set_offset(png):
+# set offset for pngs based on zdooms grAb chunk, also optionally scale
+def doomify_image(png,scale=1.0):
     img = Image.open(png)
+    if scale != 1.0:
+        img = img.resize((int(img.size[0]*scale),int(img.size[1]*scale)))
     # get width and height
     width, height = img.size
     pnginfo = PngInfo()
@@ -37,14 +39,14 @@ def preload_apples():
         shutil.copytree("resources/base/apples","resources/textures/apples")
         # set offset for apple images
         for png in glob("resources/textures/apples/*.png"):
-            set_offset(png)
+            doomify_image(png)
 
 def preload_obstacles():
     if not osp.exists("resources/textures/obstacles"):
         shutil.copytree("resources/base/obstacles","resources/textures/obstacles")
         # set offset for obstacle images
         for png in glob("resources/textures/obstacles/*.png"):
-            set_offset(png)
+            doomify_image(png)
 
 def preload_gabors():
     if not osp.exists("resources/textures/gabors"):
@@ -63,7 +65,7 @@ def preload_mnist():
         for i in range(len(mnist)):
             png = "resources/textures/mnist/" + num2words(mnist[i][1]) + "/" + str(i) + ".png"
             mnist[i][0].save(png)
-            set_offset(png)
+            doomify_image(png,2)
 
         # remove all downloaded data except for the pngs
         shutil.rmtree("resources/textures/mnist/MNIST", ignore_errors=True)
@@ -81,7 +83,7 @@ def preload_cifar10():
         for i in range(len(cifar)):
             png = "resources/textures/cifar-10/" + cifar.classes[cifar[i][1]] + "/" + str(i) + ".png"
             cifar[i][0].save(png)
-            set_offset(png)
+            doomify_image(png,1.5)
 
         # remove all downloaded data except for the pngs
         os.remove("resources/textures/cifar-10/cifar-10-python.tar.gz")
@@ -100,7 +102,7 @@ def preload_cifar100():
         for i in range(len(cifar)):
             png = "resources/textures/cifar-100/" + cifar.classes[cifar[i][1]] + "/" + str(i) + ".png"
             cifar[i][0].save(png)
-            set_offset(png)
+            doomify_image(png,1.5)
 
         # remove all downloaded data except for the pngs
         os.remove("resources/textures/cifar-100/cifar-100-python.tar.gz")

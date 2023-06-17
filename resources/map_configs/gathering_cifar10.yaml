@@ -1,0 +1,62 @@
+metabolic:
+  delay: 3
+  damage: 1
+nourishment:
+  init: 20
+  delay: 50
+  actors:
+    nourishment-1:
+      healing: 5
+      textures:
+        - 'cifar-10/cat'
+    nourishment-2:
+      healing: 10
+      textures:
+        - 'cifar-10/airplane'
+    nourishment-3:
+      healing: 15
+      textures:
+        - 'cifar-10/bird'
+    nourishment-4:
+      healing: 20
+      textures:
+        - 'cifar-10/truck'
+    nourishment-5:
+      healing: 25
+      textures:
+        - 'cifar-10/horse'
+poison:
+  init: 10
+  delay: 50
+  actors:
+    poison-1:
+      damage: 5
+      textures:
+        - 'cifar-10/ship'
+    poison-2:
+      damage: 10
+      textures:
+        - 'cifar-10/automobile'
+    poison-3:
+      damage: 15
+      textures:
+        - 'cifar-10/deer'
+    poison-4:
+      damage: 20
+      textures:
+        - 'cifar-10/dog'
+    poison-5:
+      damage: 25
+      textures:
+        - 'cifar-10/frog'
+obstacle:
+  init: 0
+  delay: 0
+  actors:
+    obstacle-1:
+      textures:
+        - 'obstacles/tree.png'
+distractor:
+  init: 0
+  delay: 0
+  actors: []
