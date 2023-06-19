@@ -175,7 +175,6 @@ script "Agent Initialization" ENTER {
 
     while(true) {
         int curr_health = PlayerHealth();
-        curr_health = curr_health * 100;
         reward = reward + curr_health;
         delay(1);
     }

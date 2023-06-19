@@ -44,7 +44,7 @@ def retinal_doomspec(scnr,flnm):
     return DoomSpec( scnr
                     , join(os.getcwd(), "scenarios", flnm)
                     , doom_action_space_basic()
-                    , reward_scaling=0.01
+                    , reward_scaling=1
                     , extra_wrappers=[]
                     )
 

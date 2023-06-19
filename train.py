@@ -4,7 +4,6 @@ import wandb
 import multiprocessing
 multiprocessing.set_start_method("spawn",force=True)
 import torchscan as ts
-import torch
 
 
 from sample_factory.cfg.arguments import parse_sf_args, parse_full_cfg
@@ -21,7 +20,7 @@ from retinal_rl.system.encoders import register_retinal_model,make_encoder
 from retinal_rl.system.environment import register_retinal_env
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 
-from retinal_rl.util import get_analysis_times,analysis_root,plot_path,encoder_out_size,rf_size_and_start
+from retinal_rl.util import get_analysis_times,analysis_root,plot_path
 
 from analyze import analyze
 

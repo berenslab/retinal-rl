@@ -16,7 +16,6 @@ def retinal_override_defaults(parser):
         obs_subtract_mean=0.0,
         obs_scale=255.0,
         env_frameskip=4,
-        reward_scale=0.1,
 
         # Environment defaults we've settled on
         res_h=120,
