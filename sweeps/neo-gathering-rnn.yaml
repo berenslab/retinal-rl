@@ -1,0 +1,59 @@
+name: neo-gathering-rnn
+description: Sweeping performance of models of increasing complexity on a variety of tasks.
+program: train.py
+method: grid
+project: retinal-rl
+
+parameters:
+
+  # Simulation specification
+  wandb_group:
+    value: "neo-gathering"
+  wandb_job_type:
+    value: "rnn"
+  experiment:
+    value: "env-{env}_repeat-{repeat}"
+  train_dir:
+    value: "train_dir/{wandb_group}-{wandb_job_type}"
+  repeat:
+    distribution: "int_uniform"
+    min: 1
+    max: 2
+  env:
+    values: ["gathering_apples", "gathering_gabors", "gathering_mnist", "gathering_cifar10"]
+  wide_aspect_ratio:
+    value: False
+  res_h:
+    value: 120
+  res_w:
+    value: 160
+
+  # Network architecture
+  activation:
+    value: "elu"
+  global_channels:
+    value: 16
+  use_rnn:
+    value: True
+  rnn_size:
+    value: 64
+
+  # Training
+  train_for_env_steps:
+    value: 10000000000
+  with_vtrace:
+    value: False
+  normalize_returns:
+    value: True
+  optimizer:
+    value: "adam"
+
+  # Hardware
+  num_workers:
+    value: 20
+  num_envs_per_worker:
+    value: 8
+  rollout:
+    value: 32
+  recurrence:
+    value: 32
