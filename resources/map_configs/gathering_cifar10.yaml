@@ -1,28 +1,28 @@
 metabolic:
-  delay: 3
+  delay: 2
   damage: 1
 nourishment:
   init: 20
-  delay: 50
+  delay: 25
   actors:
     nourishment-1:
-      healing: 5
+      healing: 10
       textures:
         - 'cifar-10/cat'
     nourishment-2:
-      healing: 10
+      healing: 20
       textures:
         - 'cifar-10/airplane'
     nourishment-3:
-      healing: 15
+      healing: 30
       textures:
         - 'cifar-10/bird'
     nourishment-4:
-      healing: 20
+      healing: 40
       textures:
         - 'cifar-10/truck'
     nourishment-5:
-      healing: 25
+      healing: 50
       textures:
         - 'cifar-10/horse'
 poison:
