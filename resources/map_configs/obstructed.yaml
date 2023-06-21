@@ -1,0 +1,8 @@
+objects:
+  obstacle:
+    init: 40
+    delay: 0
+    actors:
+      obstacle-1:
+        textures:
+          - 'obstacles/tree.png'

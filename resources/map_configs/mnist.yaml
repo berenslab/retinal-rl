@@ -1,0 +1,35 @@
+objects:
+  nourishment:
+    actors:
+      nourishment-1:
+        textures:
+          - 'mnist/six'
+      nourishment-2:
+        textures:
+          - 'mnist/seven'
+      nourishment-3:
+        textures:
+          - 'mnist/eight'
+      nourishment-4:
+        textures:
+          - 'mnist/nine'
+      nourishment-5:
+        textures:
+          - 'mnist/zero'
+  poison:
+    actors:
+      poison-1:
+        textures:
+          - 'mnist/five'
+      poison-2:
+        textures:
+          - 'mnist/four'
+      poison-3:
+        textures:
+          - 'mnist/three'
+      poison-4:
+        textures:
+          - 'mnist/two'
+      poison-5:
+        textures:
+          - 'mnist/one'

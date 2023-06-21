@@ -1,0 +1,35 @@
+objects:
+  nourishment:
+    actors:
+      nourishment-1:
+        textures:
+          - 'apples/red_apple.png'
+      nourishment-2:
+        textures:
+          - 'apples/red_apple.png'
+      nourishment-3:
+        textures:
+          - 'apples/red_apple.png'
+      nourishment-4:
+        textures:
+          - 'apples/red_apple.png'
+      nourishment-5:
+        textures:
+          - 'apples/red_apple.png'
+  poison:
+    actors:
+      poison-1:
+        textures:
+          - 'apples/blue_apple.png'
+      poison-2:
+        textures:
+          - 'apples/blue_apple.png'
+      poison-3:
+        textures:
+          - 'apples/blue_apple.png'
+      poison-4:
+        textures:
+          - 'apples/blue_apple.png'
+      poison-5:
+        textures:
+          - 'apples/blue_apple.png'

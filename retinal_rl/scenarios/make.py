@@ -2,7 +2,7 @@ import os
 import subprocess
 import os.path as osp
 
-import yaml
+import hiyapyco as hyaml
 import omg
 import shutil
 
@@ -10,15 +10,20 @@ import shutil
 ### Load Config ###
 
 
-def load_config(flnm):
-    with open("resources/map_configs/{0}.yaml".format(flnm)) as stream:
-        return yaml.safe_load(stream)
+def load_config(flnms):
+    # list all config files
+    flpths = []
+    for flnm in flnms:
+        flpths.append("resources/map_configs/{0}.yaml".format(flnm))
 
-object_types = ['nourishment','poison','obstacle','distractor']
+    # Load all yaml files listed in flnms and combine into a single dictionary, recursively combining keys
+    cfg = hyaml.load(flpths,method=hyaml.METHOD_MERGE)
+    return cfg
+            
 
 ### Building ACS files ###
 
-def make_acs(cfg,actor_names,actor_num_textures):
+def make_acs(cfg,actor_names,object_types,actor_num_textures):
     
     acs = ""
 
@@ -35,13 +40,13 @@ script "Load Config Information" OPEN {{
     """.format(cfg['metabolic']['delay'],cfg['metabolic']['damage'])
 
     for typ in object_types:
-        xcfg = cfg[typ]
+        tcfg = cfg['objects'][typ]
         acs += """
     // {0} variables
     {0}_unique = {1};
     {0}_init = {2};
     {0}_delay = {3};
-    """.format(typ,len(xcfg['actors']),xcfg['init'],xcfg['delay'])
+    """.format(typ,len(tcfg['actors']),tcfg['init'],tcfg['delay'])
 
     acs += "\n    // Loading arrays"
 
@@ -100,13 +105,13 @@ def make_decorate_include(actor_names):
 
 def make_decorate(cfg,actor_name,typ,actor_idx,num_textures):
 
-    cfg = cfg[typ]['actors'][actor_name]
+    acfg = cfg['actors'][actor_name]
 
     decorate = ""
     if typ == "nourishment":
-        decorate += decorate_pre[typ].format(actor_name,cfg['healing'])
+        decorate += decorate_pre[typ].format(actor_name,acfg['healing'])
     elif typ == "poison":
-        decorate += decorate_pre[typ].format(actor_name,cfg['damage'])
+        decorate += decorate_pre[typ].format(actor_name,acfg['damage'])
     elif typ == "obstacle":
         decorate += decorate_pre[typ].format(actor_name)
     elif typ == "distractor":
@@ -128,10 +133,14 @@ def make_decorate(cfg,actor_name,typ,actor_idx,num_textures):
 ### Creating Scenarios ###
 
 
-def make_scenario(scnnm,clean=True):
+def make_scenario(flnms,clean=True):
 
     # Preloading
-    cfg = load_config(scnnm)
+    cfg = load_config(flnms)
+    ocfg = cfg['objects']
+    object_types = ocfg.keys()
+
+    scnnm = "_".join(flnms)
 
     # Base directories
     rscdr = "resources"
@@ -178,9 +187,10 @@ def make_scenario(scnnm,clean=True):
 
     actor_idx = 0
     for typ in object_types:
-        for actor_name in cfg[typ]['actors']:
+        tcfg = ocfg[typ]
+        for actor_name in tcfg['actors']:
 
-            pngpths = cfg[typ]['actors'][actor_name]['textures']
+            pngpths = tcfg['actors'][actor_name]['textures']
             # get all pngs listend in pngpths and subdirs
             pngs = []
             for pngpth in pngpths:
@@ -204,7 +214,7 @@ def make_scenario(scnnm,clean=True):
                 # Copy png to sprite pth
                 shutil.copy(png,osp.join(osptdr,code + ".png"))
 
-            decorate = make_decorate(cfg,actor_name,typ,actor_idx,num_textures)
+            decorate = make_decorate(tcfg,actor_name,typ,actor_idx,num_textures)
             # write decorate to actor pth
             with open(osp.join(oactdr,actor_name + ".dec"),'w') as f:
                 f.write(decorate)
@@ -236,7 +246,7 @@ def make_scenario(scnnm,clean=True):
 
     # Write ACS
     with open(bhipth,'w') as f:
-        acs = make_acs(cfg,actor_names,actor_num_textures)
+        acs = make_acs(cfg,actor_names,object_types,actor_num_textures)
         f.write(acs)
 
     # Compile ACS

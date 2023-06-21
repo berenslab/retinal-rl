@@ -1,0 +1,35 @@
+objects:
+  nourishment:
+    actors:
+      nourishment-1:
+        textures:
+          - 'gabors/high-0.png'
+      nourishment-2:
+        textures:
+          - 'gabors/high-0.png'
+      nourishment-3:
+        textures:
+          - 'gabors/low-90.png'
+      nourishment-4:
+        textures:
+          - 'gabors/low-135.png'
+      nourishment-5:
+        textures:
+          - 'gabors/high-90.png'
+  poison:
+    actors:
+      poison-1:
+        textures:
+          - 'gabors/low-45.png'
+      poison-2:
+        textures:
+          - 'gabors/low-45.png'
+      poison-3:
+        textures:
+          - 'gabors/high-45.png'
+      poison-4:
+        textures:
+          - 'gabors/low-0.png'
+      poison-5:
+        textures:
+          - 'gabors/high-135.png'
