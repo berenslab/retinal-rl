@@ -3,7 +3,7 @@ retina_rl library
 
 """
 #import torch
-from torch import nn
+from torch import nn,cat
 from collections import OrderedDict
 
 from sample_factory.model.encoder import Encoder
@@ -20,30 +20,36 @@ from retinal_rl.util import activation,encoder_out_size
 
 def register_retinal_model():
     """Registers the retinal model with the global model factory."""
-    global_model_factory().register_encoder_factory(make_encoder)
+    global_model_factory().register_encoder_factory(make_network)
 
 
 ### Model make functions ###
 
 
-def make_encoder(cfg: Config, obs_space: ObsSpace) -> Encoder:
+def make_network(cfg: Config, obs_space: ObsSpace) -> Encoder:
     """defines the encoder constructor."""
-    if cfg.network == "retinal":
-        return RetinalEncoder(cfg, obs_space)
-    elif cfg.network == "prototypical":
-        return Prototypical(cfg, obs_space)
+    if cfg.network == "hungry":
+        return HungryNetwork(cfg, obs_space)
+    elif cfg.network == "standard":
+        return StandardNetwork(cfg, obs_space)
     else:
         raise Exception("Unknown model type")
+
 
 
 ### Retinal Encoder ###
 
 
-class RetinalEncoder(Encoder):
+class StandardNetwork(Encoder):
     def __init__(self, cfg: Config, obs_space: ObsSpace):
         super().__init__(cfg)
 
-        self.basic_encoder = RetinalEncoderBase(cfg, obs_space["obs"])
+        if cfg.visual_encoder == "retinal":
+            self.basic_encoder = RetinalEncoder(cfg, obs_space["obs"])
+        elif cfg.visual_encoder == "prototypical":
+            self.basic_encoder = PrototypicalEncoder(cfg, obs_space["obs"])
+        else:
+            raise Exception("Unknown model type")
 
         self.encoder_out_size = self.basic_encoder.get_out_size()
 
@@ -56,7 +62,39 @@ class RetinalEncoder(Encoder):
     def get_out_size(self) -> int:
         return self.encoder_out_size
 
-class RetinalEncoderBase(Encoder):
+class HungryNetwork(Encoder):
+    def __init__(self, cfg: Config, obs_space: ObsSpace):
+        super().__init__(cfg)
+
+        if cfg.visual_encoder == "retinal":
+            self.basic_encoder = RetinalEncoder(cfg, obs_space["obs"])
+        elif cfg.visual_encoder == "prototypical":
+            self.basic_encoder = PrototypicalEncoder(cfg, obs_space["obs"])
+        else:
+            raise Exception("Unknown model type")
+
+        self.encoder_out_size = self.basic_encoder.get_out_size()
+
+        self.nl_fc = activation(cfg.activation)
+        self.fc2 = nn.Linear(self.encoder_out_size + obs_space["measurements"].shape[0],self.encoder_out_size)
+        self.fc3 = nn.Linear(self.encoder_out_size,self.encoder_out_size)
+
+        log.debug("Policy head output size: %r", self.get_out_size())
+
+    def forward(self, obs_dict):
+        x = self.basic_encoder(obs_dict["obs"])
+        # concatenate x with measurements
+        x = cat((x, obs_dict["measurements"]),dim=1)
+        x = self.nl_fc(self.fc2(x))
+        x = self.nl_fc(self.fc3(x))
+
+        return x
+
+    def get_out_size(self) -> int:
+        return self.encoder_out_size
+
+
+class RetinalEncoder(Encoder):
 
     def __init__(self, cfg : Config , obs_space : ObsSpace):
 
@@ -124,7 +162,7 @@ class RetinalEncoderBase(Encoder):
 
 # Prototypical Encoder
 
-class PrototypicalBase(Encoder):
+class PrototypicalEncoder(Encoder):
 
     def __init__(self, cfg : Config , obs_space : ObsSpace):
 
@@ -161,25 +199,4 @@ class PrototypicalBase(Encoder):
 
     def get_out_size(self) -> int:
         return self.encoder_out_size
-
-
-class Prototypical(Encoder):
-
-    def __init__(self, cfg: Config, obs_space: ObsSpace):
-
-        super().__init__(cfg)
-
-        self.basic_encoder = PrototypicalBase(cfg, obs_space["obs"])
-
-        self.encoder_out_size = self.basic_encoder.get_out_size()
-
-        log.debug("Policy head output size: %r", self.get_out_size())
-
-    def forward(self, obs_dict):
-        x = self.basic_encoder(obs_dict["obs"])
-        return x
-
-    def get_out_size(self) -> int:
-        return self.encoder_out_size
-
 

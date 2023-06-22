@@ -16,7 +16,7 @@ from sample_factory.algo.runners.runner import AlgoObserver, Runner
 from sample_factory.utils.utils import log,debug_log_every_n
 from sample_factory.algo.utils.make_env import make_env_func_batched
 
-from retinal_rl.system.encoders import register_retinal_model,make_encoder
+from retinal_rl.system.encoders import register_retinal_model,make_network
 from retinal_rl.system.environment import register_retinal_env
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 
@@ -177,7 +177,7 @@ def main():
             )
 
     obs_space = test_env.observation_space
-    enc = make_encoder(cfg,obs_space).basic_encoder
+    enc = make_network(cfg,obs_space).basic_encoder
 
     print("Encoder summary:")
     ts.summary(enc,(3,cfg.res_h,cfg.res_w),receptive_field=True) #,effective_rf_stats=True)

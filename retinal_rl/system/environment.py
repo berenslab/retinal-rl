@@ -2,6 +2,7 @@ import os
 from os.path import join
 import functools
 from typing import Optional
+import numpy as np
 
 from sample_factory.envs.env_utils import register_env
 
@@ -38,6 +39,63 @@ def doom_action_space_basic():
     space.key_to_action = key_to_action_basic
     return space
 
+
+### Wrappers ###
+
+class HungerInput(gym.Wrapper):
+    """Add game variables to the observation space + reward shaping."""
+
+    def __init__(self, env):
+        super().__init__(env)
+        current_obs_space = self.observation_space
+
+        low = [-1.0]
+
+        high = [1.0]
+
+        self.observation_space = gym.spaces.Dict(
+            {
+                "obs": current_obs_space,
+                "measurements": gym.spaces.Box(
+                    low=np.array(low, dtype=np.float32),
+                    high=np.array(high, dtype=np.float32),
+                ),
+            }
+        )
+
+        num_measurements = 1
+
+        self.measurements_vec = np.zeros([num_measurements], dtype=np.float32)
+
+    def _parse_info(self, obs, info):
+
+        # we don't really care how much negative health we have, dead is dead
+        hlth = float(info["HEALTH"])
+        # clip health to [-1,1]
+        hlth = np.clip(hlth, 0, 100)
+        hunger = (50 - hlth) / 50.0
+        self.measurements_vec[0] = hunger
+        obs_dict = {"obs": obs, "measurements": self.measurements_vec}
+
+        return obs_dict
+
+    def reset(self, **kwargs):
+
+        obs, _ = self.env.reset(**kwargs)
+        info = self.env.unwrapped.get_info()
+        obs = self._parse_info(obs, info)
+        return obs, info
+
+    def step(self, action):
+        obs, rew, terminated, truncated, info = self.env.step(action)
+        if obs is None:
+            return obs, rew, terminated, truncated, info
+
+        obs_dict = self._parse_info(obs, info)
+
+        return obs_dict, rew, terminated, truncated, info
+
+
 ### Retinal Environments ###
 
 def retinal_doomspec(scnr,flnm):
@@ -45,7 +103,7 @@ def retinal_doomspec(scnr,flnm):
                     , join(os.getcwd(), "scenarios", flnm)
                     , doom_action_space_basic()
                     , reward_scaling=1
-                    , extra_wrappers=[]
+                    , extra_wrappers= [(HungerInput, {})]
                     )
 
 def make_retinal_env_from_spec(spec, _env_name, cfg, env_config, render_mode: Optional[str] = None, **kwargs):
