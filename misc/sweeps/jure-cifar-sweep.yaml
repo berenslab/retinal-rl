@@ -1,4 +1,4 @@
-name: neo-gathering-rnn
+name: jure-cifar-sweep
 description: Sweeping performance of models of increasing complexity on a variety of tasks.
 program: train.py
 method: grid
@@ -8,7 +8,7 @@ parameters:
 
   # Simulation specification
   wandb_group:
-    value: "neo-gathering"
+    value: "jure-cifar-sweep"
   wandb_job_type:
     value: "rnn"
   experiment:
