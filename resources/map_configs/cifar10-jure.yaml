@@ -1,0 +1,35 @@
+objects:
+  nourishment:
+    actors:
+      nourishment-1:
+        textures:
+          - 'cifar-10/cat'
+      nourishment-2:
+        textures:
+          - 'cifar-10/dog'
+      nourishment-3:
+        textures:
+          - 'cifar-10/deer'
+      nourishment-4:
+        textures:
+          - 'cifar-10/frog'
+      nourishment-5:
+        textures:
+          - 'cifar-10/horse'
+  poison:
+    actors:
+      poison-1:
+        textures:
+          - 'cifar-10/bird'
+      poison-2:
+        textures:
+          - 'cifar-10/ship'
+      poison-3:
+        textures:
+          - 'cifar-10/airplane'
+      poison-4:
+        textures:
+          - 'cifar-10/automobile'
+      poison-5:
+        textures:
+          - 'cifar-10/truck'

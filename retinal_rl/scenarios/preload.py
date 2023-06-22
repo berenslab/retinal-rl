@@ -18,12 +18,14 @@ from torchvision.datasets import CIFAR100
 
 
 # set offset for pngs based on zdooms grAb chunk, also optionally scale
-def doomify_image(png,scale=1.0):
+def doomify_image(png,scale=1.0,shift=(0,0)):
     img = Image.open(png)
     if scale != 1.0:
         img = img.resize((int(img.size[0]*scale),int(img.size[1]*scale)))
     # get width and height
     width, height = img.size
+    width += shift[0]
+    height += shift[1]
     pnginfo = PngInfo()
     pnginfo.add(b'grAb', struct.pack('>II', width//2, height))
     img.save(png, pnginfo=pnginfo)
@@ -83,7 +85,8 @@ def preload_cifar10():
         for i in range(len(cifar)):
             png = "resources/textures/cifar-10/" + cifar.classes[cifar[i][1]] + "/" + str(i) + ".png"
             cifar[i][0].save(png)
-            doomify_image(png,1.5)
+            doomify_image(png,scale=1.5)
+            #doomify_image(png,shift=(0,16))
 
         # remove all downloaded data except for the pngs
         os.remove("resources/textures/cifar-10/cifar-10-python.tar.gz")

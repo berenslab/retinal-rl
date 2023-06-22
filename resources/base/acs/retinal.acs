@@ -165,8 +165,8 @@ script "Agent Metabolism" ENTER {
 
 script "Agent Initialization" ENTER {
 
-    int act_x = random(wall_min,wall_max);
-    int act_y = random(wall_min,wall_max);
+    int act_x = random(wall_min/10,wall_max/10);
+    int act_y = random(wall_min/10,wall_max/10);
     SetActorPosition(0, act_x, act_y, 0.0, 0);
     SetActorAngle(0,random(0.0,1.0));
     ClearInventory();

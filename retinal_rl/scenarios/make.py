@@ -133,14 +133,15 @@ def make_decorate(cfg,actor_name,typ,actor_idx,num_textures):
 ### Creating Scenarios ###
 
 
-def make_scenario(flnms,clean=True):
+def make_scenario(flnms,scnnm=None,clean=True):
 
     # Preloading
     cfg = load_config(flnms)
     ocfg = cfg['objects']
     object_types = ocfg.keys()
 
-    scnnm = "_".join(flnms)
+    if scnnm is None:
+        scnnm = "-".join(flnms)
 
     # Base directories
     rscdr = "resources"
