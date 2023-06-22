@@ -236,7 +236,7 @@ def padder(krnsz):
 class ValueNetwork(nn.Module):
 
     """
-    Converts a LindseyEncoder into a feedforward value network that can be easily analyzed by e.g. captum.
+    Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
     """
     def __init__(self, cfg, actor_critic):
 
