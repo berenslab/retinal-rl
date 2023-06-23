@@ -7,15 +7,39 @@ from math import floor,ceil
 import os
 from os.path import join
 
-from sample_factory.algo.utils.make_env import BatchedVecEnv
-from sample_factory.algo.utils.rl_utils import prepare_and_normalize_obs
-from sample_factory.model.actor_critic import ActorCritic
 from sample_factory.utils.typing import Config
 from sample_factory.utils.utils import experiment_dir
 
 from torch import nn
 
 
+### Value Network ###
+
+
+class ValueNetwork(nn.Module):
+
+    """
+    Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
+    """
+    def __init__(self, cfg, actor_critic):
+
+        super().__init__()
+
+        self.cfg = cfg
+        self.ac_base = actor_critic
+
+        self.critic = actor_critic.critic_linear
+
+
+    def forward(self, nobs,msms,rnn_states):
+        # conv layer 1
+
+        nobs_dict = {"obs":nobs,"measurements":msms}
+        x = self.ac_base(nobs_dict, rnn_states)["new_rnn_states"]
+
+        x = self.critic(x)
+
+        return x
 ## Paths ###
 
 
@@ -74,19 +98,15 @@ def plot_path(cfg,ana_name,flnm=None):
 ### IO ###
 
 
-def save_onxx(cfg: Config, ana_name : str, actor_critic : ActorCritic, env : BatchedVecEnv) -> None:
+def save_onnx(cfg: Config, ana_name : str, valnet : ValueNetwork, inpts) -> None:
     """
-    Write an onxx file of the saved model.
+    Write an onnx file of the saved model.
     """
 
-    obs = env.observation_space.sample()
-    normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
-    enc = actor_critic.encoder.vision_model
-    obs = normalized_obs["obs"]
-    # visualize obs only for the 1st agent
+    device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
 
     # Note that onnx can't process dictionary inputs and so we can only look at the encoder (and decoder?) separately)
-    torch.onnx.export(enc,torch.unsqueeze(obs,0),data_path(cfg,ana_name,"encoder.onnx"),verbose=False,input_names=["observation"],output_names=["latent_state"])
+    torch.onnx.export(valnet,inpts,data_path(cfg,ana_name,"value_network.onnx"),verbose=False,input_names=["observation","measurements","rnn_states"],output_names=["value"])
 
 def save_data(cfg : Config,ana_name,dat,flnm):
     """
@@ -229,30 +249,4 @@ def rf_size_and_start(mdls,hidx,widx):
 def padder(krnsz):
     return (krnsz - 1) // 2
 
-### Value Network ###
 
-
-class ValueNetwork(nn.Module):
-
-    """
-    Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
-    """
-    def __init__(self, cfg, actor_critic):
-
-        super().__init__()
-
-        self.cfg = cfg
-        self.ac_base = actor_critic
-
-        self.critic = actor_critic.critic_linear
-
-
-    def forward(self, nobs,msms,rnn_states):
-        # conv layer 1
-
-        nobs_dict = {"obs":nobs,"measurements":msms}
-        x = self.ac_base(nobs_dict, rnn_states)["new_rnn_states"]
-
-        x = self.critic(x)
-
-        return x

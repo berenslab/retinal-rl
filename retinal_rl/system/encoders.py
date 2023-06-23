@@ -3,7 +3,8 @@ retina_rl library
 
 """
 #import torch
-from torch import nn,cat
+import torch
+from torch import nn
 from collections import OrderedDict
 
 from sample_factory.model.encoder import Encoder
@@ -90,7 +91,7 @@ class HungryNetwork(Encoder):
     def forward(self, obs_dict):
         x = self.vision_model(obs_dict["obs"])
         # concatenate x with measurements
-        x = cat((x, obs_dict["measurements"]),dim=1)
+        x = torch.cat((x, obs_dict["measurements"]),dim=1)
         x = self.nl_fc(self.fc2(x))
         x = self.nl_fc(self.fc3(x))
 

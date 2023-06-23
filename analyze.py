@@ -9,7 +9,7 @@ from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_en
 
 from retinal_rl.analysis.simulation import get_ac_env,generate_simulation,get_checkpoint
 from retinal_rl.analysis.statistics import gaussian_noise_stas,gradient_receptive_fields
-from retinal_rl.util import save_data,load_data,save_onxx,analysis_path,plot_path,data_path
+from retinal_rl.util import save_data,load_data,save_onnx,analysis_path,plot_path,data_path
 from retinal_rl.analysis.plot import simulation_plot,receptive_field_plots
 
 from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
@@ -46,14 +46,15 @@ def analyze(cfg,progress_bar=True):
     if not os.path.exists(analysis_path(cfg,ana_name)):
         os.makedirs(data_path(cfg,ana_name))
 
-    save_onxx(cfg,ana_name,ac,env)
-
     """ Final gluing together of all analyses of interest. """
     if cfg.simulate:
 
         log.debug("RETINAL RL: Running analysis simulations.")
 
-        sim_recs = generate_simulation(cfg,ac,env,prgrs=progress_bar)
+        valnet,inpts,sim_recs = generate_simulation(cfg,ac,env,prgrs=progress_bar)
+
+        save_onnx(cfg,ana_name,valnet,inpts)
+
         save_data(cfg,ana_name,sim_recs,"sim_recs")
 
     if cfg.receptive_fields:

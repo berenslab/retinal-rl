@@ -108,10 +108,16 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
     num_frames = 0
     obs_dict,_ = env.reset()
     nobs_dict = prepare_and_normalize_obs(actor_critic, obs_dict)
+    nobs,msms = obs_dict_to_tuple(nobs_dict)
     rnn_states = torch.zeros([env.num_agents, get_rnn_size(cfg)], dtype=torch.float32, device=device)
     is_dn=0
     rwd=0
     crwd=0
+
+    nobs1 = torch.unsqueeze(nobs,0)
+    msms1 = torch.unsqueeze(msms,0)
+
+    inpts = (nobs1,msms1,rnn_states)
 
     # Simulation loop
     with tqdm(total=t_max-1, desc="Generating Simulation", disable=not(prgrs)) as pbar:
@@ -152,8 +158,6 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
                 nimg = obs_to_img(nobs)
                 attrimg = obs_to_img(attr)
 
-                health = env.unwrapped.get_info()['HEALTH'] # environment info (health etc.)
-
                 if is_dn:
                     crwd=0
                 else:
@@ -164,7 +168,7 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
                 attrs[:,:,:,num_frames] = attrimg
                 ltnts[:,num_frames] = ltnt
                 acts[:,num_frames] = actions
-                hlths[num_frames] = health
+                hlths[num_frames] = msms[0]
                 dns[num_frames] = is_dn
                 rwds[num_frames] = rwd
                 crwds[num_frames] = crwd
@@ -186,7 +190,7 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
     attrs = from_float_to_rgb(attrs)
     nimgs = from_float_to_rgb(nimgs)
 
-    return {
+    return valnet, inpts, {
             "imgs": imgs,
             "nimgs": nimgs,
             "attrs": attrs,
