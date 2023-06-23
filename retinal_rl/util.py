@@ -102,9 +102,6 @@ def save_onnx(cfg: Config, ana_name : str, valnet : ValueNetwork, inpts) -> None
     """
     Write an onnx file of the saved model.
     """
-
-    device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
-
     # Note that onnx can't process dictionary inputs and so we can only look at the encoder (and decoder?) separately)
     torch.onnx.export(valnet,inpts,data_path(cfg,ana_name,"value_network.onnx"),verbose=False,input_names=["observation","measurements","rnn_states"],output_names=["value"])
 
