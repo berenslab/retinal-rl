@@ -1,4 +1,4 @@
-name: hungry-test
+name: neo-gathering-hungry
 description: Sweeping performance of models of increasing complexity on a variety of tasks.
 program: train.py
 method: grid
@@ -8,11 +8,11 @@ parameters:
 
   # Simulation specification
   wandb_group:
-    value: "hungry-sweep"
+    value: "neo-gathering-hungry"
   wandb_job_type:
     value: "rnn"
   experiment:
-    value: "network-{network}_repeat-{repeat}"
+    value: "env-{env}_network-{network}_repeat-{repeat}"
   train_dir:
     value: "train_dir/{wandb_group}-{wandb_job_type}"
   repeat:
@@ -20,7 +20,7 @@ parameters:
     min: 1
     max: 2
   env:
-    value: "gathering-cifar10"
+    values: ["gathering-apples","gathering-gabors","gathering-mnist","gathering-cifar10"]
   wide_aspect_ratio:
     value: False
   res_h:

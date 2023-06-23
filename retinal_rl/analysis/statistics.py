@@ -14,7 +14,7 @@ def gaussian_noise_stas(cfg,env,actor_critic,nbtch,nreps,prgrs):
     Returns the receptive fields of every layer of a convnet as computed by spike-triggered averaging.
     """
 
-    enc = actor_critic.encoder.basic_encoder
+    enc = actor_critic.encoder.vision_model
     dev = torch.device("cpu" if cfg.device == "cpu" else "cuda")
 
     nclrs,hght,wdth = list(env.observation_space["obs"].shape)
@@ -71,7 +71,7 @@ def gradient_receptive_fields(cfg,env,actor_critic,prgrs):
     Returns the receptive fields of every layer of a convnet as computed by neural gradients.
     """
 
-    enc = actor_critic.encoder.basic_encoder
+    enc = actor_critic.encoder.vision_model
     dev = torch.device("cpu" if cfg.device == "cpu" else "cuda")
 
     nclrs,hght,wdth = list(env.observation_space["obs"].shape)
@@ -162,74 +162,3 @@ def get_stim_coll(all_health, health_dep=-8, death_dep=30):
     stim_coll[stim_coll > death_dep] = 0 # excluding decrease due to death
     stim_coll[stim_coll < -death_dep] = 0
     return stim_coll
-
-#def fit_pca(data):
-#    print('fitting PCA...')
-#    pca=PCA()
-#    pca.fit(data)
-#    embedding = pca.components_.T
-#    var_exp = pca.explained_variance_ratio_
-#    return embedding, var_exp
-#
-#def mei_receptive_fields(cfg,env,actor_critic,nstps=5000,pad=2):
-#    """
-#    Returns the receptive fields of every layer of a convnet as computed by maximally exciting inputs.
-#    """
-#
-#    enc = actor_critic.encoder.basic_encoder
-#    dev = torch.device("cpu" if cfg.device == "cpu" else "cuda")
-#
-#    obs0 = env.observation_space.sample()
-#    nobs0 = prepare_and_normalize_obs(actor_critic, obs0)["obs"]
-#
-#    nclrs,nrws,ncls = list(env.observation_space["obs"].shape)
-#    cnty = nrws//2
-#    cntx = ncls//2
-#
-#    nlys = cfg.vvs_depth+2
-#    meis = {}
-#
-#    nrfs = 0
-#    for i in range(nlys): nrfs += enc.conv_head[2*i].out_channels
-#
-#    with tqdm(total=nrfs, desc="Generating MEIs") as pbar:
-#
-#        for i in range(nlys):
-#
-#            subenc = enc.conv_head[0:(1+i)*2]
-#            ochns,oxsz,oysz = subenc(nobs0).size()
-#            rds = pad + ((2*i+1) * enc.kernel_size)//2
-#            span = 2*rds
-#            mny = cnty - rds
-#            mxy = cnty + rds
-#            mnx = cntx - rds
-#            mxx = cntx + rds
-#
-#            lyrnm = "layer-" + str(i)
-#
-#            meis[lyrnm] = np.zeros((ochns,nclrs,span,span))
-#
-#            for j in range(ochns):
-#
-#                obs = env.observation_space.sample()
-#                nobs = prepare_and_normalize_obs(actor_critic, obs0)["obs"]
-#
-#                def f(x): return -subenc(x)[j,oxsz//2,oysz//2].cpu()
-#
-#                nobs.requires_grad_()
-#                optimizer = torch.optim.Adam([nobs], lr=0.1)
-#
-#                for _ in range(nstps):
-#
-#                    optimizer.zero_grad()
-#                    loss = f(nobs)
-#                    loss.backward()
-#                    optimizer.step()
-#                    print(-loss)
-#                    if -loss <= 0: break
-#                    #list_params.append(params.detach().clone()) #here
-#
-#                meis[lyrnm][j] = nobs[:,mny:mxy,mnx:mxx].cpu().detach().numpy()
-#                pbar.update(1)
-#
-#        return meis

@@ -25,6 +25,8 @@ def analyze(cfg,progress_bar=True):
     # Register retinal environments and models.
     checkpoint_dict,cfg = get_checkpoint(cfg)
 
+    cfg.device = "cpu"
+
     if checkpoint_dict is None:
         log.debug("RETINAL RL: No checkpoint found, aborting analysis.")
         sys.exit(1)

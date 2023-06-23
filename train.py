@@ -177,7 +177,7 @@ def main():
             )
 
     obs_space = test_env.observation_space
-    enc = make_network(cfg,obs_space).basic_encoder
+    enc = make_network(cfg,obs_space).vision_model
 
     print("Encoder summary:")
     ts.summary(enc,(3,cfg.res_h,cfg.res_w),receptive_field=True) #,effective_rf_stats=True)

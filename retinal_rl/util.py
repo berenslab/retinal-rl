@@ -81,7 +81,7 @@ def save_onxx(cfg: Config, ana_name : str, actor_critic : ActorCritic, env : Bat
 
     obs = env.observation_space.sample()
     normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
-    enc = actor_critic.encoder.basic_encoder
+    enc = actor_critic.encoder.vision_model
     obs = normalized_obs["obs"]
     # visualize obs only for the 1st agent
 
@@ -109,14 +109,13 @@ def normalize_data(xs):
 def from_float_to_rgb(xs):
     return (255*normalize_data(xs)).astype(np.uint8)
 
-def obs_dict_to_obs(obs_dct):
+def obs_dict_to_tuple(obs_dct):
     """
     Extract observation
     """
     obs = obs_dct["obs"]
     # visualize obs only for the 1st agent
-    return obs[0]
-
+    return (obs_dct["obs"][0],obs_dct["measurements"][0])
 
 def obs_to_img(obs):
     """
@@ -245,23 +244,14 @@ class ValueNetwork(nn.Module):
         self.cfg = cfg
         self.ac_base = actor_critic
 
-        self.conv_head_out_size = actor_critic.encoder.basic_encoder.conv_head_out_size
-
-        self.conv_head = actor_critic.encoder.basic_encoder.conv_head
-        self.fc1 = actor_critic.encoder.basic_encoder.fc1 # here we will need to flatten the features before going forward
-        self.nl_fc = actor_critic.encoder.basic_encoder.nl_fc
-
         self.critic = actor_critic.critic_linear
 
 
-    def forward(self, nobs):
+    def forward(self, nobs,msms,rnn_states):
         # conv layer 1
 
-        x = self.conv_head(nobs)
-        x = x.contiguous().view(-1, self.conv_head_out_size)
-
-        x = self.fc1(x)
-        x = self.nl_fc(x)
+        nobs_dict = {"obs":nobs,"measurements":msms}
+        x = self.ac_base(nobs_dict, rnn_states)["new_rnn_states"]
 
         x = self.critic(x)
 

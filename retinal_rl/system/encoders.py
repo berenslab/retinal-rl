@@ -44,19 +44,25 @@ class StandardNetwork(Encoder):
     def __init__(self, cfg: Config, obs_space: ObsSpace):
         super().__init__(cfg)
 
-        if cfg.visual_encoder == "retinal":
-            self.basic_encoder = RetinalEncoder(cfg, obs_space["obs"])
-        elif cfg.visual_encoder == "prototypical":
-            self.basic_encoder = PrototypicalEncoder(cfg, obs_space["obs"])
+        if cfg.vision_model == "retinal":
+            self.vision_model = RetinalEncoder(cfg, obs_space["obs"])
+        elif cfg.vision_model == "prototypical":
+            self.vision_model = PrototypicalEncoder(cfg, obs_space["obs"])
         else:
             raise Exception("Unknown model type")
 
-        self.encoder_out_size = self.basic_encoder.get_out_size()
+        self.encoder_out_size = self.vision_model.get_out_size()
+
+        self.nl_fc = activation(cfg.activation)
+        self.fc2 = nn.Linear(self.encoder_out_size,self.encoder_out_size)
+        self.fc3 = nn.Linear(self.encoder_out_size,self.encoder_out_size)
 
         log.debug("Policy head output size: %r", self.get_out_size())
 
     def forward(self, obs_dict):
-        x = self.basic_encoder(obs_dict["obs"])
+        x = self.vision_model(obs_dict["obs"])
+        x = self.nl_fc(self.fc2(x))
+        x = self.nl_fc(self.fc3(x))
         return x
 
     def get_out_size(self) -> int:
@@ -66,14 +72,14 @@ class HungryNetwork(Encoder):
     def __init__(self, cfg: Config, obs_space: ObsSpace):
         super().__init__(cfg)
 
-        if cfg.visual_encoder == "retinal":
-            self.basic_encoder = RetinalEncoder(cfg, obs_space["obs"])
-        elif cfg.visual_encoder == "prototypical":
-            self.basic_encoder = PrototypicalEncoder(cfg, obs_space["obs"])
+        if cfg.vision_model == "retinal":
+            self.vision_model = RetinalEncoder(cfg, obs_space["obs"])
+        elif cfg.vision_model == "prototypical":
+            self.vision_model = PrototypicalEncoder(cfg, obs_space["obs"])
         else:
             raise Exception("Unknown model type")
 
-        self.encoder_out_size = self.basic_encoder.get_out_size()
+        self.encoder_out_size = self.vision_model.get_out_size()
 
         self.nl_fc = activation(cfg.activation)
         self.fc2 = nn.Linear(self.encoder_out_size + obs_space["measurements"].shape[0],self.encoder_out_size)
@@ -82,7 +88,7 @@ class HungryNetwork(Encoder):
         log.debug("Policy head output size: %r", self.get_out_size())
 
     def forward(self, obs_dict):
-        x = self.basic_encoder(obs_dict["obs"])
+        x = self.vision_model(obs_dict["obs"])
         # concatenate x with measurements
         x = cat((x, obs_dict["measurements"]),dim=1)
         x = self.nl_fc(self.fc2(x))

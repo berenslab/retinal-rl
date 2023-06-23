@@ -20,7 +20,7 @@ from sample_factory.utils.typing import Config
 from sample_factory.algo.utils.env_info import extract_env_info
 from sample_factory.utils.utils import log
 
-from retinal_rl.util import obs_dict_to_obs,obs_to_img,ValueNetwork,from_float_to_rgb
+from retinal_rl.util import obs_dict_to_tuple,obs_to_img,ValueNetwork,from_float_to_rgb
 
 def get_checkpoint(cfg: Config):
     """
@@ -124,7 +124,7 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
             actions = policy_outputs["actions"]
 
             # Prepare network state for saving
-            ltnt = actor_critic.encoder(nobs_dict).cpu().detach().numpy()
+            ltnt = rnn_states.detach().cpu().numpy()
 
             # can pass --eval_deterministic=True to CLI in order to argmax the probabilistic actions
             if cfg.eval_deterministic:
@@ -139,13 +139,14 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
             # Repeating actions during evaluation because we run the simulation at higher FPS
             for _ in range(action_repeat):
 
-                obs = obs_dict_to_obs(obs_dict)
-                nobs = obs_dict_to_obs(nobs_dict)
+                obs,msms = obs_dict_to_tuple(obs_dict)
+                nobs,_ = obs_dict_to_tuple(nobs_dict)
 
                 nobs1 = torch.unsqueeze(nobs,0)
+                msms1 = torch.unsqueeze(msms,0)
 
-                attr = att_method.attribute(nobs1,n_steps=500) #,abs=False)
-                attr = torch.squeeze(attr,0)
+                (nobsatt,_,_) = att_method.attribute((nobs1,msms1,rnn_states),n_steps=500) #,abs=False)
+                attr = torch.squeeze(nobsatt,0)
 
                 img = obs_to_img(obs)
                 nimg = obs_to_img(nobs)
