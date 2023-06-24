@@ -53,10 +53,6 @@ From: ubuntu:22.10
   unzip acc159linux-x64.zip -d /usr/share/acc
   mv /usr/share/acc/acc /usr/bin/acc
 
-  # Sample Factory
-  pip3 install vizdoom==1.2.0 sample-factory==2.1.1
-
   # retinal-rl Extra
-  pip3 install matplotlib opentsne pygame torchvision pycairo dpcpp-cpp-rt pyqt5 pyqt6 captum torchscan num2words hiyapyco onnx
-  pip3 install git+https://github.com/alex404/omgifol.git
+  pip3 install vizdoom==1.2.0 sample-factory==2.1.1 matplotlib opentsne pygame "torch<2.0.0" torchvision pycairo dpcpp-cpp-rt pyqt5 pyqt6 captum torchscan num2words hiyapyco omgifol
 

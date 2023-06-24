@@ -67,7 +67,7 @@ def add_retinal_env_args(parser):
     parser.add_argument('--retinal_stride', type=int, default=1, help='Stride at the first conv layer (\'BC\'), doesnt apply to \'VVS\'')
     parser.add_argument( "--network", default="standard" , choices=["standard", "hungry"]
                         , type=str, help="Type of encoder network architecture.")
-    parser.add_argument( "--vision_model", default="retinal" , choices=["retinal", "prototypical"]
+    parser.add_argument( "--vision_model", default="retinal" , choices=["retinal", "retinal_stride", "prototypical"]
                         , type=str, help="Type of encoder network architecture.")
     parser.add_argument( "--activation", default="elu" , choices=["elu", "relu", "tanh", "softplus", "identity"]
                         , type=str, help="Type of activation function to use.")

@@ -38,7 +38,7 @@ def make_network(cfg: Config, obs_space: ObsSpace) -> Encoder:
 
 
 
-### Retinal Encoder ###
+### Networks ###
 
 
 class StandardNetwork(Encoder):
@@ -47,10 +47,12 @@ class StandardNetwork(Encoder):
 
         if cfg.vision_model == "retinal":
             self.vision_model = RetinalEncoder(cfg, obs_space["obs"])
+        elif cfg.vision_model == "retinal_stride":
+            self.vision_model = RetinalStrideEncoder(cfg, obs_space["obs"])
         elif cfg.vision_model == "prototypical":
             self.vision_model = PrototypicalEncoder(cfg, obs_space["obs"])
         else:
-            raise Exception("Unknown model type")
+            raise Exception("Unknown model type: %r", cfg.vision_model)
 
         self.encoder_out_size = self.vision_model.get_out_size()
 
@@ -75,10 +77,12 @@ class HungryNetwork(Encoder):
 
         if cfg.vision_model == "retinal":
             self.vision_model = RetinalEncoder(cfg, obs_space["obs"])
+        elif cfg.vision_model == "retinal_stride":
+            self.vision_model = RetinalStrideEncoder(cfg, obs_space["obs"])
         elif cfg.vision_model == "prototypical":
             self.vision_model = PrototypicalEncoder(cfg, obs_space["obs"])
         else:
-            raise Exception("Unknown model type")
+            raise Exception("Unknown model type: %r", cfg.vision_model)
 
         self.encoder_out_size = self.vision_model.get_out_size()
 
@@ -99,6 +103,9 @@ class HungryNetwork(Encoder):
 
     def get_out_size(self) -> int:
         return self.encoder_out_size
+
+
+### Encoders ###
 
 
 class RetinalEncoder(Encoder):
@@ -139,6 +146,71 @@ class RetinalEncoder(Encoder):
                  , ('rgc_filters', nn.Conv2d(self.bp_chans, self.rgc_chans, self.spool, padding=self.spad))
                  , ('rgc_outputs', activation(self.act_name))
                  , ('rgc_averages', nn.AvgPool2d(self.spool, ceil_mode=True))
+
+                 , ('btl_filters', nn.Conv2d(self.rgc_chans, self.btl_chans, 1))
+                 , ('btl_outputs', activation(self.act_name))
+
+                 , ('v1_filters', nn.Conv2d(self.btl_chans, self.v1_chans, self.mpool, padding=self.mpad))
+                 , ('v1_simple_outputs', activation(self.act_name))
+                 , ('v1_complex_outputs', nn.MaxPool2d(self.mpool, ceil_mode=True))
+
+                 ] )
+
+        self.conv_head = nn.Sequential(conv_layers)
+
+        cout_hght,cout_wdth = encoder_out_size(self.conv_head, *obs_space.shape[1:])
+        self.conv_head_out_size = cout_hght*cout_wdth*self.v1_chans
+        self.encoder_out_size = cfg.rnn_size
+        self.fc1 = nn.Linear(self.conv_head_out_size,self.encoder_out_size)
+
+    def forward(self, x):
+
+        x = self.conv_head(x)
+        x = x.contiguous().view(-1, self.conv_head_out_size)
+        x = self.nl_fc(self.fc1(x))
+        return x
+
+    def get_out_size(self) -> int:
+        return self.encoder_out_size
+
+# Retinal Stride Encoder
+
+class RetinalStrideEncoder(Encoder):
+
+    def __init__(self, cfg : Config , obs_space : ObsSpace):
+
+        super().__init__(cfg)
+
+        # Activation function
+        self.act_name = cfg.activation
+        self.nl_fc = activation(cfg.activation)
+
+        # Saving parameters
+        self.bp_chans = cfg.global_channels
+        self.rgc_chans = self.bp_chans*2
+        self.v1_chans = self.rgc_chans*2
+
+        if cfg.retinal_bottleneck is not None:
+            self.btl_chans = cfg.retinal_bottleneck
+        else:
+            self.btl_chans = self.rgc_chans
+
+        # Pooling
+        self.spool = 3
+        self.mpool = 4
+
+        # Padding
+        self.spad = 0 # padder(self.spool)
+        self.mpad = 0 # padder(self.mpool)
+
+        # Preparing Conv Layers
+        conv_layers = OrderedDict(
+
+                [ ('bp_filters', nn.Conv2d(3, self.bp_chans, self.spool, stride=self.spool, padding=self.spad))
+                 , ('bp_outputs', activation(self.act_name))
+
+                 , ('rgc_filters', nn.Conv2d(self.bp_chans, self.rgc_chans, self.spool, stride=self.spool, padding=self.spad))
+                 , ('rgc_outputs', activation(self.act_name))
 
                  , ('btl_filters', nn.Conv2d(self.rgc_chans, self.btl_chans, 1))
                  , ('btl_outputs', activation(self.act_name))
