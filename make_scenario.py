@@ -30,7 +30,6 @@ def main():
         preload_gabors()
         preload_mnist()
         preload_cifar10()
-        preload_cifar100()
 
     # positional arguments
     if len(args.yamls) > 0:

@@ -62,7 +62,7 @@ def add_retinal_env_args(parser):
 
     # Doom args
     add_doom_env_args(parser)
-    parser.add_argument('--global_channels', type=int, default=16, help='Standard number of channels in CNN layers')
+    parser.add_argument('--base_channels', type=int, default=16, help='Standard number of channels in CNN layers')
     parser.add_argument('--retinal_bottleneck', type=int, default=None, help='Number of channels in retinal bottleneck (None is a default which is interpreted by the selected encoder)')
     parser.add_argument('--retinal_stride', type=int, default=1, help='Stride at the first conv layer (\'BC\'), doesnt apply to \'VVS\'')
     parser.add_argument( "--network", default="standard" , choices=["standard", "hungry"]

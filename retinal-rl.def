@@ -54,5 +54,5 @@ From: ubuntu:22.10
   mv /usr/share/acc/acc /usr/bin/acc
 
   # retinal-rl Extra
-  pip3 install vizdoom==1.2.0 sample-factory==2.1.1 matplotlib opentsne pygame "torch<2.0.0" torchvision pycairo dpcpp-cpp-rt pyqt5 pyqt6 captum torchscan num2words hiyapyco omgifol
+  pip3 install torch==1.13.1 vizdoom==1.2.0 sample-factory==2.1.1 matplotlib opentsne pygame torchvision pycairo dpcpp-cpp-rt pyqt5 pyqt6 captum torchscan num2words hiyapyco omgifol
 

@@ -119,7 +119,7 @@ class RetinalEncoder(Encoder):
         self.nl_fc = activation(cfg.activation)
 
         # Saving parameters
-        self.bp_chans = cfg.global_channels
+        self.bp_chans = cfg.base_channels
         self.rgc_chans = self.bp_chans*2
         self.v1_chans = self.rgc_chans*2
 
@@ -186,7 +186,7 @@ class RetinalStrideEncoder(Encoder):
         self.nl_fc = activation(cfg.activation)
 
         # Saving parameters
-        self.bp_chans = cfg.global_channels
+        self.bp_chans = cfg.base_channels
         self.rgc_chans = self.bp_chans*2
         self.v1_chans = self.rgc_chans*2
 
@@ -206,11 +206,12 @@ class RetinalStrideEncoder(Encoder):
         # Preparing Conv Layers
         conv_layers = OrderedDict(
 
-                [ ('bp_filters', nn.Conv2d(3, self.bp_chans, self.spool, stride=self.spool, padding=self.spad))
+                [ ('bp_filters', nn.Conv2d(3, self.bp_chans, self.spool * 2, stride=self.spool, padding=self.spad))
                  , ('bp_outputs', activation(self.act_name))
 
-                 , ('rgc_filters', nn.Conv2d(self.bp_chans, self.rgc_chans, self.spool, stride=self.spool, padding=self.spad))
+                 , ('rgc_filters', nn.Conv2d(self.bp_chans, self.rgc_chans, self.spool, padding=self.spad))
                  , ('rgc_outputs', activation(self.act_name))
+                 , ('rgc_averages', nn.AvgPool2d(self.spool, ceil_mode=True))
 
                  , ('btl_filters', nn.Conv2d(self.rgc_chans, self.btl_chans, 1))
                  , ('btl_outputs', activation(self.act_name))
@@ -250,7 +251,7 @@ class PrototypicalEncoder(Encoder):
         self.nl_fc = activation(cfg.activation)
         self.act_name = cfg.activation
         #self.krnsz = cfg.kernel_size
-        #self.gchans = cfg.global_channels
+        #self.gchans = cfg.base_channels
         #self.pad = (self.krnsz - 1) // 2
 
         # Preparing Conv Layers

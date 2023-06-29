@@ -21,7 +21,7 @@ from torchvision.datasets import CIFAR100
 def doomify_image(png,scale=1.0,shift=(0,0)):
     img = Image.open(png)
     if scale != 1.0:
-        img = img.resize((int(img.size[0]*scale),int(img.size[1]*scale)))
+        img = img.resize((int(img.size[0]*scale),int(img.size[1]*scale)),Image.Resampling.NEAREST)
     # get width and height
     width, height = img.size
     width += shift[0]
@@ -85,7 +85,7 @@ def preload_cifar10():
         for i in range(len(cifar)):
             png = "resources/textures/cifar-10/" + cifar.classes[cifar[i][1]] + "/" + str(i) + ".png"
             cifar[i][0].save(png)
-            doomify_image(png,scale=1.5)
+            doomify_image(png,2)
             #doomify_image(png,shift=(0,16))
 
         # remove all downloaded data except for the pngs
@@ -105,7 +105,7 @@ def preload_cifar100():
         for i in range(len(cifar)):
             png = "resources/textures/cifar-100/" + cifar.classes[cifar[i][1]] + "/" + str(i) + ".png"
             cifar[i][0].save(png)
-            doomify_image(png,1.5)
+            doomify_image(png,2)
 
         # remove all downloaded data except for the pngs
         os.remove("resources/textures/cifar-100/cifar-100-python.tar.gz")

@@ -1,4 +1,4 @@
-name: neo-gathering-hungry
+name: neo-architectures
 description: Sweeping performance of models of increasing complexity on a variety of tasks.
 program: train.py
 method: grid
@@ -8,11 +8,11 @@ parameters:
 
   # Simulation specification
   wandb_group:
-    value: "neo-gathering-hungry"
+    value: "neo-architectures"
   wandb_job_type:
     value: "rnn"
   experiment:
-    value: "env_{env}-network_{network}-repeat_{repeat}"
+    value: "env_{env}-network_{network}-model_{vision_model}-repeat_{repeat}"
   train_dir:
     value: "train_dir/{wandb_group}-{wandb_job_type}"
   repeat:
@@ -33,12 +33,12 @@ parameters:
     value: "elu"
   network:
     values: ["hungry","standard"]
+  vision_model:
+    values: ["retinal", "retinal_stride"]
   base_channels:
     value: 16
   use_rnn:
     value: True
-  rnn_size:
-    value: 64
 
   # Training
   train_for_env_steps:
@@ -52,7 +52,7 @@ parameters:
 
   # Hardware
   num_workers:
-    value: 24
+    value: 20
   num_envs_per_worker:
     value: 8
   rollout:
