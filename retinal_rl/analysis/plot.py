@@ -98,7 +98,7 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35,prgrs=True):
 
     hlthax.plot(trng, hlths, "k-")
     hlthax.vlines(dndices, 0, 100, linestyle="dashed", linewidth=1, color="blue")
-    hlthax.set_ylabel('Instantaneous Health')
+    hlthax.set_ylabel('Satiety')
 
     (hline,) = hlthax.plot(trng[0], hlths[0], "r-", linewidth=1)
 
@@ -121,7 +121,7 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35,prgrs=True):
     neg_col = np.where(np.sign(get_stim_coll(hlths)) == -1)
 
     # plot
-    ltntax.imshow(data, cmap='viridis', interpolation='nearest', aspect='auto', vmin=-4, vmax=4)
+    ltntax.imshow(data, cmap='viridis', interpolation='nearest', aspect='auto', vmin=-1, vmax=1)
     #ltntax.colorbar()
     ltntax.vlines(pos_col, 0, data.shape[0], color='grey', linewidth=0.3, linestyle='--')
     ltntax.vlines(neg_col, 0, data.shape[0], color='black', linewidth=0.3, linestyle=':')

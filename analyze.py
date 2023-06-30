@@ -17,7 +17,7 @@ from sample_factory.utils.utils import log
 
 def analyze(cfg,progress_bar=True):
 
-    register_retinal_env(cfg.env)
+    register_retinal_env(cfg)
     register_retinal_model()
 
     log.debug("Running analysis: simulate = %s, plot = %s, animate = %s", cfg.simulate, cfg.plot, cfg.animate)
@@ -63,7 +63,8 @@ def analyze(cfg,progress_bar=True):
 
         for alg in rf_algs:
 
-            os.makedirs(os.path.join(plot_path(cfg,ana_name),alg+"_rfs"))
+            if not os.path.exists(os.path.join(plot_path(cfg,ana_name),alg+"_rfs")):
+                os.makedirs(os.path.join(plot_path(cfg,ana_name),alg+"_rfs"))
 
             if alg == "stas":
                 stas = gaussian_noise_stas(cfg,env,ac,nbtch=200,nreps=cfg.sta_repeats,prgrs=progress_bar)

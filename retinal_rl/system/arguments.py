@@ -65,8 +65,7 @@ def add_retinal_env_args(parser):
     parser.add_argument('--base_channels', type=int, default=16, help='Standard number of channels in CNN layers')
     parser.add_argument('--retinal_bottleneck', type=int, default=None, help='Number of channels in retinal bottleneck (None is a default which is interpreted by the selected encoder)')
     parser.add_argument('--retinal_stride', type=int, default=1, help='Stride at the first conv layer (\'BC\'), doesnt apply to \'VVS\'')
-    parser.add_argument( "--network", default="standard" , choices=["standard", "hungry"]
-                        , type=str, help="Type of encoder network architecture.")
+    parser.add_argument( "--input_satiety", default=False , type=str2bool, help="Whether to input satiety into the FC network layers.")
     parser.add_argument( "--vision_model", default="retinal" , choices=["retinal", "retinal_stride", "prototypical"]
                         , type=str, help="Type of encoder network architecture.")
     parser.add_argument( "--activation", default="elu" , choices=["elu", "relu", "tanh", "softplus", "identity"]

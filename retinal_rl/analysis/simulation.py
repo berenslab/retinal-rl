@@ -3,8 +3,9 @@
 from typing import Tuple
 import numpy as np
 import torch
+
 from tqdm.auto import tqdm
-from captum.attr import IntegratedGradients
+from captum.attr import IntegratedGradients,NoiseTunnel
 
 from sample_factory.algo.learning.learner import Learner
 from sample_factory.algo.sampling.batched_sampling import preprocess_actions
@@ -20,7 +21,7 @@ from sample_factory.utils.typing import Config
 from sample_factory.algo.utils.env_info import extract_env_info
 from sample_factory.utils.utils import log
 
-from retinal_rl.util import obs_dict_to_tuple,obs_to_img,ValueNetwork,from_float_to_rgb
+from retinal_rl.util import obs_dict_to_tuple,obs_to_img,MeasuredValueNetwork,ValueNetwork,from_float_to_rgb,normalize
 
 def get_checkpoint(cfg: Config):
     """
@@ -90,8 +91,7 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
     env_info = extract_env_info(env, cfg)
     action_repeat: int = cfg.env_frameskip // cfg.eval_env_frameskip
     device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
-    valnet = ValueNetwork(cfg,actor_critic)
-    att_method = IntegratedGradients(valnet)
+
 
     # Initializing stream arrays
     imgs = np.zeros((cfg.res_h, cfg.res_w, 3, t_max)).astype(np.uint8)
@@ -115,9 +115,18 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
     crwd=0
 
     nobs1 = torch.unsqueeze(nobs,0)
-    msms1 = torch.unsqueeze(msms,0)
+    msms1 = torch.tensor([])
 
-    inpts = (nobs1,msms1,rnn_states)
+    if msms is not None:
+        msms1 = torch.unsqueeze(msms,0)
+        valnet = MeasuredValueNetwork(cfg,actor_critic)
+        onnx_inpts = (nobs1,msms1,rnn_states)
+    else:
+        valnet = ValueNetwork(cfg,actor_critic)
+        onnx_inpts = (nobs1,rnn_states)
+
+
+    att_method = NoiseTunnel(IntegratedGradients(valnet))
 
     # Simulation loop
     with tqdm(total=t_max-1, desc="Generating Simulation", disable=not(prgrs)) as pbar:
@@ -149,14 +158,20 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
                 nobs,_ = obs_dict_to_tuple(nobs_dict)
 
                 nobs1 = torch.unsqueeze(nobs,0)
-                msms1 = torch.unsqueeze(msms,0)
 
-                (nobsatt,_,_) = att_method.attribute((nobs1,msms1,rnn_states),n_steps=500) #,abs=False)
+                if msms is not None:
+                    msms1 = torch.unsqueeze(msms,0)
+                    (nobsatt,_,_) = att_method.attribute((nobs1,msms1,rnn_states),n_steps=200, nt_type='smoothgrad_sq') #,abs=False)
+                else:
+                    (nobsatt,_) = att_method.attribute((nobs1,rnn_states),n_steps=200, nt_type='smoothgrad_sq') #,abs=False)
+
                 attr = torch.squeeze(nobsatt,0)
 
                 img = obs_to_img(obs)
                 nimg = obs_to_img(nobs)
                 attrimg = obs_to_img(attr)
+
+                health = env.unwrapped.get_info()['HEALTH'] # environment info (health etc.)
 
                 if is_dn:
                     crwd=0
@@ -168,7 +183,7 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
                 attrs[:,:,:,num_frames] = attrimg
                 ltnts[:,num_frames] = ltnt
                 acts[:,num_frames] = actions
-                hlths[num_frames] = msms[0]
+                hlths[num_frames] = health
                 dns[num_frames] = is_dn
                 rwds[num_frames] = rwd
                 crwds[num_frames] = crwd
@@ -190,7 +205,13 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
     attrs = from_float_to_rgb(attrs)
     nimgs = from_float_to_rgb(nimgs)
 
-    return valnet, inpts, {
+    # If cfg.use_rnn is false, normalize ltnts to -1 and 1
+    if not cfg.use_rnn:
+        # Define normalize function
+
+        ltnts = normalize(ltnts, -1, 1)
+
+    return valnet, onnx_inpts, {
             "imgs": imgs,
             "nimgs": nimgs,
             "attrs": attrs,

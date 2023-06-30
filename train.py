@@ -169,7 +169,7 @@ def main():
 
     cfg = parse_full_cfg(parser, argv)
 
-    register_retinal_env(cfg.env)
+    register_retinal_env(cfg)
     register_retinal_model()
 
     test_env = make_env_func_batched( cfg
@@ -179,7 +179,7 @@ def main():
     obs_space = test_env.observation_space
     enc = make_network(cfg,obs_space).vision_model
 
-    print("Encoder summary:")
+    print("Vison Model summary:")
     ts.summary(enc,(3,cfg.res_h,cfg.res_w),receptive_field=True) #,effective_rf_stats=True)
     print("\nEnvironment wrappers:\n")
     # Get string representation of environment wrappers

@@ -16,7 +16,7 @@ from torch import nn
 ### Value Network ###
 
 
-class ValueNetwork(nn.Module):
+class MeasuredValueNetwork(nn.Module):
 
     """
     Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
@@ -40,6 +40,33 @@ class ValueNetwork(nn.Module):
         x = self.critic(x)
 
         return x
+
+
+class ValueNetwork(nn.Module):
+
+    """
+    Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
+    """
+    def __init__(self, cfg, actor_critic):
+
+        super().__init__()
+
+        self.cfg = cfg
+        self.ac_base = actor_critic
+
+        self.critic = actor_critic.critic_linear
+
+
+    def forward(self, nobs,rnn_states):
+        # conv layer 1
+
+        nobs_dict = {"obs":nobs}
+        x = self.ac_base(nobs_dict, rnn_states)["new_rnn_states"]
+
+        x = self.critic(x)
+
+        return x
+
 ## Paths ###
 
 
@@ -98,7 +125,7 @@ def plot_path(cfg,ana_name,flnm=None):
 ### IO ###
 
 
-def save_onnx(cfg: Config, ana_name : str, valnet : ValueNetwork, inpts) -> None:
+def save_onnx(cfg: Config, ana_name : str, valnet, inpts) -> None:
     """
     Write an onnx file of the saved model.
     """
@@ -120,19 +147,23 @@ def load_data(cfg : Config,ana_name,flnm):
 
 ### Misc analysis tools ###
 
-def normalize_data(xs):
-    return (xs - np.min(xs)) / (np.max(xs) - np.min(xs))
+
+def normalize(x, min=0, max=1):
+    return (max - min) * (x - np.min(x)) / (np.max(x) - np.min(x)) + min
 
 def from_float_to_rgb(xs):
-    return (255*normalize_data(xs)).astype(np.uint8)
+    return (255*normalize(xs)).astype(np.uint8)
 
 def obs_dict_to_tuple(obs_dct):
     """
     Extract observation
     """
-    obs = obs_dct["obs"]
+    obs = obs_dct["obs"][0]
+    msm = None
+    if "measurements" in obs_dct.keys():
+        msm = obs_dct["measurements"][0]
     # visualize obs only for the 1st agent
-    return (obs_dct["obs"][0],obs_dct["measurements"][0])
+    return (obs,msm)
 
 def obs_to_img(obs):
     """

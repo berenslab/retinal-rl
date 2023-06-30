@@ -44,7 +44,7 @@ def doom_action_space_basic():
 
 ### Wrappers ###
 
-class HungerInput(gym.Wrapper):
+class SatietyInput(gym.Wrapper):
     """Add game variables to the observation space + reward shaping."""
 
     def __init__(self, env):
@@ -75,8 +75,8 @@ class HungerInput(gym.Wrapper):
         hlth = float(info["HEALTH"])
         # clip health to [-1,1]
         hlth = np.clip(hlth, 0, 100)
-        hunger = (50 - hlth) / 50.0
-        self.measurements_vec[0] = hunger
+        satiety = (hlth - 50) / 50.0
+        self.measurements_vec[0] = satiety
         obs_dict = {"obs": obs, "measurements": self.measurements_vec}
 
         return obs_dict
@@ -100,12 +100,17 @@ class HungerInput(gym.Wrapper):
 
 ### Retinal Environments ###
 
-def retinal_doomspec(scnr,flnm):
+def retinal_doomspec(scnr,flnm,sat_in):
+    ewraps = []
+
+    if sat_in:
+        ewraps = [(SatietyInput, {})]
+
     return DoomSpec( scnr
                     , join(os.getcwd(), "scenarios", flnm)
                     , doom_action_space_basic()
                     , reward_scaling=1
-                    , extra_wrappers= [(HungerInput, {})]
+                    , extra_wrappers= ewraps
                     )
 
 def make_retinal_env_from_spec(spec, _env_name, cfg, env_config, render_mode: Optional[str] = None, **kwargs):
@@ -117,10 +122,13 @@ def make_retinal_env_from_spec(spec, _env_name, cfg, env_config, render_mode: Op
 
     return make_doom_env_impl(spec, cfg=cfg, env_config=env_config, render_mode=render_mode, custom_resolution=res, **kwargs)
 
-def register_retinal_env(scnnm):
+def register_retinal_env(cfg):
+
+    scnnm = cfg.env
+    sat_in = cfg.input_satiety
 
     cfgnm = scnnm + ".cfg"
 
-    env_spec = retinal_doomspec(scnnm, cfgnm)
+    env_spec = retinal_doomspec(scnnm, cfgnm,sat_in)
     make_env_func = functools.partial(make_retinal_env_from_spec, env_spec)
     register_env(env_spec.name, make_env_func)
