@@ -5,7 +5,7 @@ import numpy as np
 import torch
 
 from tqdm.auto import tqdm
-from captum.attr import IntegratedGradients,NoiseTunnel
+from captum.attr import IntegratedGradients #,NoiseTunnel
 
 from sample_factory.algo.learning.learner import Learner
 from sample_factory.algo.sampling.batched_sampling import preprocess_actions
@@ -126,7 +126,8 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
         onnx_inpts = (nobs1,rnn_states)
 
 
-    att_method = NoiseTunnel(IntegratedGradients(valnet))
+    att_method = IntegratedGradients(valnet)
+    #att_method = NoiseTunnel(IntegratedGradients(valnet))
 
     # Simulation loop
     with tqdm(total=t_max-1, desc="Generating Simulation", disable=not(prgrs)) as pbar:
@@ -161,9 +162,11 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
 
                 if msms is not None:
                     msms1 = torch.unsqueeze(msms,0)
-                    (nobsatt,_,_) = att_method.attribute((nobs1,msms1,rnn_states),n_steps=200, nt_type='smoothgrad_sq') #,abs=False)
+                    #(nobsatt,_,_) = att_method.attribute((nobs1,msms1,rnn_states),n_steps=200, nt_type='smoothgrad_sq') #,abs=False)
+                    (nobsatt,_,_) = att_method.attribute((nobs1,msms1,rnn_states),n_steps=200)
                 else:
-                    (nobsatt,_) = att_method.attribute((nobs1,rnn_states),n_steps=200, nt_type='smoothgrad_sq') #,abs=False)
+                    #(nobsatt,_) = att_method.attribute((nobs1,rnn_states),n_steps=200, nt_type='smoothgrad_sq') #,abs=False)
+                    (nobsatt,_) = att_method.attribute((nobs1,rnn_states),n_steps=200)
 
                 attr = torch.squeeze(nobsatt,0)
 

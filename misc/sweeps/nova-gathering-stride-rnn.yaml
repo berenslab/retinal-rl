@@ -1,4 +1,4 @@
-name: nova-gathering-rnn
+name: nova-gathering-stride-rnn
 description: Sweeping performance of models of increasing complexity on a variety of tasks.
 program: train.py
 method: grid
@@ -10,7 +10,7 @@ parameters:
   wandb_group:
     value: "nova-gathering"
   wandb_job_type:
-    value: "rnn"
+    value: "stride-rnn"
   experiment:
     value: "env_{env}-satiety_{input_satiety}-repeat_{repeat}"
   train_dir:
@@ -32,7 +32,7 @@ parameters:
   activation:
     value: "elu"
   vision_model:
-    value: "retinal"
+    value: "retinal_stride"
   input_satiety:
     values: [True,False]
   base_channels:
@@ -54,7 +54,7 @@ parameters:
 
   # Hardware
   num_workers:
-    value: 20
+    value: 24
   num_envs_per_worker:
     value: 12
   rollout:
