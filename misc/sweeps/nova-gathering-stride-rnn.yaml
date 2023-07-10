@@ -27,6 +27,8 @@ parameters:
     value: 120
   res_w:
     value: 160
+  online_analysis:
+    value: False
 
   # Network architecture
   activation:
@@ -54,9 +56,9 @@ parameters:
 
   # Hardware
   num_workers:
-    value: 24
+    value: 16
   num_envs_per_worker:
-    value: 12
+    value: 8
   rollout:
     value: 32
   recurrence:

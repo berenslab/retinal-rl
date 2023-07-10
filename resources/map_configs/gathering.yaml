@@ -4,18 +4,18 @@ metabolic:
 objects:
   nourishment:
     init: 30
-    delay: 40
+    delay: 30
     actors:
       nourishment-1:
-        healing: 10
+        healing: 5
       nourishment-2:
-        healing: 20
+        healing: 10
       nourishment-3:
-        healing: 30
+        healing: 15
       nourishment-4:
-        healing: 40
+        healing: 20
       nourishment-5:
-        healing: 50
+        healing: 25
   poison:
     init: 10
     delay: 50
