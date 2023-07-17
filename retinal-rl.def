@@ -56,5 +56,5 @@ From: nvidia/cuda:11.7.1-runtime-ubuntu22.04
   mv /usr/share/acc/acc /usr/bin/acc
 
   # retinal-rl Extra
-  pip3 install torch==1.13.1 vizdoom==1.2.0 sample-factory==2.1.1 torchvision==0.14.1 matplotlib opentsne pygame pycairo captum torchscan num2words hiyapyco omgifol
 
+  pip3 install gymnasium==0.28.1 torch==1.13.1 vizdoom==1.2.0 torchvision==0.14.1 matplotlib opentsne pygame pycairo captum torchscan num2words hiyapyco omgifol git+https://github.com/alex404/sample-factory.git

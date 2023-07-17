@@ -16,7 +16,61 @@ from torch import nn
 ### Value Network ###
 
 
-class MeasuredValueNetwork(nn.Module):
+class MeasuredValueFFN(nn.Module):
+
+    """
+    Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
+    """
+    def __init__(self, cfg, actor_critic):
+
+        super().__init__()
+
+        self.cfg = cfg
+        self.encoder = actor_critic.encoder
+
+        self.critic = actor_critic.critic_linear
+
+
+    def forward(self, nobs,msms):
+        # conv layer 1
+
+        nobs_dict = {"obs":nobs,"measurements":msms}
+        x = self.encoder(nobs_dict)
+
+        x = self.critic(x)
+
+        return x
+
+class ValueFFN(nn.Module):
+
+    """
+    Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
+    """
+    def __init__(self, cfg, actor_critic):
+
+        super().__init__()
+
+        self.cfg = cfg
+        self.encoder = actor_critic.encoder
+
+        self.critic = actor_critic.critic_linear
+
+        print(type(self.critic))
+
+
+    def forward(self, nobs):
+        # conv layer 1
+
+        nobs_dict = {"obs":nobs}
+        x = self.encoder(nobs_dict)
+
+        x = self.critic(x)
+
+        return x
+
+
+
+class MeasuredValueRNN(nn.Module):
 
     """
     Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
@@ -41,8 +95,7 @@ class MeasuredValueNetwork(nn.Module):
 
         return x
 
-
-class ValueNetwork(nn.Module):
+class ValueRNN(nn.Module):
 
     """
     Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
@@ -55,6 +108,8 @@ class ValueNetwork(nn.Module):
         self.ac_base = actor_critic
 
         self.critic = actor_critic.critic_linear
+
+        print(type(self.critic))
 
 
     def forward(self, nobs,rnn_states):
@@ -85,18 +140,39 @@ def analysis_path(cfg,ana_name):
 
     return join(art,ana_name)
 
-def get_analysis_times(cfg):
+# Write number of analyses to file
+def write_analysis_count(cfg,num):
     """
-    Returns the list of analysis times.
+    Writes the number of analyses to file, replacing the old file.
     """
     art = analysis_root(cfg)
-    # list directories
-    drs = os.listdir(art)
-    # filter out directories that don't start with "env_steps-"
-    drs = [d for d in drs if d.startswith("env_steps-")]
+    with open(join(art,"analysis_count.txt"),"w") as f:
+        f.write(str(num))
 
-    return [int(f.split("-")[1]) for f in drs]
-
+# Read number of analyses from file
+def read_analysis_count(cfg):
+    """
+    Reads the number of analyses from file; returns 0 if file doesn't exist.
+    """
+    art = analysis_root(cfg)
+    try:
+        with open(join(art,"analysis_count.txt"),"r") as f:
+            return int(f.read())
+    except:
+        return 0
+#
+# def get_analysis_times(cfg):
+#     """
+#     Returns the list of analysis times.
+#     """
+#     art = analysis_root(cfg)
+#     # list directories
+#     drs = os.listdir(art)
+#     # filter out directories that don't start with "env_steps-"
+#     drs = [d for d in drs if d.startswith("env_steps-")]
+#
+#     return [int(f.split("-")[1]) for f in drs]
+#
 def data_path(cfg,ana_name,flnm=None):
     """
     Returns the path to the data directory.

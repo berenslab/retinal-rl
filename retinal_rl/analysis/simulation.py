@@ -21,7 +21,7 @@ from sample_factory.utils.typing import Config
 from sample_factory.algo.utils.env_info import extract_env_info
 from sample_factory.utils.utils import log
 
-from retinal_rl.util import obs_dict_to_tuple,obs_to_img,MeasuredValueNetwork,ValueNetwork,from_float_to_rgb,normalize
+from retinal_rl.util import obs_dict_to_tuple,obs_to_img,MeasuredValueFFN,ValueFFN,MeasuredValueRNN,ValueRNN,from_float_to_rgb,normalize
 
 def get_checkpoint(cfg: Config):
     """
@@ -119,12 +119,23 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
 
     if msms is not None:
         msms1 = torch.unsqueeze(msms,0)
-        valnet = MeasuredValueNetwork(cfg,actor_critic)
-        onnx_inpts = (nobs1,msms1,rnn_states)
-    else:
-        valnet = ValueNetwork(cfg,actor_critic)
-        onnx_inpts = (nobs1,rnn_states)
 
+        if cfg.use_rnn:
+
+            valnet = MeasuredValueRNN(cfg,actor_critic)
+            onnx_inpts = (nobs1,msms1,rnn_states)
+        else:
+            valnet = MeasuredValueFFN(cfg,actor_critic)
+            onnx_inpts = (nobs1,msms1)
+    else:
+
+        if cfg.use_rnn:
+            valnet = ValueRNN(cfg,actor_critic)
+            onnx_inpts = (nobs1,rnn_states)
+
+        else:
+            valnet = ValueFFN(cfg,actor_critic)
+            onnx_inpts = (nobs1)
 
     att_method = IntegratedGradients(valnet)
     #att_method = NoiseTunnel(IntegratedGradients(valnet))
@@ -162,11 +173,15 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
 
                 if msms is not None:
                     msms1 = torch.unsqueeze(msms,0)
-                    #(nobsatt,_,_) = att_method.attribute((nobs1,msms1,rnn_states),n_steps=200, nt_type='smoothgrad_sq') #,abs=False)
-                    (nobsatt,_,_) = att_method.attribute((nobs1,msms1,rnn_states),n_steps=200)
+                    if cfg.use_rnn:
+                        (nobsatt,_,_) = att_method.attribute((nobs1,msms1,rnn_states),n_steps=200)
+                    else:
+                        (nobsatt,_) = att_method.attribute((nobs1,msms1),n_steps=200)
                 else:
-                    #(nobsatt,_) = att_method.attribute((nobs1,rnn_states),n_steps=200, nt_type='smoothgrad_sq') #,abs=False)
-                    (nobsatt,_) = att_method.attribute((nobs1,rnn_states),n_steps=200)
+                    if cfg.use_rnn:
+                        (nobsatt,_) = att_method.attribute((nobs1,rnn_states),n_steps=200)
+                    else:
+                        (nobsatt) = att_method.attribute((nobs1),n_steps=200)
 
                 attr = torch.squeeze(nobsatt,0)
 

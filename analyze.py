@@ -114,7 +114,6 @@ def analyze(cfg,progress_bar=True):
         sim_recs = load_data(cfg,ana_name,"sim_recs")
         anim = simulation_plot(sim_recs,animate=True,fps=cfg.fps,prgrs=progress_bar)
         pth = plot_path(cfg,ana_name,"simulation-animation.mp4")
-
         anim.save(pth, extra_args=["-vcodec", "libx264"] )
 
     env.close()

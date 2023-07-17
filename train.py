@@ -20,7 +20,7 @@ from retinal_rl.system.encoders import register_retinal_model,make_network
 from retinal_rl.system.environment import register_retinal_env
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 
-from retinal_rl.util import get_analysis_times,analysis_root,plot_path
+from retinal_rl.util import analysis_root,plot_path, write_analysis_count, read_analysis_count
 
 from analyze import analyze
 
@@ -39,14 +39,13 @@ class RetinalAlgoObserver(AlgoObserver):
         self.current_process = None
         self.queue = multiprocessing.Queue()
 
-        # get analysis times
+        # get analysis count
         if not os.path.exists(analysis_root(cfg)):
             os.makedirs(analysis_root(cfg))
 
-        self.analysis_times = get_analysis_times(cfg)
+        acount = read_analysis_count(cfg)
 
-        self.last_analysis = max(self.analysis_times,default=-1)
-        self.steps_complete = 1 + self.last_analysis // self.freq
+        self.steps_complete = acount
 
     def analyze(self,queue):
         """Run analysis in a separate process."""
@@ -109,6 +108,8 @@ class RetinalAlgoObserver(AlgoObserver):
                         #        wandb.log({f: wandb.Video(os.path.join(pltpth,f))})
 
                     self.steps_complete += 1
+                    write_analysis_count(self.cfg,self.steps_complete)
+
                 self.current_process.join()
                 self.current_process = None
 

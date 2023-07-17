@@ -21,6 +21,7 @@ log_train*.out
 
 # C extensions
 *.so
+/*.sh
 
 # Distribution / packaging
 .Python
