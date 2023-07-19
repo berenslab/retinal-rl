@@ -55,9 +55,6 @@ class ValueFFN(nn.Module):
 
         self.critic = actor_critic.critic_linear
 
-        print(type(self.critic))
-
-
     def forward(self, nobs):
         # conv layer 1
 
@@ -108,9 +105,6 @@ class ValueRNN(nn.Module):
         self.ac_base = actor_critic
 
         self.critic = actor_critic.critic_linear
-
-        print(type(self.critic))
-
 
     def forward(self, nobs,rnn_states):
         # conv layer 1

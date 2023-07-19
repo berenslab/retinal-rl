@@ -15,7 +15,6 @@ from sample_factory.algo.utils.rl_utils import prepare_and_normalize_obs
 from sample_factory.algo.utils.tensor_utils import unsqueeze_tensor
 from sample_factory.cfg.arguments import load_from_checkpoint
 from sample_factory.model.actor_critic import create_actor_critic,ActorCritic
-from sample_factory.model.model_utils import get_rnn_size
 from sample_factory.utils.attr_dict import AttrDict
 from sample_factory.utils.typing import Config
 from sample_factory.algo.utils.env_info import extract_env_info
@@ -109,7 +108,7 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
     obs_dict,_ = env.reset()
     nobs_dict = prepare_and_normalize_obs(actor_critic, obs_dict)
     nobs,msms = obs_dict_to_tuple(nobs_dict)
-    rnn_states = torch.zeros([env.num_agents, get_rnn_size(cfg)], dtype=torch.float32, device=device)
+    rnn_states = torch.zeros([env.num_agents, cfg.rnn_size], dtype=torch.float32, device=device)
     is_dn=0
     rwd=0
     crwd=0
@@ -145,13 +144,14 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
 
         while num_frames < t_max:
 
-                # Evaluate policy
+            # Evaluate policy
             policy_outputs = actor_critic(nobs_dict, rnn_states)
             rnn_states = policy_outputs["new_rnn_states"]
             actions = policy_outputs["actions"]
 
             # Prepare network state for saving
             ltnt = rnn_states.detach().cpu().numpy()
+            print(policy_outputs)
 
             # can pass --eval_deterministic=True to CLI in order to argmax the probabilistic actions
             if cfg.eval_deterministic:

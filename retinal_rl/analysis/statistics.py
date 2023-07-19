@@ -130,7 +130,7 @@ def fit_tsne_1d(data):
     # default openTSNE params
     tsne = TSNE(
         n_components=1,
-        perplexity=30,
+        perplexity=20,
         initialization="pca",
         metric="euclidean",
         n_jobs=8,
