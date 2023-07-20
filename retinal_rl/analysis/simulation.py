@@ -5,7 +5,6 @@ import numpy as np
 import torch
 
 from tqdm.auto import tqdm
-from captum.attr import IntegratedGradients #,NoiseTunnel
 
 from sample_factory.algo.learning.learner import Learner
 from sample_factory.algo.sampling.batched_sampling import preprocess_actions
@@ -15,12 +14,13 @@ from sample_factory.algo.utils.rl_utils import prepare_and_normalize_obs
 from sample_factory.algo.utils.tensor_utils import unsqueeze_tensor
 from sample_factory.cfg.arguments import load_from_checkpoint
 from sample_factory.model.actor_critic import create_actor_critic,ActorCritic
+from sample_factory.model.model_utils import get_rnn_size
 from sample_factory.utils.attr_dict import AttrDict
 from sample_factory.utils.typing import Config
 from sample_factory.algo.utils.env_info import extract_env_info
 from sample_factory.utils.utils import log
 
-from retinal_rl.util import obs_dict_to_tuple,obs_to_img,MeasuredValueFFN,ValueFFN,MeasuredValueRNN,ValueRNN,from_float_to_rgb,normalize
+from retinal_rl.util import obs_dict_to_tuple,obs_to_img,from_float_to_rgb
 
 def get_checkpoint(cfg: Config):
     """
@@ -39,7 +39,7 @@ def get_checkpoint(cfg: Config):
 
     return checkpoint_dict,cfg
 
-def get_ac_env(cfg: Config, checkpoint_dict) -> Tuple[ActorCritic,BatchedVecEnv,AttrDict,int]:
+def get_brain_env(cfg: Config, checkpoint_dict) -> Tuple[ActorCritic,BatchedVecEnv,AttrDict,int]:
     """
     Load the model from checkpoint, initialize the environment, and return both.
     """
@@ -62,25 +62,25 @@ def get_ac_env(cfg: Config, checkpoint_dict) -> Tuple[ActorCritic,BatchedVecEnv,
         env.unwrapped.reset_on_init = False
 
     log.debug("RETINAL RL: Finished making environment, loading actor-critic model...")
-    actor_critic = create_actor_critic(cfg, env.observation_space, env.action_space)
+    brain = create_actor_critic(cfg, env.observation_space, env.action_space)
     # log.debug("RETINAL RL: ...evaluating actor-critic model...")
-    actor_critic.eval()
+    brain.eval()
 
     # log.debug("RETINAL RL: Actor-critic initialized...")
 
     device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
-    actor_critic.model_to_device(device)
+    brain.model_to_device(device)
 
     # log.debug("RETINAL RL: ...copied to device...")
 
-    actor_critic.load_state_dict(checkpoint_dict["model"])
+    brain.load_state_dict(checkpoint_dict["model"])
     nstps = checkpoint_dict["env_steps"]
 
     # log.debug("RETINAL RL: ...and loaded from checkpoint.")
 
-    return actor_critic,env,cfg,nstps
+    return brain,env,cfg,nstps
 
-def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVecEnv,prgrs : bool):
+def generate_simulation(cfg: Config, brain : ActorCritic, env : BatchedVecEnv,prgrs : bool):
     """
     Save an example simulation.
     """
@@ -106,9 +106,9 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
     # Initializing simulation state
     num_frames = 0
     obs_dict,_ = env.reset()
-    nobs_dict = prepare_and_normalize_obs(actor_critic, obs_dict)
+    nobs_dict = prepare_and_normalize_obs(brain, obs_dict)
     nobs,msms = obs_dict_to_tuple(nobs_dict)
-    rnn_states = torch.zeros([env.num_agents, cfg.rnn_size], dtype=torch.float32, device=device)
+    rnn_states = torch.zeros([env.num_agents, get_rnn_size(cfg)], dtype=torch.float32, device=device)
     is_dn=0
     rwd=0
     crwd=0
@@ -116,28 +116,10 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
     nobs1 = torch.unsqueeze(nobs,0)
     msms1 = torch.tensor([])
 
+    onnx_inpts = brain.prune_inputs(nobs1,msms1,rnn_states)
+
     if msms is not None:
         msms1 = torch.unsqueeze(msms,0)
-
-        if cfg.use_rnn:
-
-            valnet = MeasuredValueRNN(cfg,actor_critic)
-            onnx_inpts = (nobs1,msms1,rnn_states)
-        else:
-            valnet = MeasuredValueFFN(cfg,actor_critic)
-            onnx_inpts = (nobs1,msms1)
-    else:
-
-        if cfg.use_rnn:
-            valnet = ValueRNN(cfg,actor_critic)
-            onnx_inpts = (nobs1,rnn_states)
-
-        else:
-            valnet = ValueFFN(cfg,actor_critic)
-            onnx_inpts = (nobs1)
-
-    att_method = IntegratedGradients(valnet)
-    #att_method = NoiseTunnel(IntegratedGradients(valnet))
 
     # Simulation loop
     with tqdm(total=t_max-1, desc="Generating Simulation", disable=not(prgrs)) as pbar:
@@ -145,17 +127,16 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
         while num_frames < t_max:
 
             # Evaluate policy
-            policy_outputs = actor_critic(nobs_dict, rnn_states)
+            policy_outputs = brain(nobs_dict, rnn_states)
             rnn_states = policy_outputs["new_rnn_states"]
             actions = policy_outputs["actions"]
 
             # Prepare network state for saving
-            ltnt = rnn_states.detach().cpu().numpy()
-            print(policy_outputs)
+            ltnt = policy_outputs["latent_states"].detach().cpu().numpy()
 
             # can pass --eval_deterministic=True to CLI in order to argmax the probabilistic actions
             if cfg.eval_deterministic:
-                action_distribution = actor_critic.action_distribution()
+                action_distribution = brain.action_distribution()
                 actions = argmax_actions(action_distribution)
 
             # actions shape should be [num_agents, num_actions] even if it's [1, 1]
@@ -173,15 +154,8 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
 
                 if msms is not None:
                     msms1 = torch.unsqueeze(msms,0)
-                    if cfg.use_rnn:
-                        (nobsatt,_,_) = att_method.attribute((nobs1,msms1,rnn_states),n_steps=200)
-                    else:
-                        (nobsatt,_) = att_method.attribute((nobs1,msms1),n_steps=200)
-                else:
-                    if cfg.use_rnn:
-                        (nobsatt,_) = att_method.attribute((nobs1,rnn_states),n_steps=200)
-                    else:
-                        (nobsatt) = att_method.attribute((nobs1),n_steps=200)
+
+                nobsatt = brain.attribute(nobs1, msms1, rnn_states)
 
                 attr = torch.squeeze(nobsatt,0)
 
@@ -208,7 +182,7 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
 
                 obs_dict,rwd,terminated,truncated,_ = env.step(actions)
                 is_dn = truncated | terminated
-                nobs_dict = prepare_and_normalize_obs(actor_critic, obs_dict)
+                nobs_dict = prepare_and_normalize_obs(brain, obs_dict)
                 actions = np.array(actions)
 
                 num_frames += 1
@@ -223,13 +197,7 @@ def generate_simulation(cfg: Config, actor_critic : ActorCritic, env : BatchedVe
     attrs = from_float_to_rgb(attrs)
     nimgs = from_float_to_rgb(nimgs)
 
-    # If cfg.use_rnn is false, normalize ltnts to -1 and 1
-    if not cfg.use_rnn:
-        # Define normalize function
-
-        ltnts = normalize(ltnts, -1, 1)
-
-    return valnet, onnx_inpts, {
+    return onnx_inpts, {
             "imgs": imgs,
             "nimgs": nimgs,
             "attrs": attrs,

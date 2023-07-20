@@ -13,109 +13,6 @@ from sample_factory.utils.utils import experiment_dir
 from torch import nn
 
 
-### Value Network ###
-
-
-class MeasuredValueFFN(nn.Module):
-
-    """
-    Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
-    """
-    def __init__(self, cfg, actor_critic):
-
-        super().__init__()
-
-        self.cfg = cfg
-        self.encoder = actor_critic.encoder
-
-        self.critic = actor_critic.critic_linear
-
-
-    def forward(self, nobs,msms):
-        # conv layer 1
-
-        nobs_dict = {"obs":nobs,"measurements":msms}
-        x = self.encoder(nobs_dict)
-
-        x = self.critic(x)
-
-        return x
-
-class ValueFFN(nn.Module):
-
-    """
-    Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
-    """
-    def __init__(self, cfg, actor_critic):
-
-        super().__init__()
-
-        self.cfg = cfg
-        self.encoder = actor_critic.encoder
-
-        self.critic = actor_critic.critic_linear
-
-    def forward(self, nobs):
-        # conv layer 1
-
-        nobs_dict = {"obs":nobs}
-        x = self.encoder(nobs_dict)
-
-        x = self.critic(x)
-
-        return x
-
-
-
-class MeasuredValueRNN(nn.Module):
-
-    """
-    Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
-    """
-    def __init__(self, cfg, actor_critic):
-
-        super().__init__()
-
-        self.cfg = cfg
-        self.ac_base = actor_critic
-
-        self.critic = actor_critic.critic_linear
-
-
-    def forward(self, nobs,msms,rnn_states):
-        # conv layer 1
-
-        nobs_dict = {"obs":nobs,"measurements":msms}
-        x = self.ac_base(nobs_dict, rnn_states)["new_rnn_states"]
-
-        x = self.critic(x)
-
-        return x
-
-class ValueRNN(nn.Module):
-
-    """
-    Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
-    """
-    def __init__(self, cfg, actor_critic):
-
-        super().__init__()
-
-        self.cfg = cfg
-        self.ac_base = actor_critic
-
-        self.critic = actor_critic.critic_linear
-
-    def forward(self, nobs,rnn_states):
-        # conv layer 1
-
-        nobs_dict = {"obs":nobs}
-        x = self.ac_base(nobs_dict, rnn_states)["new_rnn_states"]
-
-        x = self.critic(x)
-
-        return x
-
 ## Paths ###
 
 
@@ -195,12 +92,12 @@ def plot_path(cfg,ana_name,flnm=None):
 ### IO ###
 
 
-def save_onnx(cfg: Config, ana_name : str, valnet, inpts) -> None:
+def save_onnx(cfg: Config, ana_name : str, brain, inpts) -> None:
     """
     Write an onnx file of the saved model.
     """
     # Note that onnx can't process dictionary inputs and so we can only look at the encoder (and decoder?) separately)
-    torch.onnx.export(valnet,inpts,data_path(cfg,ana_name,"value_network.onnx"),verbose=False,input_names=["observation","measurements","rnn_states"],output_names=["value"])
+    torch.onnx.export(brain.valnet,inpts,data_path(cfg,ana_name,"value_network.onnx"),verbose=False,input_names=["observation","measurements","rnn_states"],output_names=["value"])
 
 def save_data(cfg : Config,ana_name,dat,flnm):
     """

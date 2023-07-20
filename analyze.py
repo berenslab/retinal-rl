@@ -3,11 +3,11 @@ import os
 
 import matplotlib.pyplot as plt
 
-from retinal_rl.system.encoders import register_retinal_model
+from retinal_rl.system.brain import register_brain
 from retinal_rl.system.environment import register_retinal_env
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 
-from retinal_rl.analysis.simulation import get_ac_env,generate_simulation,get_checkpoint
+from retinal_rl.analysis.simulation import get_brain_env,generate_simulation,get_checkpoint
 from retinal_rl.analysis.statistics import gaussian_noise_stas,gradient_receptive_fields
 from retinal_rl.util import save_data,load_data,save_onnx,analysis_path,plot_path,data_path
 from retinal_rl.analysis.plot import simulation_plot,receptive_field_plots
@@ -18,7 +18,7 @@ from sample_factory.utils.utils import log
 def analyze(cfg,progress_bar=True):
 
     register_retinal_env(cfg)
-    register_retinal_model()
+    register_brain()
 
     log.debug("Running analysis: simulate = %s, plot = %s, animate = %s", cfg.simulate, cfg.plot, cfg.animate)
 
@@ -33,7 +33,7 @@ def analyze(cfg,progress_bar=True):
 
     log.debug("RETINAL RL: Checkpoint loaded, preparing environment.")
 
-    ac,env,cfg,envstps = get_ac_env(cfg,checkpoint_dict)
+    brain,env,cfg,envstps = get_brain_env(cfg,checkpoint_dict)
 
     if cfg.analysis_name is None:
         ana_name = "env_steps-" + str(envstps)
@@ -51,9 +51,9 @@ def analyze(cfg,progress_bar=True):
 
         log.debug("RETINAL RL: Running analysis simulations.")
 
-        valnet,inpts,sim_recs = generate_simulation(cfg,ac,env,prgrs=progress_bar)
+        inpts,sim_recs = generate_simulation(cfg,brain,env,prgrs=progress_bar)
 
-        save_onnx(cfg,ana_name,valnet,inpts)
+        save_onnx(cfg,ana_name,brain,inpts)
 
         save_data(cfg,ana_name,sim_recs,"sim_recs")
 
@@ -67,11 +67,11 @@ def analyze(cfg,progress_bar=True):
                 os.makedirs(os.path.join(plot_path(cfg,ana_name),alg+"_rfs"))
 
             if alg == "stas":
-                stas = gaussian_noise_stas(cfg,env,ac,nbtch=200,nreps=cfg.sta_repeats,prgrs=progress_bar)
+                stas = gaussian_noise_stas(cfg,env,brain,nbtch=200,nreps=cfg.sta_repeats,prgrs=progress_bar)
                 save_data(cfg,ana_name,stas,"stas")
 
             if alg == "grads":
-                grads = gradient_receptive_fields(cfg,env,ac,prgrs=progress_bar)
+                grads = gradient_receptive_fields(cfg,env,brain,prgrs=progress_bar)
                 save_data(cfg,ana_name,grads,"grads")
 
     if cfg.plot:

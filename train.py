@@ -16,7 +16,7 @@ from sample_factory.algo.runners.runner import AlgoObserver, Runner
 from sample_factory.utils.utils import log,debug_log_every_n
 from sample_factory.algo.utils.make_env import make_env_func_batched
 
-from retinal_rl.system.encoders import register_retinal_model,make_network
+from retinal_rl.system.brain import register_brain,make_encoder
 from retinal_rl.system.environment import register_retinal_env
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 
@@ -171,14 +171,14 @@ def main():
     cfg = parse_full_cfg(parser, argv)
 
     register_retinal_env(cfg)
-    register_retinal_model()
+    register_brain()
 
     test_env = make_env_func_batched( cfg
             , env_config=AttrDict(worker_index=0, vector_index=0, env_id=0), render_mode="rgb_array"
             )
 
     obs_space = test_env.observation_space
-    enc = make_network(cfg,obs_space).vision_model
+    enc = make_encoder(cfg,obs_space).vision_model
 
     print("Vison Model summary:")
     ts.summary(enc,(3,cfg.res_h,cfg.res_w),receptive_field=True) #,effective_rf_stats=True)
