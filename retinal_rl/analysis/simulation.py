@@ -116,10 +116,10 @@ def generate_simulation(cfg: Config, brain : ActorCritic, env : BatchedVecEnv,pr
     nobs1 = torch.unsqueeze(nobs,0)
     msms1 = torch.tensor([])
 
-    onnx_inpts = brain.prune_inputs(nobs1,msms1,rnn_states)
-
     if msms is not None:
         msms1 = torch.unsqueeze(msms,0)
+
+    onnx_inpts = brain.prune_inputs(nobs1,msms1,rnn_states)
 
     # Simulation loop
     with tqdm(total=t_max-1, desc="Generating Simulation", disable=not(prgrs)) as pbar:

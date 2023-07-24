@@ -97,7 +97,9 @@ def save_onnx(cfg: Config, ana_name : str, brain, inpts) -> None:
     Write an onnx file of the saved model.
     """
     # Note that onnx can't process dictionary inputs and so we can only look at the encoder (and decoder?) separately)
-    torch.onnx.export(brain.valnet,inpts,data_path(cfg,ana_name,"value_network.onnx"),verbose=False,input_names=["observation","measurements","rnn_states"],output_names=["value"])
+    torch.onnx.export(brain.valnet,inpts,data_path(cfg,ana_name,"value_network.onnx")
+                      ,verbose=False,input_names=["observation","measurements","rnn_states"],output_names=["value"])
+
 
 def save_data(cfg : Config,ana_name,dat,flnm):
     """

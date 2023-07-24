@@ -1,6 +1,6 @@
 name: nova-gathering-rnn
 description: Sweeping performance of models of increasing complexity on a variety of tasks.
-program: train.py
+program: analyze.py
 method: grid
 project: retinal-rl
 
