@@ -20,7 +20,7 @@ from retinal_rl.system.brain import register_brain,make_encoder
 from retinal_rl.system.environment import register_retinal_env
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 
-from retinal_rl.util import analysis_root,plot_path, write_analysis_count, read_analysis_count
+from retinal_rl.util import analysis_root,plot_path, write_analysis_count, read_analysis_count,fill_in_argv_template
 
 from analyze import analyze
 
@@ -113,10 +113,6 @@ class RetinalAlgoObserver(AlgoObserver):
                 self.current_process.join()
                 self.current_process = None
 
-
-
-
-
 def run_rl(cfg: Config):
     """Run RL training."""
 
@@ -132,21 +128,6 @@ def run_rl(cfg: Config):
         status = runner.run()
 
     return status
-
-def fill_in_argv_template(argv):
-    """Replace string templates in argv with values from argv."""
-
-    # Convert argv into a dictionary
-    argv = [a.split('=') for a in argv]
-    # Remove dashes from argv
-    cfg = dict([[a[0].replace("--",""),a[1]] for a in argv])
-    # Replace cfg string templates
-    cfg = {k:v.format(**cfg) for k,v in cfg.items()}
-    # Convert cfg back into argv
-    argv = [f"--{k}={v}" for k,v in cfg.items()]
-
-    return argv
-
 
 
 ### Main ###

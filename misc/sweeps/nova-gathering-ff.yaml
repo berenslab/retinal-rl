@@ -1,6 +1,6 @@
 name: nova-gathering-ff
 description: Sweeping performance of models of increasing complexity on a variety of tasks.
-program: train.py
+program: analyze.py
 method: grid
 project: retinal-rl
 
@@ -17,6 +17,8 @@ parameters:
     value: "satiety_{input_satiety}-bchan_{base_channels}-repeat_{repeat}"
   train_dir:
     value: "train_dir/{wandb_project}/{wandb_group}-{wandb_job_type}/env_{env}"
+  online_analysis:
+    value: False
   repeat:
     value: 1
     # distribution: "int_uniform"
@@ -47,7 +49,7 @@ parameters:
 
   # Training
   train_for_env_steps:
-    value: 8000000000
+    value: 10000000000
   with_vtrace:
     value: True
   normalize_returns:

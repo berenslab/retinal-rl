@@ -9,7 +9,7 @@ from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_en
 
 from retinal_rl.analysis.simulation import get_brain_env,generate_simulation,get_checkpoint
 from retinal_rl.analysis.statistics import gaussian_noise_stas,gradient_receptive_fields
-from retinal_rl.util import save_data,load_data,save_onnx,analysis_path,plot_path,data_path
+from retinal_rl.util import save_data,load_data,save_onnx,analysis_path,plot_path,data_path,fill_in_argv_template
 from retinal_rl.analysis.plot import simulation_plot,receptive_field_plots
 
 from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
@@ -124,12 +124,21 @@ def analyze(cfg,progress_bar=True):
 def main():
     """Script entry point."""
 
+    # Register retinal environments and models.
+
+    # Parsing args
+    argv = sys.argv[1:]
+    # Replace string templates in argv with values from argv.
+    argv = fill_in_argv_template(argv)
+
     # Two-pass building parser and returning cfg : Namespace
-    parser, _ = parse_sf_args(evaluation=True)
+    parser,cfg = parse_sf_args(argv,evaluation=True)
+
     add_retinal_env_args(parser)
     add_retinal_env_eval_args(parser)
     retinal_override_defaults(parser)
-    cfg = parse_full_cfg(parser)
+
+    cfg = parse_full_cfg(parser, argv)
 
     # Run analysis
     analyze(cfg)

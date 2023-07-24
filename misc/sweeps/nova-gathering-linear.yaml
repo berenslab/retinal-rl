@@ -1,4 +1,4 @@
-name: nova-gathering-rnn
+name: nova-gathering-linear
 description: Sweeping performance of models of increasing complexity on a variety of tasks.
 program: train.py
 method: grid
@@ -12,7 +12,7 @@ parameters:
   wandb_group:
     value: "nova-gathering"
   wandb_job_type:
-    value: "rnn"
+    value: "linear"
   experiment:
     value: "satiety_{input_satiety}-bchan_{base_channels}-repeat_{repeat}"
   train_dir:
@@ -35,7 +35,7 @@ parameters:
 
   # Network architecture
   activation:
-    value: "elu"
+    value: "identity"
   vision_model:
     value: "retinal"
   input_satiety:
@@ -43,7 +43,7 @@ parameters:
   base_channels:
     value: 16
   use_rnn:
-    value: True
+    value: False
   rnn_size:
     value: 32
 
@@ -51,15 +51,15 @@ parameters:
   train_for_env_steps:
     value: 10000000000
   with_vtrace:
-    value: False
-  normalize_returns:
     value: True
+  normalize_returns:
+    value: False
   optimizer:
     value: "adam"
 
   # Hardware
   num_workers:
-    value: 14
+    value: 28
   num_envs_per_worker:
     value: 8
   rollout:
