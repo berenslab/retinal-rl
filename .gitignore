@@ -19,6 +19,9 @@ train_dir
 nohup*.out
 log_train*.out
 
+# Local sharing
+/local
+
 # C extensions
 *.so
 /*.sh
