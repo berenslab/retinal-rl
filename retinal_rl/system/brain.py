@@ -42,6 +42,9 @@ def make_core(cfg: Config, core_input_size: int) -> ModelCore:
 
     if cfg.use_rnn:
         core = LatentRNN(cfg, core_input_size)
+    # If using identity activation functions
+    elif cfg.activation == "identity":
+        core = LatentIdentity(cfg, core_input_size)
     else:
         core = LatentFFN(cfg, core_input_size)
 
@@ -201,8 +204,20 @@ class LatentFFN(ModelCore):
 
     # noinspection PyMethodMayBeStatic
     def forward(self, head_output, fake_rnn_states):
-        # Apply sigmoid to head output
+        # Apply tanh to head output
         head_output = torch.tanh(head_output)
+
+        return head_output, fake_rnn_states
+
+class LatentIdentity(ModelCore):
+
+    def __init__(self, cfg, input_size):
+        super().__init__(cfg)
+        self.cfg = cfg
+        self.core_output_size = input_size
+
+    # noinspection PyMethodMayBeStatic
+    def forward(self, head_output, fake_rnn_states):
 
         return head_output, fake_rnn_states
 

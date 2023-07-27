@@ -64,10 +64,7 @@ def main() -> None:
             yaml.dump(sweep_config, f)
     else:
         # Otherwise, create the wandb sweep
-        sweep_id: str = wandb.sweep(sweep_config, project=merged_config["project"])
-
-        # Print the sweep ID
-        print(f"Created a new sweep with ID: {sweep_id}")
+        wandb.sweep(sweep_config, project=merged_config["project"])
 
 if __name__ == "__main__":
     main()
