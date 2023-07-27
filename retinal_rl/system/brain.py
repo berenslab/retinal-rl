@@ -241,36 +241,6 @@ class IdentityDecoder(Decoder):
     def forward(self, core_output):
         return core_output
 
-### Value Networks ###
-
-
-class MeasuredValueFFN(nn.Module):
-
-    """
-    Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
-    """
-    def __init__(self, cfg, enc,cor,crit):
-
-        super().__init__()
-
-        self.cfg = cfg
-        self.encoder = enc
-        self.core = cor
-        self.critic = crit
-
-        device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
-        self.fake_rnn_states = torch.zeros([1, get_rnn_size(cfg)], dtype=torch.float32, device=device)
-
-    def forward(self, nobs,msms):
-        # conv layer 1
-
-        nobs_dict = {"obs":nobs,"measurements":msms}
-
-        x = self.encoder(nobs_dict)
-        x, _ = self.core(x,self.fake_rnn_states)
-        x = self.critic(x)
-
-        return x
 
 ### Encoders ###
 
@@ -492,6 +462,38 @@ class PrototypicalModel(Encoder):
 
     def get_out_size(self) -> int:
         return self.encoder_out_size
+
+
+### Value Networks ###
+
+
+class MeasuredValueFFN(nn.Module):
+
+    """
+    Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
+    """
+    def __init__(self, cfg, enc,cor,crit):
+
+        super().__init__()
+
+        self.cfg = cfg
+        self.encoder = enc
+        self.core = cor
+        self.critic = crit
+
+        device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
+        self.fake_rnn_states = torch.zeros([1, get_rnn_size(cfg)], dtype=torch.float32, device=device)
+
+    def forward(self, nobs,msms):
+        # conv layer 1
+
+        nobs_dict = {"obs":nobs,"measurements":msms}
+
+        x = self.encoder(nobs_dict)
+        x, _ = self.core(x,self.fake_rnn_states)
+        x = self.critic(x)
+
+        return x
 
 
 class ValueFFN(nn.Module):
