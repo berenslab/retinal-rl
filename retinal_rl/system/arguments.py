@@ -8,54 +8,6 @@ from sf_examples.vizdoom.doom.doom_params import add_doom_env_args,add_doom_env_
 from sample_factory.utils.utils import str2bool
 
 
-# Batch launcher
-
-import os
-import subprocess
-import yaml
-import hiyapyco
-
-# Load and merge the YAML files
-filenames = ["file1.yaml", "file2.yaml", "file3.yaml"]  # replace with your filenames
-configs = [yaml.safe_load(open(filename)) for filename in filenames]
-merged_config = hiyapyco.load(configs, method=hiyapyco.METHOD_OVERWRITE)
-
-# Construct the job type variable
-wandb_job_type = "_".join(os.path.splitext(filename)[0] for filename in filenames)
-
-# Define the experiment variable
-experiment = "-".join(
-    f"{param_name}_{{{param_name}}}"
-    for param_name, param_info in merged_config["parameters"].items()
-    if "values" in param_info and len(param_info["values"]) > 1
-)
-
-# Update the merged config
-merged_config["parameters"]["wandb_job_type"] = {"value": wandb_job_type}
-merged_config["parameters"]["experiment"] = {"value": experiment}
-
-# Loop over variables with multiple values
-for param_name, param_info in merged_config["parameters"].items():
-    if "values" in param_info and len(param_info["values"]) > 1:
-        for value in param_info["values"]:
-            # Update the value for the current parameter
-            merged_config["parameters"][param_name] = {"value": value}
-
-            # Construct the command line arguments
-            args = [
-                f"--{name} {info['value']}"
-                for name, info in merged_config["parameters"].items()
-                if "value" in info
-            ]
-
-            # Launch the training script
-            command = f"python train.py {' '.join(args)}"
-            subprocess.run(command, shell=True)
-
-
-
-# Default argument overrides
-
 def retinal_override_defaults(parser):
     """Overrides for the sample factory CLI defaults."""
     parser.set_defaults(

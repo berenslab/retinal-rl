@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 from retinal_rl.system.brain import register_brain
 from retinal_rl.system.environment import register_retinal_env
-from retinal_rl.system.command import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
+from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 
 from retinal_rl.analysis.simulation import get_brain_env,generate_simulation,get_checkpoint
 from retinal_rl.analysis.statistics import gaussian_noise_stas,gradient_receptive_fields
