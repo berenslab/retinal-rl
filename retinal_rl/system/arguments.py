@@ -21,6 +21,7 @@ def retinal_override_defaults(parser):
         res_h=120,
         res_w=160,
         decorrelate_envs_on_one_worker=False,
+        wide_aspect_ratio=False,
 
         # Wandb stuff
         with_wandb='True',
@@ -72,7 +73,7 @@ def add_retinal_env_args(parser):
                         , type=str, help="Type of activation function to use.")
     parser.add_argument('--repeat', type=int, default=1, help="Dummy parameter to indicate which repetition we're at in a wandb sweep")
     parser.add_argument('--analysis_freq', type=int, default=int(19e8), help="How often to run analysis (in frames)")
-    parser.add_argument("--online_analysis", default=True,type=str2bool, help="Whether to run online analyses of the model during training")
+    parser.add_argument("--online_analysis", default=False,type=str2bool, help="Whether to run online analyses of the model during training")
     parser.add_argument("--dry_run", default=False, type=str2bool, help="Only perform a dry run of the config and network analysis, without training or evaluation")
 
 

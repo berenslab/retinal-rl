@@ -202,7 +202,7 @@ class LatentFFN(ModelCore):
     # noinspection PyMethodMayBeStatic
     def forward(self, head_output, fake_rnn_states):
         # Apply sigmoid to head output
-        head_output = torch.sigmoid(head_output)
+        head_output = torch.tanh(head_output)
 
         return head_output, fake_rnn_states
 
@@ -257,87 +257,6 @@ class MeasuredValueFFN(nn.Module):
 
         return x
 
-class ValueFFN(nn.Module):
-
-    """
-    Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
-    """
-    def __init__(self, cfg, enc,cor,crit):
-
-        super().__init__()
-
-        self.cfg = cfg
-        self.encoder = enc
-        self.core = cor
-        self.critic = crit
-
-        device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
-        self.fake_rnn_states = torch.zeros([1, get_rnn_size(cfg)], dtype=torch.float32, device=device)
-
-    def forward(self, nobs):
-        # conv layer 1
-
-        nobs_dict = {"obs":nobs}
-
-        x = self.encoder(nobs_dict)
-        x, _ = self.core(x,self.fake_rnn_states)
-        x = self.critic(x)
-
-        return x
-
-
-
-class MeasuredValueRNN(nn.Module):
-
-    """
-    Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
-    """
-    def __init__(self, cfg, enc, cor, crit):
-
-        super().__init__()
-
-        self.cfg = cfg
-        self.encoder = enc
-        self.core = cor
-        self.critic = crit
-
-    def forward(self, nobs,msms,rnn_states):
-        # conv layer 1
-
-        nobs_dict = {"obs":nobs,"measurements":msms}
-
-        x = self.encoder(nobs_dict)
-        x, _ = self.core(x,rnn_states)
-        x = self.critic(x)
-
-        return x
-
-class ValueRNN(nn.Module):
-
-    """
-    Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
-    """
-    def __init__(self, cfg, enc, cor, crit):
-
-        super().__init__()
-
-        self.cfg = cfg
-        self.encoder = enc
-        self.core = cor
-        self.critic = crit
-
-    def forward(self, nobs,rnn_states):
-        # conv layer 1
-
-        nobs_dict = {"obs":nobs}
-
-        x = self.encoder(nobs_dict)
-        x, _ = self.core(x,rnn_states)
-        x = self.critic(x)
-
-        return x
-
-
 ### Encoders ###
 
 
@@ -375,7 +294,7 @@ class RetinalEncoder(Encoder):
             x = torch.cat((x, obs_dict["measurements"]),dim=1)
 
         x = self.nl_fc(self.fc2(x))
-        x = self.nl_fc(self.fc3(x))
+        x = self.fc3(x)
 
         return x
 
@@ -520,6 +439,7 @@ class RetinalStrideModel(Encoder):
 
 # Prototypical Encoder
 
+
 class PrototypicalModel(Encoder):
 
     def __init__(self, cfg : Config , obs_space : ObsSpace):
@@ -557,4 +477,87 @@ class PrototypicalModel(Encoder):
 
     def get_out_size(self) -> int:
         return self.encoder_out_size
+
+
+class ValueFFN(nn.Module):
+
+    """
+    Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
+    """
+    def __init__(self, cfg, enc,cor,crit):
+
+        super().__init__()
+
+        self.cfg = cfg
+        self.encoder = enc
+        self.core = cor
+        self.critic = crit
+
+        device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
+        self.fake_rnn_states = torch.zeros([1, get_rnn_size(cfg)], dtype=torch.float32, device=device)
+
+    def forward(self, nobs):
+        # conv layer 1
+
+        nobs_dict = {"obs":nobs}
+
+        x = self.encoder(nobs_dict)
+        x, _ = self.core(x,self.fake_rnn_states)
+        x = self.critic(x)
+
+        return x
+
+
+
+class MeasuredValueRNN(nn.Module):
+
+    """
+    Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
+    """
+    def __init__(self, cfg, enc, cor, crit):
+
+        super().__init__()
+
+        self.cfg = cfg
+        self.encoder = enc
+        self.core = cor
+        self.critic = crit
+
+    def forward(self, nobs,msms,rnn_states):
+        # conv layer 1
+
+        nobs_dict = {"obs":nobs,"measurements":msms}
+
+        x = self.encoder(nobs_dict)
+        x, _ = self.core(x,rnn_states)
+        x = self.critic(x)
+
+        return x
+
+class ValueRNN(nn.Module):
+
+    """
+    Converts a basic encoder into a feedforward value network that can be easily analyzed by e.g. captum.
+    """
+    def __init__(self, cfg, enc, cor, crit):
+
+        super().__init__()
+
+        self.cfg = cfg
+        self.encoder = enc
+        self.core = cor
+        self.critic = crit
+
+    def forward(self, nobs,rnn_states):
+        # conv layer 1
+
+        nobs_dict = {"obs":nobs}
+
+        x = self.encoder(nobs_dict)
+        x, _ = self.core(x,rnn_states)
+        x = self.critic(x)
+
+        return x
+
+
 
