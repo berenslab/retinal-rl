@@ -4,7 +4,6 @@ import numpy as np
 import torch
 from math import floor,ceil
 
-import os
 from os.path import join
 
 from sample_factory.utils.typing import Config
@@ -245,20 +244,3 @@ def rf_size_and_start(mdls,hidx,widx):
 
 def padder(krnsz):
     return (krnsz - 1) // 2
-
-def fill_in_argv_template(argv):
-    """Replace string templates in argv with values from argv."""
-
-    # Convert argv into a dictionary
-    argv = [a.split('=') for a in argv]
-    # Remove dashes from argv
-    cfg = dict([[a[0].replace("--",""),a[1]] for a in argv])
-    # Replace cfg string templates
-    cfg = {k:v.format(**cfg) for k,v in cfg.items()}
-    # Convert cfg back into argv
-    argv = [f"--{k}={v}" for k,v in cfg.items()]
-
-    return argv
-
-
-
