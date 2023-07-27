@@ -1,0 +1,33 @@
+description: Sweeping performance of models on gathering tasks of increasing visual complexity.
+method: grid
+project: retinal-rl
+
+parameters:
+
+  # Simulation specification
+  online_analysis:
+    value: False
+  repeat:
+    values: [1,2]
+  env:
+    values: ["gathering-apples","gathering-gabors","gathering-mnist","gathering-cifar10"]
+  res_h:
+    value: 120
+  res_w:
+    value: 160
+
+  # Training
+  train_for_env_steps:
+    value: 10000000000
+  optimizer:
+    value: "adam"
+
+  # Hardware
+  num_workers:
+    value: 16
+  num_envs_per_worker:
+    value: 8
+  rollout:
+    value: 32
+  recurrence:
+    value: 32

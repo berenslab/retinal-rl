@@ -1,0 +1,21 @@
+parameters:
+
+  # Network architecture
+  activation:
+    value: "elu"
+  vision_model:
+    value: "retinal"
+  input_satiety:
+    values: [True,False]
+  base_channels:
+    value: 16
+  use_rnn:
+    value: True
+  rnn_size:
+    value: 32
+
+  # Training
+  with_vtrace:
+    value: False
+  normalize_returns:
+    value: True
