@@ -18,7 +18,7 @@ from sample_factory.algo.utils.make_env import make_env_func_batched
 
 from retinal_rl.system.brain import register_brain,make_encoder
 from retinal_rl.system.environment import register_retinal_env
-from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
+from retinal_rl.system.command import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 
 from retinal_rl.util import analysis_root,plot_path, write_analysis_count, read_analysis_count,fill_in_argv_template
 
