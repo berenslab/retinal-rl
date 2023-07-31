@@ -8,7 +8,7 @@ parameters:
   online_analysis:
     value: False
   repeat:
-    values: [1,2]
+    values: [1,2,3]
   env:
     values: ["gathering-apples","gathering-gabors","gathering-mnist","gathering-cifar10"]
   res_h:
@@ -18,15 +18,17 @@ parameters:
 
   # Training
   train_for_env_steps:
-    value: 10000000000
+    value: 8000000000
   optimizer:
     value: "adam"
 
   # Hardware
   num_workers:
-    value: 16
+    value: 24
   num_envs_per_worker:
-    value: 8
+    value: 6
+  worker_num_splits:
+    value: 3
   rollout:
     value: 32
   recurrence:
