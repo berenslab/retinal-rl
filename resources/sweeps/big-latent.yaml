@@ -1,0 +1,5 @@
+parameters:
+
+  # Network architecture
+  rnn_size:
+    value: 256

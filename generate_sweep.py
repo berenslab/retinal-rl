@@ -1,10 +1,19 @@
 from typing import List
 import os
 import yaml
-import hiyapyco
 import argparse
 import wandb
 import random
+
+def merge_configs(configs: List[dict]) -> dict:
+    merged_config = {}
+    for config in configs:
+        for key, value in config.items():
+            if key == "parameters" and key in merged_config:
+                merged_config[key].update(value)  # Merge parameters hierarchically
+            else:
+                merged_config[key] = value  # Replace other keys
+    return merged_config
 
 def main() -> None:
     # Parse command-line arguments
@@ -22,17 +31,20 @@ def main() -> None:
     args = parser.parse_args()
 
     # Load and merge the YAML files
-    configs: List[str] = [f"resources/sweeps/{filename}.yaml" for filename in args.yaml_files]
-    merged_config: dict = hiyapyco.load(*configs, method=hiyapyco.METHOD_MERGE)
+    configs: List[dict] = []
+    for filename in args.yaml_files:
+        with open(f"resources/sweeps/{filename}.yaml", 'r') as file:
+            configs.append(yaml.safe_load(file))
+    merged_config = merge_configs(configs)
 
     # Construct the job type variable
-    wandb_job_type: str = "-".join([os.path.splitext(os.path.basename(filename))[0] for filename in args.yaml_files])
+    wandb_job_type: str = "-".join(args.yaml_files)
 
     # Define the experiment variable
     experiment: str = "_".join(
         f"{param_name}-{{{param_name}}}"
         for param_name, param_info in merged_config["parameters"].items()
-        if "values" in param_info and len(param_info["values"]) > 1
+        if "values" in param_info
     )
 
     # Convert the merged config to a wandb sweep configuration
@@ -42,11 +54,9 @@ def main() -> None:
         "description": merged_config["description"],
         "method": merged_config["method"],
         "program": "analyze.py" if args.analyze else "train.py",
-        "parameters": {
-            name: dict(info) for name, info in merged_config["parameters"].items()
-        },
+        "parameters": merged_config["parameters"],
     }
-    
+
     # Update the wandb group, and set the experiment and job type
     sweep_config["parameters"].update({
         "wandb_group": {"value": args.wandb_group},
