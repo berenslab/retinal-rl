@@ -1,12 +1,11 @@
 objects:
-  distractors:
-    init: 20
-    delay: 60
+  distractor:
+    init: 40
+    delay: 30
     actors:
       distractor-1:
         textures:
           - 'apples/red_apple.png'
-      distractor-1:
+      distractor-2:
         textures:
           - 'apples/blue_apple.png'
-      poison-2:

@@ -1,0 +1,9 @@
+parameters:
+
+  # Network architecture
+  input_satiety:
+    value: False
+  base_channels:
+    value: 16
+  retinal_bottleneck:
+    values: [1,2,4,8,16]

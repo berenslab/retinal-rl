@@ -1,0 +1,72 @@
+description: Sweeping performance of models on gathering tasks of increasing visual
+  complexity.
+method: grid
+name: alpha-gathering-recurrent-bottleneck
+parameters:
+  activation:
+    value: elu
+  base_channels:
+    value: 16
+  env:
+    values:
+    - gathering-apples
+    - gathering-gabors
+    - gathering-mnist
+    - gathering-cifar10
+  experiment:
+    value: repeat-{repeat}_env-{env}_input_satiety-{input_satiety}_retinal_bottleneck-{retinal_bottleneck}
+  input_satiety:
+    value: false
+    values:
+    - true
+    - false
+  normalize_returns:
+    value: true
+  num_envs_per_worker:
+    value: 6
+  num_workers:
+    value: 24
+  online_analysis:
+    value: false
+  optimizer:
+    value: adam
+  recurrence:
+    value: 32
+  repeat:
+    values:
+    - 1
+    - 2
+    - 3
+  res_h:
+    value: 120
+  res_w:
+    value: 160
+  retinal_bottleneck:
+    values:
+    - 1
+    - 2
+    - 4
+    - 8
+    - 16
+  rnn_size:
+    value: 256
+  rollout:
+    value: 32
+  train_dir:
+    value: train_dir/alpha/gathering-recurrent-bottleneck
+  train_for_env_steps:
+    value: 8000000000
+  use_rnn:
+    value: true
+  vision_model:
+    value: retinal
+  wandb_group:
+    value: alpha
+  wandb_job_type:
+    value: gathering-recurrent-bottleneck
+  with_vtrace:
+    value: false
+  worker_num_splits:
+    value: 3
+program: train.py
+project: retinal-rl

@@ -12,7 +12,7 @@ parameters:
   use_rnn:
     value: True
   rnn_size:
-    value: 32
+    value: 256
 
   # Training
   with_vtrace:
