@@ -92,5 +92,6 @@ def add_retinal_env_eval_args(parser):
     parser.add_argument("--simulate", default=True, type=str2bool, help="Runs simulations and analyses")
     parser.add_argument("--plot", default=True, type=str2bool, help="Generate static plots")
     parser.add_argument("--animate", default=True, type=str2bool, help="Animate 'analysis_out.npy'")
+    parser.add_argument("--save_frames", default=False, type=str2bool, help="Save the individual frames of the animation")
     parser.add_argument("--frame_step", type=int, default=0, help="Which frame of the animation to statically plot")
     parser.add_argument("--sta_repeats", type=int, default=200, help="Number of loops in generating STAs")

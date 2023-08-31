@@ -7,12 +7,30 @@ plt.style.use('misc/default.mplstyle')
 
 from PIL import Image
 from torchvision.transforms.functional import adjust_contrast
-from matplotlib.animation import FuncAnimation
+from matplotlib.animation import FuncAnimation, AbstractMovieWriter
 from retinal_rl.analysis.statistics import fit_tsne_1d,get_stim_coll,row_zscore
 
 from tqdm.auto import tqdm
 
 greyscale = np.array([0.299, 0.587, 0.114])
+
+# Custom writer class to save frames as PNG files
+class PNGWriter(AbstractMovieWriter):
+    def setup(self, fig, outfile, dpi, *args):
+        self.outfile = outfile
+        self.dpi = dpi
+        self._frame_counter = 0  # Initialize frame counter
+
+    def grab_frame(self, **savefig_kwargs):
+        plt.savefig(f"{self.outfile}/frame_{self._frame_counter}.png", format='png')
+        self._frame_counter += 1  # Increment frame counter
+
+    def finish(self):
+        pass  # No action needed for PNGs
+
+    @classmethod
+    def isAvailable(cls):
+        return True
 
 def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35,prgrs=True):
 
@@ -160,7 +178,7 @@ def simulation_plot(sim_recs,frame_step=0,animate=False,fps=35,prgrs=True):
             vl.set_xdata(i)
 
         anim = FuncAnimation( fig, update
-                             , frames=tqdm( range(1, t_max) ,disable=not(prgrs), desc="Animating Simulation" )
+                             , frames=tqdm( range(1, t_max) ,disable=not(prgrs), desc="Saving animation" )
                              , interval=1000 / fps )
 
         return anim

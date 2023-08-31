@@ -10,7 +10,7 @@ from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_en
 from retinal_rl.analysis.simulation import get_brain_env,generate_simulation,get_checkpoint
 from retinal_rl.analysis.statistics import gaussian_noise_stas,gradient_receptive_fields
 from retinal_rl.util import save_data,load_data,save_onnx,analysis_path,plot_path,data_path,fill_in_argv_template
-from retinal_rl.analysis.plot import simulation_plot,receptive_field_plots
+from retinal_rl.analysis.plot import simulation_plot,receptive_field_plots,PNGWriter
 
 from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
 from sample_factory.utils.utils import log
@@ -113,8 +113,16 @@ def analyze(cfg,progress_bar=True):
         # Animation
         sim_recs = load_data(cfg,ana_name,"sim_recs")
         anim = simulation_plot(sim_recs,animate=True,fps=cfg.fps,prgrs=progress_bar)
-        pth = plot_path(cfg,ana_name,"simulation-animation.mp4")
-        anim.save(pth, extra_args=["-vcodec", "libx264"] )
+        if cfg.save_frames:
+            # Save animation frames as individual pngs in a subfolder
+            pth = plot_path(cfg,ana_name,"simulation-frames")
+            if not os.path.exists(pth):
+                os.makedirs(pth)
+            writer = PNGWriter()
+            anim.save(pth, writer=writer)
+        else:
+            pth = plot_path(cfg,ana_name,"simulation-animation.mp4")
+            anim.save(pth, extra_args=["-vcodec", "libx264"] )
 
     env.close()
 
