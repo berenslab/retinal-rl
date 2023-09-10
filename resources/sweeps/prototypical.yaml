@@ -1,0 +1,17 @@
+parameters:
+  # Training algorithm
+  with_vtrace:
+    value: True
+  normalize_returns:
+    value: False
+
+  # Network architecture
+  activation:
+    value: "elu"
+  vision_model:
+    value: "prototypical"
+  use_rnn:
+    value: False
+  rnn_size:
+    value: 64
+

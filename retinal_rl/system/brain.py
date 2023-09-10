@@ -388,7 +388,7 @@ class RetinalStrideModel(Encoder):
         # Preparing Conv Layers
         conv_layers = OrderedDict(
 
-                [ ('bp_filters', nn.Conv2d(3, self.bp_chans, self.spool * 2, stride=self.spool, padding=self.spad))
+                [ ('bp_filters', nn.Conv2d(3, self.bp_chans, self.spool, stride=self.spool, padding=self.spad))
                  , ('bp_outputs', activation(self.act_name))
 
                  , ('rgc_filters', nn.Conv2d(self.bp_chans, self.rgc_chans, self.spool, padding=self.spad))

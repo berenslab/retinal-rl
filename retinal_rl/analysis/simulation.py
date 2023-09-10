@@ -98,6 +98,7 @@ def generate_simulation(cfg: Config, brain : ActorCritic, env : BatchedVecEnv,pr
     attrs = np.zeros((cfg.res_h, cfg.res_w, 3, t_max))
     ltnts = np.zeros((cfg.rnn_size, t_max))
     acts = np.zeros((2, t_max))
+    plcys = np.zeros((2,3, t_max))
     hlths = np.zeros(t_max)
     rwds = np.zeros(t_max)
     crwds = np.zeros(t_max)
@@ -130,8 +131,10 @@ def generate_simulation(cfg: Config, brain : ActorCritic, env : BatchedVecEnv,pr
             policy_outputs = brain(nobs_dict, rnn_states)
             rnn_states = policy_outputs["new_rnn_states"]
             actions = policy_outputs["actions"]
+            action_distribution = brain.action_distribution()
+            acts_dstrbs = action_distribution.distributions
+            policy = np.array([dstrb.probs[0].detach().numpy() for dstrb in acts_dstrbs])
 
-            # Prepare network state for saving
             ltnt = policy_outputs["latent_states"].detach().cpu().numpy()
 
             # can pass --eval_deterministic=True to CLI in order to argmax the probabilistic actions
@@ -175,6 +178,8 @@ def generate_simulation(cfg: Config, brain : ActorCritic, env : BatchedVecEnv,pr
                 attrs[:,:,:,num_frames] = attrimg
                 ltnts[:,num_frames] = ltnt
                 acts[:,num_frames] = actions
+                plcys[:,:,num_frames] = policy
+
                 hlths[num_frames] = health
                 dns[num_frames] = is_dn
                 rwds[num_frames] = rwd
@@ -202,11 +207,12 @@ def generate_simulation(cfg: Config, brain : ActorCritic, env : BatchedVecEnv,pr
             "nimgs": nimgs,
             "attrs": attrs,
             "ltnts": ltnts,
-            "acts":acts,
-            "hlths":hlths,
-            "rwds":rwds,
-            "crwds":crwds,
-            "dns":dns,
+            "acts": acts,
+            "plcys": plcys,
+            "hlths": hlths,
+            "rwds": rwds,
+            "crwds": crwds,
+            "dns": dns,
             }
 
 
