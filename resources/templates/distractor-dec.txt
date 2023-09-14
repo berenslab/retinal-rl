@@ -1,0 +1,7 @@
+ACTOR {name} : CustomInventory {{
+    +INVENTORY.ALWAYSPICKUP
+    States {{
+        Spawn:
+                {texture_code} A -1
+    }}
+}}

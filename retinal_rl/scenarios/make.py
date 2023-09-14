@@ -8,8 +8,6 @@ import shutil
 
 
 ### Load Config ###
-
-
 def load_config(flnms):
     # list all config files
     flpths = []
@@ -22,66 +20,35 @@ def load_config(flnms):
             
 
 ### Building ACS files ###
-
 def make_acs(cfg,actor_names,object_types,actor_num_textures):
-    
-    acs = ""
+    additional_acs = ""
 
-    # Directives
-    acs +="""// Directives
-#import "acs/retinal.acs"
-#include "zcommon.acs"
-
-script "Load Config Information" OPEN {{
-
-    // Metabolic variables
-    metabolic_delay = {0};
-    metabolic_damage = {1};
-    """.format(cfg['metabolic']['delay'],cfg['metabolic']['damage'])
+    object_variables_template = """
+    // {type} variables
+    {type}_unique = {unique};
+    {type}_init = {init};
+    {type}_delay = {delay};
+    """
 
     for typ in object_types:
         tcfg = cfg['objects'][typ]
-        acs += """
-    // {0} variables
-    {0}_unique = {1};
-    {0}_init = {2};
-    {0}_delay = {3};
-    """.format(typ,len(tcfg['actors']),tcfg['init'],tcfg['delay'])
+        additional_acs += object_variables_template.format(type=typ,unique=len(tcfg['actors']),init=tcfg['init'],delay=tcfg['delay'])
 
-    acs += "\n    // Loading arrays"
+    additional_acs += "\n    // Loading arrays"
 
+    actor_arrays_template ="""
+    actor_names[{index}] = "{actor_name}";
+    actor_num_textures[{index}] = {num_textures};
+    """
     for i,(actor_name,num_textures) in enumerate(zip(actor_names,actor_num_textures)):
-        acs += """
-    actor_names[{0}] = "{1}";
-    actor_num_textures[{0}] = {2};
-    """.format(i,actor_name,num_textures)
+        additional_acs += actor_arrays_template.format(index=i,actor_name=actor_name,num_textures=num_textures)
 
-    acs += "\n}"
+    with open("resources/templates/acs.txt") as f:
+        acs = f.read().format(metabolic_delay=cfg['metabolic']['delay'], metabolic_damage=cfg['metabolic']['damage'], additional=additional_acs)
 
     return acs
 
 ### Building Decorate Files ###
-
-decorate_pre = {}
-
-decorate_pre['nourishment'] = """ACTOR {0} : CustomInventory {{
-    +INVENTORY.ALWAYSPICKUP
-    States {{
-        Pickup:
-            TNT1 A 0 HealThing({1})
-            Stop\n"""
-decorate_pre['poison'] = """ACTOR {0} : CustomInventory {{
-    +INVENTORY.ALWAYSPICKUP
-    States {{
-        Pickup:
-            TNT1 A 0 DamageThing({1})
-            Stop\n"""
-decorate_pre['obstacle'] = """ACTOR {0} : TorchTree {{
-    Radius 24
-    States {{\n"""
-decorate_pre['distractor'] = """ACTOR {0} : CustomInventory {{
-    +INVENTORY.ALWAYSPICKUP
-    States {{\n"""
 
 def actor_code(i,j):
     # Convert k to caps alpha string but skip 'F'
@@ -103,36 +70,38 @@ def make_decorate_include(actor_names):
 
     return decorate
 
-def make_decorate(cfg,actor_name,typ,actor_idx,num_textures):
+def make_decorate(cfg,templates,actor_name,typ,actor_idx):
 
     acfg = cfg['actors'][actor_name]
+    tex_code=actor_code(actor_idx,0)
 
-    decorate = ""
     if typ == "nourishment":
-        decorate += decorate_pre[typ].format(actor_name,acfg['healing'])
+        decorate=templates[typ].format(name=actor_name,healing=acfg['healing'],texture_code=tex_code)
     elif typ == "poison":
-        decorate += decorate_pre[typ].format(actor_name,acfg['damage'])
+        decorate=templates[typ].format(name=actor_name,damage=acfg['damage'],texture_code=tex_code)
     elif typ == "obstacle":
-        decorate += decorate_pre[typ].format(actor_name)
+        decorate=templates[typ].format(name=actor_name, radius=24,texture_code=tex_code)
     elif typ == "distractor":
-        decorate += decorate_pre[typ].format(actor_name)
+        decorate=templates[typ].format(name=actor_name,texture_code=tex_code)
     else:
         raise ValueError("Invalid actor type: {0}".format(typ))
 
-    # Multiline string for beginning of decorate file
-    for j in range(num_textures):
-        decorate += """        Tex{0}:
-            {0} A -1\n""".format(actor_code(actor_idx,j))
-
-    decorate += """        }
-    }\n\n"""
-
     return decorate
 
+def load_decorate_templates():
+    templates={}
+
+    with open("resources/templates/nourishment-dec.txt") as f:
+        templates["nourishment"] = f.read()
+    with open("resources/templates/poison-dec.txt") as f:
+        templates["poison"] = f.read()
+    with open("resources/templates/obstacle-dec.txt") as f:
+        templates["obstacle"] = f.read()
+    with open("resources/templates/distractor-dec.txt") as f:
+        templates["distractor"] = f.read()
+    return templates
 
 ### Creating Scenarios ###
-
-
 def make_scenario(flnms,scnnm=None,clean=True):
 
     # Preloading
@@ -182,7 +151,7 @@ def make_scenario(flnms,scnnm=None,clean=True):
     shutil.copy(osp.join(ibsdr,"MAPINFO.txt"), osp.join(oroot,"MAPINFO.txt"))
 
     # Building decorate and loading textures
-
+    dec_templates=load_decorate_templates()
     actor_names = []
     actor_num_textures = []
 
@@ -215,7 +184,7 @@ def make_scenario(flnms,scnnm=None,clean=True):
                 # Copy png to sprite pth
                 shutil.copy(png,osp.join(osptdr,code + ".png"))
 
-            decorate = make_decorate(tcfg,actor_name,typ,actor_idx,num_textures)
+            decorate = make_decorate(tcfg,dec_templates, actor_name,typ,actor_idx)
             # write decorate to actor pth
             with open(osp.join(oactdr,actor_name + ".dec"),'w') as f:
                 f.write(decorate)

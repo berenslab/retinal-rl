@@ -1,0 +1,11 @@
+// Directives
+#import "acs/retinal.acs"
+#include "zcommon.acs"
+
+script "Load Config Information" OPEN {{
+
+    // Metabolic variables
+    metabolic_delay = {metabolic_delay};
+    metabolic_damage = {metabolic_damage};
+    {additional}
+}}

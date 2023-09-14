@@ -1,0 +1,7 @@
+ACTOR {name} : TorchTree {{
+    Radius {radius}
+    States {{
+        Spawn:
+                {texture_code} A -1
+    }}
+}}

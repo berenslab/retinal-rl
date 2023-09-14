@@ -1,0 +1,10 @@
+ACTOR {name} : CustomInventory {{
+    +INVENTORY.ALWAYSPICKUP
+    States {{
+        Pickup:
+            TNT1 A 0 HealThing({healing})
+            Stop
+        Spawn:
+            {texture_code} A -1
+        }}
+}}
