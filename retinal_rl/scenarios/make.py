@@ -21,7 +21,7 @@ def load_config(flnms):
 
 ### Building ACS files ###
 def make_acs(cfg,actor_names,object_types,actor_num_textures):
-    additional_acs = ""
+    object_variables_acs = ""
 
     object_variables_template = """
     // {type} variables
@@ -32,19 +32,19 @@ def make_acs(cfg,actor_names,object_types,actor_num_textures):
 
     for typ in object_types:
         tcfg = cfg['objects'][typ]
-        additional_acs += object_variables_template.format(type=typ,unique=len(tcfg['actors']),init=tcfg['init'],delay=tcfg['delay'])
+        object_variables_acs += object_variables_template.format(type=typ,unique=len(tcfg['actors']),init=tcfg['init'],delay=tcfg['delay'])
 
-    additional_acs += "\n    // Loading arrays"
 
+    actor_arrays_initialization = ""
     actor_arrays_template ="""
     actor_names[{index}] = "{actor_name}";
     actor_num_textures[{index}] = {num_textures};
     """
     for i,(actor_name,num_textures) in enumerate(zip(actor_names,actor_num_textures)):
-        additional_acs += actor_arrays_template.format(index=i,actor_name=actor_name,num_textures=num_textures)
+        actor_arrays_initialization += actor_arrays_template.format(index=i,actor_name=actor_name,num_textures=num_textures)
 
     with open("resources/templates/acs.txt") as f:
-        acs = f.read().format(metabolic_delay=cfg['metabolic']['delay'], metabolic_damage=cfg['metabolic']['damage'], additional=additional_acs)
+        acs = f.read().format(metabolic_delay=cfg['metabolic']['delay'], metabolic_damage=cfg['metabolic']['damage'], object_variables=object_variables_acs, array_variables = actor_arrays_initialization)
 
     return acs
 
@@ -62,12 +62,9 @@ def texture_code(j):
     return chr(65 + j // 26 ** 2) + chr(65 + (j // 26) % 26) + chr(65 + j % 26)
 
 def make_decorate_include(actor_names):
-
     decorate = ""
-
     for actor_name in actor_names:
         decorate += "#include \"actors/{0}.dec\"\n".format(actor_name)
-
     return decorate
 
 def make_decorate(cfg,templates,actor_name,typ,actor_idx):

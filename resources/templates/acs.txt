@@ -7,5 +7,11 @@ script "Load Config Information" OPEN {{
     // Metabolic variables
     metabolic_delay = {metabolic_delay};
     metabolic_damage = {metabolic_damage};
-    {additional}
+
+
+    // Object Variables
+    {object_variables}
+
+    // Loading arrays
+    {array_variables}
 }}
