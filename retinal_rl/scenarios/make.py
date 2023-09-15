@@ -67,19 +67,23 @@ def make_decorate_include(actor_names):
         decorate += "#include \"actors/{0}.dec\"\n".format(actor_name)
     return decorate
 
-def make_decorate(cfg,templates,actor_name,typ,actor_idx):
+def make_decorate(cfg,templates,actor_name,typ, sprite_names):
 
     acfg = cfg['actors'][actor_name]
-    tex_code=actor_code(actor_idx,0)
+    state_template="Texture{index}: {texture_code} A -1\n\t"
+    states=""
+
+    for i, sprite_name in enumerate(sprite_names):
+        states += state_template.format(index=i, texture_code=sprite_name)
 
     if typ == "nourishment":
-        decorate=templates[typ].format(name=actor_name,healing=acfg['healing'],texture_code=tex_code)
+        decorate=templates[typ].format(name=actor_name,healing=acfg['healing'],states_definitions=states)
     elif typ == "poison":
-        decorate=templates[typ].format(name=actor_name,damage=acfg['damage'],texture_code=tex_code)
+        decorate=templates[typ].format(name=actor_name,damage=acfg['damage'],states_definitions=states)
     elif typ == "obstacle":
-        decorate=templates[typ].format(name=actor_name, radius=24,texture_code=tex_code)
+        decorate=templates[typ].format(name=actor_name, radius=24,states_definitions=states)
     elif typ == "distractor":
-        decorate=templates[typ].format(name=actor_name,texture_code=tex_code)
+        decorate=templates[typ].format(name=actor_name,states_definitions=states)
     else:
         raise ValueError("Invalid actor type: {0}".format(typ))
 
@@ -171,17 +175,15 @@ def make_scenario(flnms,scnnm=None,clean=True):
                         for file in files:
                             if file.endswith(".png"):
                                 pngs.append(osp.join(root,file))
-            pngs = pngs
-                
 
             num_textures = len(pngs)
 
+            sprite_names = [actor_code(actor_idx,i) for i in range(num_textures)]
             for j,png in enumerate(pngs):
-                code = actor_code(actor_idx,j) + "A0"
                 # Copy png to sprite pth
-                shutil.copy(png,osp.join(osptdr,code + ".png"))
+                shutil.copy(png,osp.join(osptdr,sprite_names[j] + "A0.png"))
 
-            decorate = make_decorate(tcfg,dec_templates, actor_name,typ,actor_idx)
+            decorate = make_decorate(tcfg,dec_templates, actor_name,typ,sprite_names)
             # write decorate to actor pth
             with open(osp.join(oactdr,actor_name + ".dec"),'w') as f:
                 f.write(decorate)

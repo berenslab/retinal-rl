@@ -1,10 +1,11 @@
 ACTOR {name} : CustomInventory {{
     +INVENTORY.ALWAYSPICKUP
+
+    // Different states used for different appearances, randomly chosen at spawn
     States {{
         Pickup:
             TNT1 A 0 DamageThing({damage})
             Stop
-        Spawn:
-            {texture_code} A -1
+        {states_definitions}
         }}
 }}

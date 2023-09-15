@@ -1,7 +1,8 @@
 ACTOR {name} : CustomInventory {{
     +INVENTORY.ALWAYSPICKUP
+    
+    // Different states used for different appearances, randomly chosen at spawn
     States {{
-        Spawn:
-                {texture_code} A -1
+        {states_definitions}
     }}
 }}
