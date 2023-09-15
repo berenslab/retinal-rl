@@ -1,6 +1,7 @@
 import os
 import subprocess
 import os.path as osp
+from zipfile import ZipFile
 
 import hiyapyco as hyaml
 import omg
@@ -8,14 +9,12 @@ import shutil
 
 
 ### Load Config ###
-def load_config(flnms):
+def load_config(filenames):
     # list all config files
-    flpths = []
-    for flnm in flnms:
-        flpths.append("resources/map_configs/{0}.yaml".format(flnm))
+    file_paths = ["resources/map_configs/{0}.yaml".format(file) for file in filenames]
 
     # Load all yaml files listed in flnms and combine into a single dictionary, recursively combining keys
-    cfg = hyaml.load(flpths,method=hyaml.METHOD_MERGE)
+    cfg = hyaml.load(file_paths,method=hyaml.METHOD_MERGE)
     return cfg
             
 
@@ -30,9 +29,12 @@ def make_acs(cfg,actor_names,object_types,actor_num_textures):
     {type}_delay = {delay};
     """
 
-    for typ in object_types:
-        tcfg = cfg['objects'][typ]
-        object_variables_acs += object_variables_template.format(type=typ,unique=len(tcfg['actors']),init=tcfg['init'],delay=tcfg['delay'])
+    for type in object_types:
+        type_cfg = cfg['objects'][type]
+        object_variables_acs += object_variables_template.format(type=type,
+                                                                 unique=len(type_cfg['actors']),
+                                                                 init=type_cfg['init'],
+                                                                 delay=type_cfg['delay'])
 
 
     actor_arrays_initialization = ""
@@ -41,7 +43,9 @@ def make_acs(cfg,actor_names,object_types,actor_num_textures):
     actor_num_textures[{index}] = {num_textures};
     """
     for i,(actor_name,num_textures) in enumerate(zip(actor_names,actor_num_textures)):
-        actor_arrays_initialization += actor_arrays_template.format(index=i,actor_name=actor_name,num_textures=num_textures)
+        actor_arrays_initialization += actor_arrays_template.format(index=i,
+                                                                    actor_name=actor_name,
+                                                                    num_textures=num_textures)
 
     with open("resources/templates/acs.txt") as f:
         acs = f.read().format(metabolic_delay=cfg['metabolic']['delay'], metabolic_damage=cfg['metabolic']['damage'], object_variables=object_variables_acs, array_variables = actor_arrays_initialization)
@@ -69,7 +73,7 @@ def make_decorate_include(actor_names):
 
 def make_decorate(cfg,templates,actor_name,typ, sprite_names):
 
-    acfg = cfg['actors'][actor_name]
+    actor_cfg = cfg['actors'][actor_name]
     state_template="Texture{index}: {texture_code} A -1\n\t"
     states=""
 
@@ -77,9 +81,9 @@ def make_decorate(cfg,templates,actor_name,typ, sprite_names):
         states += state_template.format(index=i, texture_code=sprite_name)
 
     if typ == "nourishment":
-        decorate=templates[typ].format(name=actor_name,healing=acfg['healing'],states_definitions=states)
+        decorate=templates[typ].format(name=actor_name,healing=actor_cfg['healing'],states_definitions=states)
     elif typ == "poison":
-        decorate=templates[typ].format(name=actor_name,damage=acfg['damage'],states_definitions=states)
+        decorate=templates[typ].format(name=actor_name,damage=actor_cfg['damage'],states_definitions=states)
     elif typ == "obstacle":
         decorate=templates[typ].format(name=actor_name, radius=24,states_definitions=states)
     elif typ == "distractor":
@@ -102,54 +106,56 @@ def load_decorate_templates():
         templates["distractor"] = f.read()
     return templates
 
+def get_pngs(base_path, png_pths):
+    pngs = []
+    for png_path in png_pths:
+        full_path = osp.join(base_path,png_path)
+        # if pngpth is a png, add it
+        if png_path.endswith(".png"):
+            pngs.append(full_path)
+        elif osp.isdir(full_path):
+            for root, _, files in os.walk(full_path):
+                for file in files:
+                    if file.endswith(".png"):
+                        pngs.append(osp.join(root,file))
+    return pngs
+
 ### Creating Scenarios ###
-def make_scenario(flnms,scnnm=None,clean=True):
+def make_scenario(config_files, scenario_name=None):
 
     # Preloading
-    cfg = load_config(flnms)
-    ocfg = cfg['objects']
-    object_types = ocfg.keys()
+    cfg = load_config(config_files)
+    object_types = cfg['objects'].keys()
 
-    if scnnm is None:
-        scnnm = "-".join(flnms)
+    if scenario_name is None:
+        scenario_name = "-".join(config_files)
 
     # Base directories
-    rscdr = "resources"
-    scndr = "scenarios"
+    resource_dir = "resources"
+    scenario_dir = "scenarios"
 
-    # Inupt Directories
-    ibsdr = osp.join(rscdr,"base")
-    iacsdr = osp.join(ibsdr,"acs")
-    itxtdr = osp.join(rscdr,"textures")
+    # Inupt Directories & Files
+    input_base_dir = osp.join(resource_dir,"base")
 
-    # Output Directories
-    blddr = osp.join(scndr,"build")
-    oroot = osp.join(blddr,scnnm)
-    oacsdr = osp.join(oroot,"acs")
-    omapdr = osp.join(oroot,"maps")
-    osptdr = osp.join(oroot,"sprites")
-    oactdr = osp.join(oroot,"actors")
-    otxtdr = osp.join(oroot,"textures")
+    # Create Zip for output
+    out_file = osp.join(scenario_dir,scenario_name) + ".zip"
+    if osp.exists(out_file):
+        os.remove(out_file)
+    scenario_zip = ZipFile(out_file, "x")
 
-    # Remove exiting root directory
-    if osp.exists(oroot):
-        shutil.rmtree(oroot)
-
-    # Create Directories
-    os.makedirs(scndr,exist_ok=True)
-    os.makedirs(oroot,exist_ok=True)
-    os.makedirs(oacsdr,exist_ok=True)
-    os.makedirs(omapdr,exist_ok=True)
-    os.makedirs(osptdr,exist_ok=True)
-    os.makedirs(oactdr,exist_ok=True)
-    os.makedirs(otxtdr,exist_ok=True)
+    # Create directories in zip
+    scenario_zip.mkdir("acs")
+    scenario_zip.mkdir("maps")
+    scenario_zip.mkdir("sprites")
+    scenario_zip.mkdir("actors")
+    scenario_zip.mkdir("textures")
 
     # Textures
-    shutil.copy(osp.join(ibsdr,"grass.png"),osp.join(otxtdr,"GRASS.png"))
-    shutil.copy(osp.join(ibsdr,"wind.png"), osp.join(otxtdr,"WIND.png"))
+    scenario_zip.write(osp.join(input_base_dir,"grass.png"),osp.join("textures","GRASS.png"))
+    scenario_zip.write(osp.join(input_base_dir,"wind.png"), osp.join("textures","WIND.png"))
 
     # Copy Data to Root
-    shutil.copy(osp.join(ibsdr,"MAPINFO.txt"), osp.join(oroot,"MAPINFO.txt"))
+    scenario_zip.write(osp.join(input_base_dir,"MAPINFO.txt"), "MAPINFO.txt")
 
     # Building decorate and loading textures
     dec_templates=load_decorate_templates()
@@ -157,107 +163,83 @@ def make_scenario(flnms,scnnm=None,clean=True):
     actor_num_textures = []
 
     actor_idx = 0
-    for typ in object_types:
-        tcfg = ocfg[typ]
-        for actor_name in tcfg['actors']:
+    for type in object_types:
+        type_cfg = cfg['objects'][type]
+        for actor_name in type_cfg['actors']:
 
-            pngpths = tcfg['actors'][actor_name]['textures']
             # get all pngs listend in pngpths and subdirs
-            pngs = []
-            for pngpth in pngpths:
-                fllpth = osp.join(itxtdr,pngpth)
-                # if pngpth is a png, add it
-                if pngpth.endswith(".png"):
-                    pngs.append(fllpth)
-                elif osp.isdir(fllpth):
-                    # if pngpth is a directory, recursively add all pngs
-                    for root, _, files in os.walk(fllpth):
-                        for file in files:
-                            if file.endswith(".png"):
-                                pngs.append(osp.join(root,file))
+            png_paths = type_cfg['actors'][actor_name]['textures']
+            pngs = get_pngs(osp.join(resource_dir,"textures"), png_paths)
 
             num_textures = len(pngs)
 
             sprite_names = [actor_code(actor_idx,i) for i in range(num_textures)]
-            for j,png in enumerate(pngs):
-                # Copy png to sprite pth
-                shutil.copy(png,osp.join(osptdr,sprite_names[j] + "A0.png"))
+            # Add pngs as sprites
+            [scenario_zip.write(png,osp.join("sprites",sprite_names[j] + "A0.png")) for j, png in enumerate(pngs)]
 
-            decorate = make_decorate(tcfg,dec_templates, actor_name,typ,sprite_names)
-            # write decorate to actor pth
-            with open(osp.join(oactdr,actor_name + ".dec"),'w') as f:
-                f.write(decorate)
+            decorate = make_decorate(type_cfg,dec_templates, actor_name,type,sprite_names)
+
+            scenario_zip.writestr(osp.join("actors", actor_name+".dec"), decorate)
 
             actor_idx += 1
             actor_names.append(actor_name)
             actor_num_textures.append(num_textures)
 
-    # Write decorate to root
+    # Write decorate include to root
     decorate = make_decorate_include(actor_names)
-
-    with open(osp.join(oroot,"DECORATE.txt"),'w') as f:
-        f.write(decorate)
+    scenario_zip.writestr("DECORATE.txt", decorate)
 
     ## ACS ##
 
     # Defining paths
+    build_path = osp.join(scenario_dir, "build")
+    if osp.exists(build_path):
+        shutil.rmtree(build_path)
+    os.mkdir(build_path)
 
-    bhipth = osp.join(oroot,scnnm + ".acs")
-    bhopth = osp.join(oroot,scnnm + ".o")
-
-    lbipth = osp.join(iacsdr,"retinal.acs")
-    lbopth = osp.join(oacsdr,"RETINAL")
-
-    # Copy retinal to acs pth
-    shutil.copy(lbipth,oacsdr)
-
-    tmppth = osp.join(ibsdr,"TEXTMAP.txt")
+    retinal_acs_path = osp.join(input_base_dir,"acs","retinal.acs")
+    map_acs_path = osp.join(build_path,scenario_name)+".acs"
+    retinal_compiled_path = osp.join(build_path, "retinal.o")
+    map_compiled_path =map_acs_path[:-3]+"o" # Replace ".acs" ending with ".o"
 
     # Write ACS
-    with open(bhipth,'w') as f:
+    with open(map_acs_path,'w') as f:
         acs = make_acs(cfg,actor_names,object_types,actor_num_textures)
         f.write(acs)
 
     # Compile ACS
-    subprocess.call(["acc", "-i","/usr/share/acc", bhipth, bhopth])
-    subprocess.call(["acc", "-i","/usr/share/acc", lbipth, lbopth])
+    subprocess.call(["acc", "-i","/usr/share/acc", retinal_acs_path, retinal_compiled_path])
+    subprocess.call(["acc", "-i","/usr/share/acc", "-i", input_base_dir, map_acs_path])
+
+    # For completeness, add retinal and map acs to zip
+    scenario_zip.write(retinal_compiled_path,osp.join("acs","retinal.o"))
+    scenario_zip.write(retinal_acs_path,osp.join("acs","retinal.acs"))
+    scenario_zip.write(map_acs_path, "behavior.acs")
 
     # Map Wad
-
     wad = omg.WAD()
-    mpgrp = omg.LumpGroup()
+    map_lump = omg.LumpGroup()
+    map_lump["TEXTMAP"] = omg.Lump(from_file=osp.join(input_base_dir,"TEXTMAP.txt"))
+    map_lump["BEHAVIOR"] = omg.Lump(from_file=map_compiled_path)
+    wad.udmfmaps["MAP01"] = omg.UMapEditor(map_lump).to_lumps()
 
-    mpgrp['TEXTMAP'] = omg.Lump(from_file=tmppth)
-    mpgrp['SCRIPTS'] = omg.Lump(from_file=bhipth)
-    mpgrp['BEHAVIOR'] = omg.Lump(from_file=bhopth)
-    wad.udmfmaps["MAP01"] = omg.UMapEditor(mpgrp).to_lumps()
+    # Save wad to map and add to zip
+    map_path = osp.join(build_path,"MAP01.wad")
+    wad.to_file(map_path)
+    scenario_zip.write(map_path, osp.join("maps", "MAP01.wad"))
 
     # Cleanup
-    os.remove(bhopth)
-
-    # Save wad to map dir
-    wad.to_file(osp.join(omapdr,"MAP01.wad"))
+    shutil.rmtree(build_path)
 
     # Copy vizdoom config
-    cnfnm = scnnm + ".cfg"
-    shutil.copy(osp.join(ibsdr,"vizdoom.cfg"),osp.join(scndr,cnfnm))
+    config_name = scenario_name + ".cfg"
+    shutil.copy(osp.join(input_base_dir,"vizdoom.cfg"),osp.join(scenario_dir,config_name))
     # add doom_scenario_path to beginning of cfg
-    with open(osp.join(scndr,cnfnm),'r') as f:
+    with open(osp.join(scenario_dir,config_name),'r') as f:
         cfgtxt = f.read()
     cfgtxt = """# Settings copied from resources/base/vizdoom.cfg
-doom_scenario_path = {0}.zip
+doom_scenario_path = {scenario_name}.zip
 
-""".format(scnnm) + cfgtxt
-    with open(osp.join(scndr,cnfnm),'w') as f:
+""".format(scenario_name=scenario_name) + cfgtxt
+    with open(osp.join(scenario_dir,config_name),'w') as f:
         f.write(cfgtxt)
-
-    # zip build and save to scenarios
-    shutil.make_archive(osp.join(scndr,scnnm),'zip',oroot)
-
-    # If clean flag is set, remove build directory
-    if clean:
-        shutil.rmtree(oroot)
-        # Also if the build directory is empty, remove it too
-        if len(os.listdir(blddr)) == 0:
-            shutil.rmtree(blddr)
-
