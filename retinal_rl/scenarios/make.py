@@ -44,15 +44,15 @@ def make_acs(objects_cfg, actor_names, num_textures, metabolic_delay, metabolic_
 
         for actor_name, actor_cfg in type_cfg["actors"].items():
             heal_damage_values = []
-            if(typ) == "nourishment":
-                heal_damage_values=[actor_cfg["healing"]]
-                heal_damage = "Heal"
-            elif(typ) == "poison":
-                heal_damage_values=[actor_cfg["damage"]]
-                heal_damage = "Damage"
-            values_string = ",".join([str(v) for v in heal_damage_values])
-            actor_function = actor_func_template.format(actor_name=actor_name.replace("-","_"), values = values_string, num_values=len(heal_damage_values), heal_or_damage=heal_damage)
-            actor_functions += actor_function
+            if typ == "nourishment" or typ == "poison":
+                heal_damage = "Heal" if typ == "nourishment" else "Damage"
+                heal_damage_values=[actor_cfg["healing"]] if typ == "nourishment" else [actor_cfg["damage"]]
+                if not isinstance(heal_damage_values[0], int):
+                    heal_damage_values = heal_damage_values[0]
+                print(heal_damage_values)
+                values_string = ",".join([str(v) for v in heal_damage_values])
+                actor_function = actor_func_template.format(actor_name=actor_name.replace("-","_"), values = values_string, num_values=len(heal_damage_values), heal_or_damage=heal_damage)
+                actor_functions += actor_function
 
     actor_arrays_initialization = ""
     actor_arrays_template = """
