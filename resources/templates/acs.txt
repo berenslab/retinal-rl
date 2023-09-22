@@ -15,3 +15,6 @@ script "Load Config Information" OPEN {{
     // Loading arrays
     {array_variables}
 }}
+
+// Actor Functions / Scripts
+{actor_functions}
