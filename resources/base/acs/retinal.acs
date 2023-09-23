@@ -35,6 +35,8 @@ global int 14:distractor_unique;
 global int 15:distractor_init;
 global int 16:distractor_delay;
 
+// Stats
+global int 17:health_gathered;
 // Local variables
 
 // Arena settings
@@ -163,6 +165,12 @@ script "Agent Metabolism" ENTER {
     }
 }
 
+script 10 (int pickedup) {
+
+    health_gathered = health_gathered + pickedup;
+
+ }
+
 script "Agent Initialization" ENTER {
 
     int act_x = random(wall_min/10,wall_max/10);
@@ -172,11 +180,13 @@ script "Agent Initialization" ENTER {
     ClearInventory();
 
     int tcks = 0;
+    health_gathered = 0;
 
     while(true) {
         int curr_health = PlayerHealth();
         reward = reward + curr_health;
         // print(i:reward);
+        // print(i:health_gathered);
         delay(1);
     }
 }

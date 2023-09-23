@@ -69,12 +69,14 @@ decorate_pre['nourishment'] = """ACTOR {0} : CustomInventory {{
     States {{
         Pickup:
             TNT1 A 0 HealThing({1})
+            TNT1 A 0 ACS_Execute(10,0,{1})
             Stop\n"""
 decorate_pre['poison'] = """ACTOR {0} : CustomInventory {{
     +INVENTORY.ALWAYSPICKUP
     States {{
         Pickup:
             TNT1 A 0 DamageThing({1})
+            TNT1 A 0 ACS_Execute(10,0,-{1})
             Stop\n"""
 decorate_pre['obstacle'] = """ACTOR {0} : TorchTree {{
     Radius 24
