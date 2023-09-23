@@ -8,7 +8,7 @@ from retinal_rl.system.environment import register_retinal_env
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 
 from retinal_rl.analysis.simulation import get_brain_env,generate_simulation,get_checkpoint
-from retinal_rl.analysis.statistics import gaussian_noise_stas,gradient_receptive_fields
+from retinal_rl.analysis.statistics import gaussian_noise_stas,gradient_receptive_fields,evaluate_brain
 from retinal_rl.util import save_data,load_data,save_onnx,analysis_path,plot_path,data_path,fill_in_argv_template
 from retinal_rl.analysis.plot import simulation_plot,receptive_field_plots,PNGWriter
 
@@ -25,8 +25,6 @@ def analyze(cfg,progress_bar=True):
     # Register retinal environments and models.
     checkpoint_dict,cfg = get_checkpoint(cfg)
 
-    cfg.device = "cpu"
-
     if checkpoint_dict is None:
         log.debug("RETINAL RL: No checkpoint found, aborting analysis.")
         sys.exit(1)
@@ -40,6 +38,9 @@ def analyze(cfg,progress_bar=True):
     else:
         ana_name = cfg.analysis_name
 
+    if cfg.classification:
+        evaluate_brain(brain)
+
     rf_algs = ["grads"]
     log.debug("RETINAL RL: Model and environment loaded, preparing simulation.")
 
@@ -51,9 +52,9 @@ def analyze(cfg,progress_bar=True):
 
         log.debug("RETINAL RL: Running analysis simulations.")
 
-        inpts,sim_recs = generate_simulation(cfg,brain,env,prgrs=progress_bar)
+        sim_recs = generate_simulation(cfg,brain,env,prgrs=progress_bar,video=cfg.viewport_video)
 
-        save_onnx(cfg,ana_name,brain,inpts)
+        # save_onnx(cfg,ana_name,brain,inpts)
 
         save_data(cfg,ana_name,sim_recs,"sim_recs")
 
@@ -89,11 +90,11 @@ def analyze(cfg,progress_bar=True):
         # plt.close()
 
         # Single frame of the animation
-        fig = simulation_plot(sim_recs,frame_step=cfg.frame_step,prgrs=progress_bar)
-        pth=plot_path(cfg,ana_name,"simulation-frame.png")
-
-        fig.savefig(pth, bbox_inches="tight")
-        plt.close()
+        if cfg.viewport_video:
+            fig = simulation_plot(sim_recs,frame_step=cfg.frame_step,prgrs=progress_bar)
+            pth=plot_path(cfg,ana_name,"simulation-frame.png")
+            fig.savefig(pth, bbox_inches="tight")
+            plt.close()
 
         for alg in rf_algs:
 

@@ -11,7 +11,7 @@ parameters:
   vision_model:
     value: "retinal"
   input_satiety:
-    values: [True,False]
+    value: False
   base_channels:
     value: 16
   use_rnn:
