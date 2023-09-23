@@ -1,5 +1,13 @@
-import numpy as np
+import torch.nn as nn
 import torch
+
+import torch.optim as optim
+import torchvision.transforms as transforms
+from torchvision.datasets import ImageFolder
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+import numpy as np
 
 from openTSNE import TSNE
 
@@ -8,6 +16,7 @@ from captum.attr import NeuronGradient
 from tqdm import tqdm
 
 from retinal_rl.util import encoder_out_size,rf_size_and_start
+from sample_factory.algo.utils.rl_utils import prepare_and_normalize_obs
 
 def gaussian_noise_stas(cfg,env,actor_critic,nbtch,nreps,prgrs):
     """
@@ -162,3 +171,125 @@ def get_stim_coll(all_health, health_dep=-8, death_dep=30):
     stim_coll[stim_coll > death_dep] = 0 # excluding decrease due to death
     stim_coll[stim_coll < -death_dep] = 0
     return stim_coll
+
+class CNNClassifier(nn.Module):
+    def __init__(self, brain, num_classes):
+        super(CNNClassifier, self).__init__()
+        self.encoder = brain.valnet.encoder.vision_model.conv_head
+        self.brain = brain
+        self.softmax = nn.Softmax(dim=1)
+        for param in self.encoder.parameters():
+            param.requires_grad = False  # Freeze the encoder parameters
+
+        self.classifier = nn.Linear(brain.valnet.encoder.vision_model.conv_head_out_size, num_classes)
+
+    def forward(self, obs):
+        x = self.encoder(obs)
+        weights = self.classifier(x)
+        return self.softmax(weights)
+
+class VisionClassifier(nn.Module):
+    def __init__(self, brain, num_classes):
+        super(VisionClassifier, self).__init__()
+        self.encoder = brain.valnet.encoder.vision_model
+        self.brain = brain
+        self.softmax = nn.Softmax(dim=1)
+        for param in self.encoder.parameters():
+            param.requires_grad = False  # Freeze the encoder parameters
+
+        self.classifier = nn.Linear(brain.valnet.encoder.encoder_out_size, num_classes)
+
+    def forward(self, obs):
+        x = self.encoder(obs)
+        return self.classifier(x)
+
+class BrainClassifier(nn.Module):
+    def __init__(self, brain, num_classes):
+        super(BrainClassifier, self).__init__()
+        self.encoder = brain.valnet.encoder
+        self.core = brain.valnet.core
+        self.fake_rnn_states = brain.valnet.fake_rnn_states
+        self.brain = brain
+        self.softmax = nn.Softmax(dim=1)
+        for param in self.encoder.parameters():
+            param.requires_grad = False  # Freeze the encoder parameters
+
+        self.classifier = nn.Linear(brain.valnet.encoder.encoder_out_size, num_classes)
+
+    def forward(self, obs):
+        obs_dict = {"obs": obs}
+        nobs_dict = obs_dict
+        x = self.encoder(nobs_dict)
+        features, _ = self.core(x,self.fake_rnn_states)
+        weights = self.classifier(features)
+        return self.softmax(weights)
+
+class LinearClassifier(nn.Module):
+
+    def __init__(self, num_classes):
+        nn.Module.__init__(self)
+        self.classifier = nn.Linear(3*120*160, num_classes)
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, obs):
+        # Flatten the input
+        features = obs.view(obs.shape[0], -1)
+        return self.classifier(features)
+
+
+def evaluate_brain(brain, train_path='resources/classification/cifar_train_overlay', test_path='resources/classification/cifar_test_overlay', epochs=20, lr=3e-3, batch_size=64):
+    # Data loading
+    device = "cuda"
+    transform = transforms.Compose([transforms.ToTensor()])
+    train_data = ImageFolder(train_path, transform=transform)
+    test_data = ImageFolder(test_path, transform=transform)
+    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
+
+    model = VisionClassifier(brain,10).to(device)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+
+    # Training function
+    def train_model(model, train_loader, optimizer, criterion, device):
+        model.train()
+        total_loss = 0
+        for inputs, labels in tqdm(train_loader):
+            inputs, labels = inputs.to(device), labels.to(device)
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+        return total_loss / len(train_loader)
+
+    # Evaluation function
+    def evaluate_model(model, test_loader, criterion, device):
+        model.eval()
+        total_loss = 0
+        correct = 0
+        with torch.no_grad():
+            for inputs, labels in tqdm(test_loader):
+                inputs, labels = inputs.to(device), labels.to(device)
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
+                total_loss += loss.item()
+                _, predicted = outputs.max(1)
+                correct += predicted.eq(labels).sum().item()
+        accuracy = 100. * correct / len(test_data)
+        return total_loss / len(test_loader), accuracy
+
+    # Training loop
+    for epoch in range(epochs):
+        train_loss = train_model(model, train_loader, optimizer, criterion, device)
+        print(f"Epoch {epoch+1}/{epochs} - Train Loss: {train_loss:.4f}")
+
+    # Evaluation
+    test_loss, accuracy = evaluate_model(model, test_loader, criterion, device)
+    print(f"Test Loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%\n")
+    return test_loss, accuracy
+
+# Example usage:
+# evaluate_brain(brain)
+

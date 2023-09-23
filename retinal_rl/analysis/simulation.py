@@ -2,7 +2,13 @@
 
 from typing import Tuple
 import numpy as np
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split
+from sklearn.utils import shuffle
 import torch
+
+torch.backends.cudnn.enabled=False
 
 from tqdm.auto import tqdm
 
@@ -57,10 +63,6 @@ def get_brain_env(cfg: Config, checkpoint_dict) -> Tuple[ActorCritic,BatchedVecE
         cfg, env_config=AttrDict(worker_index=0, vector_index=0, env_id=0), render_mode=render_mode
     )
 
-    if hasattr(env.unwrapped, "reset_on_init"):
-        # reset call ruins the demo recording for VizDoom
-        env.unwrapped.reset_on_init = False
-
     log.debug("RETINAL RL: Finished making environment, loading actor-critic model...")
     brain = create_actor_critic(cfg, env.observation_space, env.action_space)
     # log.debug("RETINAL RL: ...evaluating actor-critic model...")
@@ -80,32 +82,38 @@ def get_brain_env(cfg: Config, checkpoint_dict) -> Tuple[ActorCritic,BatchedVecE
 
     return brain,env,cfg,nstps
 
-def generate_simulation(cfg: Config, brain : ActorCritic, env : BatchedVecEnv,prgrs : bool):
+def generate_simulation(cfg: Config, brain : ActorCritic, env : BatchedVecEnv, prgrs : bool, video : bool):
     """
     Save an example simulation.
     """
+    num_frames = 0
+    t_max = int(cfg.max_num_frames)
+
+    sim_recs = {}
+    # Initializing stream arrays
+    sim_recs['ltnts'] = torch.zeros((cfg.rnn_size, t_max))
+    sim_recs['plcys'] = torch.zeros((2,3, t_max))
+    sim_recs['uhlths'] = torch.zeros(t_max)
+    sim_recs['hlths'] = torch.zeros(t_max)
+    sim_recs['rwds'] = torch.zeros(t_max)
+    sim_recs['vals'] = torch.zeros(t_max)
+    sim_recs['crwds'] = torch.zeros(t_max)
+    sim_recs['dns'] = torch.zeros(t_max)
+
+    if video:
+
+        sim_recs['imgs'] = torch.zeros((cfg.res_h, cfg.res_w, 3, t_max)).astype(np.uint8)
+        sim_recs['nimgs'] = torch.zeros((cfg.res_h, cfg.res_w, 3, t_max))
+        sim_recs['attrs'] = torch.zeros((cfg.res_h, cfg.res_w, 3, t_max))
+
 
     # Initializing some local variables
-    t_max = int(cfg.max_num_frames)
     env_info = extract_env_info(env, cfg)
     action_repeat: int = cfg.env_frameskip // cfg.eval_env_frameskip
     device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
 
 
-    # Initializing stream arrays
-    imgs = np.zeros((cfg.res_h, cfg.res_w, 3, t_max)).astype(np.uint8)
-    nimgs = np.zeros((cfg.res_h, cfg.res_w, 3, t_max))
-    attrs = np.zeros((cfg.res_h, cfg.res_w, 3, t_max))
-    ltnts = np.zeros((cfg.rnn_size, t_max))
-    acts = np.zeros((2, t_max))
-    plcys = np.zeros((2,3, t_max))
-    hlths = np.zeros(t_max)
-    rwds = np.zeros(t_max)
-    crwds = np.zeros(t_max)
-    dns = np.zeros(t_max)
-
     # Initializing simulation state
-    num_frames = 0
     obs_dict,_ = env.reset()
     nobs_dict = prepare_and_normalize_obs(brain, obs_dict)
     nobs,msms = obs_dict_to_tuple(nobs_dict)
@@ -120,100 +128,119 @@ def generate_simulation(cfg: Config, brain : ActorCritic, env : BatchedVecEnv,pr
     if msms is not None:
         msms1 = torch.unsqueeze(msms,0)
 
-    onnx_inpts = brain.prune_inputs(nobs1,msms1,rnn_states)
+    # onnx_inpts = brain.prune_inputs(nobs1,msms1,rnn_states)
 
-    # Simulation loop
-    with tqdm(total=t_max-1, desc="Generating Simulation", disable=not(prgrs)) as pbar:
+    # Simulation loop with tqdm
+    for num_frames in tqdm(range(t_max), disable=not prgrs):
 
-        while num_frames < t_max:
+        # Evaluate policy
+        policy_outputs = brain(nobs_dict, rnn_states)
+        rnn_states = policy_outputs["new_rnn_states"]
+        actions = policy_outputs["actions"]
+        action_distribution = brain.action_distribution()
+        acts_dstrbs = action_distribution.distributions
+        policy = torch.stack([dstrb.probs[0] for dstrb in acts_dstrbs])
+        value = policy_outputs["values"]
 
-            # Evaluate policy
-            policy_outputs = brain(nobs_dict, rnn_states)
-            rnn_states = policy_outputs["new_rnn_states"]
-            actions = policy_outputs["actions"]
+        ltnt = policy_outputs["latent_states"]
+
+        # can pass --eval_deterministic=True to CLI in order to argmax the probabilistic actions
+        if cfg.eval_deterministic:
             action_distribution = brain.action_distribution()
-            acts_dstrbs = action_distribution.distributions
-            policy = np.array([dstrb.probs[0].detach().numpy() for dstrb in acts_dstrbs])
+            actions = argmax_actions(action_distribution)
 
-            ltnt = policy_outputs["latent_states"].detach().cpu().numpy()
+        # actions shape should be [num_agents, num_actions] even if it's [1, 1]
+        if actions.ndim == 1:
+            actions = unsqueeze_tensor(actions, dim=-1)
+        actions = preprocess_actions(env_info, actions)
 
-            # can pass --eval_deterministic=True to CLI in order to argmax the probabilistic actions
-            if cfg.eval_deterministic:
-                action_distribution = brain.action_distribution()
-                actions = argmax_actions(action_distribution)
+        # Repeating actions during evaluation because we run the simulation at higher FPS
+        for _ in range(action_repeat):
 
-            # actions shape should be [num_agents, num_actions] even if it's [1, 1]
-            if actions.ndim == 1:
-                actions = unsqueeze_tensor(actions, dim=-1)
-            actions = preprocess_actions(env_info, actions)
+            obs,msms = obs_dict_to_tuple(obs_dict)
+            nobs,_ = obs_dict_to_tuple(nobs_dict)
 
-            # Repeating actions during evaluation because we run the simulation at higher FPS
-            for _ in range(action_repeat):
+            info = env.unwrapped.get_info()
+            health = info.get('HEALTH') # environment info (health etc.)
+            unbound_health = info.get('USER17') # environment info (health etc.)
 
-                obs,msms = obs_dict_to_tuple(obs_dict)
-                nobs,_ = obs_dict_to_tuple(nobs_dict)
+            if is_dn:
+                crwd=0
+            else:
+                crwd+=rwd
 
-                nobs1 = torch.unsqueeze(nobs,0)
+            sim_recs['ltnts'][:,num_frames] = ltnt
+            sim_recs['plcys'][:,:,num_frames] = policy
+
+            sim_recs['hlths'][num_frames] = health
+            sim_recs['uhlths'][num_frames] = unbound_health
+            sim_recs['dns'][num_frames] = is_dn
+            sim_recs['vals'][num_frames] = value
+            sim_recs['rwds'][num_frames] = rwd
+            sim_recs['crwds'][num_frames] = crwd
+
+            if video:
 
                 if msms is not None:
                     msms1 = torch.unsqueeze(msms,0)
 
+                nobs1 = torch.unsqueeze(nobs,0)
                 nobsatt = brain.attribute(nobs1, msms1, rnn_states)
-
                 attr = torch.squeeze(nobsatt,0)
 
                 img = obs_to_img(obs)
                 nimg = obs_to_img(nobs)
                 attrimg = obs_to_img(attr)
 
-                health = env.unwrapped.get_info()['HEALTH'] # environment info (health etc.)
+                sim_recs['imgs'][:,:,:,num_frames] = img
+                sim_recs['nimgs'][:,:,:,num_frames] = nimg
+                sim_recs['attrs'][:,:,:,num_frames] = attrimg
 
-                if is_dn:
-                    crwd=0
-                else:
-                    crwd+=rwd
+            obs_dict,rwd,terminated,truncated,_ = env.step(actions)
+            is_dn = truncated | terminated
+            nobs_dict = prepare_and_normalize_obs(brain, obs_dict)
 
-                imgs[:,:,:,num_frames] = img
-                nimgs[:,:,:,num_frames] = nimg
-                attrs[:,:,:,num_frames] = attrimg
-                ltnts[:,num_frames] = ltnt
-                acts[:,num_frames] = actions
-                plcys[:,:,num_frames] = policy
+            # Report multivariate mean and std of plcys from 0 to current frame using tqdm
+            # if prgrs and num_frames % 100 == 0:
+            #     heading_means = np.mean(plcys[0,:,:num_frames+1],axis=1)
+            #     heading_sds = np.std(plcys[0,:,:num_frames+1],axis=1)
+            #     velocity_means = np.mean(plcys[1,:,:num_frames+1],axis=1)
+            #     velocity_sds = np.std(plcys[1,:,:num_frames+1],axis=1)
+            #   # Update the statistics on the second line
+            #     stats1.set_description(f"Heading stats: means {heading_means}; sds: {heading_sds}")
+            #     stats1.refresh()  # Refresh to show the updated statistics
+            #     stats2.set_description(f"Velocity stats: means {velocity_means}; sds: {velocity_sds}")
+            #     stats2.refresh()  # Refresh to show the updated statistics
+            #
 
-                hlths[num_frames] = health
-                dns[num_frames] = is_dn
-                rwds[num_frames] = rwd
-                crwds[num_frames] = crwd
+    if video:
+        attrs = abs(attrs)
+        attrs = from_float_to_rgb(attrs)
+        nimgs = from_float_to_rgb(nimgs)
 
-                obs_dict,rwd,terminated,truncated,_ = env.step(actions)
-                is_dn = truncated | terminated
-                nobs_dict = prepare_and_normalize_obs(brain, obs_dict)
-                actions = np.array(actions)
-
-                num_frames += 1
-                pbar.update(1)
-
-                if num_frames >= t_max:
-                    break
-
-    # Clip attrs to 95th percentile
-    attrs = abs(attrs)
-
-    attrs = from_float_to_rgb(attrs)
-    nimgs = from_float_to_rgb(nimgs)
-
-    return onnx_inpts, {
-            "imgs": imgs,
-            "nimgs": nimgs,
-            "attrs": attrs,
-            "ltnts": ltnts,
-            "acts": acts,
-            "plcys": plcys,
-            "hlths": hlths,
-            "rwds": rwds,
-            "crwds": crwds,
-            "dns": dns,
-            }
+    # Shuffle x and y in the same way
+    # idx = shuffle(np.arange(t_max))
+    # x = hlths[idx]
+    # # transpose ltnts so that each row is a latent state
+    # y = np.transpose(ltnts)
+    # y = y[idx]
+    #
+    # # Split data into training and test sets
+    # x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+    #
+    # # Train a linear predictor
+    # reg = LinearRegression().fit(y_train, x_train)
+    #
+    # # Predict on the test set
+    # x_pred = reg.predict(y_test)
+    #
+    # # Calculate the root mse
+    # rmse = mean_squared_error(x_test, x_pred, squared=False)
+    #
+    # print(f"\n\n\nHealth Mean Squared Error: {rmse}")
+    # print(f"Coefficients: {reg.coef_}")
+    #
+    return sim_recs
 
 
 
