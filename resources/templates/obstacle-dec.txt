@@ -1,8 +1,0 @@
-ACTOR {name} : TorchTree {{
-    Radius {radius}
-    
-    // Different states used for different appearances, randomly chosen at spawn
-    States {{
-        {states_definitions}
-    }}
-}}

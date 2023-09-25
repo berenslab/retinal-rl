@@ -1,6 +1,0 @@
-int values_{actor_name}[{num_values}] = {{ {values} }};
-script "func_{actor_name}" (void)
-{{
-    int i = Random(0,{num_values}-1);
-    {heal_or_damage}Thing(values_{actor_name}[i]);
-}}
