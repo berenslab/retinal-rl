@@ -46,9 +46,8 @@ def object_variables(typ, unique, init, delay):
 
 
 def actor_function(actor_name, values, heal_or_damage):
-    actor_name = actor_name.replace(
-        "-", "_"
-    )  # Actor name will be used in function name, not possible with -
+    actor_name = actor_name.replace("-", "_")
+    # Actor name will be used in function name, not possible with -
     num_values = len(values)
     values_string = ",".join([str(v) for v in values])
 
