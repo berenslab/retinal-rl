@@ -35,6 +35,7 @@ From: nvidia/cuda:11.7.1-runtime-ubuntu22.04
     wget \
     unzip \
     gifsicle \
+    parallel \
     nvidia-modprobe \
     nasm
 

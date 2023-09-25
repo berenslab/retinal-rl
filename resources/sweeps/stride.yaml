@@ -1,0 +1,17 @@
+parameters:
+  # Training algorithm
+  with_vtrace:
+    value: False
+  normalize_returns:
+    value: True
+
+  # Network architecture
+  activation:
+    value: "elu"
+  vision_model:
+    value: "retinal_stride"
+  use_rnn:
+    value: True
+  rnn_size:
+    value: 128
+
