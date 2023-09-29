@@ -1,2 +1,11 @@
 [tool.pyright]
 include = ["retinal_rl"]
+
+[tool.setuptools]
+
+[project]
+name = "retinal_rl"
+version="0.0.1"
+
+[tool.setuptools.packages.find]
+include =["retinal_rl*"]
