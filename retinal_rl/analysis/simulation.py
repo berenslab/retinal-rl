@@ -82,30 +82,52 @@ def get_brain_env(cfg: Config, checkpoint_dict) -> Tuple[ActorCritic,BatchedVecE
 
     return brain,env,cfg,nstps
 
-def generate_simulation(cfg: Config, brain : ActorCritic, env : BatchedVecEnv, prgrs : bool, video : bool):
+def generate_simulation(cfg: Config, brain : ActorCritic, env : BatchedVecEnv, sim_recs, prgrs : bool, video : bool):
     """
     Save an example simulation.
     """
     num_frames = 0
     t_max = int(cfg.max_num_frames)
 
-    sim_recs = {}
-    # Initializing stream arrays
-    sim_recs['ltnts'] = torch.zeros((cfg.rnn_size, t_max))
-    sim_recs['plcys'] = torch.zeros((2,3, t_max))
-    sim_recs['uhlths'] = torch.zeros(t_max)
-    sim_recs['hlths'] = torch.zeros(t_max)
-    sim_recs['rwds'] = torch.zeros(t_max)
-    sim_recs['vals'] = torch.zeros(t_max)
-    sim_recs['crwds'] = torch.zeros(t_max)
-    sim_recs['dns'] = torch.zeros(t_max)
+    if sim_recs is None:
 
-    if video:
+        sim_recs = {}
+        # Initializing stream arrays
+        sim_recs['ltnts'] = np.zeros((cfg.rnn_size, t_max))
+        sim_recs['plcys'] = np.zeros((2,3, t_max))
+        sim_recs['uhlths'] = np.zeros(t_max)
+        sim_recs['hlths'] = np.zeros(t_max)
+        sim_recs['rwds'] = np.zeros(t_max)
+        sim_recs['vals'] = np.zeros(t_max)
+        sim_recs['crwds'] = np.zeros(t_max)
+        sim_recs['dns'] = np.zeros(t_max)
 
-        sim_recs['imgs'] = torch.zeros((cfg.res_h, cfg.res_w, 3, t_max)).astype(np.uint8)
-        sim_recs['nimgs'] = torch.zeros((cfg.res_h, cfg.res_w, 3, t_max))
-        sim_recs['attrs'] = torch.zeros((cfg.res_h, cfg.res_w, 3, t_max))
+        if video:
 
+            sim_recs['imgs'] = np.zeros((cfg.res_h, cfg.res_w, 3, t_max)).astype(np.uint8)
+            sim_recs['nimgs'] = np.zeros((cfg.res_h, cfg.res_w, 3, t_max))
+            sim_recs['attrs'] = np.zeros((cfg.res_h, cfg.res_w, 3, t_max))
+
+    else:
+        # Set num_frames to the number of frames already saved
+        num_frames = sim_recs['rwds'].shape[0]
+        # Extend the arrays to the new size
+        sim_recs['ltnts'] = np.concatenate((sim_recs['ltnts'],np.zeros((cfg.rnn_size, t_max))),axis=1)
+        sim_recs['plcys'] = np.concatenate((sim_recs['plcys'],np.zeros((2,3, t_max))),axis=2)
+        sim_recs['uhlths'] = np.concatenate((sim_recs['uhlths'],np.zeros(t_max)))
+        sim_recs['hlths'] = np.concatenate((sim_recs['hlths'],np.zeros(t_max)))
+        sim_recs['rwds'] = np.concatenate((sim_recs['rwds'],np.zeros(t_max)))
+        sim_recs['vals'] = np.concatenate((sim_recs['vals'],np.zeros(t_max)))
+        sim_recs['crwds'] = np.concatenate((sim_recs['crwds'],np.zeros(t_max)))
+        sim_recs['dns'] = np.concatenate((sim_recs['dns'],np.zeros(t_max)))
+
+        if video:
+
+            sim_recs['imgs'] = np.cat((sim_recs['imgs'],np.zeros((cfg.res_h, cfg.res_w, 3, t_max-num_frames)).astype(np.uint8)),dim=3)
+            sim_recs['nimgs'] = np.cat((sim_recs['nimgs'],np.zeros((cfg.res_h, cfg.res_w, 3, t_max-num_frames))),dim=3)
+            sim_recs['attrs'] = np.cat((sim_recs['attrs'],np.zeros((cfg.res_h, cfg.res_w, 3, t_max-num_frames))),dim=3)
+
+    t_max = int(cfg.max_num_frames) + num_frames
 
     # Initializing some local variables
     env_info = extract_env_info(env, cfg)
@@ -131,7 +153,7 @@ def generate_simulation(cfg: Config, brain : ActorCritic, env : BatchedVecEnv, p
     # onnx_inpts = brain.prune_inputs(nobs1,msms1,rnn_states)
 
     # Simulation loop with tqdm
-    for num_frames in tqdm(range(t_max), disable=not prgrs):
+    for num_frames in tqdm(range(num_frames,t_max), disable=not prgrs):
 
         # Evaluate policy
         policy_outputs = brain(nobs_dict, rnn_states)
@@ -169,8 +191,8 @@ def generate_simulation(cfg: Config, brain : ActorCritic, env : BatchedVecEnv, p
             else:
                 crwd+=rwd
 
-            sim_recs['ltnts'][:,num_frames] = ltnt
-            sim_recs['plcys'][:,:,num_frames] = policy
+            sim_recs['ltnts'][:,num_frames] = ltnt.cpu().detach().numpy()
+            sim_recs['plcys'][:,:,num_frames] = policy.cpu().detach().numpy()
 
             sim_recs['hlths'][num_frames] = health
             sim_recs['uhlths'][num_frames] = unbound_health
@@ -214,9 +236,9 @@ def generate_simulation(cfg: Config, brain : ActorCritic, env : BatchedVecEnv, p
             #
 
     if video:
-        attrs = abs(attrs)
-        attrs = from_float_to_rgb(attrs)
-        nimgs = from_float_to_rgb(nimgs)
+        sim_recs['attrs'] = abs(sim_recs['attrs'])
+        sim_recs['attrs'] = from_float_to_rgb(sim_recs['attrs'])
+        sim_recs['nimgs'] = from_float_to_rgb(sim_recs['nimgs'])
 
     # Shuffle x and y in the same way
     # idx = shuffle(np.arange(t_max))

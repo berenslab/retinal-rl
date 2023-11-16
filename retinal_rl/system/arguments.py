@@ -95,5 +95,6 @@ def add_retinal_env_eval_args(parser):
     parser.add_argument("--save_frames", default=False, type=str2bool, help="Save the individual frames of the animation")
     parser.add_argument("--frame_step", type=int, default=0, help="Which frame of the animation to statically plot")
     parser.add_argument("--sta_repeats", type=int, default=200, help="Number of loops in generating STAs")
-    parser.add_argument("--classification", default=False, type=str2bool, help="Run classification analysis")
+    parser.add_argument( "--classification", default=None , choices=["mnist", "cifar10"])
     parser.add_argument("--viewport_video", default=False, type=str2bool, help="If running a simulation, save the video and attributions as well")
+    parser.add_argument("--append_sim", default=False, type=str2bool, help="If running a simulation, append the simulation to the existing sim_recs.npy file")

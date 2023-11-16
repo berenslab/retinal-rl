@@ -1,5 +1,6 @@
 import sys
 import os
+import torch
 
 import matplotlib.pyplot as plt
 
@@ -8,8 +9,8 @@ from retinal_rl.system.environment import register_retinal_env
 from retinal_rl.system.arguments import retinal_override_defaults,add_retinal_env_args,add_retinal_env_eval_args
 
 from retinal_rl.analysis.simulation import get_brain_env,generate_simulation,get_checkpoint
-from retinal_rl.analysis.statistics import gaussian_noise_stas,gradient_receptive_fields,evaluate_brain
-from retinal_rl.util import save_data,load_data,save_onnx,analysis_path,plot_path,data_path,fill_in_argv_template
+from retinal_rl.analysis.statistics import gaussian_noise_stas,gradient_receptive_fields,evaluate_brain,RGClassifier,V1Classifier,VisionClassifier,BrainClassifier,LinearClassifier
+from retinal_rl.util import save_data,load_data,analysis_path,plot_path,data_path,fill_in_argv_template
 from retinal_rl.analysis.plot import simulation_plot,receptive_field_plots,PNGWriter
 
 from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
@@ -32,27 +33,53 @@ def analyze(cfg,progress_bar=True):
     log.debug("RETINAL RL: Checkpoint loaded, preparing environment.")
 
     brain,env,cfg,envstps = get_brain_env(cfg,checkpoint_dict)
+    device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
 
     if cfg.analysis_name is None:
         ana_name = "env_steps-" + str(envstps)
     else:
         ana_name = cfg.analysis_name
 
+    if not os.path.exists(analysis_path(cfg,ana_name)):
+        os.makedirs(data_path(cfg,ana_name))
+
     if cfg.classification:
-        evaluate_brain(brain)
+
+        classifiers = {
+            "RGClassifier": RGClassifier,
+            "V1Classifier": V1Classifier,
+            "VisionClassifier": VisionClassifier,
+            "BrainClassifier": BrainClassifier,
+        }
+        classification_performance = {}
+
+        for classifier_name, classifier_class in classifiers.items():
+            print(f"Training and evaluating {classifier_name}...")
+            model = classifier_class(brain, 10).to(device)
+            test_loss, accuracy = evaluate_brain(cfg, model)
+            classification_performance[classifier_name] = {"test_loss": test_loss, "accuracy": accuracy}
+
+
+        save_data(cfg,ana_name,classification_performance,"classification_performance")
+
+        evaluate_brain(cfg,brain)
 
     rf_algs = ["grads"]
     log.debug("RETINAL RL: Model and environment loaded, preparing simulation.")
-
-    if not os.path.exists(analysis_path(cfg,ana_name)):
-        os.makedirs(data_path(cfg,ana_name))
 
     """ Final gluing together of all analyses of interest. """
     if cfg.simulate:
 
         log.debug("RETINAL RL: Running analysis simulations.")
 
-        sim_recs = generate_simulation(cfg,brain,env,prgrs=progress_bar,video=cfg.viewport_video)
+        sim_recs = None
+
+        if cfg.append_sim:
+            # Check if sim_recs exists, if not, create it
+            if os.path.exists(data_path(cfg,ana_name,"sim_recs.npy")):
+                sim_recs = load_data(cfg,ana_name,"sim_recs")
+
+        sim_recs = generate_simulation(cfg,brain,env,sim_recs,prgrs=progress_bar,video=cfg.viewport_video)
 
         # save_onnx(cfg,ana_name,brain,inpts)
 

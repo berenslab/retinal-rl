@@ -172,21 +172,50 @@ def get_stim_coll(all_health, health_dep=-8, death_dep=30):
     stim_coll[stim_coll < -death_dep] = 0
     return stim_coll
 
-class CNNClassifier(nn.Module):
+class RGClassifier(nn.Module):
     def __init__(self, brain, num_classes):
-        super(CNNClassifier, self).__init__()
-        self.encoder = brain.valnet.encoder.vision_model.conv_head
+        super(RGClassifier, self).__init__()
+        # conv_head up to rgc_averages
+        all_layers = list(brain.valnet.encoder.vision_model.conv_head.children())
+        first_six_layers = all_layers[:6]
+        self.encoder = nn.Sequential(*first_six_layers)
         self.brain = brain
         self.softmax = nn.Softmax(dim=1)
+        # Compute the output size of the encoder
+        
+        cout_hght,cout_wdth = encoder_out_size(self.encoder, 120, 160)
+        self.conv_head_out_size = cout_hght*cout_wdth*self.brain.valnet.encoder.vision_model.rgc_chans
+
         for param in self.encoder.parameters():
             param.requires_grad = False  # Freeze the encoder parameters
 
-        self.classifier = nn.Linear(brain.valnet.encoder.vision_model.conv_head_out_size, num_classes)
+        self.classifier = nn.Linear(self.conv_head_out_size, num_classes)
 
     def forward(self, obs):
         x = self.encoder(obs)
+        x = x.contiguous().view(-1, self.conv_head_out_size)
         weights = self.classifier(x)
-        return self.softmax(weights)
+        prbs = self.softmax(weights)
+        return prbs
+
+class V1Classifier(nn.Module):
+    def __init__(self, brain, num_classes):
+        super(V1Classifier, self).__init__()
+        self.encoder = brain.valnet.encoder.vision_model.conv_head
+        self.brain = brain
+        self.softmax = nn.Softmax(dim=1)
+        self.conv_head_out_size = brain.valnet.encoder.vision_model.conv_head_out_size
+        for param in self.encoder.parameters():
+            param.requires_grad = False  # Freeze the encoder parameters
+
+        self.classifier = nn.Linear(self.conv_head_out_size, num_classes)
+
+    def forward(self, obs):
+        x = self.encoder(obs)
+        x = x.contiguous().view(-1, self.conv_head_out_size)
+        weights = self.classifier(x)
+        prbs = self.softmax(weights)
+        return prbs
 
 class VisionClassifier(nn.Module):
     def __init__(self, brain, num_classes):
@@ -237,16 +266,26 @@ class LinearClassifier(nn.Module):
         return self.classifier(features)
 
 
-def evaluate_brain(brain, train_path='resources/classification/cifar_train_overlay', test_path='resources/classification/cifar_test_overlay', epochs=20, lr=3e-3, batch_size=64):
+def evaluate_brain(cfg,model, epochs=50, lr=3e-4, batch_size=64):
+    if cfg.classification == "mnist":
+        train_path='resources/classification/mnist_train_overlay'
+        test_path='resources/classification/mnist_test_overlay'
+    elif cfg.classification == "cifar10":
+        train_path='resources/classification/cifar_train_overlay'
+        test_path='resources/classification/cifar_test_overlay'
+    else:
+        raise NotImplementedError("Only mnist and cifar are supported")
     # Data loading
-    device = "cuda"
+    device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
+
     transform = transforms.Compose([transforms.ToTensor()])
+
     train_data = ImageFolder(train_path, transform=transform)
     test_data = ImageFolder(test_path, transform=transform)
+
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
 
-    model = VisionClassifier(brain,10).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
 

@@ -50,7 +50,7 @@ def simulation_plot(sim_recs,frame_step=None, val_mu=None, val_sigma=None, anima
     vals0 = sim_recs["vals"]
     ltnts = sim_recs["ltnts"]
     dns = sim_recs["dns"]
-    plcys = sim_recs["plcys"].detach().cpu().numpy()
+    plcys = sim_recs["plcys"]
 
     if val_mu is None:
         val_mu = np.mean(vals0)

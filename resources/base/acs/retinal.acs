@@ -37,6 +37,8 @@ global int 16:distractor_delay;
 
 // Stats
 global int 17:health_gathered;
+global int 18:num_nourishments;
+global int 19:num_poisons;
 // Local variables
 
 // Arena settings
@@ -86,12 +88,14 @@ function str objectCode(int oid, int j) {
 function void randomNourishment(void) {
     int oid = random(0,nourishment_unique-1);
     SpawnActor(oid);
+    num_nourishments = num_nourishments + 1;
 }
 
 function void randomPoison(void) {
     int poison_offset = nourishment_unique;
     int oid = random(0,poison_unique-1);
     SpawnActor(oid+poison_offset);
+    num_poisons = num_poisons + 1;
 }
 
 function void randomObstacle(void) {
@@ -165,9 +169,12 @@ script "Agent Metabolism" ENTER {
     }
 }
 
+// Tracking stats
 script 10 (int pickedup) {
 
     health_gathered = health_gathered + pickedup;
+    if(pickedup > 0) { num_nourishments = num_nourishments - 1; }
+    if(pickedup < 0) { num_poisons = num_poisons - 1; }
 
  }
 
@@ -188,6 +195,7 @@ script "Agent Initialization" ENTER {
         // print(i:reward);
         // print(i:health_gathered);
         delay(1);
+        // print(s:"Num Nourishments: ",i:num_nourishments, s:"; Num Poisons: ",i:num_poisons);
     }
 }
 
