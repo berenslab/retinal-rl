@@ -54,7 +54,6 @@ def analyze(cfg,progress_bar=True):
         classification_performance = {}
 
         for classifier_name, classifier_class in classifiers.items():
-            print(f"Training and evaluating {classifier_name}...")
             model = classifier_class(brain, 10).to(device)
             test_loss, accuracy = evaluate_brain(cfg, model)
             classification_performance[classifier_name] = {"test_loss": test_loss, "accuracy": accuracy}

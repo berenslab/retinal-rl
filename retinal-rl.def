@@ -1,6 +1,6 @@
 Bootstrap: docker
 From: nvidia/cuda:11.7.1-runtime-ubuntu22.04
-#From: ubuntu:22.10
+#From: ubuntu:22.04
 
 %post
 

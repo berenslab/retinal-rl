@@ -96,6 +96,8 @@ def generate_simulation(cfg: Config, brain : ActorCritic, env : BatchedVecEnv, s
         sim_recs['ltnts'] = np.zeros((cfg.rnn_size, t_max))
         sim_recs['plcys'] = np.zeros((2,3, t_max))
         sim_recs['uhlths'] = np.zeros(t_max)
+        sim_recs['nnrshms'] = np.zeros(t_max)
+        sim_recs['npsns'] = np.zeros(t_max)
         sim_recs['hlths'] = np.zeros(t_max)
         sim_recs['rwds'] = np.zeros(t_max)
         sim_recs['vals'] = np.zeros(t_max)
@@ -115,6 +117,8 @@ def generate_simulation(cfg: Config, brain : ActorCritic, env : BatchedVecEnv, s
         sim_recs['ltnts'] = np.concatenate((sim_recs['ltnts'],np.zeros((cfg.rnn_size, t_max))),axis=1)
         sim_recs['plcys'] = np.concatenate((sim_recs['plcys'],np.zeros((2,3, t_max))),axis=2)
         sim_recs['uhlths'] = np.concatenate((sim_recs['uhlths'],np.zeros(t_max)))
+        sim_recs['nnrshms'] = np.concatenate((sim_recs['nnrshms'],np.zeros(t_max)))
+        sim_recs['npsns'] = np.concatenate((sim_recs['npsns'],np.zeros(t_max)))
         sim_recs['hlths'] = np.concatenate((sim_recs['hlths'],np.zeros(t_max)))
         sim_recs['rwds'] = np.concatenate((sim_recs['rwds'],np.zeros(t_max)))
         sim_recs['vals'] = np.concatenate((sim_recs['vals'],np.zeros(t_max)))
@@ -185,6 +189,8 @@ def generate_simulation(cfg: Config, brain : ActorCritic, env : BatchedVecEnv, s
             info = env.unwrapped.get_info()
             health = info.get('HEALTH') # environment info (health etc.)
             unbound_health = info.get('USER17') # environment info (health etc.)
+            num_nourishments = info.get('USER18') # environment info (health etc.)
+            num_poisons = info.get('USER19') # environment info (health etc.)
 
             if is_dn:
                 crwd=0
@@ -196,6 +202,8 @@ def generate_simulation(cfg: Config, brain : ActorCritic, env : BatchedVecEnv, s
 
             sim_recs['hlths'][num_frames] = health
             sim_recs['uhlths'][num_frames] = unbound_health
+            sim_recs['nnrshms'][num_frames] = num_nourishments
+            sim_recs['npsns'][num_frames] = num_poisons
             sim_recs['dns'][num_frames] = is_dn
             sim_recs['vals'][num_frames] = value
             sim_recs['rwds'][num_frames] = rwd
