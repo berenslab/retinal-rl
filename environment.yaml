@@ -175,7 +175,6 @@ dependencies:
       - pyparsing==3.1.2
       - python-dateutil==2.9.0.post0
       - pyyaml==6.0.1
-      - sample-factory==2.1.2
       - git+https://github.com/alex-petrenko/sample-factory.git@071574b65d736efda4ce4de1caa8e140ae917c38#egg=sample-factory
       - sentry-sdk==2.1.1
       - setproctitle==1.3.3
