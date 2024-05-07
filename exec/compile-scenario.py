@@ -1,20 +1,57 @@
 import sys
 import argparse
+import os
 
-from retinal_rl.scenarios.preload import preload_apples, preload_cifar10, preload_cifar100, preload_gabors, preload_mnist, preload_obstacles
-from retinal_rl.scenarios.make import make_scenario
+from retinal_rl.scenarios.preload import (
+    preload_apples,
+    preload_cifar10,
+    preload_gabors,
+    preload_mnist,
+    preload_obstacles,
+    cache_dir,
+)
+from retinal_rl.scenarios.make import make_scenario, scenario_yaml_dir
 
 
 def make_parser():
     # Initialize parser
-    parser = argparse.ArgumentParser(description="Make a scenario for retinal-rl")
-    # Add option to run preload
-    parser.add_argument("--preload", action="store_true", help="Preload resources")
+    parser = argparse.ArgumentParser(
+        description=f"""Utility to construct scenarios for retinal-rl, by
+        merging YAML files from the '{scenario_yaml_dir}' directory into a
+        specification for a scenario. By default the scenario name is the
+        concatenation of the names of the yaml files, but can be set with the
+        --name flag. The results are saved in the 'scenarios' directory. Before
+        running the first time one should use the --preload flag to download the
+        necessary resources into the '{cache_dir}' directory.
+        """,
+        epilog="Example: python -m exec.compile-scenario gathering apples",
+    )
     # Positional argument for scenario yaml files (required, can be multiple)
-    parser.add_argument("yamls", nargs="*", help="Component yaml files for scenario")
+    parser.add_argument(
+        "yamls",
+        nargs="*",
+        help="""Names of the component yaml files (without extension) for the
+        desired scenario. For conflicting fields, the last file will take precedence.""",
+    )
     # Argument for optional scneario name
-    parser.add_argument("--name", help="Name of scenario to make")
+    parser.add_argument(
+        "--name",
+        help="Desired name of scenario",
+    )
+    # Add option to run preload
+    parser.add_argument(
+        "--preload",
+        action="store_true",
+        help="Preload resources",
+    )
+    # List the contents of the scenario yaml directory
+    parser.add_argument(
+        "--list_yamls",
+        action="store_true",
+        help="List available scenario yamls",
+    )
     return parser
+
 
 def main():
 
@@ -30,13 +67,22 @@ def main():
         preload_gabors()
         preload_mnist()
         preload_cifar10()
+        # exit after preloading
+        return 0
+
+    if args.list_yamls:
+        print(f"Listing contents of {scenario_yaml_dir}:")
+        for flnm in os.listdir(scenario_yaml_dir):
+            print(flnm)
+        return 0
 
     # positional arguments
     if len(args.yamls) > 0:
         make_scenario(args.yamls, args.name)
     else:
         # no positional, warn and exit
-        print("No yaml files provided.  Nothing to do.")
+        print("No yaml files provided. Nothing to do.")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     sys.exit(main())

@@ -7,9 +7,7 @@ __pycache__/
 *.wad
 
 # Large scale resources
-resources/textures
-resources/classification/cifar*
-resources/classification/mnist*
+/cache/
 
 # built
 /scenarios/

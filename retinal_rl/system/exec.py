@@ -33,11 +33,6 @@ from retinal_rl.analysis.simulation import (
 from retinal_rl.analysis.statistics import (
     gaussian_noise_stas,
     gradient_receptive_fields,
-    evaluate_brain,
-    RGClassifier,
-    V1Classifier,
-    VisionClassifier,
-    BrainClassifier,
 )
 from retinal_rl.util import (
     save_data,
@@ -74,7 +69,6 @@ def analyze(cfg, progress_bar=True):
     log.debug("RETINAL RL: Checkpoint loaded, preparing environment.")
 
     brain, env, cfg, envstps = get_brain_env(cfg, checkpoint_dict)
-    device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
 
     if cfg.analysis_name is None:
         ana_name = "env_steps-" + str(envstps)
@@ -83,30 +77,6 @@ def analyze(cfg, progress_bar=True):
 
     if not os.path.exists(analysis_path(cfg, ana_name)):
         os.makedirs(data_path(cfg, ana_name))
-
-    if cfg.classification:
-
-        classifiers = {
-            "RGClassifier": RGClassifier,
-            "V1Classifier": V1Classifier,
-            "VisionClassifier": VisionClassifier,
-            "BrainClassifier": BrainClassifier,
-        }
-        classification_performance = {}
-
-        for classifier_name, classifier_class in classifiers.items():
-            model = classifier_class(brain, 10).to(device)
-            test_loss, accuracy = evaluate_brain(cfg, model)
-            classification_performance[classifier_name] = {
-                "test_loss": test_loss,
-                "accuracy": accuracy,
-            }
-
-        save_data(
-            cfg, ana_name, classification_performance, "classification_performance"
-        )
-
-        evaluate_brain(cfg, brain)
 
     rf_algs = ["grads"]
     log.debug("RETINAL RL: Model and environment loaded, preparing simulation.")
