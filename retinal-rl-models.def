@@ -1,0 +1,8 @@
+Bootstrap: localimage
+From: retinal-rl-base.sif
+ 
+%post
+ 
+    # Development
+    git clone https://github.com/berenslab/retinal-rl-models.git
+    pip3 install -e retinal-rl-models/
