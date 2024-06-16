@@ -11,6 +11,7 @@ from retinal_rl.scenarios.preload import textures_dir, assets_dir
 
 ### Directories ###
 
+scenario_dir = "cache/scenarios/"
 scenario_yaml_dir = "resources/scenario_yamls/"
 
 
@@ -176,16 +177,13 @@ def make_scenario(flnms, scnnm=None, clean=True):
     if scnnm is None:
         scnnm = "-".join(flnms)
 
-    # Base directories
-    scndr = "scenarios"
-
     # Inupt Directories
     ibsdr = assets_dir
     itxtdr = textures_dir
     iacsdr = osp.join(ibsdr, "acs")
 
     # Output Directories
-    blddr = osp.join(scndr, "build")
+    blddr = osp.join(scenario_dir, "build")
     oroot = osp.join(blddr, scnnm)
     oacsdr = osp.join(oroot, "acs")
     omapdr = osp.join(oroot, "maps")
@@ -198,7 +196,7 @@ def make_scenario(flnms, scnnm=None, clean=True):
         shutil.rmtree(oroot)
 
     # Create Directories
-    os.makedirs(scndr, exist_ok=True)
+    os.makedirs(scenario_dir, exist_ok=True)
     os.makedirs(oroot, exist_ok=True)
     os.makedirs(oacsdr, exist_ok=True)
     os.makedirs(omapdr, exist_ok=True)
@@ -303,9 +301,9 @@ def make_scenario(flnms, scnnm=None, clean=True):
 
     # Copy vizdoom config
     cnfnm = scnnm + ".cfg"
-    shutil.copy(osp.join(ibsdr, "vizdoom.cfg"), osp.join(scndr, cnfnm))
+    shutil.copy(osp.join(ibsdr, "vizdoom.cfg"), osp.join(scenario_dir, cnfnm))
     # add doom_scenario_path to beginning of cfg
-    with open(osp.join(scndr, cnfnm), "r") as f:
+    with open(osp.join(scenario_dir, cnfnm), "r") as f:
         cfgtxt = f.read()
     cfgtxt = (
         """# Settings copied from resources/scenario_assets/vizdoom.cfg
@@ -316,11 +314,11 @@ doom_scenario_path = {0}.zip
         )
         + cfgtxt
     )
-    with open(osp.join(scndr, cnfnm), "w") as f:
+    with open(osp.join(scenario_dir, cnfnm), "w") as f:
         f.write(cfgtxt)
 
     # zip build and save to scenarios
-    shutil.make_archive(osp.join(scndr, scnnm), "zip", oroot)
+    shutil.make_archive(osp.join(scenario_dir, scnnm), "zip", oroot)
 
     # If clean flag is set, remove build directory
     if clean:
