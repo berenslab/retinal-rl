@@ -5,8 +5,10 @@ import torch
 import torch.nn as nn
 import yaml
 import importlib
+import torchscan
 
-class BaseModel(nn.Module, ABC):
+
+class NeuralCircuit(nn.Module, ABC):
     def __init__(self, init_params: dict) -> None:
         """
         Initializes the base model.
@@ -27,7 +29,11 @@ class BaseModel(nn.Module, ABC):
     @property
     def config(self) -> dict:
         conf = self._config
-        return {"type": self.__class__.__name__, "module": self.__class__.__module__, "config": conf}
+        return {
+            "type": self.__class__.__name__,
+            "module": self.__class__.__module__,
+            "config": conf,
+        }
 
     def save(self, filename, save_cfg=True):
         config = self.config
@@ -36,8 +42,20 @@ class BaseModel(nn.Module, ABC):
                 yaml.dump(config, f)
         torch.save(self.state_dict(), filename + ".pth")
 
+    def scan(self, input_size):
+        """
+        Runs torchscan on the model.
+
+        Args:
+            input_size (tuple): Size of the input tensor (batch_size, channels, height, width).
+
+        Returns:
+            str: The torchscan report.
+        """
+        return torchscan.summary(self, input_size, receptive_field=True)
+
     @staticmethod
-    def model_from_config(config:dict):
+    def model_from_config(config: dict):
         _module = importlib.import_module(config["module"])
         _class = getattr(_module, config["type"])
         return _class(**config["config"])
@@ -46,7 +64,7 @@ class BaseModel(nn.Module, ABC):
     def load(model_path, weights_file=None):
         with open(model_path + ".cfg", "r") as file:
             config = yaml.load(file, Loader=yaml.FullLoader)
-        model = BaseModel.model_from_config(config)
+        model = NeuralCircuit.model_from_config(config)
 
         if weights_file is None:
             weights_file = model_path + ".pth"
