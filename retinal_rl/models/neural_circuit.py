@@ -9,7 +9,7 @@ import torchscan
 
 
 class NeuralCircuit(nn.Module, ABC):
-    def __init__(self, init_params: dict) -> None:
+    def __init__(self, init_params: dict = {}) -> None:
         """
         Initializes the base model.
         All params in the dictionary will be added as instance parameters.
@@ -35,12 +35,13 @@ class NeuralCircuit(nn.Module, ABC):
             "config": conf,
         }
 
-    def save(self, filename, save_cfg=True):
+    def save(self, circuit_dir):
         config = self.config
-        if save_cfg:
-            with open(filename + ".cfg", "w") as f:
-                yaml.dump(config, f)
-        torch.save(self.state_dict(), filename + ".pth")
+        ymlfl = os.path.join(circuit_dir, "config.yaml")
+        whgtfl = os.path.join(circuit_dir, "weights.pth")
+        with open(ymlfl, "w") as f:
+            yaml.dump(config, f)
+        torch.save(self.state_dict(), whgtfl)
 
     def scan(self, input_size):
         """
@@ -61,19 +62,19 @@ class NeuralCircuit(nn.Module, ABC):
         return _class(**config["config"])
 
     @staticmethod
-    def load(model_path, weights_file=None):
-        with open(model_path + ".cfg", "r") as file:
+    def load(circuit_dir):
+        ymlfl = os.path.join(circuit_dir, "config.yaml")
+        wghtfl = os.path.join(circuit_dir, "weights.pth")
+        with open(ymlfl, "r") as file:
             config = yaml.load(file, Loader=yaml.FullLoader)
         model = NeuralCircuit.model_from_config(config)
 
-        if weights_file is None:
-            weights_file = model_path + ".pth"
-        if os.path.exists(weights_file):
+        if os.path.exists(wghtfl):
             try:
-                model.load_state_dict(torch.load(weights_file))
+                model.load_state_dict(torch.load(wghtfl))
             except:
                 model.load_state_dict(
-                    torch.load(weights_file, map_location=torch.device("cpu"))
+                    torch.load(wghtfl, map_location=torch.device("cpu"))
                 )
         return model
 

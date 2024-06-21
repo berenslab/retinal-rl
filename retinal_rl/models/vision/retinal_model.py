@@ -2,16 +2,16 @@ from collections import OrderedDict
 
 from torch import nn
 
-from retinal_rl_models.base_model import BaseModel
+from retinal_rl.models.neural_circuit import NeuralCircuit
 
 
-class RetinalModel(BaseModel):
+class RetinalModel(NeuralCircuit):
     def __init__(
         self,
         base_channels: int,
         out_size: int,
-        inp_shape: tuple[int, int, int],
-        retinal_bottleneck: int = None,
+        inp_shape: tuple[int],
+        retinal_bottleneck: int = 0,
         act_name: str = "ELU",
     ):
         super().__init__(locals())
@@ -27,7 +27,7 @@ class RetinalModel(BaseModel):
         self.rgc_chans = self.bp_chans * 2
         self.v1_chans = self.rgc_chans * 2
 
-        if retinal_bottleneck is not None:
+        if retinal_bottleneck == 0:
             self.btl_chans = retinal_bottleneck
         else:
             self.btl_chans = self.rgc_chans
@@ -41,7 +41,7 @@ class RetinalModel(BaseModel):
         self.mpad = 0  # padder(self.mpool)
 
         # Preparing Conv Layers
-        conv_layers = OrderedDict(
+        conv_layers = OrderedDict[str, nn.Module](
             [
                 (
                     "bp_filters",
