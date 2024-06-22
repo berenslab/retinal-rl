@@ -9,17 +9,17 @@ import torchscan
 
 
 class NeuralCircuit(nn.Module, ABC):
-    def __init__(self, init_params: dict = {}) -> None:
+    def __init__(self, parameters: dict = {}) -> None:
         """
         Initializes the base model.
         All params in the dictionary will be added as instance parameters.
 
-        init_params: the parameters used to instantiate a model. Simplest way to pass them on: call locals()
+        parameters: the parameters used to instantiate a model. Simplest way to pass them on: call locals()
         """
         super().__init__()
 
         # Store all parameters as config
-        self._config = init_params
+        self._config = parameters
         if "self" in self._config:
             self._config.pop("self")
         if "__class__" in self._config:

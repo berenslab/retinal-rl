@@ -1,0 +1,8 @@
+module: retinal_rl.models.cognition.fully_connected
+type: FullyConnected
+config:
+  act_name: elu
+  hidden_dims: 4096
+  inp_size: 4096
+  num_layers: 3
+  out_size: 10

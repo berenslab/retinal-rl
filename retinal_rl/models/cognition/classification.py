@@ -1,12 +1,9 @@
 from collections import OrderedDict
-
 import torch
+from retinal_rl.models.neural_circuit import NeuralCircuit
+from retinal_rl.models.util import assert_list
 
-from retinal_rl_models.base_model import BaseModel
-from retinal_rl_models.util import assert_list
-
-
-class FullyConnected(BaseModel):
+class FullyConnected(NeuralCircuit):
     def __init__(
         self,
         inp_size: int = 1024,
@@ -17,7 +14,11 @@ class FullyConnected(BaseModel):
     ):
         super().__init__(locals())
 
+        self.inp_size = inp_size
+        self.out_size = out_size
+        self.num_layers = num_layers
         self.hidden_dims = assert_list(hidden_dims, self.num_layers - 1)
+        self.act_name = act_name
 
         fcs = []
 
@@ -42,5 +43,5 @@ class FullyConnected(BaseModel):
     def forward(self, x):
         x = self.fcs(x)
         if not self.training:
-            x = torch.nn.functional.softmax(x)
+            x = torch.nn.functional.softmax(x, dim=1)
         return x

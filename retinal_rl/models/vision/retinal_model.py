@@ -11,8 +11,8 @@ class RetinalModel(NeuralCircuit):
         base_channels: int,
         out_size: int,
         inp_shape: tuple[int],
-        retinal_bottleneck: int = 0,
-        act_name: str = "ELU",
+        retinal_bottleneck: int,
+        act_name: str,
     ):
         super().__init__(locals())
 
