@@ -1,5 +1,5 @@
 linear_classifier:
   _target_: retinal_rl.models.cognition.linear_classifier.LinearClassifier
-  inp_size: 8
+  inp_size: ${brain.circuits.prototypical_encoder.latent_size}
   out_size: 10
   act_name: "elu"
