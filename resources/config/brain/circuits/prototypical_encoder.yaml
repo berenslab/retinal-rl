@@ -1,0 +1,5 @@
+prototypical_encoder:
+  _target_: retinal_rl.models.vision.prototypical.PrototypicalEncoder
+  latent_size: 8
+  input_shape: [3,32,32]
+  act_name: "relu"

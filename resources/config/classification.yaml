@@ -1,0 +1,10 @@
+defaults:
+  - _self_
+  - brain:
+    - brain
+      
+num_folds: 5
+num_epochs: 10
+recon_weight: 0.5
+device: "cpu"
+train_dir: "experiments"

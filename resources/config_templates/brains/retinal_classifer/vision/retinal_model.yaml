@@ -1,8 +1,0 @@
-module: retinal_rl.models.vision.retinal_model
-type: RetinalModel
-config:
-  base_channels: 16
-  out_size: 10
-  inp_shape: [3, 64, 64]
-  retinal_bottleneck: 0
-  act_name: "ELU"

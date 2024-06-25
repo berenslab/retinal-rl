@@ -4,20 +4,19 @@ from torch import nn
 
 from retinal_rl.models.neural_circuit import NeuralCircuit
 
-
-class RetinalModel(NeuralCircuit):
+class RetinalEncoder(NeuralCircuit):
     def __init__(
         self,
         base_channels: int,
-        out_size: int,
-        inp_shape: tuple[int],
+        fc_out_size: int,
+        inp_shape: list[int],
         retinal_bottleneck: int,
         act_name: str,
     ):
-        super().__init__(locals())
+        super().__init__()
 
         self.act_name = act_name
-        self.encoder_out_size = out_size
+        self.fc_out_size = fc_out_size
 
         # Activation function
         self.nl_fc = self.str_to_activation(self.act_name)
@@ -27,11 +26,12 @@ class RetinalModel(NeuralCircuit):
         self.rgc_chans = self.bp_chans * 2
         self.v1_chans = self.rgc_chans * 2
 
-        if retinal_bottleneck == 0:
+        if retinal_bottleneck > 0:
             self.btl_chans = retinal_bottleneck
         else:
             self.btl_chans = self.rgc_chans
 
+        self.inp_shape = inp_shape
         # Pooling
         self.spool = 3
         self.mpool = 4
@@ -72,14 +72,14 @@ class RetinalModel(NeuralCircuit):
 
         self.conv_head = nn.Sequential(conv_layers)
 
-        self.conv_head_out_size = self.calc_num_elements(self.conv_head, inp_shape)
-        self.fc1 = nn.Linear(self.conv_head_out_size, self.encoder_out_size)
+        self.conv_head_out_size = self.calc_num_elements(self.conv_head, self.inp_shape)
+        self.fc_layer = nn.Linear(self.conv_head_out_size, self.fc_out_size)
 
     def forward(self, x):
         x = self.conv_head(x)
         x = x.contiguous().view(-1, self.conv_head_out_size)
-        x = self.nl_fc(self.fc1(x))
+        x = self.nl_fc(self.fc_layer(x))
         return x
 
     def get_out_size(self) -> int:
-        return self.encoder_out_size
+        return self.fc_out_size

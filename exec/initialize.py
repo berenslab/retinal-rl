@@ -1,29 +1,43 @@
 import hydra
-from omegaconf import DictConfig, OmegaConf
-import torch
-import os
-from retinal_rl.models.cognition.classification import FullyConnected
-from retinal_rl.models.vision.retinal_model import RetinalModel
-from retinal_rl.models.brain import Brain
+from hydra.utils import instantiate
+from omegaconf import DictConfig
+from retinal_rl.models.brain import BrainConfig,Brain
 
-@hydra.main(config_path=".", config_name="config")
-def initialize_brain(cfg: DictConfig):
-    # Initialize the Brain model
-    print(OmegaConf.to_yaml(cfg))
-    cfg_dict = OmegaConf.to_container(cfg, resolve=True)
-    brain = Brain(**cfg_dict)
-    
-    # Print the configuration for verification
-    
-    # Create a directory to save the initialized model
-    save_dir = os.path.join(os.getcwd(), "initialized_brain")
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-    
-    # Save the brain model
-    brain.save(save_dir)
-    print(f"Brain model saved to {save_dir}")
+@hydra.main(config_path="../resources/config", config_name="brain", version_base=None)
+def initialize(cfg: DictConfig):
+
+    instantiated_circuits = {}
+    print(cfg.circuits)
+    for crcnm, crcfg in cfg.circuits.items():
+        instantiated_circuits[crcnm] = instantiate(crcfg)
+
+    brncfg = BrainConfig(
+                name=cfg.name,
+                circuits=instantiated_circuits,
+                sensors=cfg.sensors,
+                connections=cfg.connections
+                    )
+
+    brain = Brain(brncfg)
+
+    # Run the scan
+    brain.scan_circuits()
+
+    # # Create a directory to save the model and config
+    # save_dir = os.path.join(os.getcwd(), "saved_brain")
+    # if not os.path.exists(save_dir):
+    #     os.makedirs(save_dir)
+    #
+    # # Save the brain model
+    # brain.save(save_dir)
+    #
+    # # Save the merged configuration
+    # config_save_path = os.path.join(save_dir, "merged_config.yaml")
+    # with open(config_save_path, "w") as f:
+    #     f.write(OmegaConf.to_yaml(cfg))
+    #
+    # print(f"Brain model and configuration saved to {save_dir}")
 
 if __name__ == "__main__":
-    initialize_brain()
+    initialize()
 

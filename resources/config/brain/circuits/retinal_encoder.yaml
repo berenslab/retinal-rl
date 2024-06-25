@@ -1,0 +1,7 @@
+retinal_model:
+  _target_: retinal_rl.models.vision.retinal.RetinalEncoder
+  base_channels: 16
+  fc_out_size: 256
+  inp_shape: [3, 64, 64]
+  retinal_bottleneck: 0
+  act_name: "ELU"

@@ -1,21 +1,16 @@
 ### Imports ###
 
 import torch
-
 from torchvision.datasets import CIFAR10
 from torchvision.transforms import transforms
 
-from retinal_classification.training import cross_validate, save_results
-from retinal_classification.arguments import get_args
+import hydra
+from omegaconf import DictConfig
 
+from retinal_rl.classification.training import cross_validate, save_results
 
-### Main ###
-
-
-def main():
-
-    # Get arguments
-    args = get_args()
+@hydra.main(config_path="../../resources/config", config_name="classification", version_base=None)
+def train(cfg: DictConfig):
 
     # Load CIFAR-10 dataset
     transform = transforms.Compose(
@@ -25,16 +20,17 @@ def main():
 
     # Run cross-validation
     models, histories = cross_validate(
-        torch.device(args.device),
-        args.num_folds,
-        args.num_epochs,
-        args.recon_weight,
+        torch.device(cfg.device),
+        cfg.brain,
+        cfg.num_folds,
+        cfg.num_epochs,
+        cfg.recon_weight,
         dataset,
     )
 
     # Save results
-    save_results(models, histories, args.train_dir, args.recon_weight)
+    save_results(models, histories, cfg.train_dir, cfg.recon_weight)
 
 
 if __name__ == "__main__":
-    main()
+    train()

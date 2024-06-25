@@ -12,20 +12,30 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset, ConcatDataset, random_split
 from torch.optim.optimizer import Optimizer
 
-from retinal_classification.models import ConvAutoencoder, AutoencodingClassifier
+from retinal_rl.models.brain import Brain,BrainConfig
 
+from omegaconf import DictConfig
+from hydra.utils import instantiate
 
 def calculate_loss(
-    inputs: torch.Tensor,
-    true_classes: torch.Tensor,
-    predicted_classes: torch.Tensor,
-    reconstructions: torch.Tensor,
-    class_objective: nn.Module,
-    recon_objective: nn.Module,
+    device: torch.device,
+    brain: Brain,
     recon_weight: float,
+    recon_objective: nn.Module,
+    class_objective: nn.Module,
+    batch: Tuple[torch.Tensor, torch.Tensor],
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
 
-    class_loss = class_objective(predicted_classes, true_classes)
+    inputs, classes = batch
+    inputs, classes = inputs.to(device), classes.to(device)
+
+    stimuli = {"image": inputs}
+
+    response = brain(stimuli)
+    predicted_classes = response["linear_classifier"]
+    reconstructions = response["prototypical_decoder"]
+
+    class_loss = class_objective(predicted_classes, classes)
     recon_loss = recon_objective(inputs, reconstructions)
 
     class_weight = 1 - recon_weight
@@ -36,7 +46,7 @@ def calculate_loss(
 
 def train_epoch(
     device: torch.device,
-    model: AutoencodingClassifier,
+    brain: Brain,
     optimizer: Optimizer,
     recon_weight: float,
     recon_objective: nn.Module,
@@ -56,27 +66,18 @@ def train_epoch(
 
     for batch in trainloader:
 
-        inputs, classes = batch
-        inputs, classes = inputs.to(device), classes.to(device)
         optimizer.zero_grad()
-        predicted_classes, reconstructions = model(inputs)
 
         loss, class_loss, recon_loss = calculate_loss(
-            inputs,
-            classes,
-            predicted_classes,
-            reconstructions,
-            class_objective,
-            recon_objective,
-            recon_weight,
+            device, brain, recon_weight, recon_objective, class_objective, batch
         )
-
-        loss.backward()
-        optimizer.step()
 
         losses["total"].append(loss)
         losses["classification"].append(class_loss)
         losses["reconstruction"].append(recon_loss)
+
+        loss.backward()
+        optimizer.step()
 
     avg_loss = torch.mean(torch.stack(losses["total"])).item()
     avg_class_loss = torch.mean(torch.stack(losses["classification"])).item()
@@ -86,33 +87,25 @@ def train_epoch(
 
 def validate_model(
     device: torch.device,
-    model: AutoencodingClassifier,
+    brain: Brain,
     recon_weight: float,
     recon_objective: torch.nn.Module,
     class_objective: torch.nn.Module,
     validationloader: DataLoader,
 ) -> Tuple[float, float, float]:
-    model.eval()  # Ensure the model is in evaluation mode
+    brain.eval()  # Ensure the model is in evaluation mode
 
     losses: dict[str, List[torch.Tensor]]
     losses = {"total": [], "classification": [], "reconstruction": []}
 
     with torch.no_grad():  # Disable gradient calculation
+
         for batch in validationloader:
-            inputs, classes = batch
-            inputs, classes = inputs.to(device, non_blocking=True), classes.to(
-                device, non_blocking=True
-            )
-            outputs, predicted_classes = model(inputs)
+
             loss, class_loss, recon_loss = calculate_loss(
-                outputs,
-                inputs,
-                predicted_classes,
-                classes,
-                recon_objective,
-                class_objective,
-                recon_weight,
+                device, brain, recon_weight, recon_objective, class_objective, batch
             )
+
             losses["total"].append(loss)
             losses["classification"].append(class_loss)
             losses["reconstruction"].append(recon_loss)
@@ -126,23 +119,36 @@ def validate_model(
 def train_fold(
     fold: int,
     device: torch.device,
-    model_class: type,
+    cfg: DictConfig,
     train_set: Dataset,
     validation_set: Dataset,
     num_epochs: int,
     recon_weight: float,
-) -> Tuple[int, AutoencodingClassifier, dict[str, List[float]]]:
+) -> Tuple[int, Brain, dict[str, List[float]]]:
     """
     Trains the model for one fold of the cross-validation.
     """
 
-    model = model_class().to(device)
+    instantiated_circuits = {}
+
+    for crcnm, crcfg in cfg.circuits.items():
+        instantiated_circuits[crcnm] = instantiate(crcfg)
+
+    brain_config = BrainConfig(
+                name=cfg.name,
+                circuits=instantiated_circuits,
+                sensors=cfg.sensors,
+                connections=cfg.connections
+                    )
+
+
+    brain = Brain(brain_config).to(device)
     trainloader = DataLoader(train_set, batch_size=64, shuffle=True)
     validationloader = DataLoader(validation_set, batch_size=64, shuffle=False)
 
     class_objective = nn.CrossEntropyLoss()
     recon_objective = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(brain.parameters(), lr=0.001)
 
     history: dict[str, List[float]]
     history = {
@@ -157,7 +163,7 @@ def train_fold(
     for _ in range(num_epochs):
         train_loss, train_recon_loss, train_class_loss = train_epoch(
             device,
-            model,
+            brain,
             optimizer,
             recon_weight,
             recon_objective,
@@ -166,7 +172,7 @@ def train_fold(
         )
         val_loss, val_recon_loss, val_class_loss = validate_model(
             device,
-            model,
+            brain,
             recon_weight,
             recon_objective,
             class_objective,
@@ -180,16 +186,16 @@ def train_fold(
         history["validation_classification"].append(val_class_loss)
         history["validation_reconstruction"].append(val_recon_loss)
 
-    return fold, model, history
+    return fold, brain, history
 
 
 def run_fold(
-    args: Tuple[int, str, type, Dataset, Dataset, int, float]
-) -> Tuple[int, AutoencodingClassifier, dict[str, List[float]]]:
+    args: Tuple[int, str, DictConfig, Dataset, Dataset, int, float]
+) -> Tuple[int, Brain, dict[str, List[float]]]:
     (
         fold,
         device_str,
-        model_class,
+        cfg,
         train_set,
         validation_set,
         num_epochs,
@@ -197,12 +203,13 @@ def run_fold(
     ) = args
     device = torch.device(device_str)
     return train_fold(
-        fold, device, model_class, train_set, validation_set, num_epochs, recon_weight
+        fold, device, cfg, train_set, validation_set, num_epochs, recon_weight
     )
 
 
 def cross_validate(
     device: torch.device,
+    cfg: DictConfig,
     num_folds: int,
     num_epochs: int,
     recon_weight: float,
@@ -215,8 +222,6 @@ def cross_validate(
         [fold_size] * (num_folds - 1) + [len(dataset) - fold_size * (num_folds - 1)],
     )
 
-    model_class = ConvAutoencoder
-
     mp_args = []
 
     for fold in range(num_folds):
@@ -225,19 +230,19 @@ def cross_validate(
         trainset = ConcatDataset(train_subsets)
         valset = folds[fold]
         mp_args.append(
-            (fold, device.type, model_class, trainset, valset, num_epochs, recon_weight)
+            (fold, device.type, cfg, trainset, valset, num_epochs, recon_weight)
         )
 
     with mp.Pool(processes=num_folds) as pool:
         results = pool.map(run_fold, mp_args)
 
-    models, histories = zip(*[(result[1], result[2]) for result in results])
+    brains, histories = zip(*[(result[1], result[2]) for result in results])
 
-    return list(models), list(histories)
+    return list(brains), list(histories)
 
 
 def save_results(
-    models: List[nn.Module],
+    brains: List[nn.Module],
     histories: List[dict],
     results_folder: str,
     recon_weight: float,
@@ -251,6 +256,6 @@ def save_results(
         json.dump(histories, f)
 
     # Save each model
-    for fold, model in enumerate(models):
+    for fold, model in enumerate(brains):
         model_file_path = os.path.join(results_folder, f"model_{fold + 1}.pt")
         torch.save(model.state_dict(), model_file_path)

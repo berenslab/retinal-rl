@@ -1,11 +1,17 @@
 import torch
 import torch.nn as nn
-import os
-from typing import List, Union, Dict, Tuple
+from typing import List, Dict
 from retinal_rl.models.neural_circuit import NeuralCircuit
 import networkx as nx
-import yaml
+from dataclasses import dataclass
 
+
+@dataclass
+class BrainConfig:
+    name: str
+    circuits: Dict[str, NeuralCircuit]
+    sensors: Dict[str, List[int]]
+    connections: List[List[str]]
 
 class Brain(nn.Module):
     """
@@ -14,13 +20,7 @@ class Brain(nn.Module):
     decoders, and task heads - in a specified way.
     """
 
-    def __init__(
-        self,
-        name: str,
-        circuits: Dict[str, Union[NeuralCircuit, Dict]],
-        sensors: Dict[str, Tuple[int]],
-        connections: List[Tuple[str,str]],
-    ) -> None:
+    def __init__( self, cfg: BrainConfig) -> None:
         """
         name: The name of the brain.
         circuits: List of NeuralCircuit objects or dictionaries containing the configurations of the models.
@@ -29,30 +29,20 @@ class Brain(nn.Module):
         """
         super().__init__()
 
-        self._config = locals()
-        self._config.pop("circuits")
-
-        self.name = name
-        self.circuits : Dict[str, NeuralCircuit] = {}
+        self.name = cfg.name
+        self.circuits = nn.ModuleDict(cfg.circuits)
         self.connectome : nx.DiGraph = nx.DiGraph()
-        self.sensors = sensors
+        self.sensors = {}
+        for sensor, shape in cfg.sensors.items():
+            self.sensors[sensor] = tuple(shape)
 
-        for stim in sensors:
+        for stim in self.sensors:
             self.connectome.add_node(stim)
 
-        for crcnm, circuit in circuits.items():
-            if isinstance(circuit, NeuralCircuit):
-                self.circuits[crcnm] = circuit
-            elif isinstance(circuit, dict):
-                self.circuits[crcnm] = NeuralCircuit.model_from_config(circuit)
-            else:
-                raise TypeError(
-                    "The circuits parameter should be a list of NeuralCircuit objects or dictionaries."
-                )
-
+        for crcnm in self.circuits:
             self.connectome.add_node(crcnm)
 
-        for connection in connections:
+        for connection in cfg.connections:
             if connection[0] not in self.connectome.nodes:
                 raise ValueError(f"Node {connection[0]} not found in the connectome.")
             if connection[1] not in self.connectome.nodes:
@@ -63,6 +53,23 @@ class Brain(nn.Module):
         if not nx.is_directed_acyclic_graph(self.connectome):
             raise ValueError("The connectome should be a directed acyclic graph.")
 
+    def calculate_inputs(self, node : str, responses: Dict[str, torch.Tensor]) -> torch.Tensor:
+
+        inputs = []
+        input = torch.Tensor()
+        for pred in self.connectome.predecessors(node):
+            if pred in responses:
+                inputs.append(responses[pred])
+            else:
+                ValueError(f"Input node {pred} to node {node} does not (yet) exist")
+        if len(inputs) == 0:
+            ValueError(f"No inputs to node {node}")
+        elif len(inputs) == 1:
+            input = inputs[0]
+        else:
+            input = torch.cat(inputs, dim=1)
+        return input
+
     def forward(self, stimuli: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
 
         responses = {}
@@ -71,47 +78,41 @@ class Brain(nn.Module):
             if node in self.sensors:
                 responses[node] = stimuli[node].clone()
             else:
-                inputs = []
-                for pred in self.connectome.predecessors(node):
-                    if pred in self.sensors:
-                        inputs.append(stimuli[pred])
-                    else:
-                        ValueError(f"Input node {pred} to node {node} does not (yet) exist")
-                responses[node] = self.circuits[node](*inputs)
-
+                input = self.calculate_inputs(node, responses)
+                responses[node] = self.circuits[node](input)
         return responses
 
-    def save(self, train_dir):
-        pth = os.path.join(train_dir, self.name)
-        if not os.path.exists(pth):
-            os.mkdir(pth)
+    # def save(self, train_dir):
+    #     pth = os.path.join(train_dir, self.name)
+    #     if not os.path.exists(pth):
+    #         os.mkdir(pth)
+    #
+    #     config = self._config
+    #     ymlfl = os.path.join(pth, "config.yaml")
+    #     with open(ymlfl, "w") as f:
+    #         yaml.dump(config, f)
+    #
+    #     for name, circuit in self.circuits.items():
+    #         crcpth = os.path.join(pth, name)
+    #         if not os.path.exists(crcpth):
+    #             os.mkdir(crcpth)
+    #         circuit.save(crcpth)
 
-        config = self._config
-        ymlfl = os.path.join(pth, "config.yaml")
-        with open(ymlfl, "w") as f:
-            yaml.dump(config, f)
-
-        for name, circuit in self.circuits.items():
-            crcpth = os.path.join(pth, name)
-            if not os.path.exists(crcpth):
-                os.mkdir(crcpth)
-            circuit.save(crcpth)
-
-    @classmethod
-    def load(cls, brain_dir) -> "Brain":
-        ymlfl = os.path.join(brain_dir, "config.yaml")
-        with open(ymlfl, "r") as file:
-            config = yaml.load(file, Loader=yaml.FullLoader)
-
-        circuits = {}
-        if os.path.isdir(brain_dir):
-            for circuit_dir in os.listdir(brain_dir):
-                circuits[circuit_dir] = NeuralCircuit.load(os.path.join(brain_dir, circuit_dir))
-        else:
-            # throw error
-            ValueError("The provided path is not a directory.")
-
-        return cls(**config, circuits=circuits)
+    # @classmethod
+    # def load(cls, brain_dir) -> "Brain":
+    #     ymlfl = os.path.join(brain_dir, "config.yaml")
+    #     with open(ymlfl, "r") as file:
+    #         config = yaml.load(file, Loader=yaml.FullLoader)
+    #
+    #     circuits = {}
+    #     if os.path.isdir(brain_dir):
+    #         for circuit_dir in os.listdir(brain_dir):
+    #             circuits[circuit_dir] = NeuralCircuit.load(os.path.join(brain_dir, circuit_dir))
+    #     else:
+    #         # throw error
+    #         ValueError("The provided path is not a directory.")
+    #
+    #     return cls(**config, circuits=circuits)
 
     def is_compatible(self):
         # TODO: Implement compatibility checks (e.g., dimensionality)
@@ -120,14 +121,13 @@ class Brain(nn.Module):
     def scan_circuits(self):
         """
         Runs torchscan on all circuits and concatenates the reports.
-
-        Args:
-            input_size (tuple): Size of the input tensor (batch_size, channels, height, width).
-
-        Returns:
-            str: The concatenated torchscan reports.
         """
-        scan_reports = []
+        # Print connectome
+        print("\n\nConnectome:\n")
+        print("Nodes: ", self.connectome.nodes)
+        print("Edges: ", self.connectome.edges)
+
+        # Run scans on all circuits
         dummy_stimulus = {}
         for sensor in self.sensors:
             dummy_stimulus[sensor] = torch.rand(self.sensors[sensor])
@@ -135,7 +135,6 @@ class Brain(nn.Module):
         dummy_response = self.forward(dummy_stimulus)
 
         for crcnm, circuit in self.circuits.items():
-            report = circuit.scan(dummy_response[crcnm].shape)
-            scan_reports.append(f"{crcnm} : {circuit.__class__.__name__}\n\n{report}")
-
-        return "\n".join(scan_reports)
+            print(f"\n\nCircuit Name: {crcnm}, Class: {circuit.__class__.__name__}\n")
+            dummy_input = self.calculate_inputs(crcnm, dummy_response)
+            circuit.scan(dummy_input.shape)
