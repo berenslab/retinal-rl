@@ -1,5 +1,0 @@
-prototypical_decoder:
-  _target_: retinal_rl.models.vision.prototypical.PrototypicalDecoder
-  latent_size: ${brain.circuits.prototypical_encoder.latent_size}
-  input_shape: ${brain.sensors.image}
-  act_name: "relu"

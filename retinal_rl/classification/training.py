@@ -244,18 +244,13 @@ def cross_validate(
 def save_results(
     brains: List[nn.Module],
     histories: List[dict],
-    results_folder: str,
-    recon_weight: float,
 ) -> None:
-    results_folder = os.path.join(results_folder, f"lambda_{recon_weight}")
-    os.makedirs(results_folder, exist_ok=True)
-
     # Save histories as a single JSON file
-    histories_file_path = os.path.join(results_folder, "histories.json")
+    histories_file_path = "histories.json"
     with open(histories_file_path, "w") as f:
         json.dump(histories, f)
 
     # Save each model
     for fold, model in enumerate(brains):
-        model_file_path = os.path.join(results_folder, f"model_{fold + 1}.pt")
+        model_file_path = f"model_{fold + 1}.pt"
         torch.save(model.state_dict(), model_file_path)

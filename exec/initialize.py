@@ -40,4 +40,3 @@ def initialize(cfg: DictConfig):
 
 if __name__ == "__main__":
     initialize()
-
