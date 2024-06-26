@@ -1,9 +1,7 @@
-system:
-  device: cpu
-  cache_dir: ../cache
-
-dataset:
-  image_size: [3,32,32]
+defaults:
+  - command: single_run
+  - dataset: cifar10
+  - _self_
 
 training:
   num_folds: 5
@@ -17,9 +15,9 @@ brain:
   _target_: retinal_rl.models.brain.Brain
   name: brain
   sensors:
-    image: ${dataset.image_size}
+    vision: ${dataset.image_size}
   connections:
-    - ["image", "prototypical_encoder"]
+    - ["vision", "prototypical_encoder"]
     - ["prototypical_encoder", "linear_classifier"]
     - ["prototypical_encoder", "prototypical_decoder"]
   circuits:
@@ -42,6 +40,9 @@ brain:
 hydra:
   output_subdir: config
   run:
-    dir: experiments/${hydra.job.config_name}
+    dir: experiment/${experiment}/${command}
   job:
     chdir: True
+
+system:
+  device: cpu

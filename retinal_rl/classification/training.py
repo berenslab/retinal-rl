@@ -1,6 +1,5 @@
 ### Imports ###
 
-import os
 import json
 import multiprocessing as mp
 
@@ -12,7 +11,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset, ConcatDataset, random_split
 from torch.optim.optimizer import Optimizer
 
-from retinal_rl.models.brain import Brain,BrainConfig
+from retinal_rl.models.brain import Brain
 
 from omegaconf import DictConfig
 from hydra.utils import instantiate
@@ -29,7 +28,7 @@ def calculate_loss(
     inputs, classes = batch
     inputs, classes = inputs.to(device), classes.to(device)
 
-    stimuli = {"image": inputs}
+    stimuli = {"vision": inputs}
 
     response = brain(stimuli)
     predicted_classes = response["linear_classifier"]
@@ -134,15 +133,7 @@ def train_fold(
     for crcnm, crcfg in cfg.circuits.items():
         instantiated_circuits[crcnm] = instantiate(crcfg)
 
-    brain_config = BrainConfig(
-                name=cfg.name,
-                circuits=instantiated_circuits,
-                sensors=cfg.sensors,
-                connections=cfg.connections
-                    )
-
-
-    brain = Brain(brain_config).to(device)
+    brain = instantiate(cfg)
     trainloader = DataLoader(train_set, batch_size=64, shuffle=True)
     validationloader = DataLoader(validation_set, batch_size=64, shuffle=False)
 
@@ -239,6 +230,80 @@ def cross_validate(
     brains, histories = zip(*[(result[1], result[2]) for result in results])
 
     return list(brains), list(histories)
+
+def single_run(
+    device: torch.device,
+    cfg: DictConfig,
+    num_epochs: int,
+    recon_weight: float,
+    dataset: Dataset,
+    split_ratio: float = 0.8,
+) -> Tuple[Brain, dict[str, List[float]]]:
+    """
+    Performs a single run with a train/validation split.
+
+    Args:
+        device (torch.device): The device to run the model on.
+        cfg (DictConfig): The configuration for the run.
+        num_epochs (int): Number of epochs to train.
+        recon_weight (float): The weight for the reconstruction loss.
+        dataset (Dataset): The dataset to train on.
+        split_ratio (float): The ratio of training data (default: 0.8).
+
+    Returns:
+        Tuple[Brain, dict[str, List[float]]]: The trained brain and the training history.
+    """
+
+    train_size = int(split_ratio * len(dataset))
+    val_size = len(dataset) - train_size
+    train_set, validation_set = random_split(dataset, [train_size, val_size])
+
+    brain = instantiate(cfg)
+    trainloader = DataLoader(train_set, batch_size=64, shuffle=True)
+    validationloader = DataLoader(validation_set, batch_size=64, shuffle=False)
+
+    class_objective = nn.CrossEntropyLoss()
+    recon_objective = nn.MSELoss()
+    optimizer = optim.Adam(brain.parameters(), lr=0.001)
+
+    history: dict[str, List[float]]
+    history = {
+        "train_total": [],
+        "train_classification": [],
+        "train_reconstruction": [],
+        "validation_total": [],
+        "validation_classification": [],
+        "validation_reconstruction": [],
+    }
+
+    for _ in range(num_epochs):
+        train_loss, train_recon_loss, train_class_loss = train_epoch(
+            device,
+            brain,
+            optimizer,
+            recon_weight,
+            recon_objective,
+            class_objective,
+            trainloader,
+        )
+        val_loss, val_recon_loss, val_class_loss = validate_model(
+            device,
+            brain,
+            recon_weight,
+            recon_objective,
+            class_objective,
+            validationloader,
+        )
+
+        history["train_total"].append(train_loss)
+        history["train_classification"].append(train_class_loss)
+        history["train_reconstruction"].append(train_recon_loss)
+        history["validation_total"].append(val_loss)
+        history["validation_classification"].append(val_class_loss)
+        history["validation_reconstruction"].append(val_recon_loss)
+
+    return brain, history
+
 
 
 def save_results(

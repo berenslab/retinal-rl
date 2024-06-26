@@ -3,15 +3,7 @@ import torch.nn as nn
 from typing import List, Dict
 from retinal_rl.models.neural_circuit import NeuralCircuit
 import networkx as nx
-from dataclasses import dataclass
 
-
-@dataclass
-class BrainConfig:
-    name: str
-    circuits: Dict[str, NeuralCircuit]
-    sensors: Dict[str, List[int]]
-    connections: List[List[str]]
 
 class Brain(nn.Module):
     """
@@ -20,7 +12,12 @@ class Brain(nn.Module):
     decoders, and task heads - in a specified way.
     """
 
-    def __init__( self, cfg: BrainConfig) -> None:
+    def __init__( self,
+                 name: str,
+                 circuits: Dict[str, NeuralCircuit],
+                 sensors: Dict[str, List[int]],
+                 connections: List[List[str]],
+                 ) -> None:
         """
         name: The name of the brain.
         circuits: List of NeuralCircuit objects or dictionaries containing the configurations of the models.
@@ -29,11 +26,12 @@ class Brain(nn.Module):
         """
         super().__init__()
 
-        self.name = cfg.name
-        self.circuits = nn.ModuleDict(cfg.circuits)
+        self.name = name
+        self.circuits = nn.ModuleDict(circuits)
+
         self.connectome : nx.DiGraph = nx.DiGraph()
         self.sensors = {}
-        for sensor, shape in cfg.sensors.items():
+        for sensor, shape in sensors.items():
             self.sensors[sensor] = tuple(shape)
 
         for stim in self.sensors:
@@ -42,7 +40,7 @@ class Brain(nn.Module):
         for crcnm in self.circuits:
             self.connectome.add_node(crcnm)
 
-        for connection in cfg.connections:
+        for connection in connections:
             if connection[0] not in self.connectome.nodes:
                 raise ValueError(f"Node {connection[0]} not found in the connectome.")
             if connection[1] not in self.connectome.nodes:

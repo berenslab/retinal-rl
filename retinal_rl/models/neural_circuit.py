@@ -4,6 +4,12 @@ import torch
 import torch.nn as nn
 import torchscan
 
+from dataclasses import dataclass
+
+@dataclass
+class NeuralCircuitConfig:
+    _target_: str
+
 class NeuralCircuit(nn.Module, ABC):
     def __init__(self) -> None:
         """
