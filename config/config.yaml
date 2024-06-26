@@ -1,7 +1,7 @@
 defaults:
-  - command: single_run
-  - dataset: cifar10
   - _self_
+  - command: ??
+  - dataset: ??
 
 training:
   num_folds: 5
@@ -40,9 +40,11 @@ brain:
 hydra:
   output_subdir: config
   run:
-    dir: experiment/${experiment}/${command}
+    dir: experiment/${experiment}/${command.run_mode}
   job:
     chdir: True
+  searchpath:
+    - file://.
 
 system:
   device: cpu

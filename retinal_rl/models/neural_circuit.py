@@ -4,11 +4,8 @@ import torch
 import torch.nn as nn
 import torchscan
 
-from dataclasses import dataclass
+from typing import Tuple
 
-@dataclass
-class NeuralCircuitConfig:
-    _target_: str
 
 class NeuralCircuit(nn.Module, ABC):
     def __init__(self) -> None:
@@ -20,21 +17,20 @@ class NeuralCircuit(nn.Module, ABC):
         """
         super().__init__()
 
-    def scan(self, input_size):
+    def scan(self, input_size: Tuple[int]) -> None:
         """
         Runs torchscan on the model.
 
         Args:
             input_size (tuple): Size of the input tensor (batch_size, channels, height, width).
-
-        Returns:
-            str: The torchscan report.
         """
-        return torchscan.summary(self, input_size, receptive_field=True)
+        torchscan.summary(self, input_size, receptive_field=True)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = x
-        raise NotImplementedError("Each subclass must implement its own forward method.")
+        raise NotImplementedError(
+            "Each subclass must implement its own forward method."
+        )
 
     @staticmethod
     def str_to_activation(act: str) -> nn.Module:

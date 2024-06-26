@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from retinal_rl.models.neural_circuit import NeuralCircuit
 import networkx as nx
 
@@ -12,12 +12,13 @@ class Brain(nn.Module):
     decoders, and task heads - in a specified way.
     """
 
-    def __init__( self,
-                 name: str,
-                 circuits: Dict[str, NeuralCircuit],
-                 sensors: Dict[str, List[int]],
-                 connections: List[List[str]],
-                 ) -> None:
+    def __init__(
+        self,
+        name: str,
+        circuits: Dict[str, NeuralCircuit],
+        sensors: Dict[str, List[int]],
+        connections: List[List[str]],
+    ) -> None:
         """
         name: The name of the brain.
         circuits: List of NeuralCircuit objects or dictionaries containing the configurations of the models.
@@ -29,10 +30,8 @@ class Brain(nn.Module):
         self.name = name
         self.circuits = nn.ModuleDict(circuits)
 
-        self.connectome : nx.DiGraph = nx.DiGraph()
-        self.sensors = {}
-        for sensor, shape in sensors.items():
-            self.sensors[sensor] = tuple(shape)
+        self.connectome: nx.DiGraph[str] = nx.DiGraph()
+        self.sensors: Dict[str, List[int]] = sensors
 
         for stim in self.sensors:
             self.connectome.add_node(stim)
@@ -51,9 +50,11 @@ class Brain(nn.Module):
         if not nx.is_directed_acyclic_graph(self.connectome):
             raise ValueError("The connectome should be a directed acyclic graph.")
 
-    def calculate_inputs(self, node : str, responses: Dict[str, torch.Tensor]) -> torch.Tensor:
+    def calculate_inputs(
+        self, node: str, responses: Dict[str, torch.Tensor]
+    ) -> torch.Tensor:
 
-        inputs = []
+        inputs: List[torch.Tensor] = []
         input = torch.Tensor()
         for pred in self.connectome.predecessors(node):
             if pred in responses:
@@ -70,7 +71,7 @@ class Brain(nn.Module):
 
     def forward(self, stimuli: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
 
-        responses = {}
+        responses: Dict[str, torch.Tensor] = {}
 
         for node in nx.topological_sort(self.connectome):
             if node in self.sensors:
@@ -126,7 +127,7 @@ class Brain(nn.Module):
         print("Edges: ", self.connectome.edges)
 
         # Run scans on all circuits
-        dummy_stimulus = {}
+        dummy_stimulus: Dict[str, torch.Tensor] = {}
         for sensor in self.sensors:
             dummy_stimulus[sensor] = torch.rand(self.sensors[sensor])
 

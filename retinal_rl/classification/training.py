@@ -2,19 +2,17 @@
 
 import json
 import multiprocessing as mp
-
-from typing import Tuple, List
+from typing import Callable, List, Tuple
 
 import torch
+from torch import Tensor
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, Dataset, ConcatDataset, random_split
 from torch.optim.optimizer import Optimizer
+from torch.utils.data import ConcatDataset, DataLoader, Dataset, random_split
 
 from retinal_rl.models.brain import Brain
 
-from omegaconf import DictConfig
-from hydra.utils import instantiate
 
 def calculate_loss(
     device: torch.device,
@@ -50,7 +48,7 @@ def train_epoch(
     recon_weight: float,
     recon_objective: nn.Module,
     class_objective: nn.Module,
-    trainloader: DataLoader,
+    trainloader: DataLoader[Tensor],
 ) -> Tuple[float, float, float]:
     """
     Trains the model for one epoch.
@@ -90,7 +88,7 @@ def validate_model(
     recon_weight: float,
     recon_objective: torch.nn.Module,
     class_objective: torch.nn.Module,
-    validationloader: DataLoader,
+    validationloader: DataLoader[Tensor],
 ) -> Tuple[float, float, float]:
     brain.eval()  # Ensure the model is in evaluation mode
 
@@ -118,9 +116,9 @@ def validate_model(
 def train_fold(
     fold: int,
     device: torch.device,
-    cfg: DictConfig,
-    train_set: Dataset,
-    validation_set: Dataset,
+    brain_factory: Callable[[], Brain],
+    train_set: Dataset[Tensor],
+    validation_set: Dataset[Tensor],
     num_epochs: int,
     recon_weight: float,
 ) -> Tuple[int, Brain, dict[str, List[float]]]:
@@ -128,12 +126,7 @@ def train_fold(
     Trains the model for one fold of the cross-validation.
     """
 
-    instantiated_circuits = {}
-
-    for crcnm, crcfg in cfg.circuits.items():
-        instantiated_circuits[crcnm] = instantiate(crcfg)
-
-    brain = instantiate(cfg)
+    brain = brain_factory()
     trainloader = DataLoader(train_set, batch_size=64, shuffle=True)
     validationloader = DataLoader(validation_set, batch_size=64, shuffle=False)
 
@@ -181,12 +174,14 @@ def train_fold(
 
 
 def run_fold(
-    args: Tuple[int, str, DictConfig, Dataset, Dataset, int, float]
+    args: Tuple[
+        int, str, Callable[[], Brain], Dataset[Tensor], Dataset[Tensor], int, float
+    ]
 ) -> Tuple[int, Brain, dict[str, List[float]]]:
     (
         fold,
         device_str,
-        cfg,
+        brain_factory,
         train_set,
         validation_set,
         num_epochs,
@@ -194,17 +189,17 @@ def run_fold(
     ) = args
     device = torch.device(device_str)
     return train_fold(
-        fold, device, cfg, train_set, validation_set, num_epochs, recon_weight
+        fold, device, brain_factory, train_set, validation_set, num_epochs, recon_weight
     )
 
 
 def cross_validate(
     device: torch.device,
-    cfg: DictConfig,
+    brain_factory: Callable[[], Brain],
     num_folds: int,
     num_epochs: int,
     recon_weight: float,
-    dataset: Dataset,
+    dataset: Dataset[Tensor],
 ) -> Tuple[List[nn.Module], List[dict[str, List[float]]]]:
 
     fold_size = len(dataset) // num_folds
@@ -217,11 +212,19 @@ def cross_validate(
 
     for fold in range(num_folds):
         train_subsets = [xs for i, xs in enumerate(folds) if i != fold]
-        trainset: Dataset
+        trainset: Dataset[Tensor]
         trainset = ConcatDataset(train_subsets)
         valset = folds[fold]
         mp_args.append(
-            (fold, device.type, cfg, trainset, valset, num_epochs, recon_weight)
+            (
+                fold,
+                device.type,
+                brain_factory,
+                trainset,
+                valset,
+                num_epochs,
+                recon_weight,
+            )
         )
 
     with mp.Pool(processes=num_folds) as pool:
@@ -231,12 +234,13 @@ def cross_validate(
 
     return list(brains), list(histories)
 
+
 def single_run(
     device: torch.device,
-    cfg: DictConfig,
+    brain: Brain,
     num_epochs: int,
     recon_weight: float,
-    dataset: Dataset,
+    dataset: Dataset[Tensor],
     split_ratio: float = 0.8,
 ) -> Tuple[Brain, dict[str, List[float]]]:
     """
@@ -258,7 +262,6 @@ def single_run(
     val_size = len(dataset) - train_size
     train_set, validation_set = random_split(dataset, [train_size, val_size])
 
-    brain = instantiate(cfg)
     trainloader = DataLoader(train_set, batch_size=64, shuffle=True)
     validationloader = DataLoader(validation_set, batch_size=64, shuffle=False)
 
@@ -305,10 +308,9 @@ def single_run(
     return brain, history
 
 
-
 def save_results(
     brains: List[nn.Module],
-    histories: List[dict],
+    histories: List[dict[str, List[float]]],
 ) -> None:
     # Save histories as a single JSON file
     histories_file_path = "histories.json"
