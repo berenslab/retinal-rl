@@ -1,22 +1,23 @@
 import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig
-from retinal_rl.models.brain import BrainConfig,Brain
+
+from retinal_rl.models.brain import Brain
+
 
 @hydra.main(config_path="../resources/config", config_name="brain", version_base=None)
 def initialize(cfg: DictConfig):
-
     instantiated_circuits = {}
     print(cfg.circuits)
     for crcnm, crcfg in cfg.circuits.items():
         instantiated_circuits[crcnm] = instantiate(crcfg)
 
     brncfg = BrainConfig(
-                name=cfg.name,
-                circuits=instantiated_circuits,
-                sensors=cfg.sensors,
-                connections=cfg.connections
-                    )
+        name=cfg.name,
+        circuits=instantiated_circuits,
+        sensors=cfg.sensors,
+        connections=cfg.connections,
+    )
 
     brain = Brain(brncfg)
 
@@ -37,6 +38,7 @@ def initialize(cfg: DictConfig):
     #     f.write(OmegaConf.to_yaml(cfg))
     #
     # print(f"Brain model and configuration saved to {save_dir}")
+
 
 if __name__ == "__main__":
     initialize()

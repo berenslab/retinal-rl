@@ -1,2 +1,22 @@
 [tool.pyright]
 include = ["retinal_rl"]
+typeCheckingMode = "strict"
+
+[tool.ruff]
+line-length = 90
+exclude = ["node_modules", "__pycache__"]
+select = [
+    "F",  # Pyflakes
+    "E",  # PEP8
+    "W",  # PEP8
+    "C90",  # McCabe
+    "D",  # Pydocstyle
+    "R",  # Ruff-specific
+    "N",  # Naming
+    "I",  # Import conventions
+]
+
+ignore = ["E501"]  # Example: Ignore line length warnings
+
+[tool.ruff.format]
+docstring-code-format = true

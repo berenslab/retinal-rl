@@ -1,6 +1,7 @@
 ### Imports ###
 
 import os
+import sys
 
 import hydra
 import torch
@@ -12,8 +13,16 @@ from retinal_rl.classification.training import cross_validate, save_results, sin
 from retinal_rl.models.brain import Brain
 
 
-@hydra.main(config_path="../../config", config_name="config", version_base=None)
+@hydra.main(config_path="config", config_name="config", version_base=None)
 def train(cfg: DictConfig):
+    def brain_factory() -> Brain:
+        return Brain(**cfg.brain)
+
+    if cfg.command.run_mode == "scan":
+        brain = brain_factory()
+        brain.scan_circuits()
+        sys.exit(0)
+
     # Load CIFAR-10 dataset
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
@@ -21,9 +30,6 @@ def train(cfg: DictConfig):
     cache_path = os.path.join(hydra.utils.get_original_cwd(), "cache")
     dataset = CIFAR10(root=cache_path, train=True, download=True, transform=transform)
     device = torch.device(cfg.system.device)
-
-    def brain_factory() -> Brain:
-        return Brain(**cfg.brain)
 
     if cfg.command.run_mode == "single_run":
         fresh_brain = brain_factory()
@@ -35,8 +41,9 @@ def train(cfg: DictConfig):
             dataset,
         )
         save_results([brain], [history])
+        sys.exit(0)
 
-    elif cfg.command.run_mode == "cross_validate":
+    if cfg.command.run_mode == "cross_validate":
         brains, histories = cross_validate(
             device,
             brain_factory,
@@ -46,6 +53,8 @@ def train(cfg: DictConfig):
             dataset,
         )
         save_results(brains, histories)
+        sys.exit(0)
+
     else:
         raise ValueError("Invalid run_mode")
 

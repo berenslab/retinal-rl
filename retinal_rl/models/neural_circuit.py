@@ -1,56 +1,86 @@
+"""Defines the base class for neural circuits and its metaclass."""
+
+import inspect
 from abc import ABC
+from typing import Any, List, Type, get_type_hints
 
 import torch
 import torch.nn as nn
 import torchscan
 
-from typing import Tuple
-
 
 class NeuralCircuit(nn.Module, ABC):
-    def __init__(self) -> None:
-        """
-        Initializes the base model.
-        All params in the dictionary will be added as instance parameters.
+    """Base class for neural circuits."""
 
-        parameters: the parameters used to instantiate a model. Simplest way to pass them on: call locals()
+    def __init__(self, input_shape: List[int]) -> None:
+        """Initialize the base model.
+
+        Args:
+        ----
+        input_shape (List[int]): Shape of the input tensor.
+
         """
         super().__init__()
 
-    def scan(self, input_size: Tuple[int]) -> None:
-        """
-        Runs torchscan on the model.
+        self._input_shape = input_shape
+
+    def __init_subclass__(cls: Type[Any], **kwargs: Any) -> None:
+        """Enforces that subclasses have specific parameters in their constructors.
 
         Args:
-            input_size (tuple): Size of the input tensor (batch_size, channels, height, width).
+        ----
+        **kwargs: Additional keyword arguments.
+
         """
-        torchscan.summary(self, input_size, receptive_field=True)
+        super().__init_subclass__(**kwargs)
+
+        # Ensure that the __init__ method includes input_shape
+        init = cls.__init__
+        if not inspect.isfunction(init):
+            raise TypeError(f"Class {cls.__name__} does not have a valid __init__ method")
+
+        params = inspect.signature(init).parameters
+        if "input_shape" not in params:
+            raise TypeError(
+                f"Class {cls.__name__} must have 'input_shape' parameters in its __init__ method"
+            )
+
+        # Ensure that input_shape has the correct types
+        hints = get_type_hints(init)
+        if hints.get("input_shape") != List[int]:
+            raise TypeError(
+                f"Parameter 'input_shape' in class {cls.__name__} must have type 'List[int]'"
+            )
+
+    def scan(self) -> None:
+        """Run torchscan on the model."""
+        torchscan.summary(self, tuple(self.input_shape), receptive_field=True)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = x
-        raise NotImplementedError(
-            "Each subclass must implement its own forward method."
-        )
+        raise NotImplementedError("Each subclass must implement its own forward method.")
+
+    @property
+    def input_shape(self) -> List[int]:
+        return self._input_shape
+
+    @property
+    def output_shape(self) -> List[int]:
+        """Return the shape of the output tensor."""
+        with torch.no_grad():
+            return list(self.forward(torch.zeros(1, *self.input_shape)).shape[1:])
 
     @staticmethod
     def str_to_activation(act: str) -> nn.Module:
         act = str.lower(act)
         if act == "elu":
             return nn.ELU(inplace=True)
-        elif act == "relu":
+        if act == "relu":
             return nn.ReLU(inplace=True)
-        elif act == "tanh":
+        if act == "tanh":
             return nn.Tanh()
-        elif act == "softplus":
+        if act == "softplus":
             return nn.Softplus()
-        elif act == "identity":
+        if act == "identity":
             return nn.Identity(inplace=True)
-        else:
-            raise Exception("Unknown activation function")
-
-    @staticmethod
-    def calc_num_elements(module: nn.Module, module_input_shape: list[int]):
-        shape_with_batch_dim = (1,) + tuple(module_input_shape)
-        some_input = torch.rand(shape_with_batch_dim)
-        num_elements = module(some_input).numel()
-        return num_elements
+        raise Exception("Unknown activation function")

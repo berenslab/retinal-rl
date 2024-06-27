@@ -1,47 +1,43 @@
-system:
-  device: cpu
-  cache_dir: ../cache
+# @package _global_
+defaults:
+  - override /dataset: cifar10
+  - _self_
 
-dataset:
-  image_size: [3,32,32]
+experiment: cifar10-classification
 
 training:
   num_folds: 5
   num_epochs: 10
   recon_weight: 0.5
 
-sweep:
-  latent_size: 4
-
 brain:
-  _target_: retinal_rl.models.brain.Brain
   name: brain
   sensors:
-    image: ${dataset.image_size}
+    vision: ${dataset.image_size}
   connections:
-    - ["image", "prototypical_encoder"]
-    - ["prototypical_encoder", "linear_classifier"]
-    - ["prototypical_encoder", "prototypical_decoder"]
+    - ["vision", "encoder"]
+    - ["encoder", "classifier"]
+    - ["encoder", "decoder"]
   circuits:
-    prototypical_encoder:
-        _target_: retinal_rl.models.vision.prototypical.PrototypicalEncoder
-        latent_size: ${sweep.latent_size}
-        input_shape: ${dataset.image_size}
+    encoder:
+        _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+        num_layers: 3
+        num_channels: [8,16,32]
+        kernel_size: 3
+        stride: 1
+        padding: 0
+        dilation: 1
         act_name: "relu"
-    prototypical_decoder:
-        _target_: retinal_rl.models.vision.prototypical.PrototypicalDecoder
-        latent_size: ${sweep.latent_size}
-        input_shape: ${dataset.image_size}
+    decoder:
+        _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
+        num_layers: 3
+        num_channels: [16,8,3]
+        kernel_size: 3
+        stride: 1
+        padding: 0
+        dilation: 1
         act_name: "relu"
-    linear_classifier:
-        _target_: retinal_rl.models.cognition.linear_classifier.LinearClassifier
-        inp_size: ${sweep.latent_size}
-        out_size: 10
+    classifier:
+        _target_: retinal_rl.models.circuits.task_head.linear_classifier.LinearClassifier
+        num_classes: ${dataset.num_classes}
         act_name: "elu"
-
-hydra:
-  output_subdir: config
-  run:
-    dir: experiments/${hydra.job.config_name}
-  job:
-    chdir: True
