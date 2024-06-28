@@ -1,16 +1,13 @@
 ### Util for preparing simulations and data for analysis
 
-import numpy as np
-import torch
-from math import floor, ceil
-
+from math import ceil, floor
 from os.path import join
 
+import numpy as np
+import torch
 from sample_factory.utils.typing import Config
 from sample_factory.utils.utils import experiment_dir
-
 from torch import nn
-
 
 ## Paths ###
 
@@ -18,17 +15,12 @@ resources_dir = "resources"
 
 
 def analysis_root(cfg):
-    """
-    Returns the root analysis directory.
-    """
-
+    """Returns the root analysis directory."""
     return join(experiment_dir(cfg), "analyses")
 
 
 def analysis_path(cfg, ana_name):
-    """
-    Returns the path to the analysis directory.
-    """
+    """Returns the path to the analysis directory."""
     art = analysis_root(cfg)
 
     return join(art, ana_name)
@@ -36,9 +28,7 @@ def analysis_path(cfg, ana_name):
 
 # Write number of analyses to file
 def write_analysis_count(cfg, num):
-    """
-    Writes the number of analyses to file, replacing the old file.
-    """
+    """Writes the number of analyses to file, replacing the old file."""
     art = analysis_root(cfg)
     with open(join(art, "analysis_count.txt"), "w") as f:
         f.write(str(num))
@@ -46,9 +36,7 @@ def write_analysis_count(cfg, num):
 
 # Read number of analyses from file
 def read_analysis_count(cfg):
-    """
-    Reads the number of analyses from file; returns 0 if file doesn't exist.
-    """
+    """Reads the number of analyses from file; returns 0 if file doesn't exist."""
     art = analysis_root(cfg)
     try:
         with open(join(art, "analysis_count.txt"), "r") as f:
@@ -71,10 +59,7 @@ def read_analysis_count(cfg):
 #     return [int(f.split("-")[1]) for f in drs]
 #
 def data_path(cfg, ana_name, flnm=None):
-    """
-    Returns the path to the data directory.
-    """
-
+    """Returns the path to the data directory."""
     datpth = analysis_path(cfg, ana_name) + "/data"
 
     if flnm is not None:
@@ -84,10 +69,7 @@ def data_path(cfg, ana_name, flnm=None):
 
 
 def plot_path(cfg, ana_name, flnm=None):
-    """
-    Returns the path to the plot directory.
-    """
-
+    """Returns the path to the plot directory."""
     pltpth = analysis_path(cfg, ana_name) + "/plots"
 
     if flnm is not None:
@@ -100,9 +82,7 @@ def plot_path(cfg, ana_name, flnm=None):
 
 
 def save_onnx(cfg: Config, ana_name: str, brain, inpts) -> None:
-    """
-    Write an onnx file of the saved model.
-    """
+    """Write an onnx file of the saved model."""
     # Note that onnx can't process dictionary inputs and so we can only look at the encoder (and decoder?) separately)
     torch.onnx.export(
         brain.valnet,
@@ -115,16 +95,12 @@ def save_onnx(cfg: Config, ana_name: str, brain, inpts) -> None:
 
 
 def save_data(cfg: Config, ana_name, dat, flnm):
-    """
-    Saves data. 'dat' should probably be a dictionary.
-    """
+    """Saves data. 'dat' should probably be a dictionary."""
     np.save(data_path(cfg, ana_name, flnm), dat, allow_pickle=True)
 
 
 def load_data(cfg: Config, ana_name, flnm):
-    """
-    Loads data. Note the use of tolist() is necessary to read dictionaries.
-    """
+    """Loads data. Note the use of tolist() is necessary to read dictionaries."""
     return np.load(data_path(cfg, ana_name, flnm) + ".npy", allow_pickle=True).tolist()
 
 
@@ -140,9 +116,7 @@ def from_float_to_rgb(xs):
 
 
 def obs_dict_to_tuple(obs_dct):
-    """
-    Extract observation
-    """
+    """Extract observation"""
     obs = obs_dct["obs"][0]
     msm = None
     if "measurements" in obs_dct.keys():
@@ -152,9 +126,7 @@ def obs_dict_to_tuple(obs_dct):
 
 
 def obs_to_img(obs):
-    """
-    Rearrange an image so it can be presented by matplot lib.
-    """
+    """Rearrange an image so it can be presented by matplot lib."""
     # convert to HWC
     obs = obs.permute(1, 2, 0)
     # convert to numpy
@@ -201,17 +173,14 @@ def double_up(x):
 
 
 def encoder_out_size(mdls, hght0, wdth0):
-    """
-    Compute the size of the encoder output, where mdls is the list of encoder
+    """Compute the size of the encoder output, where mdls is the list of encoder
     modules.
     """
-
     hght = hght0
     wdth = wdth0
 
     # iterate over modules that are not activations
     for mdl in mdls:
-
         if is_activation(mdl):
             continue
 
@@ -230,53 +199,12 @@ def encoder_out_size(mdls, hght0, wdth0):
     return hght, wdth
 
 
-def rf_size_and_start(mdls, hidx, widx):
-    """
-    Compute the receptive field size and start for each layer of the encoder,
-    where mdls is the list of encoder modules.
-    """
-    hrf_size = 1
-    hrf_scale = 1
-    hrf_shift = 0
-
-    wrf_size = 1
-    wrf_scale = 1
-    wrf_shift = 0
-
-    hmn = hidx
-    wmn = widx
-
-    for mdl in mdls:
-
-        if is_activation(mdl):
-            continue
-
-        hksz, wksz = double_up(mdl.kernel_size)
-        hstrd, wstrd = double_up(mdl.stride)
-        hpad, wpad = double_up(mdl.padding)
-
-        hrf_size += (hksz - 1) * hrf_scale
-        wrf_size += (wksz - 1) * wrf_scale
-
-        hrf_shift += hpad * hrf_scale
-        wrf_shift += wpad * wrf_scale
-
-        hrf_scale *= hstrd
-        wrf_scale *= wstrd
-
-        hmn = hidx * hrf_scale - hrf_shift
-        wmn = widx * wrf_scale - wrf_shift
-
-    return hrf_size, wrf_size, hmn, wmn
-
-
 def padder(krnsz):
     return (krnsz - 1) // 2
 
 
 def fill_in_argv_template(argv):
     """Replace string templates in argv with values from argv."""
-
     # If calling for help (-h or --help), don't replace anything
     if any([a in argv for a in ["-h", "--help"]]):
         return argv
