@@ -124,7 +124,7 @@ class ConvolutionalDecoder(NeuralCircuit):
                 deconv_layers.append(
                     (self.act_name + str(i), self.str_to_activation(self.act_name))
                 )
-        deconv_layers.append(("output_activation", nn.Sigmoid()))
+        deconv_layers.append(("output_activation", nn.Tanh()))
         self.deconv_head = nn.Sequential(OrderedDict(deconv_layers))
 
     def forward(self, x: Tensor) -> Tensor:

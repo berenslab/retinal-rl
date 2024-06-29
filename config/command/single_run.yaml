@@ -1,4 +1,0 @@
-# Configuration for single run
-run_mode: single_run
-num_epochs: 10
-recon_weight: 0.5

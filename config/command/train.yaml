@@ -1,0 +1,6 @@
+# Configuration for single run
+run_mode: train
+num_epochs: 20
+checkpoint_step: 5
+recon_weight: 0.5
+split_ratio: 0.8

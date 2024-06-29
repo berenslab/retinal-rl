@@ -1,5 +1,0 @@
-# Configuration for cross-validation
-run_mode: cross_validate
-num_folds: 5
-num_epochs: 10
-recon_weight: 0.5

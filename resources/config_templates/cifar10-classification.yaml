@@ -3,6 +3,9 @@ defaults:
   - override /dataset: cifar10
   - _self_
 
+command:
+  plot_inputs: false
+
 experiment: cifar10-classification
 
 training:

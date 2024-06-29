@@ -6,7 +6,7 @@ defaults:
 hydra:
   output_subdir: config
   run:
-    dir: experiment/${experiment}/${command.run_mode}
+    dir: experiment/${experiment}
   job:
     chdir: True
   searchpath:
@@ -14,3 +14,8 @@ hydra:
 
 system:
   device: cpu
+  experiment_path: ${hydra:run.dir}
+  data_path: data
+  checkpoint_path: ${system.data_path}/checkpoints
+  max_checkpoints: 5
+  plot_path: ${system.data_path}/plots

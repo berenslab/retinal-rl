@@ -1,35 +1,84 @@
+from typing import Dict, List, Tuple
+
 import matplotlib.pyplot as plt
-import os
+import numpy as np
+from matplotlib.figure import Figure
+from numpy.typing import NDArray
+from torch import Tensor
+from torch.utils.data import Dataset
 
-results_folder = "./training_results"
-data_files = os.listdir(results_folder)
-fig, axes = plt.subplots(2, 1, figsize=(10, 10))
 
-for file in data_files:
-    path = os.path.join(results_folder, file)
-    with open(path, "r") as f:
-        f.readline()  # Skip the lambda line
-        f.readline()  # Skip header
-        epochs, recon_losses, class_losses = [], [], []
-        for line in f:
-            epoch, recon, class_loss = line.strip().split(",")
-            epochs.append(int(epoch))
-            recon_losses.append(float(recon))
-            class_losses.append(float(class_loss))
-    label = file.split("_")[-1].replace(".txt", "")  # Extract lambda from filename
-    axes[0].plot(epochs, recon_losses, label=f"Lambda={label}")
-    axes[1].plot(epochs, class_losses, label=f"Lambda={label}")
+def plot_training_histories(histories: Dict[str, List[float]]) -> Figure:
+    fig, axs = plt.subplots(3, 1, figsize=(12, 12), constrained_layout=True)
 
-axes[0].set_title("Reconstruction Loss")
-axes[0].set_xlabel("Epoch")
-axes[0].set_ylabel("Loss")
-axes[0].legend()
+    metrics = ["total", "classification", "reconstruction"]
+    for idx, metric in enumerate(metrics):
+        ax = axs[idx]
+        ax.plot(
+            histories[f"train_{metric}"],
+            label=f"{metric.capitalize()} Training Error",
+            color="black",
+        )
+        ax.plot(
+            histories[f"validation_{metric}"],
+            label=f"{metric.capitalize()} Validation Error",
+            color="red",
+        )
 
-axes[1].set_title("Classification Loss")
-axes[1].set_xlabel("Epoch")
-axes[1].set_ylabel("Loss")
-axes[1].legend()
+        ax.set_xlabel("Epochs")
+        ax.set_ylabel("Loss")
+        ax.legend()
+        ax.grid(True)
 
-plt.tight_layout()
-plt.savefig(os.path.join(results_folder, "training_plots.png"))
-plt.show()
+    fig.suptitle("Training and Validation Losses", fontsize=16)
+
+    return fig
+
+
+def plot_input_distributions(dataset: Dataset[Tuple[Tensor, int]]) -> Figure:
+    # Find min and max pixel values
+    min_val = float("inf")
+    max_val = float("-inf")
+
+    for img, _ in dataset:
+        min_val = min(min_val, img.min().item())
+        max_val = max(max_val, img.max().item())
+
+    print(f"Min pixel value: {min_val}")
+    print(f"Max pixel value: {max_val}")
+
+    # Initialize histogram bins
+    bins = 40
+    hist_bins: NDArray[np.float64] = np.linspace(min_val, max_val, bins + 1)
+    hist_red = np.zeros(bins)
+    hist_green = np.zeros(bins)
+    hist_blue = np.zeros(bins)
+
+    # Collect pixel values for each channel in a more memory-efficient way
+    for img, _ in dataset:
+        hist_red += np.histogram(img[0].flatten(), bins=hist_bins)[0]
+        hist_green += np.histogram(img[1].flatten(), bins=hist_bins)[0]
+        hist_blue += np.histogram(img[2].flatten(), bins=hist_bins)[0]
+
+    # Plot histograms
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    colors = ["r", "g", "b"]
+    titles = ["Red Channel", "Green Channel", "Blue Channel"]
+
+    histograms = [hist_red, hist_green, hist_blue]
+    for i, ax in enumerate(axes):
+        ax.bar(
+            hist_bins[:-1],
+            histograms[i],
+            width=np.diff(hist_bins),
+            color=colors[i],
+            alpha=0.7,
+            align="edge",
+        )
+        ax.set_title(titles[i])
+        ax.set_xlabel("Pixel Value")
+        ax.set_ylabel("Frequency")
+
+    plt.tight_layout()
+
+    return fig
