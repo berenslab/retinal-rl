@@ -69,3 +69,4 @@ def checkpoint_analyze(
     recon_fig = plot_reconstructions(**rec_dict, num_samples=5)
     recon_path = os.path.join(checkpoint_plot_path, "reconstructions")
     recon_fig.savefig(recon_path)
+    plt.close()

@@ -6,11 +6,11 @@ defaults:
 hydra:
   output_subdir: config
   run:
-    dir: experiment/${experiment}
+    dir: experiments/${experiment}
   job:
     chdir: True
   searchpath:
-    - file://.
+    - file://config/user
 
 system:
   device: cpu

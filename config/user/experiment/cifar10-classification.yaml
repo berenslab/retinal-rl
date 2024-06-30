@@ -1,0 +1,15 @@
+# @package _global_
+defaults:
+  - brain: pure-cnn
+  - override /dataset: cifar10
+  - _self_
+
+command:
+  plot_inputs: false
+
+experiment: cifar10-classification
+
+training:
+  num_folds: 5
+  num_epochs: 10
+  recon_weight: 0.5

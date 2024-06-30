@@ -1,0 +1,31 @@
+name: brain
+sensors:
+  vision: ${dataset.image_size}
+connections:
+  - ["vision", "encoder"]
+  - ["encoder", "classifier"]
+  - ["encoder", "decoder"]
+circuits:
+  encoder:
+      _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+      num_layers: 3
+      num_channels: [8,16,32]
+      kernel_size: 3
+      stride: 1
+      padding: 0
+      dilation: 1
+      act_name: "relu"
+  decoder:
+      _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
+      num_layers: 3
+      num_channels: [16,8,3]
+      kernel_size: 3
+      stride: 1
+      padding: 0
+      dilation: 1
+      act_name: "relu"
+  classifier:
+      _target_: retinal_rl.models.circuits.task_head.linear_classifier.LinearClassifier
+      num_classes: ${dataset.num_classes}
+      act_name: "elu"
+

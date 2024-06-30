@@ -16,7 +16,7 @@ from runner.analyze import analyze
 from runner.train import train
 
 
-@hydra.main(config_path="config", config_name="config", version_base=None)
+@hydra.main(config_path="config/base", config_name="config", version_base=None)
 def program(cfg: DictConfig):
     if cfg.command.run_mode == "clean":
         delete_results(cfg.system.experiment_path, cfg.system.data_path)
