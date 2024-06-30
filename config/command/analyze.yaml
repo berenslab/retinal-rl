@@ -1,3 +1,2 @@
-# Configuration for cross-validation
 run_mode: analyze
 plot_inputs: true

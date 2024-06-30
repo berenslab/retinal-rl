@@ -20,8 +20,8 @@ def plot_training_histories(histories: Dict[str, List[float]]) -> Figure:
             color="black",
         )
         ax.plot(
-            histories[f"validation_{metric}"],
-            label=f"{metric.capitalize()} Validation Error",
+            histories[f"test_{metric}"],
+            label=f"{metric.capitalize()} Test Error",
             color="red",
         )
 
@@ -30,7 +30,7 @@ def plot_training_histories(histories: Dict[str, List[float]]) -> Figure:
         ax.legend()
         ax.grid(True)
 
-    fig.suptitle("Training and Validation Losses", fontsize=16)
+    fig.suptitle("Training and Test Losses", fontsize=16)
 
     return fig
 

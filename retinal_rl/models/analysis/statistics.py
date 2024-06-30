@@ -69,21 +69,38 @@ def gradient_receptive_fields(
 def get_reconstructions(
     device: torch.device,
     brain: Brain,
-    dataset: Dataset[Tuple[Tensor, int]],
+    test_set: Dataset[Tuple[Tensor, int]],
+    train_set: Dataset[Tuple[Tensor, int]],
     sample_size: int,
-) -> Tuple[List[Tensor], List[Tensor]]:
+) -> Dict[str, List[Tuple[Tensor, int]]]:
     brain.eval()  # Set the model to evaluation mode
-    original_images: List[Tensor] = []
-    reconstructed_images: List[Tensor] = []
-    indices = torch.randperm(len(dataset))[:sample_size]
 
-    with torch.no_grad():  # Disable gradient computation
-        for index in indices:
-            img, _ = dataset[index]
-            img = img.to(device)
-            stimulus = {"vision": img.unsqueeze(0)}
-            recimg = brain(stimulus)["decoder"].squeeze(0)
-            original_images.append(img.cpu())
-            reconstructed_images.append(recimg.cpu())
+    def collect_reconstructions(
+        data_set: Dataset[Tuple[Tensor, int]], sample_size: int
+    ) -> Tuple[List[Tuple[Tensor, int]], List[Tuple[Tensor, int]]]:
+        subset: List[Tuple[Tensor, int]] = []
+        estimates: List[Tuple[Tensor, int]] = []
+        indices = torch.randperm(len(data_set))[:sample_size]
 
-    return original_images, reconstructed_images
+        with torch.no_grad():  # Disable gradient computation
+            for index in indices:
+                img, k = data_set[index]
+                img = img.to(device)
+                stimulus = {"vision": img.unsqueeze(0)}
+                response = brain(stimulus)
+                rec_img = response["decoder"].squeeze(0)
+                pred_k = response["classifier"].argmax().item()
+                subset.append((img.cpu(), k))
+                estimates.append((rec_img.cpu(), pred_k))
+
+        return subset, estimates
+
+    train_subset, train_estimates = collect_reconstructions(train_set, sample_size)
+    test_subset, test_estimates = collect_reconstructions(test_set, sample_size)
+
+    return {
+        "train_subset": train_subset,
+        "train_estimates": train_estimates,
+        "test_subset": test_subset,
+        "test_estimates": test_estimates,
+    }

@@ -19,3 +19,4 @@ system:
   checkpoint_path: ${system.data_path}/checkpoints
   max_checkpoints: 5
   plot_path: ${system.data_path}/plots
+  checkpoint_plot_path: ${system.data_path}/plots/checkpoint

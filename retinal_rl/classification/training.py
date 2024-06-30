@@ -20,9 +20,9 @@ def run_epoch(
     class_objective: nn.Module,
     recon_objective: nn.Module,
     trainloader: DataLoader[Tuple[Tensor, int]],
-    validationloader: DataLoader[Tuple[Tensor, int]],
+    testloader: DataLoader[Tuple[Tensor, int]],
 ) -> Tuple[Brain, dict[str, List[float]]]:
-    """Perform a single run with a train/validation split."""
+    """Perform a single run with a train/test split."""
     train_loss, train_recon_loss, train_class_loss = _train_epoch(
         device,
         brain,
@@ -38,15 +38,15 @@ def run_epoch(
         recon_weight,
         recon_objective,
         class_objective,
-        validationloader,
+        testloader,
     )
 
     history["train_total"].append(train_loss)
     history["train_classification"].append(train_class_loss)
     history["train_reconstruction"].append(train_recon_loss)
-    history["validation_total"].append(val_loss)
-    history["validation_classification"].append(val_class_loss)
-    history["validation_reconstruction"].append(val_recon_loss)
+    history["test_total"].append(val_loss)
+    history["test_classification"].append(val_class_loss)
+    history["test_reconstruction"].append(val_recon_loss)
 
     return brain, history
 
@@ -123,7 +123,7 @@ def _validate_model(
     recon_weight: float,
     recon_objective: torch.nn.Module,
     class_objective: torch.nn.Module,
-    validationloader: DataLoader[Tuple[Tensor, int]],
+    testloader: DataLoader[Tuple[Tensor, int]],
 ) -> Tuple[float, float, float]:
     brain.eval()  # Ensure the model is in evaluation mode
 
@@ -131,7 +131,7 @@ def _validate_model(
     losses = {"total": [], "classification": [], "reconstruction": []}
 
     with torch.no_grad():  # Disable gradient calculation
-        for batch in validationloader:
+        for batch in testloader:
             loss, class_loss, recon_loss = _calculate_loss(
                 device, brain, recon_weight, recon_objective, class_objective, batch
             )
