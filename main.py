@@ -24,7 +24,10 @@ def program(cfg: DictConfig):
 
     device = torch.device(cfg.system.device)
     brain = Brain(**cfg.brain).to(device)
-    optimizer = torch.optim.Adam(brain.parameters(), lr=cfg.command.learning_rate)
+    if "learning_rate" in cfg.command:
+        optimizer = torch.optim.Adam(brain.parameters(), lr=cfg.command.learning_rate)
+    else:
+        optimizer = torch.optim.Adam(brain.parameters())
 
     # Load CIFAR-10 dataset
     transform = transforms.Compose(
