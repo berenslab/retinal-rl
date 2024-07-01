@@ -1,32 +1,29 @@
 ### Imports ###
 
-import json
 import os
 import shutil
 from typing import Dict, List, Tuple
 
 import torch
 import torch.nn as nn
+from torch.optim import Optimizer
 
 from retinal_rl.models.brain import Brain
 
 
 def initialize(
-    data_path: str, checkpoint_path: str, plot_path: str, brain: Brain
-) -> Tuple[Brain, Dict[str, List[float]]]:
-    """Load or initializing the model and histories.
-
-    Args:
-    ----
-        data_path (str): Path to the data directory.
-        checkpoint_path (str): Path to the checkpoint directory.
-        plot_path (str): Path to the plot directory.
-        brain (Brain): The initialized Brain.
-
-    """
+    data_path: str,
+    checkpoint_path: str,
+    plot_path: str,
+    brain: Brain,
+    optimizer: Optimizer,
+) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
+    completed_epochs = 0
     if os.path.exists(data_path):
         print("Data path exists. Loading existing model and history.")
-        brain, history = load_results(data_path, brain)
+        brain, optimizer, history, completed_epochs = load_checkpoint(
+            data_path, brain, optimizer
+        )
     else:
         print("Data path does not exist. Initializing new model and history.")
         history = initialize_histories()
@@ -35,43 +32,34 @@ def initialize(
         os.makedirs(checkpoint_path)
         os.makedirs(plot_path)
 
-    return brain, history
+    return brain, optimizer, history, completed_epochs
 
 
-def save_results(
+def save_checkpoint(
     data_path: str,
     checkpoint_path: str,
     max_checkpoints: int,
     brain: nn.Module,
+    optimizer: Optimizer,
     history: dict[str, List[float]],
+    completed_epochs: int,
 ) -> None:
-    """Save the model and training history to files.
-
-    Args:
-    ----
-        data_path (str): Path to the data directory.
-        checkpoint_path (str): Path to the checkpoint directory.
-        max_checkpoints (int): Maximum number of checkpoints to keep.
-        brain (nn.Module): The trained model.
-        history (dict[str, List[float]]): The training history.
-
-    """
-    # Save histories as a single JSON file
-    histories_file_path = os.path.join(data_path, "histories.json")
-    with open(histories_file_path, "w") as f:
-        json.dump(history, f)
-
-    total_epochs = len(history["train_total"])
-    brain_file_path = os.path.join(data_path, "current_brain.pt")
-    brain_checkpoint_path = os.path.join(
-        checkpoint_path, f"checkpoint_epoch_{total_epochs}.pt"
+    current_file = os.path.join(data_path, "current_checkpoint.pt")
+    checkpoint_file = os.path.join(
+        checkpoint_path, f"checkpoint_epoch_{completed_epochs}.pt"
     )
+    checkpoint_dict = {
+        "completed_epochs": completed_epochs,
+        "model_state_dict": brain.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "training_history": history,
+    }
 
     # Save checkpoint
-    torch.save(brain.state_dict(), brain_checkpoint_path)
+    torch.save(checkpoint_dict, checkpoint_file)
 
     # Copy the checkpoint to current_brain.pt
-    shutil.copyfile(brain_checkpoint_path, brain_file_path)
+    shutil.copyfile(checkpoint_file, current_file)
 
     # Remove older checkpoints if the number exceeds the threshold
     checkpoints = sorted(
@@ -83,42 +71,29 @@ def save_results(
         os.remove(os.path.join(checkpoint_path, checkpoints.pop()))
 
 
-def load_results(
+def load_checkpoint(
     data_path: str,
     brain: Brain,
-) -> Tuple[Brain, Dict[str, List[float]]]:
-    """Load the model and training history from the saved files.
-
-    Args:
-    ----
-        data_path (str): Path to the data directory.
-        brain (Brain): The initialized Brain.
-
-    Returns:
-    -------
-        Tuple[nn.Module, Dict[str, List[float]]]: The loaded brain model and training history.
-
-    """
+    optimizer: Optimizer,
+) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
     # Load histories from the JSON file
-    histories_file_path = os.path.join(data_path, "histories.json")
-    brain_file_path = os.path.join(data_path, "current_brain.pt")
+    checkpoint_file = os.path.join(data_path, "current_checkpoint.pt")
 
     # check if files don't exist
-    if not os.path.exists(histories_file_path):
-        raise FileNotFoundError(f"File not found: {histories_file_path}")
-    if not os.path.exists(brain_file_path):
-        raise FileNotFoundError(f"File not found: {brain_file_path}")
-
-    with open(histories_file_path, "r") as f:
-        history = json.load(f)
+    if not os.path.exists(checkpoint_file):
+        raise FileNotFoundError(f"File not found: {checkpoint_file}")
 
     # Load the state dict into the brain model
-    brain.load_state_dict(torch.load(brain_file_path))
+    checkpoint = torch.load(checkpoint_file)
+    brain.load_state_dict(checkpoint["model_state_dict"])
+    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    completed_epochs = checkpoint["completed_epochs"]
+    history = checkpoint["training_history"]
 
-    return brain, history
+    return brain, optimizer, history, completed_epochs
 
 
-def delete_results(experiment_dir: str, data_path: str) -> None:
+def delete_results(experiment_path: str, data_path: str) -> None:
     """Delete the data directory after prompting the user for confirmation.
 
     Args:
@@ -127,7 +102,7 @@ def delete_results(experiment_dir: str, data_path: str) -> None:
         data_path (str): Path to the data directory to be deleted.
 
     """
-    full_path = os.path.join(experiment_dir, data_path)
+    full_path = os.path.join(experiment_path, data_path)
 
     if not os.path.exists(data_path):
         print(f"Directory {data_path} does not exist.")

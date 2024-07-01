@@ -3,6 +3,7 @@ from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import torch
+from omegaconf import DictConfig
 from torch import Tensor
 from torch.utils.data import Dataset
 
@@ -19,8 +20,7 @@ from retinal_rl.models.brain import Brain
 
 
 def analyze(
-    plot_path: str,
-    plot_inputs: bool,
+    cfg: DictConfig,
     brain: Brain,
     histories: Dict[str, List[float]],
     train_set: Dataset[Tuple[Tensor, int]],
@@ -28,18 +28,18 @@ def analyze(
     device: torch.device,
 ):
     hist_fig = plot_training_histories(histories)
-    hist_path = os.path.join(plot_path, "histories")
+    hist_path = os.path.join(cfg.system.plot_path, "histories")
     hist_fig.savefig(hist_path)
     plt.close()
 
-    if plot_inputs:
+    if cfg.command.plot_inputs:
         rgb_fig = plot_input_distributions(train_set)
-        rgb_path = os.path.join(plot_path, "input-distributions")
+        rgb_path = os.path.join(cfg.system.plot_path, "input-distributions")
         rgb_fig.savefig(rgb_path)
         plt.close()
 
     checkpoint_analyze(
-        plot_path,
+        cfg.system.plot_path,
         brain,
         train_set,
         test_set,
@@ -55,13 +55,17 @@ def checkpoint_analyze(
     device: torch.device,
 ):
     # check for the existence of the checkpoint_plot_path
+
     if not os.path.exists(checkpoint_plot_path):
         os.makedirs(checkpoint_plot_path)
+    rf_sub_path = os.path.join(checkpoint_plot_path, "receptive-fields")
+    if not os.path.exists(rf_sub_path):
+        os.makedirs(rf_sub_path)
 
     rf_dict = gradient_receptive_fields(device, brain.circuits["encoder"])
     for lyr, rfs in rf_dict.items():
         rf_fig = receptive_field_plots(rfs)
-        rf_path = os.path.join(checkpoint_plot_path, f"{lyr}-layer-receptive-fields")
+        rf_path = os.path.join(rf_sub_path, f"{lyr}-layer-receptive-fields")
         rf_fig.savefig(rf_path)
         plt.close()
 

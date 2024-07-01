@@ -23,7 +23,9 @@ def run_epoch(
     testloader: DataLoader[Tuple[Tensor, int]],
 ) -> Tuple[Brain, dict[str, List[float]]]:
     """Perform a single run with a train/test split."""
-    train_loss, train_recon_loss, train_class_loss = _train_epoch(
+    brain.train()  # Ensure the model is in training mode
+
+    train_loss, train_recon_loss, train_class_loss = train_epoch(
         device,
         brain,
         optimizer,
@@ -32,7 +34,7 @@ def run_epoch(
         class_objective,
         trainloader,
     )
-    val_loss, val_recon_loss, val_class_loss = _validate_model(
+    test_loss, test_recon_loss, test_class_loss = evaluate_model(
         device,
         brain,
         recon_weight,
@@ -44,14 +46,14 @@ def run_epoch(
     history["train_total"].append(train_loss)
     history["train_classification"].append(train_class_loss)
     history["train_reconstruction"].append(train_recon_loss)
-    history["test_total"].append(val_loss)
-    history["test_classification"].append(val_class_loss)
-    history["test_reconstruction"].append(val_recon_loss)
+    history["test_total"].append(test_loss)
+    history["test_classification"].append(test_class_loss)
+    history["test_reconstruction"].append(test_recon_loss)
 
     return brain, history
 
 
-def _calculate_loss(
+def calculate_loss(
     device: torch.device,
     brain: Brain,
     recon_weight: float,
@@ -77,7 +79,7 @@ def _calculate_loss(
     return loss, class_loss, recon_loss
 
 
-def _train_epoch(
+def train_epoch(
     device: torch.device,
     brain: Brain,
     optimizer: Optimizer,
@@ -100,7 +102,7 @@ def _train_epoch(
     for batch in trainloader:
         optimizer.zero_grad()
 
-        loss, class_loss, recon_loss = _calculate_loss(
+        loss, class_loss, recon_loss = calculate_loss(
             device, brain, recon_weight, recon_objective, class_objective, batch
         )
 
@@ -117,7 +119,7 @@ def _train_epoch(
     return avg_loss, avg_class_loss, avg_recon_loss
 
 
-def _validate_model(
+def evaluate_model(
     device: torch.device,
     brain: Brain,
     recon_weight: float,
@@ -132,7 +134,7 @@ def _validate_model(
 
     with torch.no_grad():  # Disable gradient calculation
         for batch in testloader:
-            loss, class_loss, recon_loss = _calculate_loss(
+            loss, class_loss, recon_loss = calculate_loss(
                 device, brain, recon_weight, recon_objective, class_objective, batch
             )
 

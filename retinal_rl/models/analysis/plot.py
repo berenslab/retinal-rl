@@ -7,14 +7,19 @@ from numpy.typing import NDArray
 from torch import Tensor
 
 
-def receptive_field_plots(lyr_rfs: NDArray[np.float64]) -> Figure:
+def receptive_field_plots(lyr_rfs: NDArray[np.float64], max_cols: int = 8) -> Figure:
     """Plot the receptive fields of a convolutional layer."""
     ochns, nclrs, _, _ = lyr_rfs.shape
 
+    # Calculate the number of rows needed based on max_cols
+    cols = min(ochns, max_cols)
+    rows = (ochns // max_cols) * nclrs + (1 if ochns % max_cols > 0 else 0) * nclrs
+
     fig, axs0 = plt.subplots(
-        nclrs,
-        ochns,
-        figsize=(ochns * 1.5, nclrs),
+        rows,
+        cols,
+        figsize=(cols * 2, 1.6 * rows),
+        squeeze=False,
     )
 
     axs = axs0.flat
@@ -22,23 +27,24 @@ def receptive_field_plots(lyr_rfs: NDArray[np.float64]) -> Figure:
     cmaps = ["inferno", "viridis", "cividis"]
 
     for i in range(ochns):
-        mx = np.amax(lyr_rfs[i])
-        mn = np.amin(lyr_rfs[i])
-
         for j in range(nclrs):
-            ax = axs[i + ochns * j]
-            # hght,wdth = lyr_rfs[i,j,:,:].shape
-            im = ax.imshow(lyr_rfs[i, j, :, :], cmap=cmaps[j], vmin=mn, vmax=mx)
+            ax = axs[(i // max_cols) * nclrs * max_cols + (j * max_cols) + (i % max_cols)]
+            im = ax.imshow(lyr_rfs[i, j, :, :], cmap=cmaps[j])
             ax.set_xticks([])
             ax.set_yticks([])
             ax.spines["top"].set_visible(True)
             ax.spines["right"].set_visible(True)
+            # Set title to channel i when j = 0
+            if j == 0:
+                ax.set_title(f"Channel {i+1}")
 
-            if i == 0:
-                fig.colorbar(im, ax=ax, cmap=cmaps[j], label=clrs[j], location="left")
+            if i % max_cols == 0:
+                ax.set_ylabel(clrs[j])
+                fig.colorbar(im, ax=ax, cmap=cmaps[j], location="right")
             else:
-                fig.colorbar(im, ax=ax, cmap=cmaps[j], location="left")
+                fig.colorbar(im, ax=ax, cmap=cmaps[j], location="right")
 
+    fig.tight_layout()  # Adjust layout to fit color bars
     return fig
 
 

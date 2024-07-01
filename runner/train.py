@@ -6,15 +6,14 @@ from omegaconf import DictConfig
 from torch import Tensor, optim
 from torch.utils.data import DataLoader, Dataset
 
-from retinal_rl.classification.training import run_epoch
-from retinal_rl.classification.util import save_results
+from retinal_rl.classification.training import evaluate_model, run_epoch
+from retinal_rl.classification.util import save_checkpoint
 from retinal_rl.models.brain import Brain
 from runner.analyze import analyze, checkpoint_analyze
 
 
-def print_histories(histories: dict[str, List[float]], epoch: int) -> None:
+def print_histories(histories: dict[str, List[float]]) -> None:
     """Prints the training and test histories in a readable format."""
-    print(f"Epoch {epoch}:")
     print(f"Train Total Loss: {histories['train_total'][-1]:.4f}")
     print(f"Train Classification Loss: {histories['train_classification'][-1]:.4f}")
     print(f"Train Reconstruction Loss: {histories['train_reconstruction'][-1]:.4f}")
@@ -25,10 +24,11 @@ def print_histories(histories: dict[str, List[float]], epoch: int) -> None:
 
 def train(
     cfg: DictConfig,
+    device: torch.device,
     brain: Brain,
+    optimizer: optim.Optimizer,
     train_set: Dataset[Tuple[Tensor, int]],
     test_set: Dataset[Tuple[Tensor, int]],
-    device: torch.device,
     completed_epochs: int,
     histories: Dict[str, List[float]],
 ):
@@ -37,9 +37,38 @@ def train(
 
     class_objective = nn.CrossEntropyLoss()
     recon_objective = nn.MSELoss()
-    optimizer = optim.Adam(brain.parameters(), lr=0.001)
 
-    for i in range(1, cfg.command.num_epochs + 1):
+    if completed_epochs == 0:
+        train_loss, train_recon_loss, train_class_loss = evaluate_model(
+            device,
+            brain,
+            cfg.command.recon_weight,
+            recon_objective,
+            class_objective,
+            trainloader,
+        )
+        test_loss, test_recon_loss, test_class_loss = evaluate_model(
+            device,
+            brain,
+            cfg.command.recon_weight,
+            recon_objective,
+            class_objective,
+            testloader,
+        )
+
+        histories["train_total"].append(train_loss)
+        histories["train_classification"].append(train_class_loss)
+        histories["train_reconstruction"].append(train_recon_loss)
+        histories["test_total"].append(test_loss)
+        histories["test_classification"].append(test_class_loss)
+        histories["test_reconstruction"].append(test_recon_loss)
+
+    print(f"\nInitialization complete. Performance at Epoch {completed_epochs}:")
+    print_histories(histories)
+
+    for epoch in range(
+        completed_epochs + 1, completed_epochs + cfg.command.num_epochs + 1
+    ):
         brain, histories = run_epoch(
             device,
             brain,
@@ -52,20 +81,24 @@ def train(
             testloader,
         )
 
-        print_histories(histories, i + completed_epochs)
+        print(f"\nEpoch {epoch} complete.")
+        print_histories(histories)
 
-        if i % cfg.command.checkpoint_step == 0:
-            print(f"Completed epoch {i+completed_epochs}. Saving checkpoint and plots.")
-            checkpoint_plot_path = (
-                f"{cfg.system.checkpoint_plot_path}/checkpoint-epoch-{i+completed_epochs}"
-            )
+        if epoch % cfg.command.checkpoint_step == 0:
+            print("Saving checkpoint and plots.")
 
-            save_results(
+            save_checkpoint(
                 cfg.system.data_path,
                 cfg.system.checkpoint_path,
                 cfg.system.max_checkpoints,
                 brain,
+                optimizer,
                 histories,
+                epoch,
+            )
+
+            checkpoint_plot_path = (
+                f"{cfg.system.checkpoint_plot_path}/checkpoint-epoch-{epoch}"
             )
             checkpoint_analyze(
                 checkpoint_plot_path,
@@ -75,8 +108,7 @@ def train(
                 device,
             )
             analyze(
-                cfg.system.plot_path,
-                cfg.command.plot_inputs,
+                cfg,
                 brain,
                 histories,
                 train_set,

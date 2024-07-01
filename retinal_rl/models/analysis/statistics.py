@@ -21,6 +21,7 @@ def gradient_receptive_fields(
     The returned dictionary is indexed by layer name and the shape of the array
     (#layer_channels, #input_channels, #rf_height, #rf_width).
     """
+    enc.eval()
     nclrs, hght, wdth = enc.input_shape
     ochns = nclrs
 

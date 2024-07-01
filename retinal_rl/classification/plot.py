@@ -3,6 +3,7 @@ from typing import Dict, List, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.figure import Figure
+from matplotlib.ticker import MaxNLocator
 from numpy.typing import NDArray
 from torch import Tensor
 from torch.utils.data import Dataset
@@ -29,6 +30,8 @@ def plot_training_histories(histories: Dict[str, List[float]]) -> Figure:
         ax.set_ylabel("Loss")
         ax.legend()
         ax.grid(True)
+        # Force integer x labels
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
     fig.suptitle("Training and Test Losses", fontsize=16)
 

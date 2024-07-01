@@ -24,6 +24,7 @@ def program(cfg: DictConfig):
 
     device = torch.device(cfg.system.device)
     brain = Brain(**cfg.brain).to(device)
+    optimizer = torch.optim.Adam(brain.parameters(), lr=cfg.command.learning_rate)
 
     # Load CIFAR-10 dataset
     transform = transforms.Compose(
@@ -41,19 +42,30 @@ def program(cfg: DictConfig):
         brain.scan_circuits()
         sys.exit(0)
 
-    brain, histories = initialize(
-        cfg.system.data_path, cfg.system.checkpoint_path, cfg.system.plot_path, brain
+    brain, optimizer, histories, completed_epochs = initialize(
+        cfg.system.data_path,
+        cfg.system.checkpoint_path,
+        cfg.system.plot_path,
+        brain,
+        optimizer,
     )
-    completed_epochs = len(histories["train_total"])
 
     if cfg.command.run_mode == "train":
-        train(cfg, brain, train_set, test_set, device, completed_epochs, histories)
+        train(
+            cfg,
+            device,
+            brain,
+            optimizer,
+            train_set,
+            test_set,
+            completed_epochs,
+            histories,
+        )
         sys.exit(0)
 
     if cfg.command.run_mode == "analyze":
         analyze(
-            cfg.system.plot_path,
-            cfg.command.plot_inputs,
+            cfg,
             brain,
             histories,
             train_set,
