@@ -127,8 +127,10 @@ def initialize_histories() -> Dict[str, List[float]]:
     return {
         "train_total": [],
         "train_classification": [],
+        "train_fraction_correct": [],
         "train_reconstruction": [],
         "test_total": [],
         "test_classification": [],
+        "test_fraction_correct": [],
         "test_reconstruction": [],
     }

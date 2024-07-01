@@ -66,11 +66,11 @@ def program(cfg: DictConfig):
     if cfg.command.run_mode == "analyze":
         analyze(
             cfg,
+            device,
             brain,
             histories,
             train_set,
             test_set,
-            device,
         )
         sys.exit(0)
 

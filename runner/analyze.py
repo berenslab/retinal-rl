@@ -1,4 +1,5 @@
 import os
+import shutil
 from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
@@ -21,56 +22,48 @@ from retinal_rl.models.brain import Brain
 
 def analyze(
     cfg: DictConfig,
+    device: torch.device,
     brain: Brain,
     histories: Dict[str, List[float]],
     train_set: Dataset[Tuple[Tensor, int]],
     test_set: Dataset[Tuple[Tensor, int]],
-    device: torch.device,
+    check_path: str = "",
 ):
+    plot_path = cfg.system.plot_path
+
     hist_fig = plot_training_histories(histories)
-    hist_path = os.path.join(cfg.system.plot_path, "histories")
-    hist_fig.savefig(hist_path)
+    hist_file = os.path.join(plot_path, "histories.png")
+    hist_fig.savefig(hist_file)
     plt.close()
 
     if cfg.command.plot_inputs:
         rgb_fig = plot_input_distributions(train_set)
-        rgb_path = os.path.join(cfg.system.plot_path, "input-distributions")
-        rgb_fig.savefig(rgb_path)
+        rgb_file = os.path.join(plot_path, "input-distributions.png")
+        rgb_fig.savefig(rgb_file)
         plt.close()
 
-    checkpoint_analyze(
-        cfg.system.plot_path,
-        brain,
-        train_set,
-        test_set,
-        device,
-    )
-
-
-def checkpoint_analyze(
-    checkpoint_plot_path: str,
-    brain: Brain,
-    train_set: Dataset[Tuple[Tensor, int]],
-    test_set: Dataset[Tuple[Tensor, int]],
-    device: torch.device,
-):
-    # check for the existence of the checkpoint_plot_path
-
-    if not os.path.exists(checkpoint_plot_path):
-        os.makedirs(checkpoint_plot_path)
-    rf_sub_path = os.path.join(checkpoint_plot_path, "receptive-fields")
+    rf_sub_path = os.path.join(plot_path, "receptive-fields")
     if not os.path.exists(rf_sub_path):
         os.makedirs(rf_sub_path)
 
     rf_dict = gradient_receptive_fields(device, brain.circuits["encoder"])
     for lyr, rfs in rf_dict.items():
         rf_fig = receptive_field_plots(rfs)
-        rf_path = os.path.join(rf_sub_path, f"{lyr}-layer-receptive-fields")
-        rf_fig.savefig(rf_path)
+        rf_file = os.path.join(rf_sub_path, f"{lyr}-layer-receptive-fields.png")
+        rf_fig.savefig(rf_file)
         plt.close()
 
     rec_dict = get_reconstructions(device, brain, train_set, test_set, 5)
     recon_fig = plot_reconstructions(**rec_dict, num_samples=5)
-    recon_path = os.path.join(checkpoint_plot_path, "reconstructions")
-    recon_fig.savefig(recon_path)
+    recon_file = os.path.join(plot_path, "reconstructions.png")
+    recon_fig.savefig(recon_file)
     plt.close()
+
+    if check_path:
+        checkpoint_plot_path = os.path.join(check_path)
+        if not os.path.exists(checkpoint_plot_path):
+            os.makedirs(checkpoint_plot_path)
+        shutil.copy(recon_file, checkpoint_plot_path)
+        shutil.copytree(
+            rf_sub_path, os.path.join(checkpoint_plot_path, "receptive-fields")
+        )

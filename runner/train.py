@@ -9,16 +9,18 @@ from torch.utils.data import DataLoader, Dataset
 from retinal_rl.classification.training import evaluate_model, run_epoch
 from retinal_rl.classification.util import save_checkpoint
 from retinal_rl.models.brain import Brain
-from runner.analyze import analyze, checkpoint_analyze
+from runner.analyze import analyze
 
 
 def print_histories(histories: dict[str, List[float]]) -> None:
     """Prints the training and test histories in a readable format."""
     print(f"Train Total Loss: {histories['train_total'][-1]:.4f}")
     print(f"Train Classification Loss: {histories['train_classification'][-1]:.4f}")
+    print(f"Train Fraction Correct: {histories['train_fraction_correct'][-1]:.4f}")
     print(f"Train Reconstruction Loss: {histories['train_reconstruction'][-1]:.4f}")
     print(f"Test Total Loss: {histories['test_total'][-1]:.4f}")
     print(f"Test Classification Loss: {histories['test_classification'][-1]:.4f}")
+    print(f"Test Fraction Correct: {histories['test_fraction_correct'][-1]:.4f}")
     print(f"Test Reconstruction Loss: {histories['test_reconstruction'][-1]:.4f}")
 
 
@@ -39,15 +41,17 @@ def train(
     recon_objective = nn.MSELoss()
 
     if completed_epochs == 0:
-        train_loss, train_recon_loss, train_class_loss = evaluate_model(
-            device,
-            brain,
-            cfg.command.recon_weight,
-            recon_objective,
-            class_objective,
-            trainloader,
+        train_loss, train_class_loss, train_frac_correct, train_recon_loss = (
+            evaluate_model(
+                device,
+                brain,
+                cfg.command.recon_weight,
+                recon_objective,
+                class_objective,
+                trainloader,
+            )
         )
-        test_loss, test_recon_loss, test_class_loss = evaluate_model(
+        test_loss, test_class_loss, test_frac_correct, test_recon_loss = evaluate_model(
             device,
             brain,
             cfg.command.recon_weight,
@@ -58,9 +62,11 @@ def train(
 
         histories["train_total"].append(train_loss)
         histories["train_classification"].append(train_class_loss)
+        histories["train_fraction_correct"].append(train_frac_correct)
         histories["train_reconstruction"].append(train_recon_loss)
         histories["test_total"].append(test_loss)
         histories["test_classification"].append(test_class_loss)
+        histories["test_fraction_correct"].append(test_frac_correct)
         histories["test_reconstruction"].append(test_recon_loss)
 
     print(f"\nInitialization complete. Performance at Epoch {completed_epochs}:")
@@ -100,18 +106,12 @@ def train(
             checkpoint_plot_path = (
                 f"{cfg.system.checkpoint_plot_path}/checkpoint-epoch-{epoch}"
             )
-            checkpoint_analyze(
-                checkpoint_plot_path,
-                brain,
-                train_set,
-                test_set,
-                device,
-            )
             analyze(
                 cfg,
+                device,
                 brain,
                 histories,
                 train_set,
                 test_set,
-                device,
+                check_path=checkpoint_plot_path,
             )

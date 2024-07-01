@@ -12,17 +12,19 @@ from torch.utils.data import Dataset
 def plot_training_histories(histories: Dict[str, List[float]]) -> Figure:
     fig, axs = plt.subplots(3, 1, figsize=(12, 12), constrained_layout=True)
 
-    metrics = ["total", "classification", "reconstruction"]
+    metrics = ["total", "fraction_correct", "reconstruction"]
     for idx, metric in enumerate(metrics):
         ax = axs[idx]
+        # split at underscores and capitalize each word
+        lbl = " ".join([word.capitalize() for word in metric.split("_")])
         ax.plot(
             histories[f"train_{metric}"],
-            label=f"{metric.capitalize()} Training Error",
+            label=f"{lbl} Training Error",
             color="black",
         )
         ax.plot(
             histories[f"test_{metric}"],
-            label=f"{metric.capitalize()} Test Error",
+            label=f"{lbl} Test Error",
             color="red",
         )
 
