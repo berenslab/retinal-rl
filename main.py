@@ -10,12 +10,13 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 from torchvision.datasets import CIFAR10
 
-from retinal_rl.classification.util import delete_results, initialize
+from runner.util import delete_results, initialize
 from retinal_rl.models.brain import Brain
 from runner.analyze import analyze
 from runner.train import train
 
 
+# Hydra entry point
 @hydra.main(config_path="config/base", config_name="config", version_base=None)
 def program(cfg: DictConfig):
     if cfg.command.run_mode == "clean":
@@ -24,10 +25,7 @@ def program(cfg: DictConfig):
 
     device = torch.device(cfg.system.device)
     brain = Brain(**cfg.brain).to(device)
-    if "learning_rate" in cfg.command:
-        optimizer = torch.optim.Adam(brain.parameters(), lr=cfg.command.learning_rate)
-    else:
-        optimizer = torch.optim.Adam(brain.parameters())
+    optimizer = torch.optim.Adam(brain.parameters(), lr=cfg.training.learning_rate)
 
     # Load CIFAR-10 dataset
     transform = transforms.Compose(
@@ -46,9 +44,7 @@ def program(cfg: DictConfig):
         sys.exit(0)
 
     brain, optimizer, histories, completed_epochs = initialize(
-        cfg.system.data_path,
-        cfg.system.checkpoint_path,
-        cfg.system.plot_path,
+        cfg,
         brain,
         optimizer,
     )
@@ -67,14 +63,7 @@ def program(cfg: DictConfig):
         sys.exit(0)
 
     if cfg.command.run_mode == "analyze":
-        analyze(
-            cfg,
-            device,
-            brain,
-            histories,
-            train_set,
-            test_set,
-        )
+        analyze(cfg, device, brain, histories, train_set, test_set, completed_epochs)
         sys.exit(0)
 
     raise ValueError("Invalid run_mode")

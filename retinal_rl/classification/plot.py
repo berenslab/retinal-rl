@@ -1,4 +1,5 @@
 from typing import Dict, List, Tuple
+import logging
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,6 +8,9 @@ from matplotlib.ticker import MaxNLocator
 from numpy.typing import NDArray
 from torch import Tensor
 from torch.utils.data import Dataset
+
+# Initialize the logger
+log = logging.getLogger(__name__)
 
 
 def plot_training_histories(histories: Dict[str, List[float]]) -> Figure:
@@ -49,8 +53,8 @@ def plot_input_distributions(dataset: Dataset[Tuple[Tensor, int]]) -> Figure:
         min_val = min(min_val, img.min().item())
         max_val = max(max_val, img.max().item())
 
-    print(f"Min pixel value: {min_val}")
-    print(f"Max pixel value: {max_val}")
+    log.info(f"Training set min input value: {min_val}")
+    log.info(f"Training set max input value: {max_val}")
 
     # Initialize histogram bins
     bins = 40

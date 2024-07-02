@@ -3,6 +3,9 @@
 import os
 import shutil
 from typing import Dict, List, Tuple
+import logging
+import omegaconf
+from omegaconf import DictConfig
 
 import torch
 import torch.nn as nn
@@ -10,27 +13,39 @@ from torch.optim import Optimizer
 
 from retinal_rl.models.brain import Brain
 
+import wandb
+
+# Initialize the logger
+log = logging.getLogger(__name__)
+
 
 def initialize(
-    data_path: str,
-    checkpoint_path: str,
-    plot_path: str,
+    cfg: DictConfig,
     brain: Brain,
     optimizer: Optimizer,
 ) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
     completed_epochs = 0
-    if os.path.exists(data_path):
-        print("Data path exists. Loading existing model and history.")
+
+    if os.path.exists(cfg.system.data_path):
+        log.info("Data path exists. Loading existing model and history.")
         brain, optimizer, history, completed_epochs = load_checkpoint(
-            data_path, brain, optimizer
+            cfg.system.data_path, brain, optimizer
         )
+        if cfg.logging.use_wandb:
+            wandb.init(project="retinal-rl")
     else:
-        print("Data path does not exist. Initializing new model and history.")
+        if cfg.logging.use_wandb:
+            # convert DictConfig to dict
+            dict_conf = omegaconf.OmegaConf.to_container(
+                cfg, resolve=True, throw_on_missing=True
+            )
+            wandb.init(project="retinal-rl", config=dict_conf)
+        log.info("Data path does not exist. Initializing new model and history.")
         history = initialize_histories()
         # create the directories
-        os.makedirs(data_path)
-        os.makedirs(checkpoint_path)
-        os.makedirs(plot_path)
+        os.makedirs(cfg.system.data_path)
+        os.makedirs(cfg.system.checkpoint_path)
+        os.makedirs(cfg.system.plot_path)
 
     return brain, optimizer, history, completed_epochs
 

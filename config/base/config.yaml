@@ -2,7 +2,7 @@ defaults:
   - _self_
   - command: scan
   - dataset: ??
-  - override hydra/launcher: joblib
+  - override hydra/job_logging: custom
 
 hydra:
   output_subdir: config
@@ -29,3 +29,6 @@ system:
   max_checkpoints: 5
   plot_path: ${system.data_path}/plots
   checkpoint_plot_path: ${system.data_path}/plots/checkpoint
+
+logging:
+  use_wandb: true
