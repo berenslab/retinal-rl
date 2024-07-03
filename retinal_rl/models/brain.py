@@ -62,7 +62,29 @@ class Brain(nn.Module):
             if node not in self.sensors:
                 input_tensor = self._calculate_inputs(node, dummy_responses)
                 input_shape = list(input_tensor.shape[1:])
-                circuit = instantiate(circuits[node], input_shape=input_shape)
+
+                # Check for the output_shape key
+                if "output_shape" in circuits[node]:
+                    output_shape = circuits[node]["output_shape"]
+                    if isinstance(output_shape, str):
+                        parts = output_shape.split(".")
+                        if len(parts) == 2 and parts[0] in self.circuits:
+                            circuit_name, property_name = parts
+                            output_shape = getattr(
+                                self.circuits[circuit_name], property_name
+                            )
+                        else:
+                            raise ValueError(
+                                f"Invalid format or reference in output_shape: {output_shape}"
+                            )
+                    circuit = instantiate(
+                        circuits[node],
+                        input_shape=input_shape,
+                        output_shape=output_shape,
+                    )
+                else:
+                    circuit = instantiate(circuits[node], input_shape=input_shape)
+
                 dummy_responses[node] = circuit(input_tensor)
                 self.circuits[node] = circuit
 

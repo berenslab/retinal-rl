@@ -25,7 +25,7 @@ circuits:
     act_name: ${sweep.activation}
   fc_feedback:
     _target_: retinal_rl.models.circuits.fully_connected.FullyConnectedDecoder
-    output_shape: ${sweep.latent_dimension}
+    output_shape: "fc_feedforward.input_shape"
     hidden_units:
       - ${sweep.latent_dimension}
     act_name: ${sweep.activation}

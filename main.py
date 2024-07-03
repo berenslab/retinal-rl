@@ -10,10 +10,10 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 from torchvision.datasets import CIFAR10
 
-from runner.util import delete_results, initialize
 from retinal_rl.models.brain import Brain
 from runner.analyze import analyze
 from runner.train import train
+from runner.util import delete_results, initialize
 
 
 # Hydra entry point
