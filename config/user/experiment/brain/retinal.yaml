@@ -1,0 +1,43 @@
+name: brain
+sensors:
+  vision: ${dataset.image_size}
+connections:
+  - ["vision", "cnn_feedforward"]
+  - ["cnn_feedforward", "fc_feedforward"]
+  - ["fc_feedforward", "classifier"]
+  - ["fc_fedforward", "fc_feedbackward"]
+  - ["fc_feedbackward", "decoder"]
+circuits:
+  cnn_feedforward:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 3
+    num_channels: [16,32,64]
+    kernel_size: ${sweep.kernel_size}
+    stride: 2
+    padding: ${sweep.kernel_size}
+    dilation: 1
+    act_name: ${sweep.activation}
+  fc_feedforward:
+    _target_: retinal_rl.models.circuits.fully_connected.FullyConnectedEncoder
+    output_shape: ${sweep.latent_dimension}
+    hidden_units:
+      - ${sweep.latent_dimension}
+    act_name: ${sweep.activation}
+  fc_feedback:
+    _target_: retinal_rl.models.circuits.fully_connected.FullyConnectedDecoder
+    output_shape: ${sweep.latent_dimension}
+    hidden_units:
+      - ${sweep.latent_dimension}
+    act_name: ${sweep.activation}
+  decoder:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
+    num_layers: 3
+    num_channels: [32,16,3]
+    kernel_size: ${sweep.kernel_size}
+    stride: 2
+    padding: ${sweep.kernel_size/2}
+    dilation: 1
+    act_name: ${sweep.activation}
+  classifier:
+    _target_: retinal_rl.models.circuits.task_head.linear_classifier.LinearClassifier
+    num_classes: ${dataset.num_classes}

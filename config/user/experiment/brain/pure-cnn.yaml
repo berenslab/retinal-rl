@@ -27,5 +27,4 @@ circuits:
   classifier:
       _target_: retinal_rl.models.circuits.task_head.linear_classifier.LinearClassifier
       num_classes: ${dataset.num_classes}
-      act_name: "elu"
 

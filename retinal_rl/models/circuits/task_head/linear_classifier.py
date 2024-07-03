@@ -12,11 +12,9 @@ class LinearClassifier(NeuralCircuit):
         self,
         input_shape: List[int],
         num_classes: int,
-        act_name: str,
     ):
         super().__init__(input_shape)
 
-        self.act_name = act_name
         input_size = int(torch.prod(torch.tensor(input_shape)))
         self.fc = torch.nn.Linear(input_size, num_classes)
 

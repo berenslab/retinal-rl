@@ -11,7 +11,14 @@ experiment: cifar10-classification
 
 training:
   num_folds: 5
-  recon_weight: 0.5
-  num_epochs: 20
+  recon_weight: ${sweep.recon_weight}
+  num_epochs: 50
   checkpoint_step: 5
   learning_rate: 0.0003
+
+sweep:
+  latent_dimension: 64
+  activation: "elu"
+  recon_weight: 0.5
+  kernel_size: 3
+
