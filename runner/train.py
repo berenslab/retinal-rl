@@ -1,6 +1,5 @@
 import logging
 from typing import Dict, List, Tuple
-import json
 
 import torch
 import torch.nn as nn
@@ -65,9 +64,24 @@ def train(
         histories["test_fraction_correct"].append(test_frac_correct)
         histories["test_reconstruction"].append(test_recon_loss)
 
+        checkpoint_plot_path = (
+            f"{cfg.system.checkpoint_plot_path}/checkpoint-epoch-{completed_epochs}"
+        )
+        analyze(
+            cfg,
+            device,
+            brain,
+            histories,
+            train_set,
+            test_set,
+            completed_epochs,
+            check_path=checkpoint_plot_path,
+        )
+
+        if cfg.logging.use_wandb:
+            _log_histories(cfg, histories, completed_epochs)
+
     log.info(f"Initialization complete.")
-    if cfg.logging.use_wandb:
-        _log_histories(cfg, histories, completed_epochs)
 
     for epoch in range(
         completed_epochs + 1, completed_epochs + cfg.training.num_epochs + 1
@@ -85,8 +99,6 @@ def train(
         )
 
         log.info(f"Epoch {epoch} complete.")
-        if cfg.logging.use_wandb:
-            _log_histories(cfg, histories, completed_epochs)
 
         if epoch % cfg.training.checkpoint_step == 0:
             log.info("Saving checkpoint and plots.")
@@ -115,29 +127,29 @@ def train(
                 check_path=checkpoint_plot_path,
             )
 
+        if cfg.logging.use_wandb:
+            _log_histories(cfg, histories, epoch)
+
 
 def _log_histories(
     cfg: DictConfig, histories: dict[str, List[float]], epoch: int
 ) -> None:
     """Logs the training and test histories in a readable format."""
-    nice_dict = {
-        "Train": {
-            "Total Loss": histories["train_total"][-1],
-            "Classification Loss": histories["train_classification"][-1],
-            "Fraction Correct": histories["train_fraction_correct"][-1],
-            "Reconstruction Loss": histories["train_reconstruction"][-1],
-        },
-        "Test": {
-            "Total Loss": histories["test_total"][-1],
-            "Classification Loss": histories["test_classification"][-1],
-            "Fraction Correct": histories["test_fraction_correct"][-1],
-            "Reconstruction Loss": histories["test_reconstruction"][-1],
-        },
+    # Flatten the hierarchical dictionary structure
+    flat_dict = {
+        "Train/Total Loss": histories["train_total"][-1],
+        "Train/Classification Loss": histories["train_classification"][-1],
+        "Train/Fraction Correct": histories["train_fraction_correct"][-1],
+        "Train/Reconstruction Loss": histories["train_reconstruction"][-1],
+        "Test/Total Loss": histories["test_total"][-1],
+        "Test/Classification Loss": histories["test_classification"][-1],
+        "Test/Fraction Correct": histories["test_fraction_correct"][-1],
+        "Test/Reconstruction Loss": histories["test_reconstruction"][-1],
     }
 
     if cfg.logging.use_wandb:
         # Log to wandb if enabled
-        wandb.log(nice_dict)  # , step=epoch)
-    else:
-        # Log to local logging in a pretty JSON format
-        logging.info(f"Training and Test Histories:\n{json.dumps(nice_dict, indent=4)}")
+        wandb.log(flat_dict, step=epoch, commit=True)
+
+    # Log to local logging in a pretty JSON format
+    logging.debug(f"Training and Test Histories:\n{flat_dict}")

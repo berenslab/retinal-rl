@@ -21,7 +21,7 @@ from retinal_rl.models.analysis.statistics import (
 from retinal_rl.models.brain import Brain
 import wandb
 
-FigureDict = Dict[str, Figure | Dict[str, Any]]
+FigureDict = Dict[str, Figure]
 
 
 def analyze(
@@ -49,10 +49,9 @@ def analyze(
 
     # Plot receptive fields
     rf_dict = gradient_receptive_fields(device, brain.circuits["encoder"])
-    fig_dict["Receptive_Fields"] = {}
     for lyr, rfs in rf_dict.items():
         rf_fig = receptive_field_plots(rfs)
-        fig_dict["Receptive_Fields"][f"{lyr}_layer"] = rf_fig
+        fig_dict[f"Receptive_Fields/{lyr}_layer"] = rf_fig
 
     # Plot reconstructions
     rec_dict = get_reconstructions(device, brain, train_set, test_set, 5)
@@ -77,31 +76,20 @@ def analyze(
             shutil.copytree(plot_path, checkpoint_plot_path)
 
 
-# Function to save figures from a dictionary recursively
-
-
-def _log_figures(fig_dict: FigureDict, epoch) -> None:
+def _log_figures(fig_dict: FigureDict, epoch: int) -> None:
     """Log figures to wandb."""
-    wandb.log(fig_dict)  # , step=epoch)
+    fig_dict_prefixed = {f"Figures/{key}": fig for key, fig in fig_dict.items()}
+    wandb.log(fig_dict_prefixed, step=epoch, commit=False)
 
     # Close the figures to free up memory
     for fig in fig_dict.values():
-        if isinstance(fig, dict):
-            for sub_fig in fig.values():
-                plt.close(sub_fig)
-        else:
-            plt.close(fig)
+        plt.close(fig)
 
 
 def _save_figures(fig_dict: FigureDict, path: str):
-
     for key, fig in fig_dict.items():
-        if isinstance(fig, dict):
-            sub_dir = os.path.join(path, key)
-            if not os.path.exists(sub_dir):
-                os.makedirs(sub_dir)
-            _save_figures(fig, sub_dir)
-        else:
-            fig_file = os.path.join(path, f"{key}.png")
-            fig.savefig(fig_file)
-            plt.close(fig)
+        fig_path = key.replace("/", os.sep)
+        full_path = os.path.join(path, fig_path + ".png")
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        fig.savefig(full_path)
+        plt.close(fig)
