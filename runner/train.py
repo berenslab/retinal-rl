@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Dict, List, Tuple
 
 import torch
@@ -32,6 +33,8 @@ def train(
 
     class_objective = nn.CrossEntropyLoss()
     recon_objective = nn.MSELoss()
+    wall_time = time.time()
+    epoch_wall_time = 0
 
     if completed_epochs == 0:
         train_loss, train_class_loss, train_frac_correct, train_recon_loss = (
@@ -74,7 +77,7 @@ def train(
         )
 
         if cfg.logging.use_wandb:
-            _log_histories(cfg, histories, completed_epochs)
+            _log_statistics(completed_epochs, epoch_wall_time, histories)
 
     log.info("Initialization complete.")
 
@@ -92,8 +95,6 @@ def train(
             trainloader,
             testloader,
         )
-
-        log.info(f"Epoch {epoch} complete.")
 
         if epoch % cfg.training.checkpoint_step == 0:
             log.info("Saving checkpoint and plots.")
@@ -119,16 +120,23 @@ def train(
                 True,
             )
 
+        new_wall_time = time.time()
+        epoch_wall_time = new_wall_time - wall_time
+        wall_time = new_wall_time
+        log.info(f"Epoch {epoch} complete. Epoch Wall Time: {epoch_wall_time}.")
+
         if cfg.logging.use_wandb:
-            _log_histories(cfg, histories, epoch)
+            _log_statistics(epoch, epoch_wall_time, histories)
 
 
-def _log_histories(
-    cfg: DictConfig, histories: dict[str, List[float]], epoch: int
+def _log_statistics(
+    epoch: int, epoch_duration: float, histories: dict[str, List[float]]
 ) -> None:
     """Logs the training and test histories in a readable format."""
     # Flatten the hierarchical dictionary structure
-    flat_dict = {
+    log_dict = {
+        "Epoch": epoch,
+        "Auxiliary/Epoch Duration": epoch_duration,
         "Train/Total Loss": histories["train_total"][-1],
         "Train/Classification Loss": histories["train_classification"][-1],
         "Train/Fraction Correct": histories["train_fraction_correct"][-1],
@@ -139,9 +147,4 @@ def _log_histories(
         "Test/Reconstruction Loss": histories["test_reconstruction"][-1],
     }
 
-    if cfg.logging.use_wandb:
-        # Log to wandb if enabled
-        wandb.log(flat_dict, step=epoch, commit=True)
-
-    # Log to local logging in a pretty JSON format
-    logging.debug(f"Training and Test Histories:\n{flat_dict}")
+    wandb.log(log_dict, commit=True)

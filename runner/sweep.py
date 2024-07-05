@@ -11,4 +11,4 @@ def launch_sweep(cfg: DictConfig):
     wandb.login()  # Ensure you're logged in to wandb
 
     # Launch the sweep
-    sweep_id = wandb.sweep(sweep=sweep_config, project=sweep_config["project"])
+    wandb.sweep(sweep=sweep_config, project=sweep_config["project"])

@@ -1,13 +1,38 @@
 version: 1
+disable_existing_loggers: false
+
 formatters:
-  simple:
-    format: '[%(levelname)s] - %(message)s'
+  detailed:
+    format: "[%(asctime)s] [%(levelname)s] [%(name)s] - %(message)s"
+  color:
+    # Using colorlog.ColoredFormatter format
+    format: "%(log_color)s[%(asctime)s] [%(levelname)s] [%(name)s] - %(message)s"
+    class: colorlog.ColoredFormatter
+    log_colors:
+      DEBUG:    "cyan"
+      INFO:     "green"
+      WARNING:  "yellow"
+      ERROR:    "red"
+      CRITICAL: "bold_red"
+
 handlers:
   console:
     class: logging.StreamHandler
-    formatter: simple
+    formatter: color
     stream: ext://sys.stdout
-root:
-  handlers: [console]
+  file:
+    class: logging.FileHandler
+    formatter: detailed
+    filename: 'app.log'
+    mode: 'a'
 
-disable_existing_loggers: false
+loggers:
+  my_logger:
+    level: INFO
+    handlers: [console, file]
+    propagate: no
+
+root:
+  level: INFO
+  handlers: [console, file]
+

@@ -4,12 +4,12 @@ from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import torch
-import wandb
 from matplotlib.figure import Figure
 from omegaconf import DictConfig
 from torch import Tensor
 from torch.utils.data import Dataset
 
+import wandb
 from retinal_rl.classification.plot import (
     plot_input_distributions,
     plot_training_histories,
@@ -59,7 +59,7 @@ def analyze(
 
     # Handle logging or saving of figures
     if cfg.logging.use_wandb:
-        _log_figures(fig_dict, epoch)
+        _log_figures(fig_dict)
     else:
         _save_figures(cfg, epoch, fig_dict, copy_checkpoint)
 
@@ -81,12 +81,12 @@ def _wandb_title(title: str) -> str:
     return "/".join(capitalized_parts)
 
 
-def _log_figures(fig_dict: FigureDict, epoch: int) -> None:
+def _log_figures(fig_dict: FigureDict) -> None:
     """Log figures to wandb."""
     fig_dict_prefixed = {
         f"Figures/{_wandb_title(key)}": fig for key, fig in fig_dict.items()
     }
-    wandb.log(fig_dict_prefixed, step=epoch, commit=False)
+    wandb.log(fig_dict_prefixed, commit=False)
 
     # Close the figures to free up memory
     for fig in fig_dict.values():

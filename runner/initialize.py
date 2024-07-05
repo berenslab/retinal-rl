@@ -23,26 +23,34 @@ def initialize(
 ) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
     completed_epochs = 0
 
+    # If continuing from a previous run, load the model and history
     if os.path.exists(cfg.system.data_path):
         log.info("Data path exists. Loading existing model and history.")
         brain, optimizer, history, completed_epochs = load_checkpoint(
             cfg.system.data_path, brain, optimizer
         )
+
         if cfg.logging.use_wandb:
             wandb.init(project="retinal-rl")
+
+    # else, initialize a new model and history
     else:
-        if cfg.logging.use_wandb:
-            # convert DictConfig to dict
-            dict_conf = omegaconf.OmegaConf.to_container(
-                cfg, resolve=True, throw_on_missing=True
-            )
-            wandb.init(project="retinal-rl", config=dict_conf)
         log.info("Data path does not exist. Initializing new model and history.")
         history = initialize_histories()
         # create the directories
         os.makedirs(cfg.system.data_path)
         os.makedirs(cfg.system.checkpoint_path)
         os.makedirs(cfg.system.plot_path)
+
+        if cfg.logging.use_wandb:
+            # convert DictConfig to dict
+            dict_conf = omegaconf.OmegaConf.to_container(
+                cfg, resolve=True, throw_on_missing=True
+            )
+            wandb.init(project="retinal-rl", config=dict_conf)
+            wandb.define_metric("Epoch")
+            wandb.define_metric("Train/*", step_metric="Epoch")
+            wandb.define_metric("Test/*", step_metric="Epoch")
 
     return brain, optimizer, history, completed_epochs
 

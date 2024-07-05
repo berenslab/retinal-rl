@@ -15,7 +15,6 @@ circuits:
       num_channels: [8,16,32]
       kernel_size: 3
       stride: 1
-      padding: 0
       act_name: "relu"
   decoder:
       _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
@@ -23,7 +22,6 @@ circuits:
       num_channels: [16,8,3]
       kernel_size: 3
       stride: 1
-      padding: 0
       act_name: "relu"
   classifier:
       _target_: retinal_rl.models.circuits.task_head.linear_classifier.LinearClassifier
