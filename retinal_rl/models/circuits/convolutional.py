@@ -11,6 +11,15 @@ from retinal_rl.models.neural_circuit import NeuralCircuit
 from retinal_rl.models.util import assert_list
 
 
+def _calculate_padding(kernel_size: int, stride: int) -> int:
+    div, mod = divmod(kernel_size - stride, 2)
+    if mod != 0:
+        raise ValueError(
+            f"Invalid kernel size {kernel_size} and stride {stride}, KS - S must be divisible by 2."
+        )
+    return div
+
+
 class ConvolutionalEncoder(NeuralCircuit):
     """A convolutional encoder that applies a series of convolutional layers to input data.
 
@@ -21,8 +30,6 @@ class ConvolutionalEncoder(NeuralCircuit):
         num_channels (List[int]): The number of channels for each layer. Default is 16.
         kernel_size (Union[int, List[int]]): The size of the convolutional kernels. Default is 3.
         stride (Union[int, List[int]]): The stride for the convolutional layers. Default is 1.
-        padding (Union[int, List[int]]): The padding for the convolutional layers. Default is 0.
-        dilation (Union[int, List[int]]): The dilation for the convolutional layers. Default is 1.
         act_name (str): The name of the activation function to use. Default is "relu".
 
     """
@@ -34,21 +41,19 @@ class ConvolutionalEncoder(NeuralCircuit):
         num_channels: List[int],
         kernel_size: Union[int, List[int]],
         stride: Union[int, List[int]],
-        padding: Union[int, List[int]],
-        dilation: Union[int, List[int]],
         act_name: str,
     ):
         # add parameters to model and apply changes for internal use
         super().__init__(input_shape)
 
         self.num_layers = num_layers
-        self.padding = assert_list(padding, self.num_layers)
-        self.dilation = assert_list(dilation, self.num_layers)
         self.num_channels = assert_list(num_channels, self.num_layers)
         self.kernel_size = assert_list(kernel_size, self.num_layers)
         self.stride = assert_list(stride, self.num_layers)
         self.act_name = act_name
-
+        self.padding: List[int] = []
+        for i in range(num_layers):
+            self.padding.append(_calculate_padding(self.kernel_size[i], self.stride[i]))
         conv_layers: List[Tuple[str, nn.Module]] = []
         # Define convolutional layers
         for i in range(num_layers):
@@ -62,7 +67,6 @@ class ConvolutionalEncoder(NeuralCircuit):
                         self.kernel_size[i],
                         self.stride[i],
                         self.padding[i],
-                        self.dilation[i],
                     ),
                 )
             )
@@ -85,20 +89,20 @@ class ConvolutionalDecoder(NeuralCircuit):
         num_channels: List[int],
         kernel_size: Union[int, List[int]],
         stride: Union[int, List[int]],
-        padding: Union[int, List[int]],
-        dilation: Union[int, List[int]],
         act_name: str,
     ):
         # add parameters to model and apply changes for internal use
         super().__init__(input_shape)
 
         self.num_layers = num_layers
-        self.padding = assert_list(padding, self.num_layers)
-        self.dilation = assert_list(dilation, self.num_layers)
         self.num_channels = assert_list(num_channels, self.num_layers)
         self.kernel_size = assert_list(kernel_size, self.num_layers)
         self.stride = assert_list(stride, self.num_layers)
         self.act_name = act_name
+
+        self.padding: List[int] = []
+        for i in range(num_layers):
+            self.padding.append(_calculate_padding(self.kernel_size[i], self.stride[i]))
 
         deconv_layers: List[Tuple[str, nn.Module]] = []
         # Define deconvolutional layers
@@ -116,11 +120,10 @@ class ConvolutionalDecoder(NeuralCircuit):
                         self.kernel_size[i],
                         self.stride[i],
                         self.padding[i],
-                        dilation=self.dilation[i],
                     ),
                 )
             )
-            if i > 0:
+            if i < num_layers - 1:
                 deconv_layers.append(
                     (self.act_name + str(i), self.str_to_activation(self.act_name))
                 )

@@ -1,3 +1,8 @@
-image_size: [3,32,32]
 num_classes: 10
-
+num_colours: 3
+vision_width: 160
+vision_height: 160
+visual_field: 
+  - ${dataset.vision_height}
+  - ${dataset.vision_width}
+scale_range: [1,2]

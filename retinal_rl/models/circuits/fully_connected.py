@@ -27,14 +27,15 @@ class FullyConnectedEncoder(NeuralCircuit):
         input_shape: List[int],
         output_shape: List[int],
         hidden_units: List[int],
-        act_name: str = "relu",
+        act_name: str,
     ):
         super().__init__(input_shape)
 
+        self._output_shape = output_shape
         self.hidden_units = hidden_units
         self.act_name = act_name
 
-        num_layers = len(hidden_units)
+        num_layers = len(hidden_units) + 1
 
         fc_layers: List[Tuple[str, nn.Module]] = []
         input_size = int(torch.prod(torch.tensor(input_shape)))
@@ -50,13 +51,17 @@ class FullyConnectedEncoder(NeuralCircuit):
                     nn.Linear(input_size, output_size),
                 )
             )
-            if i < num_layers - 1:
-                fc_layers.append(
-                    (self.act_name + str(i), self.str_to_activation(self.act_name))
-                )
+            fc_layers.append(
+                (self.act_name + str(i), self.str_to_activation(self.act_name))
+            )
             input_size = output_size
 
         self.fc_head = nn.Sequential(OrderedDict(fc_layers))
+
+    @property
+    def output_shape(self) -> List[int]:
+        """Return the shape of the output tensor."""
+        return self._output_shape
 
     def forward(self, x: Tensor) -> Tensor:
         x = x.view(x.size(0), -1)  # Flatten the input
@@ -72,34 +77,40 @@ class FullyConnectedDecoder(NeuralCircuit):
         input_shape: List[int],
         output_shape: List[int],
         hidden_units: List[int],
-        act_name: str = "relu",
+        act_name: str,
     ):
         super().__init__(input_shape)
 
+        self._output_shape = output_shape
         self.hidden_units = hidden_units
         self.act_name = act_name
-        num_layers = len(hidden_units)
+        num_layers = len(hidden_units) + 1
 
         fc_layers: List[Tuple[str, nn.Module]] = []
-        in_features = int(torch.prod(torch.tensor(input_shape)))
+        input_size = int(torch.prod(torch.tensor(input_shape)))
         for i in range(num_layers):
-            out_features = (
+            output_size = (
                 self.hidden_units[i]
-                if i < num_layers
+                if i < num_layers - 1
                 else int(torch.prod(torch.tensor(output_shape)))
             )
             fc_layers.append(
                 (
                     "fc" + str(i),
-                    nn.Linear(in_features, out_features),
+                    nn.Linear(input_size, output_size),
                 )
             )
             fc_layers.append(
                 (self.act_name + str(i), self.str_to_activation(self.act_name))
             )
-            in_features = out_features
+            input_size = output_size
 
         self.fc_head = nn.Sequential(OrderedDict(fc_layers))
+
+    @property
+    def output_shape(self) -> List[int]:
+        """Return the shape of the output tensor."""
+        return self._output_shape
 
     def forward(self, x: Tensor) -> Tensor:
         x = x.view(x.size(0), -1)  # Flatten the input

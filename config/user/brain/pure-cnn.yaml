@@ -1,6 +1,9 @@
-name: brain
+name: pure-cnn
 sensors:
-  vision: ${dataset.image_size}
+  vision:
+    - ${dataset.num_colours}
+    - ${dataset.vision_height}
+    - ${dataset.vision_width}
 connections:
   - ["vision", "encoder"]
   - ["encoder", "classifier"]
@@ -13,7 +16,6 @@ circuits:
       kernel_size: 3
       stride: 1
       padding: 0
-      dilation: 1
       act_name: "relu"
   decoder:
       _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
@@ -22,7 +24,6 @@ circuits:
       kernel_size: 3
       stride: 1
       padding: 0
-      dilation: 1
       act_name: "relu"
   classifier:
       _target_: retinal_rl.models.circuits.task_head.linear_classifier.LinearClassifier

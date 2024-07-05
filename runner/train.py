@@ -3,17 +3,15 @@ from typing import Dict, List, Tuple
 
 import torch
 import torch.nn as nn
+import wandb
 from omegaconf import DictConfig
 from torch import Tensor, optim
 from torch.utils.data import DataLoader, Dataset
 
 from retinal_rl.classification.training import evaluate_model, run_epoch
 from retinal_rl.models.brain import Brain
-from runner.util import save_checkpoint
 from runner.analyze import analyze
-
-import wandb
-
+from runner.util import save_checkpoint
 
 # Initialize the logger
 log = logging.getLogger(__name__)
@@ -64,9 +62,6 @@ def train(
         histories["test_fraction_correct"].append(test_frac_correct)
         histories["test_reconstruction"].append(test_recon_loss)
 
-        checkpoint_plot_path = (
-            f"{cfg.system.checkpoint_plot_path}/checkpoint-epoch-{completed_epochs}"
-        )
         analyze(
             cfg,
             device,
@@ -75,13 +70,13 @@ def train(
             train_set,
             test_set,
             completed_epochs,
-            check_path=checkpoint_plot_path,
+            True,
         )
 
         if cfg.logging.use_wandb:
             _log_histories(cfg, histories, completed_epochs)
 
-    log.info(f"Initialization complete.")
+    log.info("Initialization complete.")
 
     for epoch in range(
         completed_epochs + 1, completed_epochs + cfg.training.num_epochs + 1
@@ -113,9 +108,6 @@ def train(
                 epoch,
             )
 
-            checkpoint_plot_path = (
-                f"{cfg.system.checkpoint_plot_path}/checkpoint-epoch-{epoch}"
-            )
             analyze(
                 cfg,
                 device,
@@ -124,7 +116,7 @@ def train(
                 train_set,
                 test_set,
                 epoch,
-                check_path=checkpoint_plot_path,
+                True,
             )
 
         if cfg.logging.use_wandb:

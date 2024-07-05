@@ -22,7 +22,7 @@ hydra:
     subdir: ${hydra.job.override_dirname}
 
 system:
-  device: cpu
+  device: cuda
   experiment_path: ${hydra:runtime.output_dir}
   data_path: data
   checkpoint_path: ${system.data_path}/checkpoints

@@ -67,8 +67,11 @@ class NeuralCircuit(nn.Module, ABC):
     @property
     def output_shape(self) -> List[int]:
         """Return the shape of the output tensor."""
+        device = next(self.parameters()).device
         with torch.no_grad():
-            return list(self.forward(torch.zeros(1, *self.input_shape)).shape[1:])
+            return list(
+                self.forward(torch.zeros(1, *self.input_shape).to(device)).shape[1:]
+            )
 
     @staticmethod
     def str_to_activation(act: str) -> nn.Module:

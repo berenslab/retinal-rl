@@ -1,5 +1,6 @@
 from typing import Dict, List, Tuple
 
+import matplotlib.pyplot as plt
 import networkx as nx
 import torch
 import torch.nn as nn
@@ -109,11 +110,48 @@ class Brain(nn.Module):
         # Run scans on all circuits
         dummy_stimulus: Dict[str, torch.Tensor] = {}
         for sensor in self.sensors:
+            dummy_stimulus[sensor] = torch.rand((1, *self.sensors[sensor]), device="cuda")
+
+        for crcnm, circuit in self.circuits.items():
+            print(
+                f"\n\nCircuit Name: {crcnm}, Class: {circuit.__class__.__name__}, Input Shape: {circuit.input_shape}, Output Shape: {circuit.output_shape}"
+            )
+            circuit.scan()
+
+    def visualize_connectome(self):
+        """Visualize the connectome using networkx and matplotlib."""
+        # Initialize a dictionary to hold input and output sizes for visualization
+        node_sizes = {}
+
+        # Collect sizes for sensors
+        for sensor in self.sensors:
+            node_sizes[sensor] = f"Input: {self.sensors[sensor]}"
+
+        # Collect sizes for circuits
+        dummy_stimulus: Dict[str, torch.Tensor] = {}
+        for sensor in self.sensors:
             dummy_stimulus[sensor] = torch.rand((1, *self.sensors[sensor]))
 
         for crcnm, circuit in self.circuits.items():
-            print(f"\n\nCircuit Name: {crcnm}, Class: {circuit.__class__.__name__}\n")
-            circuit.scan()
+            input_tensor = self._calculate_inputs(crcnm, dummy_stimulus)
+            input_shape = list(input_tensor.shape[1:])
+            dummy_responses = circuit(input_tensor)
+            output_shape = list(dummy_responses.shape[1:])
+            node_sizes[crcnm] = f"Input: {input_shape}\nOutput: {output_shape}"
+
+        # Visualize the connectome
+        pos = nx.spring_layout(self.connectome)
+        plt.figure(figsize=(12, 8))
+
+        # Draw the nodes with their sizes
+        nx.draw_networkx_nodes(
+            self.connectome, pos, node_color="lightblue", node_size=3000
+        )
+        nx.draw_networkx_edges(self.connectome, pos, arrows=True)
+        nx.draw_networkx_labels(self.connectome, pos, labels=node_sizes, font_size=10)
+
+        plt.title("Connectome Visualization")
+        plt.show()
 
     def _calculate_inputs(
         self, node: str, responses: Dict[str, torch.Tensor]
