@@ -1,5 +1,6 @@
 """Contains the implementation of convolutional encoder and decoder neural circuits."""
 
+import logging
 from collections import OrderedDict
 from typing import List, Tuple, Union
 
@@ -10,13 +11,16 @@ from torch import Tensor
 from retinal_rl.models.neural_circuit import NeuralCircuit
 from retinal_rl.models.util import assert_list
 
+logger = logging.getLogger(__name__)
+
 
 def _calculate_padding(kernel_size: int, stride: int) -> int:
     div, mod = divmod(kernel_size - stride, 2)
     if mod != 0:
-        raise ValueError(
+        logger.error(
             f"Invalid kernel size {kernel_size} and stride {stride}, KS - S must be divisible by 2."
         )
+        raise ValueError("Invalid kernel size and stride combination.")
     return div
 
 
