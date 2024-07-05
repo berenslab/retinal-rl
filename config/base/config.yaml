@@ -32,3 +32,13 @@ system:
 
 logging:
   use_wandb: true
+
+sweep:
+  command:
+    - \${env}
+    - python
+    - \${program}
+    - -m
+    - command=train
+    - +experiment=${experiment}
+    - \${args_no_hyphens}

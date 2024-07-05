@@ -123,7 +123,7 @@ def train(
         new_wall_time = time.time()
         epoch_wall_time = new_wall_time - wall_time
         wall_time = new_wall_time
-        log.info(f"Epoch {epoch} complete. Epoch Wall Time: {epoch_wall_time}.")
+        log.info(f"Epoch {epoch} complete. Epoch Wall Time: {epoch_wall_time:.2f}s.")
 
         if cfg.logging.use_wandb:
             _log_statistics(epoch, epoch_wall_time, histories)

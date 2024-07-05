@@ -4,6 +4,7 @@ defaults:
   - override /dataset: cifar10
   - _self_
 
+# This must match the experiment file name
 experiment: cifar10-classification
 
 command:
@@ -37,12 +38,3 @@ sweep:
       values: [0,0.25,0.5,0.75,1]
     kernel_size:
       values: ['[4,2,2,2]','[6,4,4,2]','[8,6,4,4]']
-
-  command:
-    - ${env}
-    - python
-    - ${program}
-    - -m
-    - command=train
-    - +experiment=cifar10-classification
-    - ${args_no_hyphens}
