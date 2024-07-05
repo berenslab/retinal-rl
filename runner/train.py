@@ -3,11 +3,11 @@ from typing import Dict, List, Tuple
 
 import torch
 import torch.nn as nn
-import wandb
 from omegaconf import DictConfig
 from torch import Tensor, optim
 from torch.utils.data import DataLoader, Dataset
 
+import wandb
 from retinal_rl.classification.training import evaluate_model, run_epoch
 from retinal_rl.models.brain import Brain
 from runner.analyze import analyze

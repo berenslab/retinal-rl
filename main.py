@@ -13,8 +13,10 @@ from torchvision.datasets import CIFAR10
 from retinal_rl.classification.dataset import ScaleShiftTransform
 from retinal_rl.models.brain import Brain
 from runner.analyze import analyze
+from runner.initialize import initialize
+from runner.sweep import launch_sweep
 from runner.train import train
-from runner.util import delete_results, initialize
+from runner.util import delete_results
 
 # Preamble
 OmegaConf.register_new_resolver("eval", eval)
@@ -27,9 +29,20 @@ def program(cfg: DictConfig):
         delete_results(cfg.system.experiment_path, cfg.system.data_path)
         sys.exit(0)
 
+    if cfg.command.run_mode == "sweep":
+        launch_sweep(cfg)
+        sys.exit(0)
+
+    del cfg.sweep
+
     device = torch.device(cfg.system.device)
     brain = Brain(**cfg.brain).to(device)
     optimizer = torch.optim.Adam(brain.parameters(), lr=cfg.training.learning_rate)
+
+    if cfg.command.run_mode == "scan":
+        brain.scan_circuits()
+        # brain.visualize_connectome()
+        sys.exit(0)
 
     # Load CIFAR-10 dataset
     transform = transforms.Compose(
@@ -46,11 +59,6 @@ def program(cfg: DictConfig):
     test_set: Dataset[Tuple[Tensor, int]] = CIFAR10(
         root=cache_path, train=False, download=True, transform=transform
     )
-
-    if cfg.command.run_mode == "scan":
-        brain.scan_circuits()
-        # brain.visualize_connectome()
-        sys.exit(0)
 
     brain, optimizer, histories, completed_epochs = initialize(
         cfg,

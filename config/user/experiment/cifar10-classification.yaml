@@ -1,8 +1,8 @@
 # @package _global_
 defaults:
-  - _self_
   - /brain: retinal
   - override /dataset: cifar10
+  - _self_
 
 experiment: cifar10-classification
 
@@ -16,9 +16,33 @@ training:
   checkpoint_step: 5
   learning_rate: 0.0003
 
-# Parameters to sweep in this experiment
+# Parameters to sweep in this experiment (this will mostly be overridden)
 latent_dimension: 64
 activation: "elu"
 recon_weight: 0.5
 kernel_size: [8,4,4,2]
 stride: 2
+
+# wandb sweep
+sweep:
+  description: Trains neural networks to classify scaled and shifted CIFAR10 images.
+  program: main.py
+  method: grid
+  project: retinal-rl
+
+  parameters:
+    latent_dimension:
+      values: [32,64,128]
+    recon_weight:
+      values: [0,0.25,0.5,0.75,1]
+    kernel_size:
+      values: ['[4,2,2,2]','[6,4,4,2]','[8,6,4,4]']
+
+  command:
+    - ${env}
+    - python
+    - ${program}
+    - -m
+    - command=train
+    - +experiment=cifar10-classification
+    - ${args_no_hyphens}
