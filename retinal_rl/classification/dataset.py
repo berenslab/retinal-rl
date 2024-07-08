@@ -11,15 +11,15 @@ class ScaleShiftTransform:
     def __init__(
         self,
         visual_field: List[int],
-        scale_range: List[float],
+        image_rescale_range: List[float],
     ) -> None:
         self.target_size = visual_field
-        self.scale_range = scale_range
+        self.image_rescale_range = image_rescale_range
 
     def __call__(self, img: Image.Image) -> Image.Image:
         # Scale the image
         visual_field = tuple(self.target_size)
-        scale_range = tuple(self.scale_range)
+        scale_range = tuple(self.image_rescale_range)
 
         scale_factor = np.random.uniform(scale_range[0], scale_range[1])
         scaled_size = (int(img.size[0] * scale_factor), int(img.size[1] * scale_factor))

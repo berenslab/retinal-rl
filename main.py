@@ -1,18 +1,12 @@
-import os
 import sys
-from typing import Tuple
 
 import hydra
 import torch
 from omegaconf import DictConfig, OmegaConf
-from torch import Tensor
-from torch.utils.data import Dataset
-from torchvision import transforms
-from torchvision.datasets import CIFAR10
 
-from retinal_rl.classification.dataset import ScaleShiftTransform
 from retinal_rl.models.brain import Brain
 from runner.analyze import analyze
+from runner.dataset import get_datasets
 from runner.initialize import initialize
 from runner.sweep import launch_sweep
 from runner.train import train
@@ -44,21 +38,7 @@ def program(cfg: DictConfig):
         # brain.visualize_connectome()
         sys.exit(0)
 
-    # Load CIFAR-10 dataset
-    transform = transforms.Compose(
-        [
-            ScaleShiftTransform(cfg.dataset.visual_field, cfg.dataset.scale_range),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-        ]
-    )
-    cache_path = os.path.join(hydra.utils.get_original_cwd(), "cache")
-    train_set: Dataset[Tuple[Tensor, int]] = CIFAR10(
-        root=cache_path, train=True, download=True, transform=transform
-    )
-    test_set: Dataset[Tuple[Tensor, int]] = CIFAR10(
-        root=cache_path, train=False, download=True, transform=transform
-    )
+    train_set, test_set = get_datasets(cfg)
 
     brain, optimizer, histories, completed_epochs = initialize(
         cfg,
