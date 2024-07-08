@@ -102,13 +102,14 @@ def train_epoch(
         reconstruction loss, and classification loss for the epoch.
 
     """
-    losses: dict[str, List[torch.Tensor]]
+    losses: dict[str, float]
     losses = {
-        "total": [],
-        "classification": [],
-        "fraction_correct": [],
-        "reconstruction": [],
+        "total": 0,
+        "classification": 0,
+        "fraction_correct": 0,
+        "reconstruction": 0,
     }
+    steps = 0
 
     for batch in trainloader:
         optimizer.zero_grad()
@@ -117,18 +118,19 @@ def train_epoch(
             device, brain, recon_weight, recon_objective, class_objective, batch
         )
 
-        losses["total"].append(loss)
-        losses["classification"].append(class_loss)
-        losses["fraction_correct"].append(frac_correct)
-        losses["reconstruction"].append(recon_loss)
+        losses["total"] += loss.item()
+        losses["classification"] += class_loss.item()
+        losses["fraction_correct"] += frac_correct.item()
+        losses["reconstruction"] += recon_loss.item()
+        steps += 1
 
         loss.backward()
         optimizer.step()
 
-    avg_loss = torch.mean(torch.stack(losses["total"])).item()
-    avg_class_loss = torch.mean(torch.stack(losses["classification"])).item()
-    avg_frac_correct = torch.mean(torch.stack(losses["fraction_correct"])).item()
-    avg_recon_loss = torch.mean(torch.stack(losses["reconstruction"])).item()
+    avg_loss = losses["total"] / steps
+    avg_class_loss = losses["classification"] / steps
+    avg_frac_correct = losses["fraction_correct"] / steps
+    avg_recon_loss = losses["reconstruction"] / steps
     return avg_loss, avg_class_loss, avg_frac_correct, avg_recon_loss
 
 
@@ -142,13 +144,14 @@ def evaluate_model(
 ) -> Tuple[float, float, float, float]:
     brain.eval()  # Ensure the model is in evaluation mode
 
-    losses: dict[str, List[torch.Tensor]]
+    losses: dict[str, float]
     losses = {
-        "total": [],
-        "classification": [],
-        "fraction_correct": [],
-        "reconstruction": [],
+        "total": 0,
+        "classification": 0,
+        "fraction_correct": 0,
+        "reconstruction": 0,
     }
+    steps = 0
 
     with torch.no_grad():  # Disable gradient calculation
         for batch in testloader:
@@ -156,13 +159,14 @@ def evaluate_model(
                 device, brain, recon_weight, recon_objective, class_objective, batch
             )
 
-            losses["total"].append(loss)
-            losses["classification"].append(class_loss)
-            losses["fraction_correct"].append(frac_correct)
-            losses["reconstruction"].append(recon_loss)
+            losses["total"] += loss.item()
+            losses["classification"] += class_loss.item()
+            losses["fraction_correct"] += frac_correct.item()
+            losses["reconstruction"] += recon_loss.item()
+            steps += 1
 
-    avg_loss = torch.mean(torch.stack(losses["total"])).item()
-    avg_class_loss = torch.mean(torch.stack(losses["classification"])).item()
-    avg_frac_correct = torch.mean(torch.stack(losses["fraction_correct"])).item()
-    avg_recon_loss = torch.mean(torch.stack(losses["reconstruction"])).item()
-    return avg_loss, avg_class_loss, avg_frac_correct, avg_recon_loss
+        avg_loss = losses["total"] / steps
+        avg_class_loss = losses["classification"] / steps
+        avg_frac_correct = losses["fraction_correct"] / steps
+        avg_recon_loss = losses["reconstruction"] / steps
+        return avg_loss, avg_class_loss, avg_frac_correct, avg_recon_loss

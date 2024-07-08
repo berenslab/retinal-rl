@@ -7,4 +7,4 @@ visual_field:
   - ${dataset.vision_height}
   - ${dataset.vision_width}
 image_rescale_range: [1,2]
-sample_size_multiplier: 1
+sample_size_multiplier: 5

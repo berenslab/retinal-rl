@@ -85,12 +85,3 @@ def get_wandb_sweep_id() -> str:
 def get_sweep_dir(base_dir: str) -> str:
     sweep_id = get_wandb_sweep_id()
     return os.path.join(base_dir, sweep_id)
-
-
-def generate_run_id() -> str:
-    import time
-
-    # Generate a timestamp
-    timestamp = time.strftime("%Y%m%d-%H%M%S")
-    # Format the run ID
-    return f"run_{timestamp}"

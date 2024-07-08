@@ -128,6 +128,9 @@ def train(
         if cfg.logging.use_wandb:
             _log_statistics(epoch, epoch_wall_time, histories)
 
+        if (epoch + 1) % 10 == 0:
+            torch.cuda.empty_cache()
+
 
 def _log_statistics(
     epoch: int, epoch_wall_time: float, histories: dict[str, List[float]]
