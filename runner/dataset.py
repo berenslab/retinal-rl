@@ -41,16 +41,27 @@ def multiply_dataset(
     return ConcatDataset(train_sets), ConcatDataset(test_sets)
 
 
+def download_dataset(name: str, cache_path: str):
+    if name == "CIFAR10":
+        datasets.CIFAR10(root=cache_path, download=True)
+    elif name == "MNIST":
+        datasets.MNIST(root=cache_path, download=True)
+    elif name == "FASHIONMNIST":
+        datasets.FashionMNIST(root=cache_path, download=True)
+    elif name == "SVHN":
+        datasets.SVHN(root=cache_path, download=True)
+
+
 def load_dataset_factory(
     name: str, transform: transforms.Compose
 ) -> Callable[[], Tuple[Imageset, Imageset]]:
     cache_path = os.path.join(hydra.utils.get_original_cwd(), "cache")
     os.makedirs(cache_path, exist_ok=True)
     name = name.upper()
+    download_dataset(name, cache_path)
 
     def dataset_factory():
         if name == "CIFAR10":
-            datasets.CIFAR10(root=cache_path, download=True)
             train_set = datasets.CIFAR10(
                 root=cache_path, train=True, download=False, transform=transform
             )
@@ -58,7 +69,6 @@ def load_dataset_factory(
                 root=cache_path, train=False, download=False, transform=transform
             )
         elif name == "MNIST":
-            datasets.MNIST(root=cache_path, download=True)
             train_set = datasets.MNIST(
                 root=cache_path, train=True, download=False, transform=transform
             )
@@ -66,7 +76,6 @@ def load_dataset_factory(
                 root=cache_path, train=False, download=False, transform=transform
             )
         elif name == "FASHIONMNIST":
-            train_set = datasets.FashionMNIST(root=cache_path, download=True)
             train_set = datasets.FashionMNIST(
                 root=cache_path, train=True, download=False, transform=transform
             )
