@@ -13,7 +13,7 @@ command:
 training:
   num_folds: 5
   recon_weight: ${recon_weight}
-  num_epochs: 200
+  num_epochs: 250
   checkpoint_step: 5
   learning_rate: 0.0003
 
@@ -33,7 +33,7 @@ sweep:
 
   parameters:
     latent_dimension:
-      values: [32,64,128]
+      values: [32,64,128,256]
     recon_weight:
       values: [0,0.25,0.5,0.75,1]
     kernel_size:
