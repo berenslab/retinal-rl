@@ -33,7 +33,7 @@ sweep:
 
   parameters:
     brain:
-      - ['cnn-decoder', 'dnn-decoder']
+      values: ['cnn-decoder', 'dnn-decoder']
     latent_dimension:
       values: [32,64,128,256]
     recon_weight:
