@@ -130,13 +130,13 @@ def train(
 
 
 def _log_statistics(
-    epoch: int, epoch_duration: float, histories: dict[str, List[float]]
+    epoch: int, epoch_wall_time: float, histories: dict[str, List[float]]
 ) -> None:
     """Logs the training and test histories in a readable format."""
     # Flatten the hierarchical dictionary structure
     log_dict = {
         "Epoch": epoch,
-        "Auxiliary/Epoch Duration": epoch_duration,
+        "Auxiliary/Epoch Wall Time": epoch_wall_time,
         "Train/Total Loss": histories["train_total"][-1],
         "Train/Classification Loss": histories["train_classification"][-1],
         "Train/Fraction Correct": histories["train_fraction_correct"][-1],
