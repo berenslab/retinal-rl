@@ -76,3 +76,21 @@ def delete_results(experiment_path: str, data_path: str) -> None:
             print(f"An error occurred while deleting the directory: {e}")
     else:
         print("Deletion cancelled.")
+
+
+def get_wandb_sweep_id() -> str:
+    return os.getenv("WANDB_SWEEP_ID", "local")
+
+
+def get_sweep_dir(base_dir: str) -> str:
+    sweep_id = get_wandb_sweep_id()
+    return os.path.join(base_dir, sweep_id)
+
+
+def generate_run_id() -> str:
+    import time
+
+    # Generate a timestamp
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    # Format the run ID
+    return f"run_{timestamp}"

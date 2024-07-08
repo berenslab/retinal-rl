@@ -1,8 +1,8 @@
 # @package _global_
 defaults:
-  - /brain: retinal
-  - override /dataset: cifar10
   - _self_
+  - override /dataset: cifar10
+  - override /brain: dnn-decoder
 
 # This must match the experiment file name
 experiment: cifar10-classification
@@ -13,7 +13,7 @@ command:
 training:
   num_folds: 5
   recon_weight: ${recon_weight}
-  num_epochs: 250
+  num_epochs: 100
   checkpoint_step: 5
   learning_rate: 0.0003
 
@@ -32,6 +32,8 @@ sweep:
   project: retinal-rl
 
   parameters:
+    brain:
+      - ['cnn-decoder', 'dnn-decoder']
     latent_dimension:
       values: [32,64,128,256]
     recon_weight:

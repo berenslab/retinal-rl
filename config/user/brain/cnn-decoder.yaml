@@ -1,4 +1,4 @@
-name: retinal
+name: cnn-decoder
 sensors:
   vision:
     - ${dataset.num_colours}
@@ -8,8 +8,7 @@ connections:
   - ["vision", "encoder"]
   - ["encoder", "fc_feedforward"]
   - ["fc_feedforward", "classifier"]
-  - ["fc_feedforward", "fc_feedbackward"]
-  - ["fc_feedbackward", "decoder"]
+  - ["encoder", "decoder"]
 circuits:
   encoder:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
@@ -22,14 +21,7 @@ circuits:
     _target_: retinal_rl.models.circuits.fully_connected.FullyConnectedEncoder
     output_shape:
       - ${latent_dimension}
-    hidden_units:
-      - ${latent_dimension}
-    act_name: ${activation}
-  fc_feedbackward:
-    _target_: retinal_rl.models.circuits.fully_connected.FullyConnectedDecoder
-    output_shape: "fc_feedforward.input_shape"
-    hidden_units:
-      - ${latent_dimension}
+    hidden_units: []
     act_name: ${activation}
   decoder:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
