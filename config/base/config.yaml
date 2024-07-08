@@ -2,12 +2,15 @@ defaults:
   - _self_
   - command: scan
   - dataset: ??
+  - brain: ??
   - override hydra/job_logging: custom
+
+run_id: 'run_${now:%Y-%m-%d-%H-%M-%S}'
 
 hydra:
   output_subdir: config
   run:
-    dir: experiments/${experiment}/single_run
+    dir: experiments/${experiment}/${run_id}
   job:
     chdir: True
     config:
@@ -18,8 +21,8 @@ hydra:
   searchpath:
     - file://config/user
   sweep:
-    dir: experiments/${experiment}/sweep
-    subdir: ${hydra.job.override_dirname}
+    dir: experiments/${experiment}/sweep/${get_sweep_dir:experiments/sweep}
+    subdir: ${run_id}
 
 system:
   device: cuda

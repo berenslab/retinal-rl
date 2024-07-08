@@ -10,10 +10,11 @@ from runner.dataset import get_datasets
 from runner.initialize import initialize
 from runner.sweep import launch_sweep
 from runner.train import train
-from runner.util import delete_results
+from runner.util import delete_results, get_sweep_dir
 
 # Preamble
 OmegaConf.register_new_resolver("eval", eval)
+OmegaConf.register_new_resolver("get_sweep_dir", get_sweep_dir)
 
 
 # Hydra entry point
@@ -26,8 +27,6 @@ def program(cfg: DictConfig):
     if cfg.command.run_mode == "sweep":
         launch_sweep(cfg)
         sys.exit(0)
-
-    del cfg.sweep
 
     device = torch.device(cfg.system.device)
     brain = Brain(**cfg.brain).to(device)
