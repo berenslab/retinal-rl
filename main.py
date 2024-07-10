@@ -10,11 +10,10 @@ from runner.dataset import get_datasets
 from runner.initialize import initialize
 from runner.sweep import launch_sweep
 from runner.train import train
-from runner.util import delete_results, get_sweep_dir
+from runner.util import delete_results
 
 # Preamble
 OmegaConf.register_new_resolver("eval", eval)
-OmegaConf.register_new_resolver("get_sweep_dir", get_sweep_dir)
 
 
 # Hydra entry point

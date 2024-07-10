@@ -21,7 +21,7 @@ hydra:
   searchpath:
     - file://config/user
   sweep:
-    dir: experiments/${experiment}/sweep/${get_sweep_dir:experiments/sweep}
+    dir: experiments/${experiment}/sweep/${oc.env:WANDB_SWEEP_ID,local}
     subdir: ${run_id}
 
 system:
