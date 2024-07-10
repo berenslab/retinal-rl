@@ -37,6 +37,7 @@ def initialize(
                 group=cfg.experiment,
                 job_type=cfg.brain.name,
                 id=cfg.run_id,
+                resume=True,
             )
 
         brain, optimizer, history, completed_epochs = load_checkpoint(
@@ -65,7 +66,6 @@ def initialize(
                 job_type=cfg.brain.name,
                 config=dict_conf,
                 id=cfg.run_id,
-                resume=True,
             )
             wandb.define_metric("Epoch")
             wandb.define_metric("Train/*", step_metric="Epoch")
