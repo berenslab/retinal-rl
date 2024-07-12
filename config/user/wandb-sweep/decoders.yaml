@@ -1,0 +1,15 @@
+# wandb sweep
+description: Comparing autoencoders where the decoding happens before or after the FC layer.
+program: main.py
+method: grid
+project: retinal-rl
+
+parameters:
+  brain:
+    values: ['cnn-decoder', 'dnn-decoder']
+  latent_dimension:
+    values: [32,64,128,256]
+  recon_weight:
+    values: [0,0.25,0.5,0.75,1]
+  kernel_size:
+    values: ['[4,2,2,2]','[6,4,4,2]','[8,6,4,4]']

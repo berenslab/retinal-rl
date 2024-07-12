@@ -11,7 +11,6 @@ from omegaconf import DictConfig
 from torch.optim import Optimizer
 
 from retinal_rl.models.brain import Brain
-from runner.util import get_wandb_sweep_id
 
 # Initialize the logger
 log = logging.getLogger(__name__)
@@ -24,8 +23,8 @@ def initialize(
 ) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
     completed_epochs = 0
 
-    wandb_sweep_id = get_wandb_sweep_id()
-    log.info(f"Run ID: {cfg.run_name}")
+    wandb_sweep_id = os.getenv("WANDB_SWEEP_ID", "local")
+    log.info(f"Run ID: {cfg.run_id}")
     log.info(f"(WANDB) Sweep ID: {wandb_sweep_id}")
 
     # If continuing from a previous run, load the model and history
@@ -37,7 +36,8 @@ def initialize(
                 group=cfg.experiment,
                 job_type=cfg.brain.name,
                 resume=True,
-                name=cfg.run_name,
+                name=cfg.run_id,
+                id=cfg.run_id,
             )
 
         brain, optimizer, history, completed_epochs = load_checkpoint(
@@ -47,7 +47,7 @@ def initialize(
     # else, initialize a new model and history
     else:
         log.info(
-            f"Data path {cfg.system.data_path} does not exist. Initializing {cfg.run_name}."
+            f"Data path {cfg.system.data_path} does not exist. Initializing {cfg.run_id}."
         )
         history = initialize_histories()
         # create the directories
@@ -65,7 +65,8 @@ def initialize(
                 group=cfg.experiment,
                 job_type=cfg.brain.name,
                 config=dict_conf,
-                name=cfg.run_name,
+                name=cfg.run_id,
+                id=cfg.run_id,
                 resume=True,
             )
             wandb.define_metric("Epoch")
