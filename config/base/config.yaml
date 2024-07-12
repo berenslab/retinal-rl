@@ -21,14 +21,8 @@ hydra:
   searchpath:
     - file://config/user
   sweep:
-<<<<<<< HEAD
     dir: experiments/${experiment}/sweep/${oc.env:WANDB_SWEEP_ID,local}
-    subdir: ${run_id}
-=======
-    dir: experiments/${experiment}/sweep/${get_sweep_dir:experiments/sweep}
     subdir: ${run_name}
->>>>>>> 660d8d5 (Leaving id up to wandb to decide. Just going to set run names...)
-
 system:
   device: cuda
   experiment_path: ${hydra:runtime.output_dir}
