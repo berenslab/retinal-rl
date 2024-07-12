@@ -1,6 +1,7 @@
 # @package _global_
 defaults:
   - _self_
+  - /wandb-sweep: decoders
   - override /dataset: cifar10
   - override /brain: dnn-decoder
 
@@ -23,20 +24,3 @@ activation: "elu"
 recon_weight: 0.5
 kernel_size: [8,4,4,2]
 stride: 2
-
-# wandb sweep
-sweep:
-  description: Trains neural networks to classify scaled and shifted CIFAR10 images.
-  program: main.py
-  method: grid
-  project: retinal-rl
-
-  parameters:
-    brain:
-      values: ['cnn-decoder', 'dnn-decoder']
-    latent_dimension:
-      values: [32,64,128,256]
-    recon_weight:
-      values: [0,0.25,0.5,0.75,1]
-    kernel_size:
-      values: ['[4,2,2,2]','[6,4,4,2]','[8,6,4,4]']
