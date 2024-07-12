@@ -25,7 +25,7 @@ def initialize(
     completed_epochs = 0
 
     wandb_sweep_id = get_wandb_sweep_id()
-    log.info(f"Run ID: {cfg.run_id}")
+    log.info(f"Run ID: {cfg.run_name}")
     log.info(f"(WANDB) Sweep ID: {wandb_sweep_id}")
 
     # If continuing from a previous run, load the model and history
@@ -36,8 +36,8 @@ def initialize(
                 project="retinal-rl",
                 group=cfg.experiment,
                 job_type=cfg.brain.name,
-                id=cfg.run_id,
                 resume=True,
+                name=cfg.run_name,
             )
 
         brain, optimizer, history, completed_epochs = load_checkpoint(
@@ -47,7 +47,7 @@ def initialize(
     # else, initialize a new model and history
     else:
         log.info(
-            f"Data path {cfg.system.data_path} does not exist. Initializing {cfg.run_id}."
+            f"Data path {cfg.system.data_path} does not exist. Initializing {cfg.run_name}."
         )
         history = initialize_histories()
         # create the directories
@@ -65,7 +65,8 @@ def initialize(
                 group=cfg.experiment,
                 job_type=cfg.brain.name,
                 config=dict_conf,
-                id=cfg.run_id,
+                name=cfg.run_name,
+                resume=True,
             )
             wandb.define_metric("Epoch")
             wandb.define_metric("Train/*", step_metric="Epoch")
