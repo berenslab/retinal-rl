@@ -5,12 +5,12 @@ defaults:
   - brain: ??
   - override hydra/job_logging: custom
 
-run_id: 'run_${now:%Y-%m-%d-%H-%M-%S}'
+run_name: 'run_${now:%Y-%m-%d-%H-%M-%S}'
 
 hydra:
   output_subdir: config
   run:
-    dir: experiments/${experiment}/${run_id}
+    dir: experiments/${experiment}/${run_name}
   job:
     chdir: True
     config:
@@ -21,8 +21,13 @@ hydra:
   searchpath:
     - file://config/user
   sweep:
+<<<<<<< HEAD
     dir: experiments/${experiment}/sweep/${oc.env:WANDB_SWEEP_ID,local}
     subdir: ${run_id}
+=======
+    dir: experiments/${experiment}/sweep/${get_sweep_dir:experiments/sweep}
+    subdir: ${run_name}
+>>>>>>> 660d8d5 (Leaving id up to wandb to decide. Just going to set run names...)
 
 system:
   device: cuda
