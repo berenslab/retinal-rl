@@ -2,7 +2,7 @@ import sys
 
 import hydra
 import torch
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
 from retinal_rl.models.brain import Brain
 from runner.analyze import analyze
@@ -12,15 +12,12 @@ from runner.sweep import launch_sweep
 from runner.train import train
 from runner.util import delete_results
 
-# Preamble
-OmegaConf.register_new_resolver("eval", eval)
-
 
 # Hydra entry point
 @hydra.main(config_path="config/base", config_name="config", version_base=None)
 def program(cfg: DictConfig):
     if cfg.command.run_mode == "clean":
-        delete_results(cfg.system.experiment_path, cfg.system.data_path)
+        delete_results(cfg)
         sys.exit(0)
 
     if cfg.command.run_mode == "sweep":

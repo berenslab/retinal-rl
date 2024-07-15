@@ -41,54 +41,54 @@ def multiply_dataset(
     return ConcatDataset(train_sets), ConcatDataset(test_sets)
 
 
-def download_dataset(name: str, cache_path: str):
+def download_dataset(name: str, cache_dir: str):
     if name == "CIFAR10":
-        datasets.CIFAR10(root=cache_path, download=True)
+        datasets.CIFAR10(root=cache_dir, download=True)
     elif name == "MNIST":
-        datasets.MNIST(root=cache_path, download=True)
+        datasets.MNIST(root=cache_dir, download=True)
     elif name == "FASHIONMNIST":
-        datasets.FashionMNIST(root=cache_path, download=True)
+        datasets.FashionMNIST(root=cache_dir, download=True)
     elif name == "SVHN":
-        datasets.SVHN(root=cache_path, download=True)
+        datasets.SVHN(root=cache_dir, download=True)
 
 
 def load_dataset_factory(
     name: str, transform: transforms.Compose
 ) -> Callable[[], Tuple[Imageset, Imageset]]:
-    cache_path = os.path.join(hydra.utils.get_original_cwd(), "cache")
-    os.makedirs(cache_path, exist_ok=True)
+    cache_dir = os.path.join(hydra.utils.get_original_cwd(), "cache")
+    os.makedirs(cache_dir, exist_ok=True)
     name = name.upper()
-    download_dataset(name, cache_path)
+    download_dataset(name, cache_dir)
 
     def dataset_factory():
         if name == "CIFAR10":
             train_set = datasets.CIFAR10(
-                root=cache_path, train=True, download=False, transform=transform
+                root=cache_dir, train=True, download=False, transform=transform
             )
             test_set = datasets.CIFAR10(
-                root=cache_path, train=False, download=False, transform=transform
+                root=cache_dir, train=False, download=False, transform=transform
             )
         elif name == "MNIST":
             train_set = datasets.MNIST(
-                root=cache_path, train=True, download=False, transform=transform
+                root=cache_dir, train=True, download=False, transform=transform
             )
             test_set = datasets.MNIST(
-                root=cache_path, train=False, download=False, transform=transform
+                root=cache_dir, train=False, download=False, transform=transform
             )
         elif name == "FASHIONMNIST":
             train_set = datasets.FashionMNIST(
-                root=cache_path, train=True, download=False, transform=transform
+                root=cache_dir, train=True, download=False, transform=transform
             )
             test_set = datasets.FashionMNIST(
-                root=cache_path, train=False, download=False, transform=transform
+                root=cache_dir, train=False, download=False, transform=transform
             )
         elif name == "SVHN":
-            train_set = datasets.SVHN(root=cache_path, download=False)
+            train_set = datasets.SVHN(root=cache_dir, download=False)
             train_set = datasets.SVHN(
-                root=cache_path, split="train", download=False, transform=transform
+                root=cache_dir, split="train", download=False, transform=transform
             )
             test_set = datasets.SVHN(
-                root=cache_path, split="test", download=False, transform=transform
+                root=cache_dir, split="test", download=False, transform=transform
             )
         else:
             raise ValueError(f"Unsupported dataset: {name}")

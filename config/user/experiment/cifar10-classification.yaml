@@ -1,7 +1,7 @@
 # @package _global_
 defaults:
   - _self_
-  - /wandb-sweep: decoders
+  - override /sweep: decoders
   - override /dataset: cifar10
   - override /brain: dnn-decoder
 

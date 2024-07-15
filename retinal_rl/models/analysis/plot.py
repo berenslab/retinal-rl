@@ -11,9 +11,14 @@ def receptive_field_plots(lyr_rfs: NDArray[np.float64], max_cols: int = 8) -> Fi
     """Plot the receptive fields of a convolutional layer."""
     ochns, nclrs, _, _ = lyr_rfs.shape
 
+    # Add "Full" to the beginning of the colors list
+    clrs = ["All", "Red", "Green", "Blue"]
+    cmaps = ["inferno", "viridis", "cividis"]  # None for full-color image
+    nclrs += 1  # Account for the added "Full" row
+
     # Calculate the number of rows needed based on max_cols
     cols = min(ochns, max_cols)
-    rows = (ochns // max_cols) * nclrs + (1 if ochns % max_cols > 0 else 0) * nclrs
+    rows = (ochns // max_cols + (1 if ochns % max_cols > 0 else 0)) * nclrs
 
     fig, axs0 = plt.subplots(
         rows,
@@ -23,13 +28,23 @@ def receptive_field_plots(lyr_rfs: NDArray[np.float64], max_cols: int = 8) -> Fi
     )
 
     axs = axs0.flat
-    clrs = ["Red", "Green", "Blue"]
-    cmaps = ["inferno", "viridis", "cividis"]
 
     for i in range(ochns):
         for j in range(nclrs):
-            ax = axs[(i // max_cols) * nclrs * max_cols + (j * max_cols) + (i % max_cols)]
-            im = ax.imshow(lyr_rfs[i, j, :, :], cmap=cmaps[j])
+            ax = axs[(i // max_cols) * nclrs * max_cols + j * max_cols + (i % max_cols)]
+            if j == 0:
+                data = np.moveaxis(
+                    lyr_rfs[i], 0, -1
+                )  # Move channel axis to the last dimension
+                data_min = data.min()
+                data_max = data.max()
+                data = (data - data_min) / (data_max - data_min)
+                ax.imshow(data)
+            else:
+                data = lyr_rfs[i, j - 1, :, :]
+                cmap = cmaps[j - 1]
+                ax.imshow(data, cmap=cmap)
+
             ax.set_xticks([])
             ax.set_yticks([])
             ax.spines["top"].set_visible(True)
@@ -40,9 +55,8 @@ def receptive_field_plots(lyr_rfs: NDArray[np.float64], max_cols: int = 8) -> Fi
 
             if i % max_cols == 0:
                 ax.set_ylabel(clrs[j])
-                fig.colorbar(im, ax=ax, cmap=cmaps[j], location="right")
-            else:
-                fig.colorbar(im, ax=ax, cmap=cmaps[j], location="right")
+            # if j != 0:
+            #     fig.colorbar(im, ax=ax, cmap=cmap, location="right")
 
     fig.tight_layout()  # Adjust layout to fit color bars
     return fig

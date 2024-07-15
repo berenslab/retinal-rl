@@ -96,31 +96,29 @@ def _log_figures(fig_dict: FigureDict) -> None:
 def _save_figures(
     cfg: DictConfig, epoch: int, fig_dict: FigureDict, copy_checkpoint: bool
 ):
-    plot_path = cfg.system.plot_path
-    os.makedirs(plot_path, exist_ok=True)
+    plot_dir = cfg.system.plot_dir
+    os.makedirs(plot_dir, exist_ok=True)
 
     for key, fig in fig_dict.items():
-        fig_path = key.replace("/", os.sep)
-        full_path = os.path.join(plot_path, fig_path + ".png")
-        os.makedirs(os.path.dirname(full_path), exist_ok=True)
-        fig.savefig(full_path)
+        fig_dir = key.replace("/", os.sep)
+        full_dir = os.path.join(plot_dir, fig_dir + ".png")
+        os.makedirs(os.path.dirname(full_dir), exist_ok=True)
+        fig.savefig(full_dir)
         plt.close(fig)
 
     if copy_checkpoint:
-        checkpoint_plot_path = (
-            f"{cfg.system.checkpoint_plot_path}/checkpoint-epoch-{epoch}"
-        )
-        os.makedirs(checkpoint_plot_path, exist_ok=True)
+        checkpoint_plot_dir = f"{cfg.system.checkpoint_plot_dir}/checkpoint-epoch-{epoch}"
+        os.makedirs(checkpoint_plot_dir, exist_ok=True)
 
         # Copy 'receptive-fields' directory
-        src_dir = os.path.join(plot_path, "receptive-fields")
-        dst_dir = os.path.join(checkpoint_plot_path, "receptive-fields")
+        src_dir = os.path.join(plot_dir, "receptive-fields")
+        dst_dir = os.path.join(checkpoint_plot_dir, "receptive-fields")
         if os.path.exists(src_dir):
             shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
 
         # Copy 'reconstructions.png' file
-        src_file = os.path.join(plot_path, "reconstructions.png")
-        dst_file = os.path.join(checkpoint_plot_path, "reconstructions.png")
+        src_file = os.path.join(plot_dir, "reconstructions.png")
+        dst_file = os.path.join(checkpoint_plot_dir, "reconstructions.png")
         if os.path.exists(src_file):
-            os.makedirs(checkpoint_plot_path, exist_ok=True)
+            os.makedirs(checkpoint_plot_dir, exist_ok=True)
             shutil.copy2(src_file, dst_file)
