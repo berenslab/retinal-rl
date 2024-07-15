@@ -3,7 +3,7 @@ defaults:
   - _self_
   - override /sweep: decoders
   - override /dataset: cifar10
-  - override /brain: dnn-decoder
+  - override /brain: cnn-decoder
 
 # This must match the experiment file name
 experiment: cifar10-classification

@@ -81,9 +81,7 @@ def train(
 
     log.info("Initialization complete.")
 
-    for epoch in range(
-        completed_epochs + 1, completed_epochs + cfg.training.num_epochs + 1
-    ):
+    for epoch in range(completed_epochs + 1, cfg.training.num_epochs + 1):
         brain, histories = run_epoch(
             device,
             brain,
@@ -95,6 +93,11 @@ def train(
             trainloader,
             testloader,
         )
+
+        new_wall_time = time.time()
+        epoch_wall_time = new_wall_time - wall_time
+        wall_time = new_wall_time
+        log.info(f"Epoch {epoch} complete. Epoch Wall Time: {epoch_wall_time:.2f}s.")
 
         if epoch % cfg.training.checkpoint_step == 0:
             log.info("Saving checkpoint and plots.")
@@ -120,16 +123,8 @@ def train(
                 True,
             )
 
-        new_wall_time = time.time()
-        epoch_wall_time = new_wall_time - wall_time
-        wall_time = new_wall_time
-        log.info(f"Epoch {epoch} complete. Epoch Wall Time: {epoch_wall_time:.2f}s.")
-
         if cfg.logging.use_wandb:
             _log_statistics(epoch, epoch_wall_time, histories)
-
-        if (epoch + 1) % 10 == 0:
-            torch.cuda.empty_cache()
 
 
 def _log_statistics(
