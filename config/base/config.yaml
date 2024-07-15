@@ -2,15 +2,16 @@ defaults:
   - _self_
   - command: scan
   - dataset: ??
+  - sweep: ??
   - brain: ??
   - override hydra/job_logging: custom
 
-run_id: 'run_${now:%Y-%m-%d-%H-%M-%S}'
+run_name: 'run_${now:%Y-%m-%d-%H-%M-%S}'
 
 hydra:
   output_subdir: config
   run:
-    dir: experiments/${experiment}/${run_id}
+    dir: experiments/${experiment}/single-run/${run_name}
   job:
     chdir: True
     config:
@@ -22,20 +23,20 @@ hydra:
     - file://config/user
   sweep:
     dir: experiments/${experiment}/sweep/${oc.env:WANDB_SWEEP_ID,local}
-    subdir: ${run_id}
+    subdir: ${run_name}
 system:
   device: cuda
-  experiment_path: ${hydra:runtime.output_dir}
-  data_path: data
-  checkpoint_path: ${system.data_path}/checkpoints
+  run_dir: ${hydra:runtime.output_dir}
+  data_dir: data
+  checkpoint_dir: ${system.data_dir}/checkpoints
   max_checkpoints: 5
-  plot_path: ${system.data_path}/plots
-  checkpoint_plot_path: ${system.data_path}/plots/checkpoint
+  plot_dir: ${system.data_dir}/plots
+  checkpoint_plot_dir: ${system.data_dir}/plots/checkpoint
 
 logging:
   use_wandb: True
 
-wandb-sweep:
+sweep:
   command:
     - \${env}
     - python

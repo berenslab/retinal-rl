@@ -100,8 +100,8 @@ def train(
             log.info("Saving checkpoint and plots.")
 
             save_checkpoint(
-                cfg.system.data_path,
-                cfg.system.checkpoint_path,
+                cfg.system.data_dir,
+                cfg.system.checkpoint_dir,
                 cfg.system.max_checkpoints,
                 brain,
                 optimizer,
