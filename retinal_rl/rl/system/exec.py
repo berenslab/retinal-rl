@@ -15,8 +15,8 @@ from sample_factory.algo.utils.misc import ExperimentStatus
 from sample_factory.algo.runners.runner import AlgoObserver, Runner
 from sample_factory.utils.utils import log, debug_log_every_n
 
-from retinal_rl.system.brain import register_brain
-from retinal_rl.system.environment import register_retinal_env
+from retinal_rl.rl.system.brain import register_brain
+from retinal_rl.rl.system.environment import register_retinal_env
 
 from retinal_rl.util import (
     analysis_root,
@@ -25,12 +25,12 @@ from retinal_rl.util import (
     read_analysis_count,
 )
 
-from retinal_rl.analysis.simulation import (
+from retinal_rl.rl.analysis.simulation import (
     get_brain_env,
     generate_simulation,
     get_checkpoint,
 )
-from retinal_rl.analysis.statistics import (
+from retinal_rl.rl.analysis.statistics import (
     gaussian_noise_stas,
     gradient_receptive_fields,
 )
@@ -42,7 +42,7 @@ from retinal_rl.util import (
     data_path,
 )
 
-from retinal_rl.analysis.plot import simulation_plot, receptive_field_plots, PNGWriter
+from retinal_rl.rl.analysis.plot import simulation_plot, receptive_field_plots, PNGWriter
 
 ### Analysis ###
 
@@ -178,7 +178,7 @@ def analyze(cfg, progress_bar=True):
             anim.save(pth, writer=writer)
         else:
             pth = plot_path(cfg, ana_name, "simulation-animation.mp4")
-            anim.save(pth, extra_args=["-vcodec", "libx264"])
+            anim.sa.rlve(pth, extra_args=["-vcodec", "libx264"])
 
     env.close()
 
