@@ -16,3 +16,6 @@ class SFEngine(RLEngine):
 
 def actor_critic_from_brain(brain: Brain) -> ActorCritic:
     assert brain.connectome
+
+def brain_from_actor_critic(actor_critic: ActorCritic) -> ActorCritic: # probably move to model interface
+    modules = actor_critic.children()

@@ -44,7 +44,11 @@ class ActorCriticProtocol(Protocol):
     """default implementation requires self.obs_normalizer: ObservationNormalizer"""
 
     def get_action_parameterization(self) -> Optional[Tensor]: ...
-    """default implementation uses self.cfg"""
+    """
+    default implementation uses self.cfg
+    for discrete action spaces, it defaults to a simple fully connected layer mapping from the tail output to the number of actions.
+    (cfg is not really used in that case.)
+    """
 
 class ModelConfigProtocol(Protocol):
     """
@@ -52,9 +56,8 @@ class ModelConfigProtocol(Protocol):
     """
     normalize_returns: bool
     adaptive_stddev: bool
-    nonlinearity: str
     policy_init_gain: float
-    policy_initialization: str
+    policy_initialization: str # ("orthogonal", "xavier_uniform", or "torch_default")
 
     # if get_action_parameterization is not overwritten
     initial_stddev: float
