@@ -20,7 +20,8 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol, BrainInterface):
     def __init__(self, obs_space: ObsSpace, action_space: ActionSpace, cfg: Config):
         super().__init__(obs_space, action_space, cfg)
 
-        self.brain = Brain()
+        #TODO: Check compatibility - what is head, core, tail etc if applicable
+        self.brain = Brain(**cfg.brain)
 
         self.action_parameterization = self.get_action_parameterization(
             self.decoder.get_out_size()

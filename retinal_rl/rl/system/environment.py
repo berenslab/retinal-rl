@@ -122,13 +122,9 @@ def make_retinal_env_from_spec(spec, _env_name, cfg, env_config, render_mode: Op
 
     return make_doom_env_impl(spec, cfg=cfg, env_config=env_config, render_mode=render_mode, custom_resolution=res, **kwargs)
 
-def register_retinal_env(cfg):
+def register_retinal_env(scene_name: str, input_satiety: bool):
+    cfg_name = scene_name + ".cfg" # TODO: Check if this stays
 
-    scnnm = cfg.env
-    sat_in = cfg.input_satiety
-
-    cfgnm = scnnm + ".cfg"
-
-    env_spec = retinal_doomspec(scnnm, cfgnm,sat_in)
+    env_spec = retinal_doomspec(scene_name, cfg_name,input_satiety)
     make_env_func = functools.partial(make_retinal_env_from_spec, env_spec)
     register_env(env_spec.name, make_env_func)
