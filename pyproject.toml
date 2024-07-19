@@ -1,6 +1,9 @@
 [tool.pyright]
 include = ["retinal_rl"]
 typeCheckingMode = "strict"
+reportMissingTypeStubs = "warning"
+reportUnknownMemberType = "warning"
+reportUnknownArgumentType = "warning"
 
 [tool.ruff]
 line-length = 90

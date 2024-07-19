@@ -11,6 +11,7 @@ from torch.optim import Optimizer
 
 import wandb
 from retinal_rl.models.brain import Brain
+from runner.util import save_checkpoint
 
 # Initialize the logger
 logger = logging.getLogger(__name__)
@@ -71,11 +72,11 @@ def initialize_create(
     brain: Brain,
     optimizer: Optimizer,
 ) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
-    completed_epochs = 0
+    epoch = 0
     logger.info(
         f"Experiment path {cfg.system.run_dir} does not exist. Initializing {cfg.run_name}."
     )
-    history: Dict[str, List[float]] = {
+    histories: Dict[str, List[float]] = {
         "train_total": [],
         "train_classification": [],
         "train_fraction_correct": [],
@@ -108,4 +109,14 @@ def initialize_create(
         wandb.define_metric("Train/*", step_metric="Epoch")
         wandb.define_metric("Test/*", step_metric="Epoch")
 
-    return brain, optimizer, history, completed_epochs
+    save_checkpoint(
+        cfg.system.data_dir,
+        cfg.system.checkpoint_dir,
+        cfg.system.max_checkpoints,
+        brain,
+        optimizer,
+        histories,
+        epoch,
+    )
+
+    return brain, optimizer, histories, epoch

@@ -16,11 +16,11 @@ from runner.util import delete_results
 # Hydra entry point
 @hydra.main(config_path="config/base", config_name="config", version_base=None)
 def program(cfg: DictConfig):
-    if cfg.command.run_mode == "clean":
+    if cfg.command == "clean":
         delete_results(cfg)
         sys.exit(0)
 
-    if cfg.command.run_mode == "sweep":
+    if cfg.command == "sweep":
         launch_sweep(cfg)
         sys.exit(0)
 
@@ -28,7 +28,7 @@ def program(cfg: DictConfig):
     brain = Brain(**cfg.brain).to(device)
     optimizer = torch.optim.Adam(brain.parameters(), lr=cfg.training.learning_rate)
 
-    if cfg.command.run_mode == "scan":
+    if cfg.command == "scan":
         brain.scan_circuits()
         # brain.visualize_connectome()
         sys.exit(0)
@@ -41,7 +41,7 @@ def program(cfg: DictConfig):
         optimizer,
     )
 
-    if cfg.command.run_mode == "train":
+    if cfg.command == "train":
         train(
             cfg,
             device,
@@ -54,7 +54,7 @@ def program(cfg: DictConfig):
         )
         sys.exit(0)
 
-    if cfg.command.run_mode == "analyze":
+    if cfg.command == "analyze":
         analyze(cfg, device, brain, histories, train_set, test_set, completed_epochs)
         sys.exit(0)
 

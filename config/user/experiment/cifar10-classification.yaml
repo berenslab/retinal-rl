@@ -8,9 +8,6 @@ defaults:
 # This must match the experiment file name
 experiment: cifar10-classification
 
-command:
-  plot_inputs: false
-
 training:
   num_folds: 5
   recon_weight: ${recon_weight}
@@ -22,5 +19,5 @@ training:
 latent_dimension: 64
 activation: "elu"
 recon_weight: 0.5
-kernel_size: [8,4,4,2]
+kernel_size: [8,6,4,2]
 stride: 2

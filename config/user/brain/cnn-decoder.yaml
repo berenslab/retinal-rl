@@ -5,12 +5,12 @@ sensors:
     - ${dataset.vision_height}
     - ${dataset.vision_width}
 connections:
-  - ["vision", "encoder"]
-  - ["encoder", "fc_feedforward"]
+  - ["vision", "cnn_encoder"]
+  - ["cnn_encoder", "fc_feedforward"]
   - ["fc_feedforward", "classifier"]
-  - ["encoder", "decoder"]
+  - ["cnn_encoder", "decoder"]
 circuits:
-  encoder:
+  cnn_encoder:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 4
     num_channels: [16,32,64,64]
