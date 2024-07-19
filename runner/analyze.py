@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 from typing import Dict, List, Tuple
@@ -7,12 +8,16 @@ import torch
 from matplotlib.figure import Figure
 from omegaconf import DictConfig
 from torch import Tensor
-from torch.utils.data import Dataset
+from torch.utils.data import DataLoader, Dataset
 
 import wandb
-from retinal_rl.classification.plot import (
-    plot_input_distributions,
+from retinal_rl.classification.analysis.plot import (
+    plot_image_distribution_analysis,
     plot_training_histories,
+)
+from retinal_rl.classification.analysis.statistics import (
+    image_distribution_analysis,
+    image_distribution_analysis_cnn,
 )
 from retinal_rl.models.analysis.plot import plot_reconstructions, receptive_field_plots
 from retinal_rl.models.analysis.statistics import (
@@ -20,8 +25,11 @@ from retinal_rl.models.analysis.statistics import (
     gradient_receptive_fields,
 )
 from retinal_rl.models.brain import Brain
+from retinal_rl.models.circuits.convolutional import ConvolutionalEncoder
 
 FigureDict = Dict[str, Figure]
+
+logger = logging.getLogger(__name__)
 
 
 def analyze(
@@ -36,23 +44,39 @@ def analyze(
 ):
     fig_dict: FigureDict = {}
 
+    testloader = DataLoader(test_set, batch_size=64, shuffle=False)
+
     # Plot training histories
     if not cfg.logging.use_wandb:
         hist_fig = plot_training_histories(histories)
         fig_dict["training-histories"] = hist_fig
 
     # Plot input distributions if required
-    if cfg.command.plot_inputs:
-        rgb_fig = plot_input_distributions(train_set)
-        fig_dict["input-distributions"] = rgb_fig
+    if cfg.logging.plot_inputs and epoch == 0:
+        img_dict = image_distribution_analysis(device, testloader)
+        img_fig = plot_image_distribution_analysis(img_dict)
+        fig_dict["testset-analysis"] = img_fig
 
     # Plot receptive fields
-    rf_dict = gradient_receptive_fields(device, brain.circuits["encoder"])
-    for lyr, rfs in rf_dict.items():
-        rf_fig = receptive_field_plots(rfs)
-        fig_dict[f"receptive-fields/{lyr}-layer"] = rf_fig
+    if "cnn_encoder" in brain.circuits:
+        cnn_encoder = brain.circuits["cnn_encoder"]
+        if isinstance(cnn_encoder, ConvolutionalEncoder):
+            rf_dict = gradient_receptive_fields(device, cnn_encoder)
+            for lyr, rfs in rf_dict.items():
+                rf_fig = receptive_field_plots(rfs)
+                fig_dict[f"receptive-fields/{lyr}-layer"] = rf_fig
 
-    # Plot reconstructions
+            # CNN analysis
+            cnn_analysis = image_distribution_analysis_cnn(device, test_set, cnn_encoder)
+            for layer_name, layer_data in cnn_analysis.items():
+                layer_fig = plot_image_distribution_analysis(layer_data)
+                fig_dict[f"cnn-analysis/{layer_name}"] = layer_fig
+        else:
+            logger.warning(
+                f"cnn_encoder is not a ConvolutionalEncoder, but a {type(cnn_encoder)}"
+            )
+    else:
+        logger.info("cnn_encoder not found in brain circuits")
     rec_dict = get_reconstructions(device, brain, train_set, test_set, 5)
     recon_fig = plot_reconstructions(**rec_dict, num_samples=5)
     fig_dict["reconstructions"] = recon_fig

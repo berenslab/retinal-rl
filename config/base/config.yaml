@@ -1,12 +1,13 @@
 defaults:
   - _self_
-  - command: scan
   - dataset: ??
   - sweep: ??
   - brain: ??
   - override hydra/job_logging: custom
 
+command: scan
 run_name: 'run_${now:%Y-%m-%d-%H-%M-%S}'
+
 
 hydra:
   output_subdir: config
@@ -35,6 +36,7 @@ system:
 
 logging:
   use_wandb: True
+  plot_inputs: true
 
 sweep:
   command:
