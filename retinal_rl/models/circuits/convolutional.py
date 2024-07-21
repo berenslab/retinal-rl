@@ -9,7 +9,7 @@ import torch.nn as nn
 from torch import Tensor
 
 from retinal_rl.models.neural_circuit import NeuralCircuit
-from retinal_rl.models.util import assert_list
+from retinal_rl.util import assert_list
 
 logger = logging.getLogger(__name__)
 

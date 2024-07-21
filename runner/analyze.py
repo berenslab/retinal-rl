@@ -8,22 +8,15 @@ import torch
 from matplotlib.figure import Figure
 from omegaconf import DictConfig
 from torch import Tensor
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 
 import wandb
-from retinal_rl.classification.analysis.plot import (
-    plot_image_distribution_analysis,
+from retinal_rl.analysis.plot import (
+    plot_channel_statistics,
+    plot_reconstructions,
     plot_training_histories,
 )
-from retinal_rl.classification.analysis.statistics import (
-    image_distribution_analysis,
-    image_distribution_analysis_cnn,
-)
-from retinal_rl.models.analysis.plot import plot_reconstructions, receptive_field_plots
-from retinal_rl.models.analysis.statistics import (
-    get_reconstructions,
-    gradient_receptive_fields,
-)
+from retinal_rl.analysis.statistics import cnn_statistics, reconstruct_images
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.circuits.convolutional import ConvolutionalEncoder
 
@@ -44,40 +37,30 @@ def analyze(
 ):
     fig_dict: FigureDict = {}
 
-    testloader = DataLoader(test_set, batch_size=64, shuffle=False)
-
     # Plot training histories
     if not cfg.logging.use_wandb:
         hist_fig = plot_training_histories(histories)
         fig_dict["training-histories"] = hist_fig
 
-    # Plot input distributions if required
-    if cfg.logging.plot_inputs and epoch == 0:
-        img_dict = image_distribution_analysis(device, testloader)
-        img_fig = plot_image_distribution_analysis(img_dict)
-        fig_dict["testset-analysis"] = img_fig
-
     # Plot receptive fields
     if "cnn_encoder" in brain.circuits:
         cnn_encoder = brain.circuits["cnn_encoder"]
         if isinstance(cnn_encoder, ConvolutionalEncoder):
-            rf_dict = gradient_receptive_fields(device, cnn_encoder)
-            for lyr, rfs in rf_dict.items():
-                rf_fig = receptive_field_plots(rfs)
-                fig_dict[f"receptive-fields/{lyr}-layer"] = rf_fig
-
             # CNN analysis
-            cnn_analysis = image_distribution_analysis_cnn(device, test_set, cnn_encoder)
+            cnn_analysis = cnn_statistics(device, test_set, cnn_encoder, 1000)
             for layer_name, layer_data in cnn_analysis.items():
-                layer_fig = plot_image_distribution_analysis(layer_data)
-                fig_dict[f"cnn-analysis/{layer_name}"] = layer_fig
+                # num channels as in
+                num_channels = int(layer_data["num_channels"])
+                for channel in range(num_channels):
+                    layer_fig = plot_channel_statistics(layer_data, layer_name, channel)
+                    fig_dict[f"cnn-analysis/{layer_name}/channel_{channel}"] = layer_fig
         else:
             logger.warning(
                 f"cnn_encoder is not a ConvolutionalEncoder, but a {type(cnn_encoder)}"
             )
     else:
         logger.info("cnn_encoder not found in brain circuits")
-    rec_dict = get_reconstructions(device, brain, train_set, test_set, 5)
+    rec_dict = reconstruct_images(device, brain, train_set, test_set, 5)
     recon_fig = plot_reconstructions(**rec_dict, num_samples=5)
     fig_dict["reconstructions"] = recon_fig
 
