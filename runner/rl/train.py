@@ -30,7 +30,6 @@ from retinal_rl.rl.system.exec import run_rl
 
 def main():
     """Script entry point."""
-    # Register retinal environments and models.
 
     # Parsing args
     argv = sys.argv[1:]
@@ -46,6 +45,7 @@ def main():
 
     cfg = parse_full_cfg(parser, argv)
 
+    # Register retinal environments and models.
     register_retinal_env(cfg)
     register_brain()
 

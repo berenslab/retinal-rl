@@ -20,12 +20,23 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol, BrainInterface):
     def __init__(self, obs_space: ObsSpace, action_space: ActionSpace, cfg: Config):
         super().__init__(obs_space, action_space, cfg)
 
-        #TODO: Check compatibility - what is head, core, tail etc if applicable
-        self.brain = Brain(**cfg.brain)
+        self.set_brain(Brain(**cfg.brain))
 
         self.action_parameterization = self.get_action_parameterization(
             self.decoder.get_out_size()
         )
+
+    def set_brain(self, brain: Brain):
+        """
+        method to set weights / brain.
+        Checks for brain compatibility.
+        Decide which part of the brain is head/core/tail or creates Identity transforms if needed.
+        """
+        if self.check_brain_compatible(brain):
+            self.brain = brain
+
+    def check_brain_compatible(self, brain: Brain):
+        raise NotImplementedError()
 
     def forward_head(self, normalized_obs_dict: Dict[str, Tensor]) -> Tensor:
         raise NotImplementedError()
