@@ -8,6 +8,12 @@ defaults:
 command: scan
 run_name: 'run_${now:%Y-%m-%d-%H-%M-%S}'
 
+training:
+  recon_weight: 0.9
+  learning_rate: 0.0003
+  num_epochs: 100
+  checkpoint_step: 10
+
 
 hydra:
   output_subdir: config
@@ -32,11 +38,10 @@ system:
   checkpoint_dir: ${system.data_dir}/checkpoints
   max_checkpoints: 5
   plot_dir: ${system.data_dir}/plots
-  checkpoint_plot_dir: ${system.data_dir}/plots/checkpoint
+  checkpoint_plot_dir: ${system.plot_dir}/checkpoints
 
 logging:
   use_wandb: True
-  plot_inputs: true
 
 sweep:
   command:

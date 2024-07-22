@@ -24,9 +24,7 @@ def save_checkpoint(
     completed_epochs: int,
 ) -> None:
     current_file = os.path.join(data_dir, "current_checkpoint.pt")
-    checkpoint_file = os.path.join(
-        checkpoint_dir, f"checkpoint_epoch_{completed_epochs}.pt"
-    )
+    checkpoint_file = os.path.join(checkpoint_dir, f"epoch_{completed_epochs}.pt")
     checkpoint_dict: Dict[str, Any] = {
         "completed_epochs": completed_epochs,
         "model_state_dict": brain.state_dict(),
@@ -42,8 +40,8 @@ def save_checkpoint(
 
     # Remove older checkpoints if the number exceeds the threshold
     checkpoints = sorted(
-        [f for f in os.listdir(checkpoint_dir) if f.startswith("checkpoint_epoch_")],
-        key=lambda x: int(x.split("_")[2].split(".")[0]),
+        [f for f in os.listdir(checkpoint_dir) if f.startswith("epoch_")],
+        key=lambda x: int(x.split("_")[1].split(".")[0]),
         reverse=True,
     )
     while len(checkpoints) > max_checkpoints:
