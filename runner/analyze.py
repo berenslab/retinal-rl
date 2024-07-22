@@ -32,10 +32,11 @@ def _save_figure(cfg: DictConfig, sub_dir: str, file_name: str, fig: Figure) -> 
 
 
 def _checkpoint_copy(cfg: DictConfig, sub_dir: str, file_name: str, epoch: int) -> None:
-    root_dir = cfg.system.plot_dir
-    src_path = os.path.join(root_dir, sub_dir, f"{file_name}.png")
+    src_path = os.path.join(cfg.system.plot_dir, sub_dir, f"{file_name}.png")
 
-    dest_dir = os.path.join(root_dir, f"checkpoint_epoch_{epoch}", sub_dir)
+    dest_dir = os.path.join(
+        cfg.system.checkpoint_plot_dir, "checkpoints", f"epoch_{epoch}", sub_dir
+    )
     os.makedirs(dest_dir, exist_ok=True)
     dest_path = os.path.join(dest_dir, f"{file_name}.png")
 
@@ -117,8 +118,8 @@ def analyze(
                         cfg,
                         copy_checkpoint,
                         channel_fig,
-                        "channel_analysis",
-                        f"layer:_{layer_name}_channel:_{channel}",
+                        f"layer_{layer_name}_channel_analysis",
+                        f"channel_{channel}",
                         epoch,
                     )
         else:
