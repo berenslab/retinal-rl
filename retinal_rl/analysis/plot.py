@@ -61,6 +61,9 @@ def plot_channel_statistics(
     # Receptive Fields
     rf = layer_data["receptive_fields"][channel]
     _plot_receptive_fields(axs[0, 0], rf)
+    axs[0, 0].set_title("Receptive Field")
+    axs[0, 0].set_xlabel("X")
+    axs[0, 0].set_ylabel("Y")
 
     # Pixel Histograms
     hist = layer_data["pixel_histograms"][channel]
@@ -78,40 +81,68 @@ def plot_channel_statistics(
     axs[1, 0].set_ylabel("Empirical Probability")
 
     # Autocorrelation plots
-
     # Plot average 2D autocorrelation and variance
     autocorr = fft.fftshift(layer_data["mean_autocorr"][channel])
-
-    im = axs[0, 1].imshow(autocorr, cmap="magma")
+    h, w = autocorr.shape
+    extent = [-w // 2, w // 2, -h // 2, h // 2]
+    im = axs[0, 1].imshow(
+        autocorr, cmap="twilight", vmin=-1, vmax=1, origin="lower", extent=extent
+    )
     axs[0, 1].set_title("Average 2D Autocorrelation")
+    axs[0, 1].set_xlabel("Lag X")
+    axs[0, 1].set_ylabel("Lag Y")
     fig.colorbar(im, ax=axs[0, 1])
+    _set_integer_ticks(axs[0, 1])
 
     autocorr_sd = fft.fftshift(np.sqrt(layer_data["var_autocorr"][channel]))
-
-    im = axs[0, 2].imshow(autocorr_sd, cmap="magma")
+    im = axs[0, 2].imshow(
+        autocorr_sd, cmap="inferno", origin="lower", extent=extent, vmin=0
+    )
     axs[0, 2].set_title("2D Autocorrelation SD")
+    axs[0, 2].set_xlabel("Lag X")
+    axs[0, 2].set_ylabel("Lag Y")
     fig.colorbar(im, ax=axs[0, 2])
+    _set_integer_ticks(axs[0, 2])
 
     # Plot average 2D power spectrum
     log_power_spectrum = fft.fftshift(
         np.log1p(layer_data["mean_power_spectrum"][channel])
     )
+    h, w = log_power_spectrum.shape
 
-    im = axs[1, 1].imshow(log_power_spectrum, cmap="viridis")
+    im = axs[1, 1].imshow(
+        log_power_spectrum, cmap="viridis", origin="lower", extent=extent, vmin=0
+    )
     axs[1, 1].set_title("Average 2D Power Spectrum (log)")
+    axs[1, 1].set_xlabel("Frequency X")
+    axs[1, 1].set_ylabel("Frequency Y")
     fig.colorbar(im, ax=axs[1, 1])
+    _set_integer_ticks(axs[1, 1])
 
     log_power_spectrum_sd = fft.fftshift(
         np.log1p(np.sqrt(layer_data["var_power_spectrum"][channel]))
     )
-
-    im = axs[1, 2].imshow(log_power_spectrum_sd, cmap="viridis")
+    im = axs[1, 2].imshow(
+        log_power_spectrum_sd,
+        cmap="viridis",
+        origin="lower",
+        extent=extent,
+        vmin=0,
+    )
     axs[1, 2].set_title("2D Power Spectrum SD")
+    axs[1, 2].set_xlabel("Frequency X")
+    axs[1, 2].set_ylabel("Frequency Y")
     fig.colorbar(im, ax=axs[1, 2])
+    _set_integer_ticks(axs[1, 2])
 
-    # Plot power spectrum projections
     plt.tight_layout()
     return fig
+
+
+def _set_integer_ticks(ax: Axes):
+    """Set integer ticks for both x and y axes."""
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
 
 # Function to plot the original and reconstructed images
@@ -232,7 +263,7 @@ def _plot_receptive_fields(ax: Axes, rf: FloatArray):
 
     # Individual color channels
     channels = ["Red", "Green", "Blue"]
-    cmaps = ["RdGy", "RdYlGn", "PuOr"]  # Diverging colormaps centered at 0
+    cmaps = ["RdGy_r", "RdYlGn", "PuOr"]  # Diverging colormaps centered at 0
     positions = [(0, 1), (1, 0), (1, 1)]  # Correct positions for a 2x2 grid
     for i in range(3):
         row, col = positions[i]
@@ -251,3 +282,38 @@ def _plot_receptive_fields(ax: Axes, rf: FloatArray):
         verticalalignment="center",
         transform=ax.transAxes,
     )
+
+
+def layer_receptive_field_plots(lyr_rfs: FloatArray, max_cols: int = 8) -> Figure:
+    """Plot the receptive fields of a convolutional layer."""
+    ochns, _, _, _ = lyr_rfs.shape
+
+    # Calculate the number of rows needed based on max_cols
+    cols = min(ochns, max_cols)
+    rows = ochns // cols + (1 if ochns % cols > 0 else 0)
+
+    fig, axs0 = plt.subplots(
+        rows,
+        cols,
+        figsize=(cols * 2, 1.6 * rows),
+        squeeze=False,
+    )
+
+    axs = axs0.flat
+
+    for i in range(ochns):
+        ax = axs[i]
+        data = np.moveaxis(lyr_rfs[i], 0, -1)  # Move channel axis to the last dimension
+        data_min = data.min()
+        data_max = data.max()
+        data = (data - data_min) / (data_max - data_min)
+        ax.imshow(data)
+
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.spines["top"].set_visible(True)
+        ax.spines["right"].set_visible(True)
+        ax.set_title(f"Channel {i+1}")
+
+    fig.tight_layout()  # Adjust layout to fit color bars
+    return fig

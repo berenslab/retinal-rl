@@ -167,11 +167,7 @@ def layer_spectral_analysis(
     """Compute power spectrum statistics for each channel across all data in a dataset."""
     first_batch, _ = next(iter(dataloader))
     first_batch = first_batch.to(device)
-    image_size = (
-        first_batch.shape[1],
-        first_batch.shape[2],
-        first_batch.shape[3],
-    )
+    image_size = first_batch.shape[1:]
 
     # Initialize variables for dynamic range computation
     mean_power_spectrum = torch.zeros(image_size, dtype=torch.float64, device=device)
@@ -180,34 +176,33 @@ def layer_spectral_analysis(
     m2_autocorr = torch.zeros(image_size, dtype=torch.float64, device=device)
     autocorr: Tensor = torch.zeros(image_size, dtype=torch.float64, device=device)
 
-    batch_count = 0
+    count = 0
 
     for batch, _ in dataloader:
         batch = batch.to(device)
-        batch_count += 1
+        for image in batch:
+            count += 1
 
-        # Compute power spectrum
-        power_spectrum = torch.abs(fft.fft2(batch)) ** 2
+            # Compute power spectrum
+            power_spectrum = torch.abs(fft.fft2(image)) ** 2
 
-        # Compute power spectrum statistics
-        delta_power = power_spectrum - mean_power_spectrum
-        mean_power_spectrum += delta_power.mean(dim=0)
-        delta2_power = power_spectrum - mean_power_spectrum
-        m2_power_spectrum += (delta_power * delta2_power).mean(dim=0)
+            # Compute power spectrum statistics
+            mean_power_spectrum += power_spectrum
+            m2_power_spectrum += power_spectrum**2
 
-        # Compute autocorrelation
-        autocorr = cast(Tensor, fft.ifft2(power_spectrum)).real
-        max_abs_autocorr = torch.max(torch.abs(autocorr))
-        autocorr = autocorr / max_abs_autocorr
+            # Compute normalized autocorrelation
+            autocorr = cast(Tensor, fft.ifft2(power_spectrum)).real
+            max_abs_autocorr = torch.amax(torch.abs(autocorr), dim=(-2, -1), keepdim=True)
+            autocorr = autocorr / (max_abs_autocorr + 1e-8)
 
-        # Compute autocorrelation statistics
-        delta_autocorr = autocorr - mean_autocorr
-        mean_autocorr += delta_autocorr.mean(dim=0)
-        delta2_autocorr = autocorr - mean_autocorr
-        m2_autocorr += (delta_autocorr * delta2_autocorr).mean(dim=0)
+            # Compute autocorrelation statistics
+            mean_autocorr += autocorr
+            m2_autocorr += autocorr**2
 
-    var_power_spectrum = m2_power_spectrum / batch_count
-    var_autocorr = m2_autocorr / batch_count
+    mean_power_spectrum /= count
+    mean_autocorr /= count
+    var_power_spectrum = m2_power_spectrum / count - (mean_power_spectrum / count) ** 2
+    var_autocorr = m2_autocorr / count - (mean_autocorr / count) ** 2
 
     return {
         "mean_power_spectrum": mean_power_spectrum.cpu().numpy(),
@@ -223,6 +218,47 @@ def cnn_statistics(
     encoder: ConvolutionalEncoder,
     max_sample_size: int = 0,
 ) -> Dict[str, Dict[str, FloatArray]]:
+    """Compute statistics for a convolutional encoder model.
+
+    This function analyzes the input data and each layer of the convolutional encoder,
+    computing various statistical measures and properties.
+
+    Args:
+    ----
+        device (torch.device): The device to run computations on.
+        dataset (Dataset[Tuple[Tensor, int]]): The dataset to analyze.
+        encoder (ConvolutionalEncoder): The convolutional encoder model to analyze.
+        max_sample_size (int, optional): Maximum number of samples to use. If 0, use all samples. Defaults to 0.
+
+    Returns:
+    -------
+        Dict[str, Dict[str, FloatArray]]: A nested dictionary containing statistics for the input and each layer.
+        The outer dictionary is keyed by layer names (with "input" for the input data), and each inner dictionary
+        contains the following keys:
+
+        - "receptive_fields": FloatArray of shape (out_channels, in_channels, height, width)
+            Receptive fields for the layer (identity matrix for input).
+        - "pixel_histograms": FloatArray of shape (num_channels, num_bins)
+            Histograms of pixel values for each channel.
+        - "histogram_bin_edges": FloatArray of shape (num_bins + 1,)
+            Bin edges for the pixel histograms.
+        - "mean_power_spectrum": FloatArray of shape (height, width)
+            Mean power spectrum across all channels.
+        - "var_power_spectrum": FloatArray of shape (height, width)
+            Variance of the power spectrum across all channels.
+        - "mean_autocorr": FloatArray of shape (height, width)
+            Mean autocorrelation across all channels.
+        - "var_autocorr": FloatArray of shape (height, width)
+            Variance of the autocorrelation across all channels.
+        - "num_channels": FloatArray of shape (1,)
+            Number of channels in the layer.
+
+    Note:
+    ----
+        The function only analyzes activation layers in the encoder's convolutional head.
+        If max_sample_size is specified and smaller than the dataset size, a random subset of the data is used.
+
+    """
     encoder.eval()
 
     # Set sample size
@@ -246,11 +282,13 @@ def cnn_statistics(
     input_spectral = layer_spectral_analysis(device, dataloader)
     input_histograms = layer_pixel_histograms(device, dataloader)
     # num channels as FloatArray
-    num_channels = encoder.input_shape[0]
-    num_channels = np.array(num_channels, dtype=np)
+    num_channels0 = encoder.input_shape[0]
+    num_channels = np.array(num_channels0, dtype=np)
 
     results["input"] = {
-        "receptive_fields": np.eye(3)[:, :, np.newaxis, np.newaxis],  # Identity for input
+        "receptive_fields": np.eye(num_channels0)[
+            :, :, np.newaxis, np.newaxis
+        ],  # Identity for input
         "pixel_histograms": input_histograms["channel_histograms"],
         "histogram_bin_edges": input_histograms["bin_edges"],
         "mean_power_spectrum": input_spectral["mean_power_spectrum"],
