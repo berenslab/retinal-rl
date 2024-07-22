@@ -118,7 +118,7 @@ def analyze(
                         cfg,
                         copy_checkpoint,
                         channel_fig,
-                        f"layer_{layer_name}_channel_analysis",
+                        f"{layer_name}_layer_channel_analysis",
                         f"channel_{channel}",
                         epoch,
                     )
