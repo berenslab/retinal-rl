@@ -20,7 +20,7 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol, BrainInterface):
     def __init__(self, obs_space: ObsSpace, action_space: ActionSpace, cfg: Config):
         super().__init__(obs_space, action_space, cfg)
 
-        self.set_brain(Brain(**cfg.brain))
+        self.set_brain(Brain(**cfg.brain)) # TODO: Find way to instantiate brain outside
 
         self.action_parameterization = self.get_action_parameterization(
             self.decoder.get_out_size()
@@ -53,9 +53,6 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol, BrainInterface):
         self, normalized_obs_dict, rnn_states, values_only: bool = False
     ) -> TensorDict:
         raise NotImplementedError()
-
-    def register(self):
-        global_model_factory().register_actor_critic_factory(self.__class__)
 
     def get_brain(self) -> Brain:
         return self.brain
