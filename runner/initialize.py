@@ -6,10 +6,10 @@ from typing import Dict, List, Tuple
 
 import omegaconf
 import torch
+import wandb
 from omegaconf import DictConfig
 from torch.optim import Optimizer
 
-import wandb
 from retinal_rl.models.brain import Brain
 from runner.util import save_checkpoint
 

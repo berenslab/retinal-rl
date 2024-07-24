@@ -2,7 +2,7 @@
 
 import inspect
 from abc import ABC
-from typing import Any, List, Type, get_type_hints
+from typing import Any, Dict, List, Type, get_type_hints
 
 import torch
 import torch.nn as nn
@@ -12,7 +12,12 @@ import torchscan
 class NeuralCircuit(nn.Module, ABC):
     """Base class for neural circuits."""
 
-    def __init__(self, input_shape: List[int]) -> None:
+    def __init__(
+        self,
+        input_shape: List[int],
+        loss_weights: Dict[str, float] = {},
+        reg_weights: Dict[str, float] = {},
+    ) -> None:
         """Initialize the base model.
 
         Args:
@@ -23,6 +28,8 @@ class NeuralCircuit(nn.Module, ABC):
         super().__init__()
 
         self._input_shape = input_shape
+        self.reg_weights: Dict[str, float] = reg_weights
+        self.loss_weights: Dict[str, float] = loss_weights
 
     def __init_subclass__(cls: Type[Any], **kwargs: Any) -> None:
         """Enforces that subclasses have specific parameters in their constructors.
