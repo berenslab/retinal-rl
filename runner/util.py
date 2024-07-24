@@ -8,7 +8,6 @@ from typing import Any, Dict, List
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig
-from torch.optim import Optimizer
 
 # Initialize the logger
 log = logging.getLogger(__name__)
@@ -19,7 +18,6 @@ def save_checkpoint(
     checkpoint_dir: str,
     max_checkpoints: int,
     brain: nn.Module,
-    optimizer: Optimizer,
     history: dict[str, List[float]],
     completed_epochs: int,
 ) -> None:
@@ -27,8 +25,7 @@ def save_checkpoint(
     checkpoint_file = os.path.join(checkpoint_dir, f"epoch_{completed_epochs}.pt")
     checkpoint_dict: Dict[str, Any] = {
         "completed_epochs": completed_epochs,
-        "model_state_dict": brain.state_dict(),
-        "optimizer_state_dict": optimizer.state_dict(),
+        "brain_state_dict": brain.state_dict(),
         "training_history": history,
     }
 
