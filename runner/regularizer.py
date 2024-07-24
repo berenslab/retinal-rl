@@ -1,9 +1,9 @@
 import torch
 
-class OutputHook(list):
+class OutputHook(list[torch.Tensor]):
     """ Hook to capture module outputs.
     """
-    def __call__(self, module, input, output):
+    def __call__(self, module: torch.nn.Module, input:torch.Tensor, output:torch.Tensor):
         self.append(output)
 
 def l1reg(x:torch.Tensor):
@@ -13,7 +13,7 @@ def l2reg(x:torch.Tensor):
     return torch.pow(x, 2).sum()
 
 class ActivationRegularization(): # TODO: make less memory demanding
-    def __init__(self, module = torch.nn.Module | list, p=2.0, act_lambda=0.01):
+    def __init__(self, module: torch.nn.Module | list[torch.nn.Module], p:int=2, act_lambda:float=0.01):
         self._lambda = act_lambda
         if act_lambda > 0:
             self.hook = OutputHook()
@@ -35,7 +35,7 @@ class ActivationRegularization(): # TODO: make less memory demanding
         return penalty
 
 class WeightRegularization():
-    def __init__(self, module = torch.nn.Module | list, p=2.0, weight_decay=0.01):
+    def __init__(self, module: torch.nn.Module | list[torch.nn.Module], p:int=2, weight_decay:float=0.01):
         self._lambda = weight_decay
         if self._lambda > 0:
             if p == 1:
@@ -47,5 +47,8 @@ class WeightRegularization():
     def penalty(self):
         penalty = 0.
         if self._lambda > 0:
-            penalty = self._lambda * sum(self.norm(param) for param in self.module.parameters())
+            if isinstance(self.module, torch.nn.Module):
+                penalty = self._lambda * sum(self.norm(param) for param in self.module.parameters())
+            else:
+                penalty = self._lambda * sum(self.norm(param) for module in self.module for param in module.parameters())
         return penalty
