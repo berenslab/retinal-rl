@@ -12,7 +12,7 @@ import seaborn as sns
 from PIL import Image
 from torchvision.transforms.functional import adjust_contrast
 from matplotlib.animation import FuncAnimation, AbstractMovieWriter
-from retinal_rl.analysis.statistics import fit_tsne_1d, get_stim_coll, row_zscore
+from retinal_rl.rl.analysis.statistics import fit_tsne_1d, get_stim_coll, row_zscore
 
 from tqdm.auto import tqdm
 
