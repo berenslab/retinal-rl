@@ -22,7 +22,7 @@ def analysis_root(cfg):
     Returns the root analysis directory.
     """
 
-    return join(experiment_dir(cfg), "analyses")
+    return join(experiment_dir(cfg), "analyses") #TODO: Get rid of cfg here
 
 
 def analysis_path(cfg, ana_name):

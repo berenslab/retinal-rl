@@ -8,7 +8,7 @@ from sample_factory.algo.utils.tensor_dict import TensorDict
 from sample_factory.model.action_parameterization import ActionsParameterization
 from typing import Protocol
 
-class ActorCriticProtocol(Protocol, ActorCritic):
+class ActorCriticProtocol(Protocol):
     """
     Protocol extracted from Sample Factory for Actor Critic, based on usage in Learner.
     This suggests that internally, ActorCritic can be built whatever as long as you assign some function part to be "head|core|tail".
