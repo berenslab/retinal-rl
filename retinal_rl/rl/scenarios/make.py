@@ -6,13 +6,13 @@ import hiyapyco as hyaml
 import omg
 import shutil
 
-from retinal_rl.scenarios.preload import textures_dir, assets_dir
+from retinal_rl.rl.scenarios.preload import textures_dir, assets_dir
 
 
 ### Directories ###
 
 scenario_dir = "cache/scenarios/"
-scenario_yaml_dir = "resources/scenario_yamls/"
+scenario_yaml_dir = "resources/yamls/scenarios/"
 
 
 ### Load Config ###

@@ -2,7 +2,7 @@ import sys
 import argparse
 import os
 
-from retinal_rl.scenarios.preload import (
+from retinal_rl.rl.scenarios.preload import (
     preload_apples,
     preload_cifar10,
     preload_gabors,
@@ -10,7 +10,7 @@ from retinal_rl.scenarios.preload import (
     preload_obstacles,
     cache_dir,
 )
-from retinal_rl.scenarios.make import make_scenario, scenario_yaml_dir
+from retinal_rl.rl.scenarios.make import make_scenario, scenario_yaml_dir
 
 
 def make_parser():

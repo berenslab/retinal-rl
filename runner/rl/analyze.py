@@ -1,13 +1,13 @@
 import sys
 
-from retinal_rl.system.arguments import (
+from retinal_rl.rl.system.arguments import (
     retinal_override_defaults,
     add_retinal_env_args,
     add_retinal_env_eval_args,
 )
 
 
-from retinal_rl.system.exec import analyze
+from retinal_rl.rl.system.exec import analyze
 from retinal_rl.util import (
     fill_in_argv_template,
 )
