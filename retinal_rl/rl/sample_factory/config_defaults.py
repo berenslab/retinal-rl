@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 @dataclass
-class SfDefaults:
+class SfDefaults: #TODO: Identify model stuff and remove? Or just ignore? Overwrite if possible?
     # This block shouldn't be messed with without extensive testing
     ppo_clip_value=0.2
     obs_subtract_mean=0.0

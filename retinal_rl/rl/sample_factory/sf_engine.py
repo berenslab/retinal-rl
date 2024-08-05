@@ -18,7 +18,8 @@ from retinal_rl.rl.system.arguments import (add_retinal_env_args,
                                             retinal_override_defaults)
 from retinal_rl.rl.system.environment import register_retinal_env
 from retinal_rl.rl.system.exec import RetinalAlgoObserver
-
+import warnings
+import torch
 
 def get_default_cfg(envname: str = "") -> Config: # TODO: get rid of intermediate parser step?!
 
@@ -45,9 +46,16 @@ class SFEngine(RLEngine):
         completed_epochs: int,
         histories: Dict[str, List[float]],
     ):
-        sf_cfg = self.unpack_cfg(
-            cfg
-        ) 
+        sf_cfg = self.to_sf_cfg(cfg)
+        sf_cfg = SfDefaults()
+
+        # The other parameters also need to be "moved" into the config
+        optim_str = str(type(optimizer).__name__).split(".")[-1].lower()
+        sf_cfg.optimizer = optim_str
+        # TODO: Potentially extract parameters from brain if not in cfg?! For now just warn it's ignored:
+        if brain is not None or train_set is not None or test_set is not None or completed_epochs is not None or histories is not None:
+            warnings.warn("brain, train_set, test_set, completed_epochs and histories can not (yet) be set and are ignored")
+
         # we need to convert to the sample_factory config style since we can not change the function signatures
         # of the library and that uses it _everywhere_
 
@@ -55,7 +63,6 @@ class SFEngine(RLEngine):
         register_retinal_env(sf_cfg.env, sf_cfg.input_satiety)
         global_model_factory().register_actor_critic_factory(SampleFactoryBrain)
 
-        # TODO: set currently unused values (if applicable) - else adjust interface!
         # Run simulation
         if not (sf_cfg.dry_run):
             cfg, runner = make_runner(sf_cfg)
@@ -68,19 +75,24 @@ class SFEngine(RLEngine):
             if status == ExperimentStatus.SUCCESS:
                 status = runner.run()
             return status
-        pass
 
-    def unpack_cfg(self, cfg: DictConfig) -> Tuple[ObsSpace, ActionSpace, Config]:
-        inp_shape = (
-            *cfg.defaults.dataset.visual_field,
-            cfg.defaults.dataset.num_colours,
-        )
-        obs_space = ObsSpace(shape=inp_shape)  # Get obs space from cfg or brain model
-        action_space = ActionSpace()  # TODO: Define action space in cfg
+    def to_sf_cfg(self, cfg: DictConfig) -> Config:
         sf_cfg = get_default_cfg()  # Load Defaults
+        sf_cfg = SfDefaults()
+
+        # overwrite default values with those set in cfg
         # TODO: merge cfg and sf_cfg
+        sf_cfg.res_h = cfg.defaults.dataset.visual_field[1]
+        sf_cfg.res_w = cfg.defaults.dataset.visual_field[0]
+        #sf_cfg.??? = cfg.defaults.dataset.num_colours # TODO: Is this not set anywhere?
+
+        sf_cfg.env = ""
+        sf_cfg.input_satiety = "?"
+
+        
+        
         sf_cfg.brain = cfg.brain
-        return obs_space, action_space, sf_cfg
+        return sf_cfg
 
 
 def brain_from_actor_critic(actor_critic: SampleFactoryBrain) -> Brain:
