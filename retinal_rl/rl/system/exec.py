@@ -49,7 +49,7 @@ from retinal_rl.rl.analysis.plot import simulation_plot, receptive_field_plots, 
 
 def analyze(cfg, progress_bar=True):
 
-    register_retinal_env(cfg)
+    register_retinal_env(cfg.env, cfg.input_satiety)
     register_brain()
 
     log.debug(

@@ -10,7 +10,7 @@ from retinal_rl.util import resources_dir
 
 ### Directories ###
 
-sweep_yaml_dir = osp.join(resources_dir, "sweep_yamls")
+sweep_yaml_dir = osp.join(resources_dir, "wandb_sweeps")
 
 
 ### Util ###
