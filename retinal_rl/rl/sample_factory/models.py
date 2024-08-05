@@ -8,6 +8,7 @@ from sample_factory.algo.utils.context import global_model_factory
 from sample_factory.algo.utils.tensor_dict import TensorDict
 from torch import Tensor
 import torch
+import numpy as np
 import networkx as nx
 from retinal_rl.models.brain import Brain
 from retinal_rl.rl.interface import BrainInterface
@@ -29,7 +30,8 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol, BrainInterface):
 
         self.set_brain(Brain(**cfg.brain)) # TODO: Find way to instantiate brain outside
 
-        decoder_out_size = self.brain.circuits[self.decoder_name].output_shape
+        dec_out_shape = self.brain.circuits[self.decoder_name].output_shape
+        decoder_out_size = np.prod(dec_out_shape)
         self.critic_linear = nn.Linear(decoder_out_size, 1)
         self.action_parameterization = self.get_action_parameterization(decoder_out_size)
 
@@ -98,6 +100,7 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol, BrainInterface):
         self, core_output, values_only: bool, sample_actions: bool
     ) -> TensorDict:
         out = self.brain.circuits[self.decoder_name](core_output)
+        out = torch.flatten(out, 1)
 
         values = self.critic_linear(out).squeeze()
 
@@ -119,7 +122,7 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol, BrainInterface):
     ) -> TensorDict:
         head_out = self.forward_head(normalized_obs_dict)
         core_out, new_rnn_states = self.forward_core(head_out, rnn_states)
-        result = self.forward_tail(core_out)
+        result = self.forward_tail(core_out, values_only=values_only, sample_actions=True)
         result["new_rnn_states"] = new_rnn_states
         result["latent_states"] = core_out
         return result
