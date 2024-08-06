@@ -76,7 +76,7 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol, BrainInterface):
             warnings.warn("Seems like there is no model core. Will use an Identity.")
         else: # more than four
             core = CoreMode.MULTI_MODULES
-            warnings.warn("Will use multiple modules as core: " + mod_name for mod_name in vision_path[2:-1])
+            warnings.warn("Will use multiple modules as core: " + ', '.join([mod_name for mod_name in vision_path[2:-1]]) )
 
         return encoder, core, decoder
 
