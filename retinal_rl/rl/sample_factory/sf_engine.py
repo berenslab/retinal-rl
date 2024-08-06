@@ -18,6 +18,7 @@ from retinal_rl.rl.system.arguments import (add_retinal_env_args,
                                             retinal_override_defaults)
 from retinal_rl.rl.system.environment import register_retinal_env
 from retinal_rl.rl.system.exec import RetinalAlgoObserver
+from retinal_rl.rl.sample_factory.observers import SetWeightsObserver
 import warnings
 import torch
 
@@ -69,7 +70,7 @@ class SFEngine(RLEngine):
             if cfg.online_analysis:
                 runner.register_observer(RetinalAlgoObserver(sf_cfg))
 
-            # TODO: set weights of brain through Observer on_init?
+            runner.register_observer(SetWeightsObserver(brain))
 
             status = runner.init()
             if status == ExperimentStatus.SUCCESS:
