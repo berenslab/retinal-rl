@@ -21,7 +21,7 @@ class CoreMode(Enum):
     IDENTITY = 0,
     SIMPLE = 1,
     RNN = 2,
-    MULTI_MODULES = 1,
+    MULTI_MODULES = 3,
 
 
 class SampleFactoryBrain(ActorCritic, ActorCriticProtocol, BrainInterface):
