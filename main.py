@@ -11,7 +11,9 @@ from torchvision import transforms
 from torchvision.datasets import CIFAR10
 
 from retinal_rl.classification.dataset import ScaleShiftTransform
+from retinal_rl.framework_interface import TrainingFramework
 from retinal_rl.models.brain import Brain
+from retinal_rl.rl.sample_factory.sf_engine import SFEngine
 from runner.analyze import analyze
 from runner.initialize import initialize
 from runner.sweep import launch_sweep
@@ -43,31 +45,64 @@ def program(cfg: DictConfig):
         brain.scan_circuits()
         # brain.visualize_connectome()
         sys.exit(0)
+    
+    framework: TrainingFramework
 
-    # Load CIFAR-10 dataset
-    transform = transforms.Compose(
-        [
-            ScaleShiftTransform(cfg.dataset.visual_field, cfg.dataset.scale_range),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-        ]
-    )
-    cache_path = os.path.join(hydra.utils.get_original_cwd(), "cache")
-    train_set: Dataset[Tuple[Tensor, int]] = CIFAR10(
-        root=cache_path, train=True, download=True, transform=transform
-    )
-    test_set: Dataset[Tuple[Tensor, int]] = CIFAR10(
-        root=cache_path, train=False, download=True, transform=transform
-    )
+    if cfg.framework == "rl":
+        framework = SFEngine()
+    else:
+        #TODO: Make ClassifierEngine
 
-    brain, optimizer, histories, completed_epochs = initialize(
+        # Load CIFAR-10 dataset TODO: This should be ClassifierEngine.initialize
+        transform = transforms.Compose(
+            [
+                ScaleShiftTransform(cfg.dataset.visual_field, cfg.dataset.scale_range),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            ]
+        )
+        cache_path = os.path.join(hydra.utils.get_original_cwd(), "cache")
+        train_set: Dataset[Tuple[Tensor, int]] = CIFAR10(
+            root=cache_path, train=True, download=True, transform=transform
+        )
+        test_set: Dataset[Tuple[Tensor, int]] = CIFAR10(
+            root=cache_path, train=False, download=True, transform=transform
+        )
+
+        brain, optimizer, histories, completed_epochs = initialize(
+            cfg,
+            brain,
+            optimizer,
+        )
+
+        if cfg.command.run_mode == "train":
+            train(
+                cfg,
+                device,
+                brain,
+                optimizer,
+                train_set,
+                test_set,
+                completed_epochs,
+                histories,
+            )
+            sys.exit(0)
+
+        if cfg.command.run_mode == "analyze":
+            analyze(cfg, device, brain, histories, train_set, test_set, completed_epochs)
+            sys.exit(0)
+
+        raise ValueError("Invalid run_mode")
+
+    
+    brain, optimizer, histories, completed_epochs = framework.initialize(
         cfg,
         brain,
         optimizer,
     )
 
     if cfg.command.run_mode == "train":
-        train(
+        framework.train(
             cfg,
             device,
             brain,
@@ -80,11 +115,10 @@ def program(cfg: DictConfig):
         sys.exit(0)
 
     if cfg.command.run_mode == "analyze":
-        analyze(cfg, device, brain, histories, train_set, test_set, completed_epochs)
+        framework.analyze(cfg, device, brain, histories, train_set, test_set, completed_epochs)
         sys.exit(0)
 
     raise ValueError("Invalid run_mode")
-
 
 if __name__ == "__main__":
     program()

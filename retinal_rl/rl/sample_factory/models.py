@@ -11,7 +11,7 @@ import torch
 import numpy as np
 import networkx as nx
 from retinal_rl.models.brain import Brain
-from retinal_rl.rl.interface import BrainInterface
+from retinal_rl.framework_interface import BrainInterface
 from retinal_rl.rl.sample_factory.sf_interfaces import ActorCriticProtocol
 import warnings
 from enum import Enum
@@ -62,9 +62,16 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol, BrainInterface):
         if decoder in brain.circuits.keys(): # needed to produce output = decoder
             vision_path = nx.shortest_path(brain.connectome, "vision", "action_decoder")
         else:
-            vision_path = vision_paths[0]
+            selected_path = 0
+            out_dim = np.inf
+            for i, vision_path in enumerate(vision_paths): # Assuming that the path with the smallest output dimension is best for action prediction (eg in contrast to a decoder trying to reproduce the input)
+                dec_out_shape = brain.circuits[vision_path[-1]].output_shape
+                if out_dim < np.prod(dec_out_shape):
+                    out_dim = np.prod(dec_out_shape)
+                    selected_path = i
+            vision_path = vision_paths[selected_path]
             decoder = vision_path[-1]
-            warnings.warn("No action decoder in model. Will use " + decoder + " instead.")
+            warnings.warn("No action_decoder in model. Will use " + decoder + " instead.")
 
         encoder = vision_path[1]
         if len(vision_path) == 4:
@@ -85,7 +92,7 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol, BrainInterface):
         return self.brain.circuits[self.encoder_name](vision_input)
 
     def forward_core(self, head_output, rnn_states):
-        #TODO: what to do with rnn states?
+        #TODO: what to do with rnn states? -> implement neural circuit that is capable?! (could also be done by some module internally, right?)
         if self.core_mode == CoreMode.SIMPLE:
             out = self.brain.circuits[self.core_mode.value](head_output)
         elif self.core_mode == CoreMode.RNN:

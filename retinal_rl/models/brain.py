@@ -7,6 +7,8 @@ import torch.nn as nn
 from hydra.utils import instantiate
 from omegaconf import DictConfig
 
+from retinal_rl.models.neural_circuit import NeuralCircuit
+
 
 class Brain(nn.Module):
     """The "overarching model" (brain) combining several "partial models" (circuits) - such as encoders, latents, decoders, and task heads - in a specified way."""
@@ -31,7 +33,7 @@ class Brain(nn.Module):
         super().__init__()
 
         self.name = name
-        self.circuits = nn.ModuleDict()
+        self.circuits : nn.ModuleDict[NeuralCircuit] = nn.ModuleDict()
 
         self.connectome: nx.DiGraph[str] = nx.DiGraph()
         self.sensors: Dict[str, Tuple[int, ...]] = {}

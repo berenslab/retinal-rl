@@ -10,7 +10,7 @@ from torch import Tensor, optim
 from torch.utils.data import Dataset
 
 from retinal_rl.models.brain import Brain
-from retinal_rl.rl.interface import RLEngine
+from retinal_rl.framework_interface import TrainingFramework
 from retinal_rl.rl.sample_factory.config_defaults import SfDefaults
 from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
 from retinal_rl.rl.system.arguments import (add_retinal_env_args,
@@ -36,7 +36,7 @@ def get_default_cfg(envname: str = "") -> Config: # TODO: get rid of intermediat
 
     return parse_full_cfg(parser, mock_argv)
 
-class SFEngine(RLEngine):
+class SFFramework(TrainingFramework):
     def train(
         self,
         cfg: DictConfig,
@@ -79,15 +79,16 @@ class SFEngine(RLEngine):
 
     def to_sf_cfg(self, cfg: DictConfig) -> Config:
         sf_cfg = get_default_cfg()  # Load Defaults
-        sf_cfg = SfDefaults()
+        sf_cfg = SfDefaults() # TODO: remove this line (or not?)
 
         # overwrite default values with those set in cfg
         # TODO: merge cfg and sf_cfg
-        sf_cfg.res_h = cfg.defaults.dataset.visual_field[1]
+        sf_cfg.res_h = cfg.defaults.dataset.visual_field[1] #TODO: Probably move to an "env" config or sth
         sf_cfg.res_w = cfg.defaults.dataset.visual_field[0]
         #sf_cfg.??? = cfg.defaults.dataset.num_colours # TODO: Is this not set anywhere?
+        sf_cfg.learning_rate = cfg.training.learning_rate
 
-        sf_cfg.env = ""
+        sf_cfg.env = cfg.rl.env_name
         sf_cfg.input_satiety = "?"
 
         

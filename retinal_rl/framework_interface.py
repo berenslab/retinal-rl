@@ -10,9 +10,9 @@ from omegaconf import DictConfig
 import torch
 
 
-class RLEngine(Protocol):
+class TrainingFramework(Protocol):
     # TODO: Check if all parameters applicable and sort arguments
-    # Potentially rename interface to even more abstract type if nothing RL specific needs to be handled here
+    # Especially get rid of config were possible (train? initialize could store all relevant parameters...)
     def initialize(cfg: DictConfig, brain: Brain, optimizer: optim.Optimizer): ...
 
     def train(
@@ -26,7 +26,8 @@ class RLEngine(Protocol):
         histories: Dict[str, List[float]],
     ): ...
 
-    def analysis(
+    # TODO: make static to be able to evaluate models from other stuff as well?
+    def analyze(
         cfg: DictConfig,
         device: torch.device,
         brain: Brain,
@@ -36,7 +37,3 @@ class RLEngine(Protocol):
         epoch: int,
         copy_checkpoint: bool = False,
     ): ...
-
-
-class BrainInterface(Protocol):
-    def get_brain() -> Brain: ...
