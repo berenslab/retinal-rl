@@ -11,7 +11,6 @@ import torch
 import numpy as np
 import networkx as nx
 from retinal_rl.models.brain import Brain
-from retinal_rl.framework_interface import BrainInterface
 from retinal_rl.rl.sample_factory.sf_interfaces import ActorCriticProtocol
 import warnings
 from enum import Enum
@@ -24,7 +23,7 @@ class CoreMode(Enum):
     MULTI_MODULES = 3,
 
 
-class SampleFactoryBrain(ActorCritic, ActorCriticProtocol, BrainInterface):
+class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
     def __init__(self, obs_space: ObsSpace, action_space: ActionSpace, cfg: Config):
         super().__init__(obs_space, action_space, cfg)
 

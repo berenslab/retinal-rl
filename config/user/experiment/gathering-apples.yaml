@@ -1,0 +1,42 @@
+# @package _global_
+defaults:
+  - /brain: pure-cnn
+  - override /dataset: cifar10
+  - override /command: train
+  - _self_
+
+framework: rl
+rl:
+  env_name: gathering-apples
+  viewport_width: 40
+  viewport_height: 30
+
+# This must match the experiment file name
+experiment: gathering-apples
+
+system:
+  device: cpu
+
+training:
+  num_epochs: 200
+  checkpoint_step: 5
+  learning_rate: 0.0003
+
+# Parameters to sweep in this experiment (this will mostly be overridden)
+activation: "elu"
+kernel_size: [2,2,2,2]
+stride: 2
+
+logging:
+  use_wandb: false
+
+# wandb sweep
+sweep:
+  description: Trains neural networks to survive in environment containing red & blue apples.
+  program: main.py
+  method: grid
+  project: retinal-rl
+
+  parameters:
+    kernel_size:
+      values: ['[2,2,2,2]']

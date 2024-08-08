@@ -13,7 +13,7 @@ from torchvision.datasets import CIFAR10
 from retinal_rl.classification.dataset import ScaleShiftTransform
 from retinal_rl.framework_interface import TrainingFramework
 from retinal_rl.models.brain import Brain
-from retinal_rl.rl.sample_factory.sf_engine import SFEngine
+from retinal_rl.rl.sample_factory.sf_framework import SFFramework
 from runner.analyze import analyze
 from runner.initialize import initialize
 from runner.sweep import launch_sweep
@@ -49,7 +49,7 @@ def program(cfg: DictConfig):
     framework: TrainingFramework
 
     if cfg.framework == "rl":
-        framework = SFEngine()
+        framework = SFFramework()
     else:
         #TODO: Make ClassifierEngine
 
@@ -107,10 +107,9 @@ def program(cfg: DictConfig):
             device,
             brain,
             optimizer,
-            train_set,
-            test_set,
+            None,
+            None,
             completed_epochs,
-            histories,
         )
         sys.exit(0)
 

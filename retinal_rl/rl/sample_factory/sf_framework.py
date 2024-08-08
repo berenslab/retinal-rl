@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 from omegaconf import DictConfig
@@ -48,7 +49,6 @@ class SFFramework(TrainingFramework):
         histories: Dict[str, List[float]],
     ):
         sf_cfg = self.to_sf_cfg(cfg)
-        sf_cfg = SfDefaults()
 
         # The other parameters also need to be "moved" into the config
         optim_str = str(type(optimizer).__name__).split(".")[-1].lower()
@@ -79,15 +79,13 @@ class SFFramework(TrainingFramework):
 
     def to_sf_cfg(self, cfg: DictConfig) -> Config:
         sf_cfg = get_default_cfg()  # Load Defaults
-        sf_cfg = SfDefaults() # TODO: remove this line (or not?)
 
         # overwrite default values with those set in cfg
         # TODO: merge cfg and sf_cfg
-        sf_cfg.res_h = cfg.defaults.dataset.visual_field[1] #TODO: Probably move to an "env" config or sth
-        sf_cfg.res_w = cfg.defaults.dataset.visual_field[0]
-        #sf_cfg.??? = cfg.defaults.dataset.num_colours # TODO: Is this not set anywhere?
         sf_cfg.learning_rate = cfg.training.learning_rate
 
+        sf_cfg.res_h = cfg.rl.viewport_height
+        sf_cfg.res_w = cfg.rl.viewport_width
         sf_cfg.env = cfg.rl.env_name
         sf_cfg.input_satiety = "?"
 
@@ -95,6 +93,12 @@ class SFFramework(TrainingFramework):
         
         sf_cfg.brain = cfg.brain
         return sf_cfg
+    
+    def initialize(self, cfg: DictConfig, brain: Brain, optimizer: optim.Optimizer):
+        return brain, optimizer, None, None
+    
+    def analyze(self, cfg: DictConfig, device: torch.device, brain: Brain, histories: Dict[str, List[float]], train_set: Dataset[Tuple[Tensor | int]], test_set: Dataset[Tuple[Tensor | int]], epoch: int, copy_checkpoint: bool = False):
+        pass
 
 
 def brain_from_actor_critic(actor_critic: SampleFactoryBrain) -> Brain:
