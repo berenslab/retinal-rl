@@ -23,6 +23,8 @@ from retinal_rl.rl.sample_factory.observers import SetWeightsObserver
 import warnings
 import torch
 
+from omegaconf.omegaconf import OmegaConf
+
 def get_default_cfg(envname: str = "") -> Config: # TODO: get rid of intermediate parser step?!
 
     mock_argv = ["--env", envname]
@@ -35,12 +37,15 @@ def get_default_cfg(envname: str = "") -> Config: # TODO: get rid of intermediat
     add_retinal_env_eval_args(parser)
     retinal_override_defaults(parser)
 
-    return parse_full_cfg(parser, mock_argv)
+    sf_cfg = parse_full_cfg(parser, mock_argv)
+    sf_cfg.cli_args = {} # We don't want cli_args as they will be used to overwrite other args in sample_factory!
+    return sf_cfg
 
 class SFFramework(TrainingFramework):
     def train(
         self,
         cfg: DictConfig,
+        device: torch.device,
         brain: Brain,
         optimizer: optim.Optimizer,
         train_set: Dataset[Tuple[Tensor, int]],
@@ -61,7 +66,7 @@ class SFFramework(TrainingFramework):
         # of the library and that uses it _everywhere_
 
         # Register retinal environments and models.
-        register_retinal_env(sf_cfg.env, sf_cfg.input_satiety)
+        register_retinal_env(sf_cfg.env, self.data_root, sf_cfg.input_satiety)
         global_model_factory().register_actor_critic_factory(SampleFactoryBrain)
 
         # Run simulation
@@ -87,14 +92,14 @@ class SFFramework(TrainingFramework):
         sf_cfg.res_h = cfg.rl.viewport_height
         sf_cfg.res_w = cfg.rl.viewport_width
         sf_cfg.env = cfg.rl.env_name
-        sf_cfg.input_satiety = "?"
+        sf_cfg.input_satiety = cfg.rl.input_satiety
 
         
-        
-        sf_cfg.brain = cfg.brain
+        sf_cfg.brain = OmegaConf.to_object(cfg.brain)
         return sf_cfg
     
-    def initialize(self, cfg: DictConfig, brain: Brain, optimizer: optim.Optimizer):
+    def initialize(self, cfg: DictConfig, brain: Brain, optimizer: optim.Optimizer, data_root: str):
+        self.data_root= data_root
         return brain, optimizer, None, None
     
     def analyze(self, cfg: DictConfig, device: torch.device, brain: Brain, histories: Dict[str, List[float]], train_set: Dataset[Tuple[Tensor | int]], test_set: Dataset[Tuple[Tensor | int]], epoch: int, copy_checkpoint: bool = False):

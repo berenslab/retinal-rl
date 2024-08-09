@@ -8,14 +8,15 @@ defaults:
 framework: rl
 rl:
   env_name: gathering-apples
-  viewport_width: 40
-  viewport_height: 30
+  viewport_width: 160
+  viewport_height: 120
+  input_satiety: true
 
 # This must match the experiment file name
 experiment: gathering-apples
 
 system:
-  device: cpu
+  device: cuda
 
 training:
   num_epochs: 200

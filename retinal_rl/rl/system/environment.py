@@ -72,7 +72,7 @@ class SatietyInput(gym.Wrapper):
     def _parse_info(self, obs, info):
 
         # we don't really care how much negative health we have, dead is dead
-        hlth = float(info["HEALTH"])
+        hlth = float(info["HEALTH"]) #TODO: Used when input_satiety = true - but info does not contain HEALTH
         # clip health to [-1,1]
         hlth = np.clip(hlth, 0, 100)
         satiety = (hlth - 50) / 50.0
@@ -100,14 +100,14 @@ class SatietyInput(gym.Wrapper):
 
 ### Retinal Environments ###
 
-def retinal_doomspec(scnr,flnm,sat_in):
+def retinal_doomspec(scene_name : str, cfg_path : str, sat_in: bool):
     ewraps = []
 
     if sat_in:
         ewraps = [(SatietyInput, {})]
 
-    return DoomSpec( scnr
-                    , join(os.getcwd(), "scenarios", flnm)
+    return DoomSpec( scene_name
+                    , cfg_path
                     , doom_action_space_basic()
                     , reward_scaling=1
                     , extra_wrappers= ewraps
@@ -122,9 +122,9 @@ def make_retinal_env_from_spec(spec, _env_name, cfg, env_config, render_mode: Op
 
     return make_doom_env_impl(spec, cfg=cfg, env_config=env_config, render_mode=render_mode, custom_resolution=res, **kwargs)
 
-def register_retinal_env(scene_name: str, input_satiety: bool):
-    cfg_name = scene_name + ".cfg" # TODO: Check if this stays
+def register_retinal_env(scene_name: str, cache_dir: str, input_satiety: bool):
+    cfg_path = os.path.join(cache_dir, "scenarios", scene_name + ".cfg") # TODO: Check if this stays
 
-    env_spec = retinal_doomspec(scene_name, cfg_name,input_satiety)
+    env_spec = retinal_doomspec(scene_name, cfg_path, input_satiety)
     make_env_func = functools.partial(make_retinal_env_from_spec, env_spec)
     register_env(env_spec.name, make_env_func)

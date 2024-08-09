@@ -18,6 +18,7 @@ class TrainingFramework(Protocol):
     def train(
         self,
         cfg: DictConfig,
+        device: torch.device,
         brain: Brain,
         optimizer: optim.Optimizer,
         train_set: Dataset[Tuple[Tensor, int]],

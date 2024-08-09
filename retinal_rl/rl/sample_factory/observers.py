@@ -13,9 +13,9 @@ class SetWeightsObserver(AlgoObserver):
         self.brain = sf_brain
 
     def on_start(self, runner: Runner) -> None:
-            for learner in runner.learners:
+            for learner_worker in runner.learners.values():
                 try:
-                    brain = learner.actor_critic.brain
+                    brain = learner_worker.param_server.actor_critic
                     overwrite_model_weights(brain, self.brain)
                 except:
                      warnings.warn("Can not set model weights. Maybe ActorCritic is not a SFBrain?")

@@ -48,6 +48,7 @@ def program(cfg: DictConfig):
     
     framework: TrainingFramework
 
+    cache_path = os.path.join(hydra.utils.get_original_cwd(), "cache")
     if cfg.framework == "rl":
         framework = SFFramework()
     else:
@@ -61,7 +62,6 @@ def program(cfg: DictConfig):
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
             ]
         )
-        cache_path = os.path.join(hydra.utils.get_original_cwd(), "cache")
         train_set: Dataset[Tuple[Tensor, int]] = CIFAR10(
             root=cache_path, train=True, download=True, transform=transform
         )
@@ -99,6 +99,7 @@ def program(cfg: DictConfig):
         cfg,
         brain,
         optimizer,
+        data_root=cache_path
     )
 
     if cfg.command.run_mode == "train":
@@ -110,6 +111,7 @@ def program(cfg: DictConfig):
             None,
             None,
             completed_epochs,
+            histories
         )
         sys.exit(0)
 

@@ -5,7 +5,7 @@ mpl.use("Agg")
 
 import matplotlib.pyplot as plt
 
-plt.style.use("resources/default.mplstyle")
+# plt.style.use("resources/default.mplstyle")
 
 import seaborn as sns
 

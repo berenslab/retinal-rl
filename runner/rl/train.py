@@ -46,7 +46,7 @@ def main():
     cfg = parse_full_cfg(parser, argv)
 
     # Register retinal environments and models.
-    register_retinal_env(cfg.env,cfg.input_satiety)
+    register_retinal_env(cfg.env, cache_dir=os.path.join(os.getcwd(), "cache"), cfg.input_satiety)
     register_brain()
 
     test_env = make_env_func_batched(
