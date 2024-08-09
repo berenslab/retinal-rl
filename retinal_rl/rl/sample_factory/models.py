@@ -5,6 +5,7 @@ from sample_factory.model.decoder import Decoder
 from sample_factory.model.core import ModelCore
 from sample_factory.utils.typing import ActionSpace, Config, ObsSpace
 from sample_factory.algo.utils.context import global_model_factory
+from sample_factory.model.model_utils import model_device
 from sample_factory.algo.utils.tensor_dict import TensorDict
 from torch import Tensor
 import torch
@@ -153,3 +154,11 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
 
     def get_brain(self) -> Brain:
         return self.brain
+
+
+    # Methods need to be overwritten 'cause the use .encoders
+    def device_for_input_tensor(self, input_tensor_name: str) -> torch.device:
+        return model_device(self)
+
+    def type_for_input_tensor(self, input_tensor_name: str) -> torch.dtype:
+        return torch.float32
