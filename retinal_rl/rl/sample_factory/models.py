@@ -26,7 +26,6 @@ class CoreMode(Enum):
 
 
 class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
-    # TODO: ActorCritic NEEDS a list of encoders!
     def __init__(self, cfg: Config, obs_space: ObsSpace, action_space: ActionSpace):
         # Attention: make_actor_critic passes [cfg, obs_space, action_space], but ActorCritic takes the reversed order of arguments [obs_space, action_space, cfg]
         super().__init__(obs_space, action_space, cfg)
@@ -74,7 +73,7 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
                 vision_paths
             ):  # Assuming that the path with the smallest output dimension is best for action prediction (eg in contrast to a decoder trying to reproduce the input)
                 dec_out_shape = brain.circuits[vision_path[-1]].output_shape
-                if out_dim < np.prod(dec_out_shape):
+                if np.prod(dec_out_shape) < out_dim:
                     out_dim = np.prod(dec_out_shape)
                     selected_path = i
             vision_path = vision_paths[selected_path]
