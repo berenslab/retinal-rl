@@ -4,9 +4,10 @@ from typing import Dict, List, Tuple
 from omegaconf import DictConfig
 from sample_factory.algo.utils.context import global_model_factory
 from sample_factory.algo.utils.misc import ExperimentStatus
-from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args
+from sample_factory.cfg.arguments import parse_full_cfg, parse_sf_args, load_from_checkpoint
 from sample_factory.train import make_runner
 from sample_factory.utils.typing import ActionSpace, Config, ObsSpace
+from retinal_rl.rl.analysis.simulation import get_checkpoint, get_brain_env
 from torch import Tensor, optim
 from torch.utils.data import Dataset
 
@@ -17,12 +18,15 @@ from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
 from retinal_rl.rl.system.arguments import (add_retinal_env_args,
                                             add_retinal_env_eval_args,
                                             retinal_override_defaults)
+import json
 from retinal_rl.rl.system.environment import register_retinal_env
 from retinal_rl.rl.system.exec import RetinalAlgoObserver
 from retinal_rl.rl.sample_factory.observers import SetWeightsObserver
 import warnings
 import torch
 
+import os
+from argparse import Namespace
 from omegaconf.omegaconf import OmegaConf
 
 def get_default_cfg(envname: str = "") -> Config: # TODO: get rid of intermediate parser step?!
@@ -42,6 +46,10 @@ def get_default_cfg(envname: str = "") -> Config: # TODO: get rid of intermediat
     return sf_cfg
 
 class SFFramework(TrainingFramework):
+
+    # def __init__(self, cfg: DictConfig, brain: Brain, optimizer: optim.Optimizer, data_root: str):
+    #     self.initialize(cfg, brain, optimizer, data_root)
+
     def train(
         self,
         cfg: DictConfig,
@@ -53,27 +61,11 @@ class SFFramework(TrainingFramework):
         completed_epochs: int,
         histories: Dict[str, List[float]],
     ):
-        sf_cfg = self.to_sf_cfg(cfg)
-
-        # The other parameters also need to be "moved" into the config
-        optim_str = str(type(optimizer).__name__).split(".")[-1].lower()
-        sf_cfg.optimizer = optim_str
-        # TODO: Potentially extract parameters from brain if not in cfg?! For now just warn it's ignored:
-        if brain is not None or train_set is not None or test_set is not None or completed_epochs is not None or histories is not None:
-            warnings.warn("brain, train_set, test_set, completed_epochs and histories can not (yet) be set and are ignored")
-
-        # we need to convert to the sample_factory config style since we can not change the function signatures
-        # of the library and that uses it _everywhere_
-
-        # Register retinal environments and models.
-        register_retinal_env(sf_cfg.env, self.data_root, sf_cfg.input_satiety)
-        global_model_factory().register_actor_critic_factory(SampleFactoryBrain)
-
         # Run simulation
-        if not (sf_cfg.dry_run):
-            cfg, runner = make_runner(sf_cfg)
+        if not (self.sf_cfg.dry_run):
+            cfg, runner = make_runner(self.sf_cfg)
             if cfg.online_analysis:
-                runner.register_observer(RetinalAlgoObserver(sf_cfg))
+                runner.register_observer(RetinalAlgoObserver(self.sf_cfg))
 
             runner.register_observer(SetWeightsObserver(brain))
 
@@ -81,6 +73,21 @@ class SFFramework(TrainingFramework):
             if status == ExperimentStatus.SUCCESS:
                 status = runner.run()
             return status
+    
+    @staticmethod
+    def load_brain_from_checkpoint(path: str, device=None) -> torch.nn.Module:
+        with open(os.path.join(path, "config.json")) as f:
+            config = Namespace(**json.load(f))
+        checkpoint_dict,config = get_checkpoint(config)
+        model_dict = checkpoint_dict["model"]
+        brain_dict = {}
+        for key in model_dict.keys():
+            if "brain" in key:
+                brain_dict[key[6:]] = model_dict[key]
+        brain = Brain(**config["brain"])
+        brain.load_state_dict(brain_dict)
+        brain.to(device)
+        return brain
 
     def to_sf_cfg(self, cfg: DictConfig) -> Config:
         sf_cfg = get_default_cfg()  # Load Defaults
@@ -99,7 +106,22 @@ class SFFramework(TrainingFramework):
         return sf_cfg
     
     def initialize(self, cfg: DictConfig, brain: Brain, optimizer: optim.Optimizer, data_root: str):
-        self.data_root= data_root
+        self.data_root = data_root
+        self.sf_cfg = self.to_sf_cfg(cfg)
+
+        # The other parameters also need to be "moved" into the config
+        optim_str = str(type(optimizer).__name__).split(".")[-1].lower()
+        self.sf_cfg.optimizer = optim_str
+        # TODO: Potentially extract parameters from brain if not in cfg?! For now just warn it's ignored:
+        if brain is not None or train_set is not None or test_set is not None or completed_epochs is not None or histories is not None:
+            warnings.warn("brain, train_set, test_set, completed_epochs and histories can not (yet) be set and are ignored")
+
+        # we need to convert to the sample_factory config style since we can not change the function signatures
+        # of the library and that uses it _everywhere_
+
+        # Register retinal environments and models.
+        register_retinal_env(self.sf_cfg.env, self.data_root, self.sf_cfg.input_satiety)
+        global_model_factory().register_actor_critic_factory(SampleFactoryBrain)
         return brain, optimizer, None, None
     
     def analyze(self, cfg: DictConfig, device: torch.device, brain: Brain, histories: Dict[str, List[float]], train_set: Dataset[Tuple[Tensor | int]], test_set: Dataset[Tuple[Tensor | int]], epoch: int, copy_checkpoint: bool = False):
