@@ -6,14 +6,19 @@ from matplotlib.figure import Figure
 from numpy.typing import NDArray
 from torch import Tensor
 
+def rescaleZeroOne(input):
+    return (input - input.min()) / (input.max() - input.min())
 
-def receptive_field_plots(lyr_rfs: NDArray[np.float64], max_cols: int = 8) -> Figure:
+def receptive_field_plots(lyr_rfs: NDArray[np.float64], max_cols: int = 8, rgb_rfs=False) -> Figure:
     """Plot the receptive fields of a convolutional layer."""
     ochns, nclrs, _, _ = lyr_rfs.shape
+    rgb_rfs = rgb_rfs and (nclrs == 3)
 
     # Calculate the number of rows needed based on max_cols
     cols = min(ochns, max_cols)
     rows = (ochns // max_cols) * nclrs + (1 if ochns % max_cols > 0 else 0) * nclrs
+    if rgb_rfs:
+        rows = rows // 3
 
     fig, axs0 = plt.subplots(
         rows,
@@ -27,22 +32,32 @@ def receptive_field_plots(lyr_rfs: NDArray[np.float64], max_cols: int = 8) -> Fi
     cmaps = ["inferno", "viridis", "cividis"]
 
     for i in range(ochns):
-        for j in range(nclrs):
-            ax = axs[(i // max_cols) * nclrs * max_cols + (j * max_cols) + (i % max_cols)]
-            im = ax.imshow(lyr_rfs[i, j, :, :], cmap=cmaps[j])
+        if not rgb_rfs:
+            for j in range(nclrs):
+                ax = axs[(i // max_cols) * nclrs * max_cols + (j * max_cols) + (i % max_cols)]
+                im = ax.imshow(lyr_rfs[i, j, :, :], cmap=cmaps[j])
+                ax.set_xticks([])
+                ax.set_yticks([])
+                ax.spines["top"].set_visible(True)
+                ax.spines["right"].set_visible(True)
+                # Set title to channel i when j = 0
+                if j == 0:
+                    ax.set_title(f"Channel {i+1}")
+
+                if i % max_cols == 0:
+                    ax.set_ylabel(clrs[j])
+                    fig.colorbar(im, ax=ax, cmap=cmaps[j], location="right")
+                else:
+                    fig.colorbar(im, ax=ax, cmap=cmaps[j], location="right")
+        else:
+            ax = axs[i]
+            rescaled_img = rescaleZeroOne(lyr_rfs[i])
+            im = ax.imshow(np.moveaxis(rescaled_img,0,2))
             ax.set_xticks([])
             ax.set_yticks([])
             ax.spines["top"].set_visible(True)
             ax.spines["right"].set_visible(True)
-            # Set title to channel i when j = 0
-            if j == 0:
-                ax.set_title(f"Channel {i+1}")
-
-            if i % max_cols == 0:
-                ax.set_ylabel(clrs[j])
-                fig.colorbar(im, ax=ax, cmap=cmaps[j], location="right")
-            else:
-                fig.colorbar(im, ax=ax, cmap=cmaps[j], location="right")
+            ax.set_title(f"Channel {i+1}")
 
     fig.tight_layout()  # Adjust layout to fit color bars
     return fig
