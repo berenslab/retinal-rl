@@ -116,7 +116,7 @@ def program(cfg: DictConfig):
         sys.exit(0)
 
     if cfg.command.run_mode == "analyze":
-        framework.analyze(cfg, device, brain, histories, train_set, test_set, completed_epochs)
+        framework.analyze(cfg, device, brain, histories, None, None, completed_epochs)
         sys.exit(0)
 
     raise ValueError("Invalid run_mode")

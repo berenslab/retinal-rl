@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Dict, Optional
 from sample_factory.model.actor_critic import ActorCritic
 from sample_factory.model.encoder import Encoder
@@ -25,12 +24,6 @@ class CoreMode(Enum):
     RNN = (2,)
     MULTI_MODULES = (3,)
 
-class OnInitManipulator(Protocol):
-    def on_init(sf_brain:SampleFactoryBrain):
-        ...
-
-class SetWeightsAdapter()
-
 class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
     def __init__(self, cfg: Config, obs_space: ObsSpace, action_space: ActionSpace):
         # Attention: make_actor_critic passes [cfg, obs_space, action_space], but ActorCritic takes the reversed order of arguments [obs_space, action_space, cfg]
@@ -39,10 +32,6 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         self.set_brain(
             Brain(**cfg.brain)
         )  # TODO: Find way to instantiate brain outside
-
-        if WEIGHT_STORE().PRELOADED_WEIGHTS is not None:
-            with torch.no_grad():
-                self.brain.load_state_dict(WEIGHT_STORE().PRELOADED_WEIGHTS.state_dict())
 
         dec_out_shape = self.brain.circuits[self.decoder_name].output_shape
         decoder_out_size = np.prod(dec_out_shape)

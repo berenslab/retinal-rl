@@ -14,7 +14,7 @@ from torch.utils.data import Dataset
 from retinal_rl.models.brain import Brain
 from retinal_rl.framework_interface import TrainingFramework
 from retinal_rl.rl.sample_factory.config_defaults import SfDefaults
-from retinal_rl.rl.sample_factory.models import SampleFactoryBrain, WEIGHT_STORE
+from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
 from retinal_rl.rl.system.arguments import (add_retinal_env_args,
                                             add_retinal_env_eval_args,
                                             retinal_override_defaults)
@@ -23,11 +23,11 @@ from retinal_rl.rl.system.environment import register_retinal_env
 from retinal_rl.rl.system.exec import RetinalAlgoObserver
 import warnings
 import torch
+from sample_factory.enjoy import enjoy
 
 import os
 from argparse import Namespace
 from omegaconf.omegaconf import OmegaConf
-
 
 def get_default_cfg(envname: str = "") -> Config: # TODO: get rid of intermediate parser step?!
 
@@ -98,7 +98,6 @@ class SFFramework(TrainingFramework):
         sf_cfg.res_w = cfg.rl.viewport_width
         sf_cfg.env = cfg.rl.env_name
         sf_cfg.input_satiety = cfg.rl.input_satiety
-
         
         sf_cfg.brain = OmegaConf.to_object(cfg.brain)
         return sf_cfg
@@ -122,8 +121,10 @@ class SFFramework(TrainingFramework):
         global_model_factory().register_actor_critic_factory(SampleFactoryBrain)
         return brain, optimizer, None, None
     
-    def analyze(self, cfg: DictConfig, device: torch.device, brain: Brain, histories: Dict[str, List[float]], train_set: Dataset[Tuple[Tensor | int]], test_set: Dataset[Tuple[Tensor | int]], epoch: int, copy_checkpoint: bool = False):
-        pass
+    def analyze(self, _cfg: DictConfig, device: torch.device, brain: Brain, histories: Dict[str, List[float]], train_set: Dataset[Tuple[Tensor | int]], test_set: Dataset[Tuple[Tensor | int]], epoch: int, copy_checkpoint: bool = False):
+        
+        status = enjoy(self.sf_cfg)
+        return status
 
 
 def brain_from_actor_critic(actor_critic: SampleFactoryBrain) -> Brain:
