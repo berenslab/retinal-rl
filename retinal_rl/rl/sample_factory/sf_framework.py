@@ -14,20 +14,20 @@ from torch.utils.data import Dataset
 from retinal_rl.models.brain import Brain
 from retinal_rl.framework_interface import TrainingFramework
 from retinal_rl.rl.sample_factory.config_defaults import SfDefaults
-from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
+from retinal_rl.rl.sample_factory.models import SampleFactoryBrain, WEIGHT_STORE
 from retinal_rl.rl.system.arguments import (add_retinal_env_args,
                                             add_retinal_env_eval_args,
                                             retinal_override_defaults)
 import json
 from retinal_rl.rl.system.environment import register_retinal_env
 from retinal_rl.rl.system.exec import RetinalAlgoObserver
-from retinal_rl.rl.sample_factory.observers import SetWeightsObserver
 import warnings
 import torch
 
 import os
 from argparse import Namespace
 from omegaconf.omegaconf import OmegaConf
+
 
 def get_default_cfg(envname: str = "") -> Config: # TODO: get rid of intermediate parser step?!
 
@@ -66,8 +66,6 @@ class SFFramework(TrainingFramework):
             cfg, runner = make_runner(self.sf_cfg)
             if cfg.online_analysis:
                 runner.register_observer(RetinalAlgoObserver(self.sf_cfg))
-
-            runner.register_observer(SetWeightsObserver(brain))
 
             status = runner.init()
             if status == ExperimentStatus.SUCCESS:
