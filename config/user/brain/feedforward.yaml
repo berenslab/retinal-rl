@@ -1,0 +1,23 @@
+name: pure-cnn
+sensors:
+  vision:
+    - ${dataset.num_colours}
+    - ${dataset.vision_height}
+    - ${dataset.vision_width}
+connections:
+  - ["vision", "encoder"]
+  - ["encoder", "action_decoder"]
+circuits:
+  encoder:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 3
+    num_channels: [4,8,16]
+    kernel_size: 6
+    stride: 2
+    act_name: ${activation}
+  action_decoder:
+    _target_: retinal_rl.models.circuits.fully_connected.FullyConnectedDecoder
+    output_shape: ${action_decoder_out}
+    hidden_units: ${latent_dimension}
+    act_name: ${activation}
+
