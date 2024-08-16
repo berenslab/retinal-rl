@@ -16,9 +16,7 @@ rl:
 experiment: gathering-apples
 
 training:
-  num_epochs: 200
-  checkpoint_step: 5
-  learning_rate: 0.001
+  optimizer: adam
 
 # Parameters to sweep in this experiment (this will mostly be overridden)
 activation: "elu"
