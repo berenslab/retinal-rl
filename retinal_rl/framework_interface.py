@@ -13,23 +13,11 @@ import torch
 class TrainingFramework(Protocol):
     # TODO: Check if all parameters applicable and sort arguments
     # Especially get rid of config were possible (train? initialize could store all relevant parameters...)
-    def initialize(self, cfg: DictConfig, brain: Brain, optimizer: optim.Optimizer): ...
-
-    def train(
-        self,
-        cfg: DictConfig,
-        device: torch.device,
-        brain: Brain,
-        optimizer: optim.Optimizer,
-        train_set: Dataset[Tuple[Tensor, int]],
-        test_set: Dataset[Tuple[Tensor, int]],
-        completed_epochs: int,
-        histories: Dict[str, List[float]],
-    ): ...
+    def train(self): ...
 
     # TODO: make static to be able to evaluate models from other stuff as well?
     def analyze(
-            self,
+        self,
         cfg: DictConfig,
         device: torch.device,
         brain: Brain,

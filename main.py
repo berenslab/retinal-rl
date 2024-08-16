@@ -38,21 +38,21 @@ def program(cfg: DictConfig):
     del cfg.sweep
 
     device = torch.device(cfg.system.device)
-    brain = Brain(**cfg.brain).to(device)
+    brain = Brain(**cfg.brain).to(device) # TODO: Discuss: Why necessary to be instantiated outside framework?
     optimizer = torch.optim.Adam(brain.parameters(), lr=cfg.training.learning_rate)
 
     if cfg.command.run_mode == "scan":
         brain.scan_circuits()
         # brain.visualize_connectome()
         sys.exit(0)
-    
+
     framework: TrainingFramework
 
     cache_path = os.path.join(hydra.utils.get_original_cwd(), "cache")
     if cfg.framework == "rl":
-        framework = SFFramework()
+        framework = SFFramework(cfg, data_root=cache_path)
     else:
-        #TODO: Make ClassifierEngine
+        # TODO: Make ClassifierEngine
 
         # Load CIFAR-10 dataset TODO: This should be ClassifierEngine.initialize
         transform = transforms.Compose(
@@ -89,30 +89,15 @@ def program(cfg: DictConfig):
             sys.exit(0)
 
         if cfg.command.run_mode == "analyze":
-            analyze(cfg, device, brain, histories, train_set, test_set, completed_epochs)
+            analyze(
+                cfg, device, brain, histories, train_set, test_set, completed_epochs
+            )
             sys.exit(0)
 
         raise ValueError("Invalid run_mode")
 
-    
-    brain, optimizer, histories, completed_epochs = framework.initialize(
-        cfg,
-        brain,
-        optimizer,
-        data_root=cache_path
-    )
-
     if cfg.command.run_mode == "train":
-        framework.train(
-            cfg,
-            device,
-            brain,
-            optimizer,
-            None,
-            None,
-            completed_epochs,
-            histories
-        )
+        framework.train()
         sys.exit(0)
 
     if cfg.command.run_mode == "analyze":
@@ -120,6 +105,7 @@ def program(cfg: DictConfig):
         sys.exit(0)
 
     raise ValueError("Invalid run_mode")
+
 
 if __name__ == "__main__":
     program()
