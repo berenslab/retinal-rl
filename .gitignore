@@ -165,6 +165,3 @@ wandb
 data/obsolete*
 data/cifar*
 data/MNIST*
-
-# vscode settings
-.vscode/
