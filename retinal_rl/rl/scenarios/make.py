@@ -2,6 +2,7 @@ import os
 import os.path as osp
 import shutil
 import subprocess
+from typing import Optional
 from zipfile import ZipFile
 from retinal_rl.rl.scenarios.util import templates
 
@@ -13,14 +14,17 @@ from retinal_rl.rl.scenarios.preload import textures_dir, assets_dir
 
 ### Directories ###
 
-scenario_dir = "cache/scenarios/"
-scenario_yaml_dir = "resources/yamls/scenarios/"
-
+CACHE_DIR = "cache"
+RESOURCE_DIR = "resources"
+ASSETS_DIR = osp.join(RESOURCE_DIR, "scenario_assets")
+SCENARIO_YAML_DIR = osp.join(RESOURCE_DIR, "scenario_yamls")
+SCENARIO_OUT_DIR = osp.join(CACHE_DIR, "scenarios")
+BUILD_DIR = osp.join(SCENARIO_OUT_DIR, "build")
 
 ### Load Config ###
-def load_config(filenames):
+def load_config(filenames: list[str]):
     # list all config files
-    file_pths = ["resources/map_configs/{0}.yaml".format(file) for file in filenames]
+    file_pths = [osp.join(SCENARIO_YAML_DIR,"{0}.yaml".format(file)) for file in filenames]
 
     # Load all yaml files listed in flnms and combine into a single dictionary, recursively combining keys
     cfg = hyaml.load(file_pths, method=hyaml.METHOD_MERGE)
@@ -28,22 +32,15 @@ def load_config(filenames):
 
 
 ### Creating Scenarios ###
-def make_scenario(config_files, scenario_name=None):
+def make_scenario(config_files: list[str], scenario_name: Optional[str] = None ):
     # Preloading
     cfg = load_config(config_files)
 
     if scenario_name is None:
         scenario_name = "-".join(config_files)
 
-    # Base directories
-    resource_dir = "resources"
-    scenario_dir = "scenarios"
-
-    # Inupt Directories & Files
-    base_dir = osp.join(resource_dir, "base")
-
     # Create Zip for output
-    out_file = osp.join(scenario_dir, scenario_name) + ".zip"
+    out_file = osp.join(SCENARIO_OUT_DIR, scenario_name) + ".zip"
     if osp.exists(out_file):
         os.remove(out_file)
     s_zip = ZipFile(out_file, "x")
@@ -56,11 +53,11 @@ def make_scenario(config_files, scenario_name=None):
     s_zip.mkdir("textures")
 
     # Textures
-    s_zip.write(osp.join(base_dir, "grass.png"), osp.join("textures", "GRASS.png"))
-    s_zip.write(osp.join(base_dir, "wind.png"), osp.join("textures", "WIND.png"))
+    s_zip.write(osp.join(ASSETS_DIR, "grass.png"), osp.join("textures", "GRASS.png"))
+    s_zip.write(osp.join(ASSETS_DIR, "wind.png"), osp.join("textures", "WIND.png"))
 
     # Copy Data to Root
-    s_zip.write(osp.join(base_dir, "MAPINFO.txt"), "MAPINFO.txt")
+    s_zip.write(osp.join(ASSETS_DIR, "MAPINFO.txt"), "MAPINFO.txt")
 
     # Building decorate and loading textures
     actor_names = []
@@ -72,7 +69,7 @@ def make_scenario(config_files, scenario_name=None):
         for actor_name, actor_cfg in type_cfg["actors"].items():
             # get all pngs listend in pngpths and subdirs
             png_pths = actor_cfg["textures"]
-            pngs = get_pngs(osp.join(resource_dir, "textures"), png_pths)
+            pngs = get_pngs(osp.join(CACHE_DIR, "textures"), png_pths)
 
             num_textures = len(pngs)
 
@@ -97,14 +94,13 @@ def make_scenario(config_files, scenario_name=None):
     ## Create ACS ##
 
     # Defining pths
-    build_pth = osp.join(scenario_dir, "build")
-    if osp.exists(build_pth):
-        shutil.rmtree(build_pth)
-    os.mkdir(build_pth)
+    if osp.exists(BUILD_DIR):
+        shutil.rmtree(BUILD_DIR)
+    os.mkdir(BUILD_DIR)
 
-    retinal_acs_pth = osp.join(base_dir, "acs", "retinal.acs")
-    map_acs_pth = osp.join(build_pth, scenario_name) + ".acs"
-    retinal_comp_pth = osp.join(build_pth, "retinal.o")
+    retinal_acs_pth = osp.join(ASSETS_DIR, "acs", "retinal.acs")
+    map_acs_pth = osp.join(BUILD_DIR, scenario_name) + ".acs"
+    retinal_comp_pth = osp.join(BUILD_DIR, "retinal.o")
     map_comp_pth = map_acs_pth[:-3] + "o"  # Replace ".acs" ending with ".o"
 
     # Write ACS
@@ -120,7 +116,7 @@ def make_scenario(config_files, scenario_name=None):
 
     # Compile ACS
     subprocess.call(["acc", "-i", "/usr/share/acc", retinal_acs_pth, retinal_comp_pth])
-    subprocess.call(["acc", "-i", "/usr/share/acc", "-i", base_dir, map_acs_pth])
+    subprocess.call(["acc", "-i", "/usr/share/acc", "-i", ASSETS_DIR, map_acs_pth])
 
     # For completeness, add retinal and map acs to zip
     s_zip.write(retinal_comp_pth, osp.join("acs", "retinal.o"))
@@ -130,22 +126,22 @@ def make_scenario(config_files, scenario_name=None):
     # Map Wad
     wad = omg.WAD()
     map_lump = omg.LumpGroup()
-    map_lump["TEXTMAP"] = omg.Lump(from_file=osp.join(base_dir, "TEXTMAP.txt"))
+    map_lump["TEXTMAP"] = omg.Lump(from_file=osp.join(ASSETS_DIR, "TEXTMAP.txt"))
     map_lump["BEHAVIOR"] = omg.Lump(from_file=map_comp_pth)
     wad.udmfmaps["MAP01"] = omg.UMapEditor(map_lump).to_lumps()
 
     # Save wad to map and add to zip
-    map_pth = osp.join(build_pth, "MAP01.wad")
+    map_pth = osp.join(BUILD_DIR, "MAP01.wad")
     wad.to_file(map_pth)
     s_zip.write(map_pth, osp.join("maps", "MAP01.wad"))
 
     # Cleanup
-    shutil.rmtree(build_pth)
+    shutil.rmtree(BUILD_DIR)
 
     # Copy vizdoom config
     config_name = scenario_name + ".cfg"
     # add doom_scenario_pth to beginning of cfg
-    with open(osp.join(scenario_dir, config_name), "w") as f:
+    with open(osp.join(SCENARIO_OUT_DIR, config_name), "w") as f:
         f.write(templates.vizdoom.config(scenario_name=scenario_name))
 
 

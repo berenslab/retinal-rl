@@ -10,14 +10,14 @@ from retinal_rl.rl.scenarios.preload import (
     preload_obstacles,
     cache_dir,
 )
-from retinal_rl.rl.scenarios.make import make_scenario, scenario_yaml_dir
+from retinal_rl.rl.scenarios.make import make_scenario, SCENARIO_YAML_DIR
 
 
 def make_parser():
     # Initialize parser
     parser = argparse.ArgumentParser(
         description=f"""Utility to construct scenarios for retinal-rl, by
-        merging YAML files from the '{scenario_yaml_dir}' directory into a
+        merging YAML files from the '{SCENARIO_YAML_DIR}' directory into a
         specification for a scenario. By default the scenario name is the
         concatenation of the names of the yaml files, but can be set with the
         --name flag. The results are saved in the 'scenarios' directory. Before
@@ -71,8 +71,8 @@ def main():
         return 0
 
     if args.list_yamls:
-        print(f"Listing contents of {scenario_yaml_dir}:")
-        for flnm in os.listdir(scenario_yaml_dir):
+        print(f"Listing contents of {SCENARIO_YAML_DIR}:")
+        for flnm in os.listdir(SCENARIO_YAML_DIR):
             print(flnm)
         return 0
 

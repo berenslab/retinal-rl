@@ -1,0 +1,32 @@
+metabolic:
+  delay: 2
+  damage: 1
+objects:
+  nourishment:
+    init: 30
+    delay: 60
+    actors:
+      nourishment-1:
+        healing: [1,2,3,4,5]
+      nourishment-2:
+        healing: [10,50]
+      nourishment-3:
+        healing: 15
+      nourishment-4:
+        healing: 20
+      nourishment-5:
+        healing: [10, 25]
+  poison:
+    init: 10
+    delay: 60
+    actors:
+      poison-1:
+        damage: [1,2,3,4,5]
+      poison-2:
+        damage: [10,50]
+      poison-3:
+        damage: 15
+      poison-4:
+        damage: 20
+      poison-5:
+        damage: [10, 25]
