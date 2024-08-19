@@ -7,14 +7,14 @@ __pycache__/
 *.wad
 
 # Large scale resources
-resources/textures
+/cache/
 
 # built
 /scenarios/
 
 # Training Results (Don't belong in repo)
 _vizdoom.ini
-train_dir
+experiments
 # Nohup log (when running in background on compute servers)
 nohup*.out
 log_train*.out
@@ -165,3 +165,6 @@ wandb
 data/obsolete*
 data/cifar*
 data/MNIST*
+
+# vscode settings
+.vscode/

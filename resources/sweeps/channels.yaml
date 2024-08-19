@@ -1,7 +1,0 @@
-parameters:
-
-  # Network architecture
-  base_channels:
-    values: [4,8,12]
-  rnn_size:
-    value: 256

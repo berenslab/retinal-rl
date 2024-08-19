@@ -2,9 +2,8 @@
 
 import numpy as np
 import torch
-from math import floor,ceil
+from math import floor, ceil
 
-import os
 from os.path import join
 
 from sample_factory.utils.typing import Config
@@ -15,30 +14,35 @@ from torch import nn
 
 ## Paths ###
 
+resources_dir = "resources"
+
 
 def analysis_root(cfg):
     """
     Returns the root analysis directory.
     """
 
-    return join(experiment_dir(cfg),"analyses")
+    return join(experiment_dir(cfg), "analyses") #TODO: Get rid of cfg here
 
-def analysis_path(cfg,ana_name):
+
+def analysis_path(cfg, ana_name):
     """
     Returns the path to the analysis directory.
     """
     art = analysis_root(cfg)
 
-    return join(art,ana_name)
+    return join(art, ana_name)
+
 
 # Write number of analyses to file
-def write_analysis_count(cfg,num):
+def write_analysis_count(cfg, num):
     """
     Writes the number of analyses to file, replacing the old file.
     """
     art = analysis_root(cfg)
-    with open(join(art,"analysis_count.txt"),"w") as f:
+    with open(join(art, "analysis_count.txt"), "w") as f:
         f.write(str(num))
+
 
 # Read number of analyses from file
 def read_analysis_count(cfg):
@@ -47,10 +51,12 @@ def read_analysis_count(cfg):
     """
     art = analysis_root(cfg)
     try:
-        with open(join(art,"analysis_count.txt"),"r") as f:
+        with open(join(art, "analysis_count.txt"), "r") as f:
             return int(f.read())
     except:
         return 0
+
+
 #
 # def get_analysis_times(cfg):
 #     """
@@ -64,24 +70,25 @@ def read_analysis_count(cfg):
 #
 #     return [int(f.split("-")[1]) for f in drs]
 #
-def data_path(cfg,ana_name,flnm=None):
+def data_path(cfg, ana_name, flnm=None):
     """
     Returns the path to the data directory.
     """
 
-    datpth = analysis_path(cfg,ana_name) + "/data"
+    datpth = analysis_path(cfg, ana_name) + "/data"
 
     if flnm is not None:
         datpth = datpth + "/" + flnm
 
     return datpth
 
-def plot_path(cfg,ana_name,flnm=None):
+
+def plot_path(cfg, ana_name, flnm=None):
     """
     Returns the path to the plot directory.
     """
 
-    pltpth = analysis_path(cfg,ana_name) + "/plots"
+    pltpth = analysis_path(cfg, ana_name) + "/plots"
 
     if flnm is not None:
         pltpth = pltpth + "/" + flnm
@@ -92,26 +99,33 @@ def plot_path(cfg,ana_name,flnm=None):
 ### IO ###
 
 
-def save_onnx(cfg: Config, ana_name : str, brain, inpts) -> None:
+def save_onnx(cfg: Config, ana_name: str, brain, inpts) -> None:
     """
     Write an onnx file of the saved model.
     """
     # Note that onnx can't process dictionary inputs and so we can only look at the encoder (and decoder?) separately)
-    torch.onnx.export(brain.valnet,inpts,data_path(cfg,ana_name,"value_network.onnx")
-                      ,verbose=False,input_names=["observation","measurements","rnn_states"],output_names=["value"])
+    torch.onnx.export(
+        brain.valnet,
+        inpts,
+        data_path(cfg, ana_name, "value_network.onnx"),
+        verbose=False,
+        input_names=["observation", "measurements", "rnn_states"],
+        output_names=["value"],
+    )
 
 
-def save_data(cfg : Config,ana_name,dat,flnm):
+def save_data(cfg: Config, ana_name, dat, flnm):
     """
     Saves data. 'dat' should probably be a dictionary.
     """
-    np.save(data_path(cfg,ana_name,flnm), dat, allow_pickle=True)
+    np.save(data_path(cfg, ana_name, flnm), dat, allow_pickle=True)
 
-def load_data(cfg : Config,ana_name,flnm):
+
+def load_data(cfg: Config, ana_name, flnm):
     """
     Loads data. Note the use of tolist() is necessary to read dictionaries.
     """
-    return np.load(data_path(cfg,ana_name,flnm) + ".npy", allow_pickle=True).tolist()
+    return np.load(data_path(cfg, ana_name, flnm) + ".npy", allow_pickle=True).tolist()
 
 
 ### Misc analysis tools ###
@@ -120,8 +134,10 @@ def load_data(cfg : Config,ana_name,flnm):
 def normalize(x, min=0, max=1):
     return (max - min) * (x - np.min(x)) / (np.max(x) - np.min(x)) + min
 
+
 def from_float_to_rgb(xs):
-    return (255*normalize(xs)).astype(np.uint8)
+    return (255 * normalize(xs)).astype(np.uint8)
+
 
 def obs_dict_to_tuple(obs_dct):
     """
@@ -132,7 +148,8 @@ def obs_dict_to_tuple(obs_dct):
     if "measurements" in obs_dct.keys():
         msm = obs_dct["measurements"][0]
     # visualize obs only for the 1st agent
-    return (obs,msm)
+    return (obs, msm)
+
 
 def obs_to_img(obs):
     """
@@ -162,21 +179,28 @@ def activation(act) -> nn.Module:
     else:
         raise Exception("Unknown activation function")
 
+
 def is_activation(mdl: nn.Module) -> bool:
-    bl = any([isinstance(mdl, nn.ELU)
-              ,isinstance(mdl, nn.ReLU)
-              ,isinstance(mdl, nn.Tanh)
-              ,isinstance(mdl, nn.Softplus)
-              ,isinstance(mdl, nn.Identity)])
+    bl = any(
+        [
+            isinstance(mdl, nn.ELU),
+            isinstance(mdl, nn.ReLU),
+            isinstance(mdl, nn.Tanh),
+            isinstance(mdl, nn.Softplus),
+            isinstance(mdl, nn.Identity),
+        ]
+    )
     return bl
 
 
 def double_up(x):
-    if isinstance(x,int): return (x,x)
-    else: return x
+    if isinstance(x, int):
+        return (x, x)
+    else:
+        return x
 
 
-def encoder_out_size(mdls,hght0,wdth0):
+def encoder_out_size(mdls, hght0, wdth0):
     """
     Compute the size of the encoder output, where mdls is the list of encoder
     modules.
@@ -188,23 +212,25 @@ def encoder_out_size(mdls,hght0,wdth0):
     # iterate over modules that are not activations
     for mdl in mdls:
 
-        if is_activation(mdl): continue
+        if is_activation(mdl):
+            continue
 
         krnsz = double_up(mdl.kernel_size)
         strd = double_up(mdl.stride)
         pad = double_up(mdl.padding)
 
         # if has a ceil mode
-        if hasattr(mdl,"ceil_mode") and mdl.ceil_mode:
-            hght = ceil((hght - krnsz[0] + 2*pad[0])/strd[0] + 1)
-            wdth = ceil((wdth - krnsz[1] + 2*pad[1])/strd[1] + 1)
+        if hasattr(mdl, "ceil_mode") and mdl.ceil_mode:
+            hght = ceil((hght - krnsz[0] + 2 * pad[0]) / strd[0] + 1)
+            wdth = ceil((wdth - krnsz[1] + 2 * pad[1]) / strd[1] + 1)
         else:
-            hght = floor((hght - krnsz[0] + 2*pad[0])/strd[0] + 1)
-            wdth = floor((wdth - krnsz[1] + 2*pad[1])/strd[1] + 1)
+            hght = floor((hght - krnsz[0] + 2 * pad[0]) / strd[0] + 1)
+            wdth = floor((wdth - krnsz[1] + 2 * pad[1]) / strd[1] + 1)
 
-    return hght,wdth
+    return hght, wdth
 
-def rf_size_and_start(mdls,hidx,widx):
+
+def rf_size_and_start(mdls, hidx, widx):
     """
     Compute the receptive field size and start for each layer of the encoder,
     where mdls is the list of encoder modules.
@@ -222,43 +248,46 @@ def rf_size_and_start(mdls,hidx,widx):
 
     for mdl in mdls:
 
-        if is_activation(mdl): continue
+        if is_activation(mdl):
+            continue
 
-        hksz,wksz = double_up(mdl.kernel_size)
-        hstrd,wstrd = double_up(mdl.stride)
-        hpad,wpad = double_up(mdl.padding)
+        hksz, wksz = double_up(mdl.kernel_size)
+        hstrd, wstrd = double_up(mdl.stride)
+        hpad, wpad = double_up(mdl.padding)
 
-        hrf_size += (hksz-1)*hrf_scale
-        wrf_size += (wksz-1)*wrf_scale
+        hrf_size += (hksz - 1) * hrf_scale
+        wrf_size += (wksz - 1) * wrf_scale
 
-        hrf_shift += hpad*hrf_scale
-        wrf_shift += wpad*wrf_scale
+        hrf_shift += hpad * hrf_scale
+        wrf_shift += wpad * wrf_scale
 
         hrf_scale *= hstrd
         wrf_scale *= wstrd
 
-        hmn=hidx*hrf_scale - hrf_shift
-        wmn=widx*wrf_scale - wrf_shift
+        hmn = hidx * hrf_scale - hrf_shift
+        wmn = widx * wrf_scale - wrf_shift
 
-    return hrf_size,wrf_size,hmn,wmn
+    return hrf_size, wrf_size, hmn, wmn
 
 
 def padder(krnsz):
     return (krnsz - 1) // 2
 
+
 def fill_in_argv_template(argv):
     """Replace string templates in argv with values from argv."""
 
+    # If calling for help (-h or --help), don't replace anything
+    if any([a in argv for a in ["-h", "--help"]]):
+        return argv
+
     # Convert argv into a dictionary
-    argv = [a.split('=') for a in argv]
+    argv = [a.split("=") for a in argv]
     # Remove dashes from argv
-    cfg = dict([[a[0].replace("--",""),a[1]] for a in argv])
+    cfg = dict([[a[0].replace("--", ""), a[1]] for a in argv])
     # Replace cfg string templates
-    cfg = {k:v.format(**cfg) for k,v in cfg.items()}
+    cfg = {k: v.format(**cfg) for k, v in cfg.items()}
     # Convert cfg back into argv
-    argv = [f"--{k}={v}" for k,v in cfg.items()]
+    argv = [f"--{k}={v}" for k, v in cfg.items()]
 
     return argv
-
-
-

@@ -1,0 +1,44 @@
+defaults:
+  - _self_
+  - command: scan
+  - dataset: ??
+  - override hydra/job_logging: custom
+
+hydra:
+  output_subdir: config
+  run:
+    dir: experiments/${experiment}/single_run
+  job:
+    chdir: True
+    config:
+      override_dirname:
+        exclude_keys:
+          - experiment
+          - command
+  searchpath:
+    - file://config/user
+  sweep:
+    dir: experiments/${experiment}/sweep
+    subdir: ${hydra.job.override_dirname}
+
+system:
+  device: cuda
+  experiment_path: ${hydra:runtime.output_dir}
+  data_path: data
+  checkpoint_path: ${system.data_path}/checkpoints
+  max_checkpoints: 5
+  plot_path: ${system.data_path}/plots
+  checkpoint_plot_path: ${system.data_path}/plots/checkpoint
+
+logging:
+  use_wandb: true
+
+sweep:
+  command:
+    - \${env}
+    - python
+    - \${program}
+    - -m
+    - command=train
+    - +experiment=${experiment}
+    - \${args_no_hyphens}

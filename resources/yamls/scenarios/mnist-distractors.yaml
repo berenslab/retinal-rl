@@ -1,0 +1,35 @@
+objects:
+  distractor:
+    init: 40
+    delay: 30
+    actors:
+      distractor-1:
+        textures:
+          - 'mnist/six'
+      distractor-2:
+        textures:
+          - 'mnist/seven'
+      distractor-3:
+        textures:
+          - 'mnist/eight'
+      distractor-4:
+        textures:
+          - 'mnist/nine'
+      distractor-5:
+        textures:
+          - 'mnist/zero'
+      distractor-1:
+        textures:
+          - 'mnist/five'
+      distractor-2:
+        textures:
+          - 'mnist/four'
+      distractor-3:
+        textures:
+          - 'mnist/three'
+      distractor-4:
+        textures:
+          - 'mnist/two'
+      distractor-5:
+        textures:
+          - 'mnist/one'

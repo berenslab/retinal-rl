@@ -1,0 +1,7 @@
+num_colours: 3
+num_classes: 10 #TODO: change the interface here...
+vision_width: 160
+vision_height: 120
+visual_field: 
+  - ${dataset.vision_height}
+  - ${dataset.vision_width}
