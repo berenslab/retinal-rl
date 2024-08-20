@@ -2,15 +2,15 @@ import sys
 import argparse
 import os
 
-from retinal_rl.rl.scenarios.preload import (
+from doom_creator.util.preload import (
     preload_apples,
     preload_cifar10,
     preload_gabors,
     preload_mnist,
-    preload_obstacles,
-    cache_dir,
+    preload_obstacles
 )
-from retinal_rl.rl.scenarios.make import make_scenario, SCENARIO_YAML_DIR
+from doom_creator.util.make import make_scenario
+from doom_creator.util.directories import SCENARIO_YAML_DIR, CACHE_DIR
 
 
 def make_parser():
@@ -22,7 +22,7 @@ def make_parser():
         concatenation of the names of the yaml files, but can be set with the
         --name flag. The results are saved in the 'scenarios' directory. Before
         running the first time one should use the --preload flag to download the
-        necessary resources into the '{cache_dir}' directory.
+        necessary resources into the '{CACHE_DIR}' directory.
         """,
         epilog="Example: python -m exec.compile-scenario gathering apples",
     )

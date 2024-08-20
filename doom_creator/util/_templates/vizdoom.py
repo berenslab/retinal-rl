@@ -1,5 +1,6 @@
 def config(scenario_name):
-    return """doom_scenario_path = {scenario_name}.zip
+    return """\
+doom_scenario_path = {scenario_name}.zip
 
 living_reward = 0.0
 death_penalty = 0.0

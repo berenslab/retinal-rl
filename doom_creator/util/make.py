@@ -5,30 +5,20 @@ import shutil
 import subprocess
 from typing import Optional
 from zipfile import ZipFile, ZipInfo
-from retinal_rl.rl.scenarios.util import templates
 
 import hiyapyco as hyaml
 import omg
 
-from retinal_rl.rl.scenarios.preload import textures_dir, assets_dir
 from tqdm import tqdm
 
-
-### Directories ###
-
-CACHE_DIR = "cache"
-RESOURCE_DIR = "resources"
-ASSETS_DIR = osp.join(RESOURCE_DIR, "scenario_assets")
-SCENARIO_YAML_DIR = osp.join(RESOURCE_DIR, "scenario_yamls")
-SCENARIO_OUT_DIR = osp.join(CACHE_DIR, "scenarios")
-BUILD_DIR = osp.join(SCENARIO_OUT_DIR, "build")
-
+from doom_creator.util import directories
+from doom_creator.util import templates
 
 ### Load Config ###
 def load_config(filenames: list[str]):
     # list all config files
     file_pths = [
-        osp.join(SCENARIO_YAML_DIR, "{0}.yaml".format(file)) for file in filenames
+        osp.join(directories.SCENARIO_YAML_DIR, "{0}.yaml".format(file)) for file in filenames
     ]
 
     # Load all yaml files listed in flnms and combine into a single dictionary, recursively combining keys
@@ -45,7 +35,7 @@ def make_scenario(config_files: list[str], scenario_name: Optional[str] = None):
         scenario_name = "-".join(config_files)
 
     # Create Zip for output
-    out_file = osp.join(SCENARIO_OUT_DIR, scenario_name) + ".zip"
+    out_file = osp.join(directories.SCENARIO_OUT_DIR, scenario_name) + ".zip"
     if osp.exists(out_file):
         os.remove(out_file)
     s_zip = ZipFile(out_file, "x")
@@ -61,11 +51,11 @@ def make_scenario(config_files: list[str], scenario_name: Optional[str] = None):
             s_zip.mkdir(directory_name)
 
     # Textures
-    s_zip.write(osp.join(ASSETS_DIR, "grass.png"), osp.join("textures", "GRASS.png"))
-    s_zip.write(osp.join(ASSETS_DIR, "wind.png"), osp.join("textures", "WIND.png"))
+    s_zip.write(osp.join(directories.ASSETS_DIR, "grass.png"), osp.join("textures", "GRASS.png"))
+    s_zip.write(osp.join(directories.ASSETS_DIR, "wind.png"), osp.join("textures", "WIND.png"))
 
     # Copy Data to Root
-    s_zip.write(osp.join(ASSETS_DIR, "MAPINFO.txt"), "MAPINFO.txt")
+    s_zip.write(osp.join(directories.ASSETS_DIR, "MAPINFO.txt"), "MAPINFO.txt")
 
     # Building decorate and loading textures
     actor_names = []
@@ -77,7 +67,7 @@ def make_scenario(config_files: list[str], scenario_name: Optional[str] = None):
         for actor_name, actor_cfg in tqdm(type_cfg["actors"].items(), desc="Creating "+typ, leave=False):
             # get all pngs listend in pngpths and subdirs
             png_pths = actor_cfg["textures"]
-            pngs = get_pngs(osp.join(CACHE_DIR, "textures"), png_pths)
+            pngs = get_pngs(osp.join(directories.CACHE_DIR, "textures"), png_pths)
 
             num_textures = len(pngs)
 
@@ -102,13 +92,13 @@ def make_scenario(config_files: list[str], scenario_name: Optional[str] = None):
     ## Create ACS ##
 
     # Defining pths
-    if osp.exists(BUILD_DIR):
-        shutil.rmtree(BUILD_DIR)
-    os.mkdir(BUILD_DIR)
+    if osp.exists(directories.BUILD_DIR):
+        shutil.rmtree(directories.BUILD_DIR)
+    os.mkdir(directories.BUILD_DIR)
 
-    retinal_acs_pth = osp.join(ASSETS_DIR, "acs", "retinal.acs")
-    map_acs_pth = osp.join(BUILD_DIR, scenario_name) + ".acs"
-    retinal_comp_pth = osp.join(BUILD_DIR, "retinal.o")
+    retinal_acs_pth = osp.join(directories.ASSETS_DIR, "acs", "retinal.acs")
+    map_acs_pth = osp.join(directories.BUILD_DIR, scenario_name) + ".acs"
+    retinal_comp_pth = osp.join(directories.BUILD_DIR, "retinal.o")
     map_comp_pth = map_acs_pth[:-3] + "o"  # Replace ".acs" ending with ".o"
 
     # Write ACS
@@ -132,7 +122,7 @@ def make_scenario(config_files: list[str], scenario_name: Optional[str] = None):
 
     # Compile ACS
     subprocess.call(["acc", "-i", "/usr/share/acc", retinal_acs_pth, retinal_comp_pth])
-    subprocess.call(["acc", "-i", "/usr/share/acc", "-i", ASSETS_DIR, map_acs_pth])
+    subprocess.call(["acc", "-i", "/usr/share/acc", "-i", directories.ASSETS_DIR, map_acs_pth])
 
     # For completeness, add retinal and map acs to zip
     s_zip.write(retinal_comp_pth, osp.join("acs", "retinal.o"))
@@ -142,22 +132,22 @@ def make_scenario(config_files: list[str], scenario_name: Optional[str] = None):
     # Map Wad
     wad = omg.WAD()
     map_lump = omg.LumpGroup()
-    map_lump["TEXTMAP"] = omg.Lump(from_file=osp.join(ASSETS_DIR, "TEXTMAP.txt"))
+    map_lump["TEXTMAP"] = omg.Lump(from_file=osp.join(directories.ASSETS_DIR, "TEXTMAP.txt"))
     map_lump["BEHAVIOR"] = omg.Lump(from_file=map_comp_pth)
     wad.udmfmaps["MAP01"] = omg.UMapEditor(map_lump).to_lumps()
 
     # Save wad to map and add to zip
-    map_pth = osp.join(BUILD_DIR, "MAP01.wad")
+    map_pth = osp.join(directories.BUILD_DIR, "MAP01.wad")
     wad.to_file(map_pth)
     s_zip.write(map_pth, osp.join("maps", "MAP01.wad"))
 
     # Cleanup
-    shutil.rmtree(BUILD_DIR)
+    shutil.rmtree(directories.BUILD_DIR)
 
     # Copy vizdoom config
     config_name = scenario_name + ".cfg"
     # add doom_scenario_pth to beginning of cfg
-    with open(osp.join(SCENARIO_OUT_DIR, config_name), "w") as f:
+    with open(osp.join(directories.SCENARIO_OUT_DIR, config_name), "w") as f:
         f.write(templates.vizdoom.config(scenario_name=scenario_name))
 
 
