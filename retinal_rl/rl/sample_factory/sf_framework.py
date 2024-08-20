@@ -115,7 +115,7 @@ class SFFramework(TrainingFramework):
         cfg.__setattr__(name, value)
         cfg.cli_args[name] = value
 
-
+    @staticmethod
     def _get_default_cfg(
         envname: str = "",
     ) -> Config:  # TODO: get rid of intermediate parser step?!
