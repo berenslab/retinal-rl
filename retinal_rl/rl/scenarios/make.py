@@ -1,9 +1,10 @@
 import os
 import os.path as osp
+import sys
 import shutil
 import subprocess
 from typing import Optional
-from zipfile import ZipFile
+from zipfile import ZipFile, ZipInfo
 from retinal_rl.rl.scenarios.util import templates
 
 import hiyapyco as hyaml
@@ -21,10 +22,13 @@ SCENARIO_YAML_DIR = osp.join(RESOURCE_DIR, "scenario_yamls")
 SCENARIO_OUT_DIR = osp.join(CACHE_DIR, "scenarios")
 BUILD_DIR = osp.join(SCENARIO_OUT_DIR, "build")
 
+
 ### Load Config ###
 def load_config(filenames: list[str]):
     # list all config files
-    file_pths = [osp.join(SCENARIO_YAML_DIR,"{0}.yaml".format(file)) for file in filenames]
+    file_pths = [
+        osp.join(SCENARIO_YAML_DIR, "{0}.yaml".format(file)) for file in filenames
+    ]
 
     # Load all yaml files listed in flnms and combine into a single dictionary, recursively combining keys
     cfg = hyaml.load(file_pths, method=hyaml.METHOD_MERGE)
@@ -32,7 +36,7 @@ def load_config(filenames: list[str]):
 
 
 ### Creating Scenarios ###
-def make_scenario(config_files: list[str], scenario_name: Optional[str] = None ):
+def make_scenario(config_files: list[str], scenario_name: Optional[str] = None):
     # Preloading
     cfg = load_config(config_files)
 
@@ -46,11 +50,14 @@ def make_scenario(config_files: list[str], scenario_name: Optional[str] = None )
     s_zip = ZipFile(out_file, "x")
 
     # Create directories in zip
-    s_zip.mkdir("acs")
-    s_zip.mkdir("maps")
-    s_zip.mkdir("sprites")
-    s_zip.mkdir("actors")
-    s_zip.mkdir("textures")
+    dirs = ["acs", "maps", "sprites", "actors", "textures"]
+    for directory_name in dirs:
+        if sys.version_info < (3, 11):
+            zip_info = ZipInfo(directory_name+"/")
+            zip_info.external_attr = 0o40775 << 16  # drwxrwxr-x
+            s_zip.writestr(zip_info, "")
+        else:
+            s_zip.mkdir(directory_name)
 
     # Textures
     s_zip.write(osp.join(ASSETS_DIR, "grass.png"), osp.join("textures", "GRASS.png"))
