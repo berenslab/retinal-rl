@@ -26,7 +26,7 @@ ACTOR {name} : TorchTree {{
     
     // Different states used for different appearances, randomly chosen at spawn
     States {{
-        {states_definitions}
+        {states_definitions}\
     }}
 }}""".format(
         name, radius, states_definitions
@@ -40,13 +40,17 @@ ACTOR {name} : CustomInventory {{
     
     // Different states used for different appearances, randomly chosen at spawn
     States {{
-        {states_definitions}
+        {states_definitions}\
     }}
 }}
 """.format(
         name=name, states_definitions=states_definitions
     )
 
+def states_template(index, texture_code):
+    return "Texture{index}: {texture_code} A -1\n\t".format(
+        index=index, texture_code=texture_code
+    )
 
 def include(actor_name):
-    return '#include "actors/{0}.dec"\n"'.format(actor_name)
+    return '#include "actors/{0}.dec"\n'.format(actor_name)

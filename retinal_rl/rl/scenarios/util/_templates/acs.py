@@ -5,7 +5,7 @@ def general(
     array_variables,
     actor_functions,
 ):
-    return """
+    return """\
 // Directives
 #import "acs/retinal.acs"
 #include "zcommon.acs"
@@ -80,10 +80,4 @@ def actor_arrays(index, actor_name, num_textures):
     actor_num_textures[{index}] = {num_textures};
 """.format(
         index=index, actor_name=actor_name, num_textures=num_textures
-    )
-
-
-def states_template(index, texture_code):
-    return "Texture{index}: {texture_code} A -1\n\t".format(
-        index=index, texture_code=texture_code
     )

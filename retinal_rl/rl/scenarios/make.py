@@ -92,8 +92,8 @@ def make_scenario(config_files: list[str], scenario_name: Optional[str] = None):
             actor_num_textures.append(num_textures)
 
             dec = make_actor_decorate(actor_names[-1], typ, sprite_names)
-            s_zip.writestr(osp.join("actors", actor_name + ".dec"), dec)
-            include_decorate += templates.decorate.include(actor_name)
+            s_zip.writestr(osp.join("actors", actor_names[-1] + ".dec"), dec)
+            include_decorate += templates.decorate.include(actor_names[-1])
 
     # Write decorate include to root
     s_zip.writestr("DECORATE.txt", include_decorate)
@@ -230,7 +230,7 @@ def make_actor_decorate(actor_name: str, typ: str, sprite_names: list[str]):
     states = ""
 
     for i, sprite_name in enumerate(sprite_names):
-        states += templates.acs.states_template(index=i, texture_code=sprite_name)
+        states += templates.decorate.states_template(index=i, texture_code=sprite_name)
 
     if typ == "nourishment":
         decorate = templates.decorate.nourishment(
