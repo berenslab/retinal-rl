@@ -4,6 +4,8 @@ def general(
     object_variables,
     array_variables,
     actor_functions,
+    spawn_relative:bool = True,
+    spawn_range:float = 1000.0
 ):
     return """\
 // Directives
@@ -16,6 +18,10 @@ script "Load Config Information" OPEN {{
     metabolic_delay = {metabolic_delay};
     metabolic_damage = {metabolic_damage};
 
+    // Arena settings
+    // Spawn behaviour
+    spawn_relative = {spawn_relative};
+    spawn_range = {spawn_range};
 
     // Object Variables
     {object_variables}
@@ -31,6 +37,8 @@ script "Load Config Information" OPEN {{
         object_variables=object_variables,
         array_variables=array_variables,
         actor_functions=actor_functions,
+        spawn_relative=str(spawn_relative).lower(),
+        spawn_range=spawn_range
     )
 
 

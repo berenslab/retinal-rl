@@ -112,12 +112,20 @@ def make_scenario(config_files: list[str], scenario_name: Optional[str] = None):
     map_comp_pth = map_acs_pth[:-3] + "o"  # Replace ".acs" ending with ".o"
 
     # Write ACS
+    if "spawn_objects" in cfg:
+        spawn_relative = cfg["spawn_objects"]["relative"]
+        spawn_range= cfg["spawn_objects"]["range"]
+    else:
+        spawn_relative = False
+        spawn_range = 1000.0
     acs = make_acs(
         cfg["objects"],
         actor_names,
         actor_num_textures,
         cfg["metabolic"]["delay"],
         cfg["metabolic"]["damage"],
+        spawn_relative=spawn_relative,
+        spawn_range = spawn_range
     )
     with open(map_acs_pth, "w") as f:
         f.write(acs)
@@ -154,7 +162,7 @@ def make_scenario(config_files: list[str], scenario_name: Optional[str] = None):
 
 
 ### Building ACS files ###
-def make_acs(objects_cfg, actor_names, num_textures, metabolic_delay, metabolic_damage):
+def make_acs(objects_cfg, actor_names, num_textures, metabolic_delay, metabolic_damage, spawn_relative:bool = False, spawn_range:float = 1000.0):
     """Creates the acs script determining spawning and behaviour of all actors"""
     object_variables_acs = ""
     actor_functions = ""
@@ -199,6 +207,8 @@ def make_acs(objects_cfg, actor_names, num_textures, metabolic_delay, metabolic_
         object_variables=object_variables_acs,
         array_variables=actor_arrays_initialization,
         actor_functions=actor_functions,
+        spawn_relative=spawn_relative,
+        spawn_range=spawn_range
     )
 
     return acs

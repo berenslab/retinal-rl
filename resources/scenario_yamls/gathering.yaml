@@ -1,10 +1,13 @@
+spawn_objects:
+  relative: True
+  range: 1000.0
 metabolic:
   delay: 2
   damage: 1
 objects:
   nourishment:
     init: 30
-    delay: 60
+    delay: 10
     actors:
       nourishment-1:
         healing: 10
@@ -18,7 +21,7 @@ objects:
         healing: 50
   poison:
     init: 10
-    delay: 60
+    delay: 10
     actors:
       poison-1:
         damage: 5
