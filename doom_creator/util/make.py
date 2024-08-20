@@ -43,12 +43,12 @@ def make_scenario(config_files: list[str], scenario_name: Optional[str] = None):
     # Create directories in zip
     dirs = ["acs", "maps", "sprites", "actors", "textures"]
     for directory_name in dirs:
-        if sys.version_info < (3, 11):
+        if hasattr(s_zip, "mkdir"): # .mkdir was introduced in python3.11
+            s_zip.mkdir(directory_name)
+        else:
             zip_info = ZipInfo(directory_name+"/")
             zip_info.external_attr = 0o40775 << 16  # drwxrwxr-x
             s_zip.writestr(zip_info, "")
-        else:
-            s_zip.mkdir(directory_name)
 
     # Textures
     s_zip.write(osp.join(directories.ASSETS_DIR, "grass.png"), osp.join("textures", "GRASS.png"))
