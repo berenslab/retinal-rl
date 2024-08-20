@@ -11,6 +11,7 @@ import hiyapyco as hyaml
 import omg
 
 from retinal_rl.rl.scenarios.preload import textures_dir, assets_dir
+from tqdm import tqdm
 
 
 ### Directories ###
@@ -72,8 +73,8 @@ def make_scenario(config_files: list[str], scenario_name: Optional[str] = None):
 
     include_decorate = ""
     actor_idx = 0
-    for typ, type_cfg in cfg["objects"].items():
-        for actor_name, actor_cfg in type_cfg["actors"].items():
+    for typ, type_cfg in tqdm(cfg["objects"].items(), desc="Creating Objects"):
+        for actor_name, actor_cfg in tqdm(type_cfg["actors"].items(), desc="Creating "+typ, leave=False):
             # get all pngs listend in pngpths and subdirs
             png_pths = actor_cfg["textures"]
             pngs = get_pngs(osp.join(CACHE_DIR, "textures"), png_pths)
@@ -82,7 +83,7 @@ def make_scenario(config_files: list[str], scenario_name: Optional[str] = None):
 
             sprite_names = [actor_code(actor_idx, i) for i in range(num_textures)]
             # Add pngs as sprites
-            for j, png in enumerate(pngs):
+            for j, png in tqdm(enumerate(pngs), desc="adding textures for " + actor_name, leave=False, total=len(pngs)):
                 s_zip.write(png, osp.join("sprites", sprite_names[j] + "A0.png"))
 
             actor_idx += 1
