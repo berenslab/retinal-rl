@@ -51,7 +51,7 @@ class ImageDataType(Enum):
 ### Loading Datasets ###
 
 
-def preload(type: ImageDataType, textures_dir: str, source_dir: Optional[str] = None):
+def preload(type: ImageDataType, textures_dir: str, source_dir: Optional[str] = None, train: bool = True):
     if type in [ImageDataType.APPLES, ImageDataType.OBSTACLES, ImageDataType.GABORS]:
         assert source_dir is not None
         doomify = (
@@ -59,7 +59,7 @@ def preload(type: ImageDataType, textures_dir: str, source_dir: Optional[str] = 
         )  # only gabor images are not doomified somehow
         preload_assets(type, textures_dir, source_dir, doomify)
     else:
-        preload_dataset(type, textures_dir, source_dir)
+        preload_dataset(type, textures_dir, source_dir, train=train)
 
 
 def preload_assets(
@@ -82,33 +82,40 @@ def preload_assets(
 def preload_dataset(
     dataset_type: ImageDataType,
     textures_dir: str,
-    data_path: Optional[str] = None,
+    data_src_path: Optional[str] = None,
     clean: Optional[bool] = None,
+    train: bool = True
 ):
     if clean is None:
-        clean = data_path is None
-    if data_path is None:
-        data_path = osp.join(textures_dir, dataset_type.value)
+        clean = data_src_path is None
+
+    out_path = osp.join(textures_dir, dataset_type.value)
+    if data_src_path is None:
+        data_src_path = out_path
+
+    if not train:
+        out_path+='-test'
+
 
     # check if resources/textures/$dataset$ exists
-    if not osp.exists(data_path):
-        os.makedirs(data_path)
+    if not osp.exists(out_path):
+        os.makedirs(out_path)
 
         if dataset_type is ImageDataType.MNIST:
-            dataset = MNIST(data_path, download=True)
+            dataset = MNIST(data_src_path, train, download=True)
             label_to_str = num2words
             num_classes = len(dataset.classes)
-            clean = clean_mnist(data_path)
+            clean_func = clean_mnist
         elif dataset_type is ImageDataType.CIFAR10:
-            dataset = CIFAR10(data_path, download=True)
+            dataset = CIFAR10(data_src_path, train, download=True)
             label_to_str = lambda i: dataset.classes[i]
             num_classes = len(dataset.classes)
-            clean = clean_cifar10
+            clean_func = clean_cifar10
         elif dataset_type is ImageDataType.CIFAR100:
-            dataset = CIFAR100(data_path, download=True)
+            dataset = CIFAR100(data_src_path, train, download=True)
             label_to_str = lambda i: dataset.classes[i]
             num_classes = len(dataset.classes)
-            clean = clean_cifar100
+            clean_func = clean_cifar100
         else:
             raise NotImplementedError(
                 "Currently only mnist, cifar-10 and cifar-100 can be used"
@@ -116,10 +123,10 @@ def preload_dataset(
 
         # save images as pngs organized by word label
         for i in range(num_classes):
-            os.makedirs(osp.join(data_path, label_to_str(i)))
+            os.makedirs(osp.join(out_path, label_to_str(i)))
         for i in range(len(dataset)):
             png = osp.join(
-                data_path,
+                out_path,
                 label_to_str(dataset[i][1]),
                 str(i) + ".png",
             )  # TODO: instead of saving and then doomifying, doomify and save
@@ -127,15 +134,15 @@ def preload_dataset(
             doomify_image(png, 2)
 
         if clean:
-            clean()
+            clean_func(data_src_path)
 
 
-def clean_mnist(data_path):
+def clean_mnist(data_path: str):
     # remove all downloaded data except for the pngs
     shutil.rmtree(osp.join(data_path, "MNIST"), ignore_errors=True)
 
 
-def clean_cifar10(data_path):
+def clean_cifar10(data_path: str):
     os.remove(osp.join(data_path, "cifar-10-python.tar.gz"))
     shutil.rmtree(
         osp.join(data_path, "cifar-10-batches-py"),

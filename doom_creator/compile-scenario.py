@@ -3,7 +3,7 @@ import argparse
 import os
 
 from doom_creator.util.preload import preload
-from doom_creator.util.preload import ImageDataType
+from doom_creator.util.preload import ImageDataType as IType
 
 from doom_creator.util.make import make_scenario
 from doom_creator.util.directories import Directories
@@ -19,7 +19,7 @@ def make_parser():
         concatenation of the names of the yaml files, but can be set with the
         --name flag. The results are saved in the 'scenarios' directory. Before
         running the first time one should use the --preload flag to download the
-        necessary resources into the '{Directories().CACHE_DIR}' directory.
+        necessary resources into the --out_dir ('{Directories().CACHE_DIR}').
         """,
         epilog="Example: python -m exec.compile-scenario gathering apples",
     )
@@ -30,10 +30,30 @@ def make_parser():
         help="""Names of the component yaml files (without extension) for the
         desired scenario. For conflicting fields, the last file will take precedence.""",
     )
-    # Argument for optional scneario name
+    # Argument for optional scenario name
     parser.add_argument(
         "--name",
         help="Desired name of scenario",
+    )
+    parser.add_argument(
+        "--out_dir",
+        default=Directories().CACHE_DIR,
+        help="where to store the created scenario",
+    )
+    parser.add_argument(
+        "--dataset_dir",
+        default=None,
+        help="source directory of a dataset (for preloading), if you already downloaded it somewhere",
+    )
+    parser.add_argument(
+        "--resource_dir",
+        default=Directories().RESOURCE_DIR,
+        help="directory where the resources are stored",
+    )
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        help="Load test split instead of train split",
     )
     # Add option to run preload
     parser.add_argument(
@@ -57,26 +77,27 @@ def main():
     parser = make_parser()
     args = parser.parse_args(argv)
 
-    directories = Directories()
+    dirs = Directories(args.out_dir)
     # Check preload flag
     if args.preload:
-        preload(ImageDataType.APPLES, directories.TEXTURES_DIR, directories.ASSETS_DIR)
-        preload(ImageDataType.OBSTACLES, directories.TEXTURES_DIR, directories.ASSETS_DIR)
-        preload(ImageDataType.GABORS, directories.TEXTURES_DIR, directories.ASSETS_DIR)
-        preload(ImageDataType.MNIST, directories.TEXTURES_DIR)
-        preload(ImageDataType.CIFAR10, directories.TEXTURES_DIR)
+        preload(IType.APPLES, dirs.TEXTURES_DIR, dirs.ASSETS_DIR)
+        preload(IType.OBSTACLES, dirs.TEXTURES_DIR, dirs.ASSETS_DIR)
+        preload(IType.GABORS, dirs.TEXTURES_DIR, dirs.ASSETS_DIR)
+
+        preload(IType.MNIST, dirs.TEXTURES_DIR, args.dataset_dir, train=not args.test)
+        preload(IType.CIFAR10, dirs.TEXTURES_DIR, args.dataset_dir, train=not args.test)
         # exit after preloading
         return 0
 
     if args.list_yamls:
-        print(f"Listing contents of {directories.SCENARIO_YAML_DIR}:")
-        for flnm in os.listdir(directories.SCENARIO_YAML_DIR):
+        print(f"Listing contents of {dirs.SCENARIO_YAML_DIR}:")
+        for flnm in os.listdir(dirs.SCENARIO_YAML_DIR):
             print(flnm)
         return 0
 
     # positional arguments
     if len(args.yamls) > 0:
-        make_scenario(args.yamls, directories, args.name)
+        make_scenario(args.yamls, dirs, args.name)
     else:
         # no positional, warn and exit
         print("No yaml files provided. Nothing to do.")

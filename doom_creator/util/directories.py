@@ -12,6 +12,7 @@ class Directories:
     textures_dir: Optional[str] = None
     assets_dir: Optional[str] = None
     scenario_yaml_dir: Optional[str] = None
+    dataset_dir: Optional[str] = None
 
     def __post_init__(self):
         self.CACHE_DIR = self.cache_dir
@@ -40,4 +41,9 @@ class Directories:
             osp.join(self.RESOURCE_DIR, "config")
             if self.scenario_yaml_dir is None
             else self.scenario_yaml_dir
+        )
+        self.DATASET_DIR = (
+            self.TEXTURES_DIR
+            if self.dataset_dir is None
+            else self.dataset_dir
         )
