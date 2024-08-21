@@ -11,14 +11,14 @@ import omg
 
 from tqdm import tqdm
 
-from doom_creator.util import directories
+from doom_creator.util.directories import Directories
 from doom_creator.util import templates
 
 ### Load Config ###
-def load_config(filenames: list[str]):
+def load_config(filenames: list[str], yaml_dir:str):
     # list all config files
     file_pths = [
-        osp.join(directories.SCENARIO_YAML_DIR, "{0}.yaml".format(file)) for file in filenames
+        osp.join(yaml_dir, "{0}.yaml".format(file)) for file in filenames
     ]
 
     # Load all yaml files listed in flnms and combine into a single dictionary, recursively combining keys
@@ -27,9 +27,9 @@ def load_config(filenames: list[str]):
 
 
 ### Creating Scenarios ###
-def make_scenario(config_files: list[str], scenario_name: Optional[str] = None):
+def make_scenario(config_files: list[str], directories: Directories, scenario_name: Optional[str] = None):
     # Preloading
-    cfg = load_config(config_files)
+    cfg = load_config(config_files, directories.SCENARIO_YAML_DIR)
 
     if scenario_name is None:
         scenario_name = "-".join(config_files)
