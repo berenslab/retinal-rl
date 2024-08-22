@@ -78,20 +78,22 @@ def main():
 
     dirs = Directories(args.out_dir)
     # Check preload flag
-    if args.preload:
+    do_load, do_make, do_list = args.preload, len(args.yamls) > 0, args.list_yamls
+    if do_load:
         preload(IType.APPLES, dirs.TEXTURES_DIR, dirs.ASSETS_DIR)
         preload(IType.OBSTACLES, dirs.TEXTURES_DIR, dirs.ASSETS_DIR)
         preload(IType.GABORS, dirs.TEXTURES_DIR, dirs.ASSETS_DIR)
 
         preload(IType.MNIST, dirs.TEXTURES_DIR, args.dataset_dir, train=not args.test)
         preload(IType.CIFAR10, dirs.TEXTURES_DIR, args.dataset_dir, train=not args.test)
-    elif args.list_yamls:
+    if do_list:
         print(f"Listing contents of {dirs.SCENARIO_YAML_DIR}:")
         for flnm in os.listdir(dirs.SCENARIO_YAML_DIR):
             print(flnm)
-    elif len(args.yamls) > 0:  # positional arguments
+        print(f"If you want to load from a different folder, change this to")
+    if do_make:  # positional arguments
         make_scenario(args.yamls, dirs, args.name)
-    else:  # no positional, warn and exit
+    if not (do_load or do_make or do_list):  # no positional - warn
         print("No yaml files provided. Nothing to do.")
 
 
