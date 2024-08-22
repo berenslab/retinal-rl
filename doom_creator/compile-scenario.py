@@ -3,7 +3,7 @@ import argparse
 import os
 
 from doom_creator.util.preload import preload
-from doom_creator.util.preload import ImageDataType as IType
+from doom_creator.util.texturetype import TextureType as TType
 
 from doom_creator.util.make import make_scenario
 from doom_creator.util.directories import Directories
@@ -80,12 +80,12 @@ def main():
     # Check preload flag
     do_load, do_make, do_list = args.preload, len(args.yamls) > 0, args.list_yamls
     if do_load:
-        preload(IType.APPLES, dirs.TEXTURES_DIR, dirs.ASSETS_DIR)
-        preload(IType.OBSTACLES, dirs.TEXTURES_DIR, dirs.ASSETS_DIR)
-        preload(IType.GABORS, dirs.TEXTURES_DIR, dirs.ASSETS_DIR)
+        preload(TType.APPLES, dirs.TEXTURES_DIR, dirs.ASSETS_DIR)
+        preload(TType.OBSTACLES, dirs.TEXTURES_DIR, dirs.ASSETS_DIR)
+        preload(TType.GABORS, dirs.TEXTURES_DIR, dirs.ASSETS_DIR)
 
-        preload(IType.MNIST, dirs.TEXTURES_DIR, args.dataset_dir, train=not args.test)
-        preload(IType.CIFAR10, dirs.TEXTURES_DIR, args.dataset_dir, train=not args.test)
+        preload(TType.MNIST, dirs.TEXTURES_DIR, args.dataset_dir, train=not args.test)
+        preload(TType.CIFAR10, dirs.TEXTURES_DIR, args.dataset_dir, train=not args.test)
     if do_list:
         print(f"Listing contents of {dirs.SCENARIO_YAML_DIR}:")
         for flnm in os.listdir(dirs.SCENARIO_YAML_DIR):

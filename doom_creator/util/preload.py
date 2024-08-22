@@ -3,7 +3,6 @@ import os
 import shutil
 from typing import Optional
 
-from num2words import num2words
 import os.path as osp
 
 from glob import glob
@@ -11,11 +10,8 @@ import struct
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 
-from torchvision.datasets import MNIST
-from torchvision.datasets import CIFAR10
-from torchvision.datasets import CIFAR100
 
-from doom_creator.util import directories
+from doom_creator.util.texturetype import TextureType
 
 ### Util ###
 
@@ -39,23 +35,19 @@ def doomify_image(png, scale=1.0, shift=(0, 0), save_to=None):
     img.save(save_to, pnginfo=pnginfo)
 
 
-class ImageDataType(Enum):
-    APPLES = "apples"
-    OBSTACLES = "obstacles"
-    GABORS = "gabors"
-    MNIST = "mnist"
-    CIFAR10 = "cifar-10"
-    CIFAR100 = "cifar-100"
-
-
 ### Loading Datasets ###
 
 
-def preload(type: ImageDataType, textures_dir: str, source_dir: Optional[str] = None, train: bool = True):
-    if type in [ImageDataType.APPLES, ImageDataType.OBSTACLES, ImageDataType.GABORS]:
+def preload(
+    type: TextureType,
+    textures_dir: str,
+    source_dir: Optional[str] = None,
+    train: bool = True,
+):
+    if type.is_asset:
         assert source_dir is not None
         doomify = (
-            type != ImageDataType.GABORS
+            type != TextureType.GABORS
         )  # only gabor images are not doomified somehow
         preload_assets(type, textures_dir, source_dir, doomify)
     else:
@@ -63,7 +55,7 @@ def preload(type: ImageDataType, textures_dir: str, source_dir: Optional[str] = 
 
 
 def preload_assets(
-    asset_type: ImageDataType, textures_dir: str, assets_dir: str, doomify: bool = True
+    asset_type: TextureType, textures_dir: str, assets_dir: str, doomify: bool = True
 ):
     type_str = asset_type.value
     assert osp.exists(osp.join(assets_dir, type_str))
@@ -80,79 +72,36 @@ def preload_assets(
 
 
 def preload_dataset(
-    dataset_type: ImageDataType,
+    dataset_type: TextureType,
     textures_dir: str,
-    data_src_path: Optional[str] = None,
+    source_dir: Optional[str] = None,
     clean: Optional[bool] = None,
-    train: bool = True
+    train: bool = True,
 ):
     if clean is None:
-        clean = data_src_path is None
+        clean = source_dir is None
 
-    out_path = osp.join(textures_dir, dataset_type.value)
-    if data_src_path is None:
-        data_src_path = out_path
+    out_path = osp.join(textures_dir, dataset_type.out_dir(not train))
 
-    if not train:
-        out_path+='-test'
-
+    if source_dir is None:
+        source_dir = out_path
 
     # check if resources/textures/$dataset$ exists
     if not osp.exists(out_path):
+        dataset_wrapper = dataset_type.get_dataset_wrapper(source_dir, train)
         os.makedirs(out_path)
 
-        if dataset_type is ImageDataType.MNIST:
-            dataset = MNIST(data_src_path, train, download=True)
-            label_to_str = num2words
-            num_classes = len(dataset.classes)
-            clean_func = clean_mnist
-        elif dataset_type is ImageDataType.CIFAR10:
-            dataset = CIFAR10(data_src_path, train, download=True)
-            label_to_str = lambda i: dataset.classes[i]
-            num_classes = len(dataset.classes)
-            clean_func = clean_cifar10
-        elif dataset_type is ImageDataType.CIFAR100:
-            dataset = CIFAR100(data_src_path, train, download=True)
-            label_to_str = lambda i: dataset.classes[i]
-            num_classes = len(dataset.classes)
-            clean_func = clean_cifar100
-        else:
-            raise NotImplementedError(
-                "Currently only mnist, cifar-10 and cifar-100 can be used"
-            )
-
         # save images as pngs organized by word label
-        for i in range(num_classes):
-            os.makedirs(osp.join(out_path, label_to_str(i)))
-        for i in range(len(dataset)):
+        for i in range(dataset_wrapper.num_classes):
+            os.makedirs(osp.join(out_path, dataset_wrapper.label_to_str(i)))
+        for i in range(len(dataset_wrapper.dataset)):
             png = osp.join(
                 out_path,
-                label_to_str(dataset[i][1]),
+                dataset_wrapper.label_to_str(dataset_wrapper.dataset[i][1]),
                 str(i) + ".png",
             )  # TODO: instead of saving and then doomifying, doomify and save
-            dataset[i][0].save(png)
+            dataset_wrapper.dataset[i][0].save(png)
             doomify_image(png, 2)
 
         if clean:
-            clean_func(data_src_path)
-
-
-def clean_mnist(data_path: str):
-    # remove all downloaded data except for the pngs
-    shutil.rmtree(osp.join(data_path, "MNIST"), ignore_errors=True)
-
-
-def clean_cifar10(data_path: str):
-    os.remove(osp.join(data_path, "cifar-10-python.tar.gz"))
-    shutil.rmtree(
-        osp.join(data_path, "cifar-10-batches-py"),
-        ignore_errors=True,
-    )
-
-
-def clean_cifar100(data_path: str):
-    os.remove(osp.join(data_path, "cifar-100-python.tar.gz"))
-    shutil.rmtree(
-        osp.join(data_path, "cifar-100-python"),
-        ignore_errors=True,
-    )
+            dataset_wrapper.clean(source_dir)
