@@ -71,7 +71,6 @@ def make_parser():
 
 
 def main():
-
     # Parse args
     argv = sys.argv[1:]
     parser = make_parser()
@@ -86,20 +85,13 @@ def main():
 
         preload(IType.MNIST, dirs.TEXTURES_DIR, args.dataset_dir, train=not args.test)
         preload(IType.CIFAR10, dirs.TEXTURES_DIR, args.dataset_dir, train=not args.test)
-        # exit after preloading
-        return 0
-
-    if args.list_yamls:
+    elif args.list_yamls:
         print(f"Listing contents of {dirs.SCENARIO_YAML_DIR}:")
         for flnm in os.listdir(dirs.SCENARIO_YAML_DIR):
             print(flnm)
-        return 0
-
-    # positional arguments
-    if len(args.yamls) > 0:
+    elif len(args.yamls) > 0:  # positional arguments
         make_scenario(args.yamls, dirs, args.name)
-    else:
-        # no positional, warn and exit
+    else:  # no positional, warn and exit
         print("No yaml files provided. Nothing to do.")
 
 
