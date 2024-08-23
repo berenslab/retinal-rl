@@ -3,7 +3,7 @@ import argparse
 import os
 
 from doom_creator.util.preload import preload
-from doom_creator.util.texturetype import TextureType as TType
+from doom_creator.util.texture import TextureType as TType
 
 from doom_creator.util.make import make_scenario
 from doom_creator.util.directories import Directories

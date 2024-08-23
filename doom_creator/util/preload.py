@@ -11,7 +11,7 @@ from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 
 
-from doom_creator.util.texturetype import TextureType
+from doom_creator.util.texture import TextureType
 
 ### Util ###
 
