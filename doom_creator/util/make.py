@@ -57,11 +57,7 @@ def make_scenario(
 
     include_decorate = ""
     actor_idx = 0
-    for typ in tqdm(config.ObjectType, desc="Creating Objects"):
-        if typ not in cfg.objects:
-            continue
-        else:
-            type_cfg = cfg.objects[typ]
+    for typ, type_cfg in tqdm(cfg.objects.items(), desc="Creating Objects"):
         for actor_name, actor_cfg in tqdm(
             type_cfg.actors.items(), desc="Creating " + typ.value, leave=False
         ):

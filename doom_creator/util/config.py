@@ -34,14 +34,6 @@ class ObjectTypeVars:
     actors: Dict[str, Actor]
 
 
-@dataclass
-class Objects:
-    nourishment: ObjectTypeVars
-    poison: ObjectTypeVars
-    distractor: Optional[ObjectTypeVars] = None
-    obstacle: Optional[ObjectTypeVars] = None
-
-
 class ObjectType(Enum):
     nourishment = "nourishment"
     poison = "poison"
@@ -54,10 +46,6 @@ class Config:
     spawn_objects: SpawnObjects
     metabolic: Metabolic
     objects: Dict[ObjectType, ObjectTypeVars]
-
-    def __post_init__(self):
-        for key in self.objects:
-            assert key in ObjectType
 
 
 ### Load Config ###
