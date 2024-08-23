@@ -1,3 +1,4 @@
+from enum import Enum
 import os.path as osp
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
@@ -27,7 +28,7 @@ class Actor:
 
 
 @dataclass
-class ObjectType:
+class ObjectTypeVars:
     init: int
     delay: int
     actors: Dict[str, Actor]
@@ -35,21 +36,32 @@ class ObjectType:
 
 @dataclass
 class Objects:
-    nourishment: ObjectType
-    poison: ObjectType
-    distractor: Optional[ObjectType] = None
-    obstacle: Optional[ObjectType] = None
+    nourishment: ObjectTypeVars
+    poison: ObjectTypeVars
+    distractor: Optional[ObjectTypeVars] = None
+    obstacle: Optional[ObjectTypeVars] = None
+
+
+class ObjectType(Enum):
+    nourishment = "nourishment"
+    poison = "poison"
+    distractor = "distractor"
+    obstacle = "obstacle"
 
 
 @dataclass
 class Config:
     spawn_objects: SpawnObjects
     metabolic: Metabolic
-    objects: Objects
+    objects: Dict[ObjectType, ObjectTypeVars]
+
+    def __post_init__(self):
+        for key in self.objects:
+            assert key in ObjectType
 
 
 ### Load Config ###
-def load_config(filenames: list[str], yaml_dir: str) -> Config:
+def load(filenames: list[str], yaml_dir: str) -> Config:
     # list all config files
     file_pths = [osp.join(yaml_dir, "{0}.yaml".format(file)) for file in filenames]
 

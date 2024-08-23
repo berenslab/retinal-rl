@@ -57,14 +57,13 @@ def make_scenario(
 
     include_decorate = ""
     actor_idx = 0
-    # TODO: Dislike using the __dict__ here, as it does not restrict the possible types
-    objects_dict: Dict[str, config.ObjectType] = {}
-    for [typ, type_cfg] in cfg.objects.__dict__.items():
-        if isinstance(type_cfg, config.ObjectType):
-            objects_dict[typ] = type_cfg
-    for typ, type_cfg in tqdm(objects_dict.items(), desc="Creating Objects"):
+    for typ in tqdm(config.ObjectType, desc="Creating Objects"):
+        if typ not in cfg.objects:
+            continue
+        else:
+            type_cfg = cfg.objects[typ]
         for actor_name, actor_cfg in tqdm(
-            type_cfg.actors.items(), desc="Creating " + typ, leave=False
+            type_cfg.actors.items(), desc="Creating " + typ.value, leave=False
         ):
             actor_name = actor_name.replace("-", "_")  # Make name ACS compatible
             # get all pngs listend in pngpths and subdirs
@@ -106,7 +105,7 @@ def make_scenario(
     map_comp_pth = map_acs_pth[:-3] + "o"  # Replace ".acs" ending with ".o"
 
     acs = make_acs(
-        objects_dict,
+        cfg.objects,
         actor_names,
         actor_num_textures,
         cfg.metabolic.delay,
@@ -154,7 +153,7 @@ def make_scenario(
 
 ### Building ACS files ###
 def make_acs(
-    objects_cfg: Dict[str, config.ObjectType],
+    objects_cfg: Dict[config.ObjectType, config.ObjectTypeVars],
     actor_names: List[str],
     num_textures: int,
     metabolic_delay: int,
@@ -168,29 +167,23 @@ def make_acs(
 
     for typ, type_cfg in objects_cfg.items():
         object_variables_acs += templates.acs.object_variables(
-            typ=typ,
+            typ=typ.value,
             unique=len(type_cfg.actors),
             init=type_cfg.init,
             delay=type_cfg.delay,
         )
 
         for actor_name, actor_cfg in type_cfg.actors.items():
-            if typ == "nourishment" or typ == "poison":
-                _values = (
-                    [actor_cfg.healing] if typ == "nourishment" else [actor_cfg.damage]
+            if typ is config.ObjectType.nourishment:
+                actor_functions += templates.acs.heal_function(
+                    actor_name,
+                    values=values_list(actor_cfg.healing),
                 )
-                if not isinstance(_values[0], int):
-                    _values = _values[0]
-                if typ == "nourishment":
-                    actor_functions += templates.acs.heal_function(
-                        actor_name,
-                        values=_values,
-                    )
-                else:
-                    actor_functions += templates.acs.damage_function(
-                        actor_name,
-                        values=_values,
-                    )
+            elif typ is config.ObjectType.poison:
+                actor_functions += templates.acs.damage_function(
+                    actor_name,
+                    values=values_list(actor_cfg.damage),
+                )
 
     actor_arrays_initialization = ""
     for i, (actor_name, num_textures) in enumerate(zip(actor_names, num_textures)):
@@ -211,6 +204,13 @@ def make_acs(
     return acs
 
 
+def values_list(cfg_values):
+    _values = cfg_values
+    if isinstance(_values, int):
+        _values = [_values]  # Ensure iterable
+    return _values
+
+
 ### Building Decorate Files ###
 
 
@@ -227,7 +227,9 @@ def texture_code(j):
     return chr(65 + j // 26**2) + chr(65 + (j // 26) % 26) + chr(65 + j % 26)
 
 
-def make_actor_decorate(actor_name: str, typ: str, sprite_names: list[str]):
+def make_actor_decorate(
+    actor_name: str, typ: config.ObjectType, sprite_names: list[str]
+):
     """Returns the decorate description for an actor as a str.
 
     Keyword arguments:
@@ -240,17 +242,17 @@ def make_actor_decorate(actor_name: str, typ: str, sprite_names: list[str]):
     for i, sprite_name in enumerate(sprite_names):
         states += templates.decorate.states_template(index=i, texture_code=sprite_name)
 
-    if typ == "nourishment":
+    if typ is config.ObjectType.nourishment:
         decorate = templates.decorate.nourishment(
             name=actor_name, states_definitions=states
         )
-    elif typ == "poison":
+    elif typ is config.ObjectType.poison:
         decorate = templates.decorate.poison(name=actor_name, states_definitions=states)
-    elif typ == "distractor":
+    elif typ is config.ObjectType.distractor:
         decorate = templates.decorate.distractor(
             name=actor_name, states_definitions=states
         )
-    elif typ == "obstacle":
+    elif typ is config.ObjectType.obstacle:
         decorate = templates.decorate.obstacle(
             name=actor_name, states_definitions=states
         )
