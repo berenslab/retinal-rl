@@ -3,8 +3,8 @@ from typing import Dict, List, Optional
 
 @dataclass
 class SpawnObjects:
-    relative: bool
-    range: float
+    relative: bool = False
+    range: float = 1000
 
 @dataclass
 class Metabolic:
@@ -15,6 +15,7 @@ class Metabolic:
 class Actor:
     healing: Optional[int] = None
     damage: Optional[int] = None
+    radius: Optional[int] = None
     textures: List[str] = field(default_factory=list)
 
 @dataclass
@@ -27,7 +28,8 @@ class ObjectType:
 class Objects:
     nourishment: ObjectType
     poison: ObjectType
-    distractor: ObjectType
+    distractor: Optional[ObjectType] = None
+    obstacle: Optional[ObjectType] = None
 
 @dataclass
 class Config:
