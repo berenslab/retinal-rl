@@ -1,10 +1,12 @@
 import argparse
 import os
 import sys
+import warnings
 
 from doom_creator.util.directories import Directories
+from doom_creator.util.config import load
 from doom_creator.util.make import make_scenario
-from doom_creator.util.preload import preload
+from doom_creator.util.preload import preload, check_preload
 from doom_creator.util.texture import TextureType as TType
 
 
@@ -76,6 +78,7 @@ def main():
     args = parser.parse_args(argv)
 
     dirs = Directories(args.out_dir)
+    cfg = load(args.yamls, dirs.SCENARIO_YAML_DIR)
     # Check preload flag
     do_load, do_make, do_list = args.preload, len(args.yamls) > 0, args.list_yamls
     if do_load:
@@ -90,8 +93,22 @@ def main():
         for flnm in os.listdir(dirs.SCENARIO_YAML_DIR):
             print(flnm)
         print(f"If you want to load from a different folder, change this to")
-    if do_make:  # positional arguments
-        make_scenario(args.yamls, dirs, args.name)
+    if do_make:
+        cfg, needed_types = check_preload(cfg, args.test)
+        any_dataset = False
+        for t in needed_types:
+            any_dataset = any_dataset or t.is_dataset
+            if t.is_asset:
+                preload(t, dirs.TEXTURES_DIR, dirs.ASSETS_DIR)
+            else:
+                preload(t, dirs.TEXTURES_DIR, args.dataset_dir, train=not args.test)
+        if not any_dataset:
+            warnings.warn("No test set will be created - no dataset textures used!")
+        scenario_name = args.name
+        if args.name is None:
+            scenario_name = "-".join(args.yamls)
+            scenario_name += "-test" if args.test and any_dataset else ""
+        make_scenario(cfg, dirs, scenario_name)
     if not (do_load or do_make or do_list):  # no positional - warn
         print("No yaml files provided. Nothing to do.")
 

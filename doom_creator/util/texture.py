@@ -1,11 +1,12 @@
-import os
-import shutil
 from abc import ABC
 from enum import Enum
-from typing import Protocol
 
+import shutil
+import os
 from num2words import num2words
-from torchvision.datasets import CIFAR10, CIFAR100, MNIST
+from torchvision.datasets import MNIST
+from torchvision.datasets import CIFAR10
+from torchvision.datasets import CIFAR100
 
 
 class DatasetWrapper(ABC):

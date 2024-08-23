@@ -14,16 +14,10 @@ from doom_creator.util.directories import Directories
 
 ### Creating Scenarios ###
 def make_scenario(
-    config_files: list[str],
+    cfg: config.Config,
     directories: Directories,
     scenario_name: Optional[str] = None,
 ):
-    # Preloading
-    cfg = config.load(config_files, directories.SCENARIO_YAML_DIR)
-
-    if scenario_name is None:
-        scenario_name = "-".join(config_files)
-
     # Create Zip for output
     out_file = osp.join(directories.SCENARIO_OUT_DIR, scenario_name) + ".zip"
     if osp.exists(out_file):

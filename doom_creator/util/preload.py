@@ -10,6 +10,7 @@ from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 
 from doom_creator.util.texture import TextureType
+from doom_creator.util.config import Config
 
 ### Util ###
 
@@ -103,3 +104,24 @@ def preload_dataset(
 
         if clean:
             dataset_wrapper.clean(source_dir)
+
+
+def check_preload(cfg: Config, test: bool):
+    needed_types = set()
+    for type_cfg in cfg.objects.values():
+        for actor in type_cfg.actors.values():
+            for i in range(len(actor.textures)):
+                split_path = osp.split(actor.textures[i])
+                t_type = split_path[-2]
+                # assume second last part of path is the directory / texture type
+                try:
+                    t = TextureType(t_type)
+                except:
+                    continue
+                else:
+                    needed_types.add(t)
+                    if t.is_dataset and test:  # Update path if test set is wanted
+                        actor.textures[i] = osp.join(
+                            *split_path[:-2], t.out_dir(test), split_path[-1]
+                        )
+    return cfg, needed_types
