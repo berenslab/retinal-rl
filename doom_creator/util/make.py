@@ -1,29 +1,17 @@
 import os
 import os.path as osp
-import sys
 import shutil
 import subprocess
-from typing import Optional
+from typing import Dict, List, Optional
 from zipfile import ZipFile, ZipInfo
 
-import hiyapyco as hyaml
 import omg
 
 from tqdm import tqdm
 
 from doom_creator.util.directories import Directories
 from doom_creator.util import templates
-from doom_creator.util.config import Config
-
-
-### Load Config ###
-def load_config(filenames: list[str], yaml_dir: str):
-    # list all config files
-    file_pths = [osp.join(yaml_dir, "{0}.yaml".format(file)) for file in filenames]
-
-    # Load all yaml files listed in flnms and combine into a single dictionary, recursively combining keys
-    cfg = hyaml.load(file_pths, method=hyaml.METHOD_MERGE)
-    return cfg
+from doom_creator.util import config
 
 
 ### Creating Scenarios ###
@@ -33,7 +21,7 @@ def make_scenario(
     scenario_name: Optional[str] = None,
 ):
     # Preloading
-    cfg: Config = load_config(config_files, directories.SCENARIO_YAML_DIR)
+    cfg = config.load(config_files, directories.SCENARIO_YAML_DIR)
 
     if scenario_name is None:
         scenario_name = "-".join(config_files)
@@ -71,35 +59,38 @@ def make_scenario(
 
     include_decorate = ""
     actor_idx = 0
-    for typ, type_cfg in tqdm(cfg["objects"].items(), desc="Creating Objects"):
+    # TODO: Dislike using the __dict__ here, as it does not restrict the possible types
+    objects_dict: Dict[str, config.ObjectType] = {}
+    for [typ, type_cfg] in cfg.objects.__dict__.items():
+        if isinstance(type_cfg, config.ObjectType):
+            objects_dict[typ] = type_cfg
+    for typ, type_cfg in tqdm(objects_dict.items(), desc="Creating Objects"):
         for actor_name, actor_cfg in tqdm(
-            type_cfg["actors"].items(), desc="Creating " + typ, leave=False
+            type_cfg.actors.items(), desc="Creating " + typ, leave=False
         ):
+            actor_name = actor_name.replace("-", "_")  # Make name ACS compatible
             # get all pngs listend in pngpths and subdirs
-            png_pths = actor_cfg["textures"]
+            png_pths = actor_cfg.textures
             pngs = get_pngs(osp.join(directories.CACHE_DIR, "textures"), png_pths)
-
             num_textures = len(pngs)
 
             sprite_names = [actor_code(actor_idx, i) for i in range(num_textures)]
             # Add pngs as sprites
             for j, png in tqdm(
                 enumerate(pngs),
-                desc="adding textures for " + actor_name,
+                desc="add textures for " + actor_name,
                 leave=False,
-                total=len(pngs),
+                total=num_textures,
             ):
                 s_zip.write(png, osp.join("sprites", sprite_names[j] + "A0.png"))
 
             actor_idx += 1
-            actor_names.append(
-                actor_name.replace("-", "_")
-            )  # Rename, so that names can be used as variables in ACS script
+            actor_names.append(actor_name)
             actor_num_textures.append(num_textures)
 
-            dec = make_actor_decorate(actor_names[-1], typ, sprite_names)
-            s_zip.writestr(osp.join("actors", actor_names[-1] + ".dec"), dec)
-            include_decorate += templates.decorate.include(actor_names[-1])
+            dec = make_actor_decorate(actor_name, typ, sprite_names)
+            s_zip.writestr(osp.join("actors", actor_name + ".dec"), dec)
+            include_decorate += templates.decorate.include(actor_name)
 
     # Write decorate include to root
     s_zip.writestr("DECORATE.txt", include_decorate)
@@ -116,21 +107,14 @@ def make_scenario(
     retinal_comp_pth = osp.join(directories.BUILD_DIR, "retinal.o")
     map_comp_pth = map_acs_pth[:-3] + "o"  # Replace ".acs" ending with ".o"
 
-    # Write ACS
-    if "spawn_objects" in cfg:
-        spawn_relative = cfg["spawn_objects"]["relative"]
-        spawn_range = cfg["spawn_objects"]["range"]
-    else:
-        spawn_relative = False
-        spawn_range = 1000.0
     acs = make_acs(
-        cfg["objects"],
+        objects_dict,
         actor_names,
         actor_num_textures,
-        cfg["metabolic"]["delay"],
-        cfg["metabolic"]["damage"],
-        spawn_relative=spawn_relative,
-        spawn_range=spawn_range,
+        cfg.metabolic.delay,
+        cfg.metabolic.damage,
+        spawn_relative=cfg.spawn_objects.relative,
+        spawn_range=cfg.spawn_objects.range,
     )
     with open(map_acs_pth, "w") as f:
         f.write(acs)
@@ -172,11 +156,11 @@ def make_scenario(
 
 ### Building ACS files ###
 def make_acs(
-    objects_cfg,
-    actor_names,
-    num_textures,
-    metabolic_delay,
-    metabolic_damage,
+    objects_cfg: Dict[str, config.ObjectType],
+    actor_names: List[str],
+    num_textures: int,
+    metabolic_delay: int,
+    metabolic_damage: int,
     spawn_relative: bool = False,
     spawn_range: float = 1000.0,
 ):
@@ -187,17 +171,15 @@ def make_acs(
     for typ, type_cfg in objects_cfg.items():
         object_variables_acs += templates.acs.object_variables(
             typ=typ,
-            unique=len(type_cfg["actors"]),
-            init=type_cfg["init"],
-            delay=type_cfg["delay"],
+            unique=len(type_cfg.actors),
+            init=type_cfg.init,
+            delay=type_cfg.delay,
         )
 
-        for actor_name, actor_cfg in type_cfg["actors"].items():
+        for actor_name, actor_cfg in type_cfg.actors.items():
             if typ == "nourishment" or typ == "poison":
                 _values = (
-                    [actor_cfg["healing"]]
-                    if typ == "nourishment"
-                    else [actor_cfg["damage"]]
+                    [actor_cfg.healing] if typ == "nourishment" else [actor_cfg.damage]
                 )
                 if not isinstance(_values[0], int):
                     _values = _values[0]
