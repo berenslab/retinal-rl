@@ -1,4 +1,4 @@
-def nourishment(name:str, states_definitions:str):
+def nourishment(name: str, states_definitions: str):
     return """\
 ACTOR {name} : CustomInventory {{
     +INVENTORY.ALWAYSPICKUP
@@ -15,11 +15,11 @@ ACTOR {name} : CustomInventory {{
     )
 
 
-def poison(name:str, states_definitions:str):
+def poison(name: str, states_definitions: str):
     return nourishment(name, states_definitions)
 
 
-def obstacle(name:str, states_definitions:str, radius:int=24):
+def obstacle(name: str, states_definitions: str, radius: int = 24):
     return """\
 ACTOR {name} : TorchTree {{
     Radius {radius}
@@ -33,7 +33,7 @@ ACTOR {name} : TorchTree {{
     )
 
 
-def distractor(name:str, states_definitions:str):
+def distractor(name: str, states_definitions: str):
     return """\
 ACTOR {name} : CustomInventory {{
     +INVENTORY.ALWAYSPICKUP
@@ -47,10 +47,12 @@ ACTOR {name} : CustomInventory {{
         name=name, states_definitions=states_definitions
     )
 
-def states_template(index:int, texture_code:str):
+
+def states_template(index: int, texture_code: str):
     return "Texture{index}: {texture_code} A -1\n\t".format(
         index=index, texture_code=texture_code
     )
 
-def include(actor_name:str):
+
+def include(actor_name: str):
     return '#include "actors/{0}.dec"\n'.format(actor_name)

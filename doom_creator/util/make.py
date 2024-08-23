@@ -6,12 +6,10 @@ from typing import Dict, List, Optional
 from zipfile import ZipFile, ZipInfo
 
 import omg
-
 from tqdm import tqdm
 
+from doom_creator.util import config, templates
 from doom_creator.util.directories import Directories
-from doom_creator.util import templates
-from doom_creator.util import config
 
 
 ### Creating Scenarios ###

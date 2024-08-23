@@ -1,5 +1,9 @@
+import os.path as osp
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
+
+from omegaconf import SCMode
+from omegaconf.omegaconf import OmegaConf
 
 
 @dataclass
@@ -42,11 +46,6 @@ class Config:
     spawn_objects: SpawnObjects
     metabolic: Metabolic
     objects: Objects
-
-
-from omegaconf import SCMode
-from omegaconf.omegaconf import OmegaConf
-import os.path as osp
 
 
 ### Load Config ###

@@ -2,13 +2,13 @@ from typing import List
 
 
 def general(
-    metabolic_delay:int,
-    metabolic_damage:int,
-    object_variables:str,
-    array_variables:str,
-    actor_functions:str,
-    spawn_relative:bool = True,
-    spawn_range:float = 1000.0
+    metabolic_delay: int,
+    metabolic_damage: int,
+    object_variables: str,
+    array_variables: str,
+    actor_functions: str,
+    spawn_relative: bool = True,
+    spawn_range: float = 1000.0,
 ):
     return """\
 // Directives
@@ -41,11 +41,11 @@ script "Load Config Information" OPEN {{
         array_variables=array_variables,
         actor_functions=actor_functions,
         spawn_relative=str(spawn_relative).lower(),
-        spawn_range=spawn_range
+        spawn_range=spawn_range,
     )
 
 
-def object_variables(typ:str, unique:int, init:int, delay:int):
+def object_variables(typ: str, unique: int, init: int, delay: int):
     return """
     // {type} variables
     {type}_unique = {unique};
@@ -56,7 +56,7 @@ def object_variables(typ:str, unique:int, init:int, delay:int):
     )
 
 
-def actor_function(actor_name:str, values: List[int], heal_or_damage:bool):
+def actor_function(actor_name: str, values: List[int], heal_or_damage: bool):
     actor_name = actor_name.replace("-", "_")
     # Actor name will be used in function name, not possible with -
     num_values = len(values)
@@ -77,15 +77,15 @@ script "func_{actor_name}" (void)
     )
 
 
-def heal_function(actor_name:str, values: List[int]):
+def heal_function(actor_name: str, values: List[int]):
     return actor_function(actor_name, values, "Heal")
 
 
-def damage_function(actor_name:str, values: List[int]):
+def damage_function(actor_name: str, values: List[int]):
     return actor_function(actor_name, values, "Damage")
 
 
-def actor_arrays(index:int, actor_name:str, num_textures:int):
+def actor_arrays(index: int, actor_name: str, num_textures: int):
     return """
     actor_names[{index}] = "{actor_name}";
     actor_num_textures[{index}] = {num_textures};

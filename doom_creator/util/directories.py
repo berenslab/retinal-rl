@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import os.path as osp
+from dataclasses import dataclass
 from typing import Optional
 
 
@@ -43,7 +43,5 @@ class Directories:
             else self.scenario_yaml_dir
         )
         self.DATASET_DIR = (
-            self.TEXTURES_DIR
-            if self.dataset_dir is None
-            else self.dataset_dir
+            self.TEXTURES_DIR if self.dataset_dir is None else self.dataset_dir
         )

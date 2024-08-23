@@ -1,12 +1,11 @@
-import sys
 import argparse
 import os
+import sys
 
+from doom_creator.util.directories import Directories
+from doom_creator.util.make import make_scenario
 from doom_creator.util.preload import preload
 from doom_creator.util.texture import TextureType as TType
-
-from doom_creator.util.make import make_scenario
-from doom_creator.util.directories import Directories
 
 
 def make_parser():

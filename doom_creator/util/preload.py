@@ -1,15 +1,13 @@
-from enum import Enum
 import os
+import os.path as osp
 import shutil
+import struct
+from enum import Enum
+from glob import glob
 from typing import Optional
 
-import os.path as osp
-
-from glob import glob
-import struct
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
-
 
 from doom_creator.util.texture import TextureType
 

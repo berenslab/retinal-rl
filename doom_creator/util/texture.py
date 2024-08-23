@@ -1,13 +1,11 @@
+import os
+import shutil
 from abc import ABC
 from enum import Enum
 from typing import Protocol
 
-import shutil
-import os
 from num2words import num2words
-from torchvision.datasets import MNIST
-from torchvision.datasets import CIFAR10
-from torchvision.datasets import CIFAR100
+from torchvision.datasets import CIFAR10, CIFAR100, MNIST
 
 
 class DatasetWrapper(ABC):
@@ -16,9 +14,9 @@ class DatasetWrapper(ABC):
     ): ...
 
     @property
-    def dataset(self): 
+    def dataset(self):
         return self._dataset
-    
+
     @dataset.setter
     def dataset(self, value):
         self._dataset = value
