@@ -5,12 +5,12 @@ from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import torch
+import wandb
 from matplotlib.figure import Figure
 from omegaconf import DictConfig
 from torch import Tensor
 from torch.utils.data import Dataset
 
-import wandb
 from retinal_rl.analysis.plot import (
     layer_receptive_field_plots,
     plot_channel_statistics,

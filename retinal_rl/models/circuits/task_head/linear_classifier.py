@@ -1,6 +1,6 @@
 """Linear classifier neural circuit."""
 
-from typing import List
+from typing import Dict, List
 
 import torch
 
@@ -11,9 +11,11 @@ class LinearClassifier(NeuralCircuit):
     def __init__(
         self,
         input_shape: List[int],
+        loss_weights: Dict[str, float],
+        reg_weights: Dict[str, float],
         num_classes: int,
     ):
-        super().__init__(input_shape)
+        super().__init__(input_shape, loss_weights, reg_weights)
 
         input_size = int(torch.prod(torch.tensor(input_shape)))
         self.fc = torch.nn.Linear(input_size, num_classes)

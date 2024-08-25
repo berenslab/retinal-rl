@@ -2,7 +2,7 @@
 
 import logging
 from collections import OrderedDict
-from typing import List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -41,6 +41,8 @@ class ConvolutionalEncoder(NeuralCircuit):
     def __init__(
         self,
         input_shape: List[int],
+        loss_weights: Dict[str, float],
+        reg_weights: Dict[str, float],
         num_layers: int,
         num_channels: List[int],
         kernel_size: Union[int, List[int]],
@@ -48,7 +50,7 @@ class ConvolutionalEncoder(NeuralCircuit):
         act_name: str,
     ):
         # add parameters to model and apply changes for internal use
-        super().__init__(input_shape)
+        super().__init__(input_shape, loss_weights, reg_weights)
 
         self.num_layers = num_layers
         self.num_channels = assert_list(num_channels, self.num_layers)
@@ -89,6 +91,8 @@ class ConvolutionalDecoder(NeuralCircuit):
     def __init__(
         self,
         input_shape: List[int],
+        loss_weights: Dict[str, float],
+        reg_weights: Dict[str, float],
         num_layers: int,
         num_channels: List[int],
         kernel_size: Union[int, List[int]],
@@ -96,7 +100,7 @@ class ConvolutionalDecoder(NeuralCircuit):
         act_name: str,
     ):
         # add parameters to model and apply changes for internal use
-        super().__init__(input_shape)
+        super().__init__(input_shape, loss_weights, reg_weights)
 
         self.num_layers = num_layers
         self.num_channels = assert_list(num_channels, self.num_layers)

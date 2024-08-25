@@ -26,6 +26,7 @@ def save_checkpoint(
     checkpoint_dict: Dict[str, Any] = {
         "completed_epochs": completed_epochs,
         "brain_state_dict": brain.state_dict(),
+        "optimizer_state_dicts": brain.get_optimizer_states(),
         "training_history": history,
     }
 

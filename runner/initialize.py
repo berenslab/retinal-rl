@@ -8,7 +8,6 @@ import omegaconf
 import torch
 import wandb
 from omegaconf import DictConfig
-from torch.optim import Optimizer
 
 from retinal_rl.models.brain import Brain
 from runner.util import save_checkpoint
@@ -20,22 +19,21 @@ logger = logging.getLogger(__name__)
 def initialize(
     cfg: DictConfig,
     brain: Brain,
-    optimizer: Optimizer,
-) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
+) -> Tuple[Brain, Dict[str, List[float]], int]:
     wandb_sweep_id = os.getenv("WANDB_SWEEP_ID", "local")
     logger.info(f"Run Name: {cfg.run_name}")
     logger.info(f"(WANDB) Sweep ID: {wandb_sweep_id}")
 
     # If continuing from a previous run, load the model and history
     if os.path.exists(cfg.system.data_dir):
-        return initialize_reload(cfg, brain, optimizer)
+        return initialize_reload(cfg, brain)
     # else, initialize a new model and history
-    return initialize_create(cfg, brain, optimizer)
+    return initialize_create(cfg, brain)
 
 
 def initialize_reload(
-    cfg: DictConfig, brain: Brain, optimizer: Optimizer
-) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
+    cfg: DictConfig, brain: Brain
+) -> Tuple[Brain, Dict[str, List[float]], int]:
     logger.info(
         f"Experiment dir {cfg.system.run_dir} exists. Loading existing model and history."
     )
@@ -49,7 +47,7 @@ def initialize_reload(
     # Load the state dict into the brain model
     checkpoint = torch.load(checkpoint_file)
     brain.load_state_dict(checkpoint["model_state_dict"])
-    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    brain.load_optimizer_states(checkpoint["optimizer_state_dict"])
     completed_epochs = checkpoint["completed_epochs"]
     history = checkpoint["training_history"]
 
@@ -64,14 +62,13 @@ def initialize_reload(
         )
         wandb.mark_preempting()
 
-    return brain, optimizer, history, completed_epochs
+    return brain, history, completed_epochs
 
 
 def initialize_create(
     cfg: DictConfig,
     brain: Brain,
-    optimizer: Optimizer,
-) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
+) -> Tuple[Brain, Dict[str, List[float]], int]:
     epoch = 0
     logger.info(
         f"Experiment path {cfg.system.run_dir} does not exist. Initializing {cfg.run_name}."
@@ -114,9 +111,8 @@ def initialize_create(
         cfg.system.checkpoint_dir,
         cfg.system.max_checkpoints,
         brain,
-        optimizer,
         histories,
         epoch,
     )
 
-    return brain, optimizer, histories, epoch
+    return brain, histories, epoch

@@ -2,11 +2,12 @@
 
 import inspect
 from abc import ABC
-from typing import Any, Dict, List, Type, get_type_hints
+from typing import Any, Dict, List, Optional, Type, get_type_hints
 
 import torch
 import torch.nn as nn
 import torchscan
+from torch.optim import Optimizer
 
 
 class NeuralCircuit(nn.Module, ABC):
@@ -15,8 +16,8 @@ class NeuralCircuit(nn.Module, ABC):
     def __init__(
         self,
         input_shape: List[int],
-        loss_weights: Dict[str, float] = {},
-        reg_weights: Dict[str, float] = {},
+        loss_weights: Dict[str, float],
+        reg_weights: Dict[str, float],
     ) -> None:
         """Initialize the base model.
 
@@ -30,6 +31,7 @@ class NeuralCircuit(nn.Module, ABC):
         self._input_shape = input_shape
         self.reg_weights: Dict[str, float] = reg_weights
         self.loss_weights: Dict[str, float] = loss_weights
+        self.optimizer: Optional[Optimizer] = None
 
     def __init_subclass__(cls: Type[Any], **kwargs: Any) -> None:
         """Enforces that subclasses have specific parameters in their constructors.
@@ -79,6 +81,17 @@ class NeuralCircuit(nn.Module, ABC):
             return list(
                 self.forward(torch.zeros(1, *self.input_shape).to(device)).shape[1:]
             )
+
+    def get_optimizer_state(self) -> Dict[str, Any]:
+        """Return the state of the optimizer."""
+        if self.optimizer is None:
+            return {}
+        return self.optimizer.state_dict()
+
+    def load_optimizer_state(self, state: Dict[str, Any]) -> None:
+        """Load the state of the optimizer."""
+        if self.optimizer is not None:
+            self.optimizer.load_state_dict(state)
 
     @staticmethod
     def str_to_activation(act: str) -> nn.Module:
