@@ -32,16 +32,19 @@ def encoder_out_size(mdls: List[nn.Module], hght0: int, wdth0: int) -> Tuple[int
     for mdl in mdls:
         if _is_activation(mdl):
             continue
-        if not _is_convolutional_layer(mdl):
-            raise NotImplementedError("Only convolutional layers are supported")
+        if _is_convolutional_layer(mdl):
+            dila = _double_up(mdl.dilation)
+
+            if dila[0] != 1 or dila[1] != 1:
+                raise NotImplementedError("Dilation not implemented")
+        elif _is_base_pooling_layer(mdl):
+            dila = _double_up(1)
+        else:
+            raise NotImplementedError("Only convolutional and basic pooling layers are supported")
 
         krnsz = _double_up(mdl.kernel_size)
         strd = _double_up(mdl.stride)
         pad = _double_up(mdl.padding)
-        dila = _double_up(mdl.dilation)
-
-        if dila[0] != 1 or dila[1] != 1:
-            raise NotImplementedError("Dilation not implemented")
 
         # if has a ceil mode
         if hasattr(mdl, "ceil_mode") and mdl.ceil_mode:
@@ -70,8 +73,8 @@ def rf_size_and_start(mdls: List[nn.Module], hidx: int, widx: int):
     for mdl in mdls:
         if _is_activation(mdl):
             continue
-        if not _is_convolutional_layer(mdl):
-            raise NotImplementedError("Only convolutional layers are supported")
+        if not (_is_convolutional_layer(mdl) or _is_base_pooling_layer(mdl)):
+            raise NotImplementedError("Only convolutional and basic pooling layers are supported")
 
         hksz, wksz = _double_up(mdl.kernel_size)
         hstrd, wstrd = _double_up(mdl.stride)
@@ -107,6 +110,9 @@ def _is_activation(mdl: nn.Module) -> bool:
 
 def _is_convolutional_layer(mdl: nn.Module) -> bool:
     return isinstance(mdl, (nn.Conv1d, nn.Conv2d, nn.Conv3d))
+
+def _is_base_pooling_layer(mdl: nn.Module) -> bool:
+    return isinstance(mdl, (nn.AvgPool1d, nn.AvgPool2d, nn.AvgPool3d, nn.MaxPool1d, nn.MaxPool2d, nn.MaxPool3d))
 
 
 def _double_up(x: Union[int, List[int]]):
