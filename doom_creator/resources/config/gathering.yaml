@@ -1,5 +1,5 @@
 spawn_objects:
-  relative: True
+  relative: False
   range: 1000.0
 metabolic:
   delay: 2
