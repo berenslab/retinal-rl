@@ -10,7 +10,7 @@ connections:
 circuits:
   encoder:
     _target_: retinal_rl.models.circuits.retinal_deprecated.RetinalEncoder
-    bp_chans: ${bp_channels}
+    bp_channels: ${bp_channels}
     act_name: ${activation}
     out_shape: ${latent_dim}
   core:
