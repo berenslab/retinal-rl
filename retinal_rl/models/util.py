@@ -1,3 +1,4 @@
+from enum import Enum
 from math import ceil, floor
 from typing import List, Tuple, Union
 
@@ -95,18 +96,23 @@ def rf_size_and_start(mdls: List[nn.Module], hidx: int, widx: int):
     return hrf_size, wrf_size, hmn, wmn
 
 
+class Activation(Enum):
+    elu = nn.ELU
+    relu = nn.ReLU
+    tanh = nn.Tanh
+    softplus = nn.Softplus
+    leaky = nn.LeakyReLU
+    identity = nn.Identity
+
+    def __call__(self) -> nn.Module:
+        act_module = self.value()
+        if hasattr(act_module, "inplace"):
+            act_module = self.value(inplace=True)
+        return act_module
+
 def _is_activation(mdl: nn.Module) -> bool:
     """Check if the module is an activation function."""
-    return any(
-        [
-            isinstance(mdl, nn.ELU),
-            isinstance(mdl, nn.ReLU),
-            isinstance(mdl, nn.Tanh),
-            isinstance(mdl, nn.LeakyReLU),
-            isinstance(mdl, nn.Softplus),
-            isinstance(mdl, nn.Identity),
-        ]
-    )
+    return mdl.__class__ in [act.value for act in Activation]
 
 
 def _is_convolutional_layer(mdl: nn.Module) -> bool:

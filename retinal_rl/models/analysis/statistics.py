@@ -53,7 +53,7 @@ def gradient_receptive_fields(
             h_min = max(0,h_min)
             w_min = max(0,w_min)
             hrf_size = min(hght,hrf_size)
-            hrf_size = min(wdth,hrf_size)
+            wrf_size = min(wdth,wrf_size)
 
             h_max = h_min + hrf_size
             w_max = w_min + wrf_size

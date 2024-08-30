@@ -8,6 +8,8 @@ import torch
 import torch.nn as nn
 import torchscan
 
+from retinal_rl.models.util import Activation
+
 
 class NeuralCircuit(nn.Module, ABC):
     """Base class for neural circuits."""
@@ -75,17 +77,4 @@ class NeuralCircuit(nn.Module, ABC):
 
     @staticmethod
     def str_to_activation(act: str) -> nn.Module:
-        act = str.lower(act)
-        if act == "elu":
-            return nn.ELU(inplace=True)
-        if act == "relu":
-            return nn.ReLU(inplace=True)
-        if act == "tanh":
-            return nn.Tanh()
-        if act == "softplus":
-            return nn.Softplus()
-        if act == "leaky":
-            return nn.LeakyReLU()
-        if act == "identity":
-            return nn.Identity(inplace=True)
-        raise Exception("Unknown activation function")
+        return Activation[act]()
