@@ -23,7 +23,7 @@ def gradient_receptive_fields(
     """
     enc.eval()
     nclrs, hght, wdth = enc.input_shape
-    ochns = nclrs
+    out_channels = nclrs
 
     imgsz = [1, nclrs, hght, wdth]
     # Obs requires grad
@@ -34,35 +34,41 @@ def gradient_receptive_fields(
     mdls: List[nn.Module] = []
 
     with torch.no_grad():
-        for lyrnm, mdl in enc.conv_head.named_children():
+        for layer_name, mdl in enc.conv_head.named_children():
             gradient_calculator = NeuronGradient(enc, mdl)
             mdls.append(mdl)
 
             # check if mdl has out channels
             if hasattr(mdl, "out_channels"):
-                ochns = mdl.out_channels
+                out_channels = mdl.out_channels
             hsz, wsz = encoder_out_size(mdls, hght, wdth)
 
             hidx = (hsz - 1) // 2
             widx = (wsz - 1) // 2
 
-            hrf_size, wrf_size, hmn, wmn = rf_size_and_start(mdls, hidx, widx)
+            hrf_size, wrf_size, h_min, w_min = rf_size_and_start(mdls, hidx, widx)
 
-            hmx = hmn + hrf_size
-            wmx = wmn + wrf_size
+            # Assert min max is in bounds
+            # potential TODO: change input size if rf is larger than actual input
+            h_min = max(0,h_min)
+            w_min = max(0,w_min)
+            hrf_size = min(hght,hrf_size)
+            hrf_size = min(wdth,hrf_size)
 
-            stas[lyrnm] = np.zeros((ochns, nclrs, hrf_size, wrf_size))
+            h_max = h_min + hrf_size
+            w_max = w_min + wrf_size
 
-            for j in range(ochns):
+            stas[layer_name] = np.zeros((out_channels, nclrs, hrf_size, wrf_size))
+            for j in range(out_channels):
                 grad = (
                     gradient_calculator.attribute(obs, (j, hidx, widx))[
-                        0, :, hmn:hmx, wmn:wmx
+                        0, :, h_min:h_max, w_min:w_max
                     ]
                     .cpu()
                     .numpy()
                 )
 
-                stas[lyrnm][j] = grad
+                stas[layer_name][j] = grad
 
     return stas
 
