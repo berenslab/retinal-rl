@@ -84,6 +84,8 @@ class NeuralCircuit(nn.Module, ABC):
             return nn.Tanh()
         if act == "softplus":
             return nn.Softplus()
+        if act == "leaky":
+            return nn.LeakyReLU()
         if act == "identity":
             return nn.Identity(inplace=True)
         raise Exception("Unknown activation function")

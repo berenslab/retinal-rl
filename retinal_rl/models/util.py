@@ -102,6 +102,7 @@ def _is_activation(mdl: nn.Module) -> bool:
             isinstance(mdl, nn.ELU),
             isinstance(mdl, nn.ReLU),
             isinstance(mdl, nn.Tanh),
+            isinstance(mdl, nn.LeakyReLU),
             isinstance(mdl, nn.Softplus),
             isinstance(mdl, nn.Identity),
         ]
