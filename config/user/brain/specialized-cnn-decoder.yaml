@@ -1,0 +1,45 @@
+name: cnn-decoder
+sensors:
+  vision:
+    - ${dataset.num_colours}
+    - ${dataset.vision_height}
+    - ${dataset.vision_width}
+connections:
+  - ["vision", "cnn_encoder1"]
+  - ["cnn_encoder1","cnn_encoder2"]
+  - ["cnn_encoder2", "fc_feedforward"]
+  - ["fc_feedforward", "classifier"]
+  - ["cnn_encoder1", "decoder"]
+circuits:
+  cnn_encoder1:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 2
+    num_channels: [16,32]
+    kernel_size: [8,6]
+    stride: 2
+    act_name: elu
+    layer_names: ["Bipolar", "Retinal Ganglion"]
+  cnn_encoder2:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 1
+    num_channels: 64
+    kernel_size: 4
+    stride: 2 
+    act_name: elu
+    layer_names: ["V1"]
+  fc_feedforward:
+    _target_: retinal_rl.models.circuits.fully_connected.FullyConnectedEncoder
+    output_shape:
+      - 128
+    hidden_units: []
+    act_name: elu
+  decoder:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
+    num_layers: 2
+    num_channels: [16,3]
+    kernel_size: [6,8]
+    stride:  2
+    act_name: elu
+  classifier:
+    _target_: retinal_rl.models.circuits.task_head.linear_classifier.LinearClassifier
+    num_classes: ${dataset.num_classes}

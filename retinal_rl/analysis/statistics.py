@@ -1,17 +1,17 @@
 import logging
-from typing import Dict, Iterator, List, Tuple, cast
+from typing import Dict, Iterator, List, OrderedDict, Tuple, cast
 
+import networkx as nx
 import numpy as np
 import torch
 import torch.fft as fft
 import torch.nn as nn
-from captum.attr import NeuronGradient
 from torch import Tensor
 from torch.utils.data import DataLoader, Dataset, Subset
 
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.circuits.convolutional import ConvolutionalEncoder
-from retinal_rl.util import FloatArray, encoder_out_size, is_activation, rf_size_and_start
+from retinal_rl.util import FloatArray, is_activation, rf_size_and_start
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,7 @@ def reconstruct_images(
     train_set: Dataset[Tuple[Tensor, int]],
     sample_size: int,
 ) -> Dict[str, List[Tuple[Tensor, int]]]:
+    """Reconstruct images from a dataset using a trained Brain."""
     brain.eval()  # Set the model to evaluation mode
 
     def collect_reconstructions(
@@ -57,55 +58,66 @@ def reconstruct_images(
 
 
 def cnn_linear_receptive_fields(
-    device: torch.device, enc: ConvolutionalEncoder
+    device: torch.device,
+    input_shape: Tuple[int, ...],
+    layers: OrderedDict[str, nn.Module],
 ) -> Dict[str, FloatArray]:
     """Return the receptive fields of every layer of a convnet as computed by neural gradients.
 
     The returned dictionary is indexed by layer name and the shape of the array
     (#layer_channels, #input_channels, #rf_height, #rf_width).
     """
-    enc.eval()
-    nclrs, hght, wdth = enc.input_shape
-    ochns = nclrs
+    nclrs, hght, wdth = input_shape
 
     imgsz = [1, nclrs, hght, wdth]
-    # Obs requires grad
     obs = torch.zeros(size=imgsz, device=device, requires_grad=True)
 
     stas: Dict[str, FloatArray] = {}
 
+    # Create a sequential model from the layers
+    model = nn.Sequential(layers)
+    model.to(device)
+    model.eval()
+
+    hmn: int = 0
+    hmx: int = 0
+
     mdls: List[nn.Module] = []
 
-    with torch.no_grad():
-        for lyrnm, mdl in enc.conv_head.named_children():
-            gradient_calculator = NeuronGradient(enc, mdl)
-            mdls.append(mdl)
+    for layer_name, layer in layers.items():
+        # Forward pass through all preceding layers
+        mdls.append(layer)
+        x = obs
+        for prev_layer in model:
+            x = prev_layer(x)
+            if prev_layer == layer:
+                break
 
-            # check if mdl has out channels
-            if hasattr(mdl, "out_channels"):
-                ochns = mdl.out_channels
-            hsz, wsz = encoder_out_size(mdls, hght, wdth)
+        if not hasattr(layer, "out_channels"):
+            continue  # Skip layers without out_channels (e.g., activation functions)
 
-            hidx = (hsz - 1) // 2
-            widx = (wsz - 1) // 2
+        ochns = layer.out_channels
+        hsz, wsz = x.shape[2:]  # Get the current height and width
 
-            hrf_size, wrf_size, hmn, wmn = rf_size_and_start(mdls, hidx, widx)
+        hidx = (hsz - 1) // 2
+        widx = (wsz - 1) // 2
 
-            hmx = hmn + hrf_size
-            wmx = wmn + wrf_size
+        hrf_size, wrf_size, hmn, wmn = rf_size_and_start(mdls, hidx, widx)
 
-            stas[lyrnm] = np.zeros((ochns, nclrs, hrf_size, wrf_size))
+        hmx = hmn + hrf_size
+        wmx = wmn + wrf_size
 
-            for j in range(ochns):
-                grad = (
-                    gradient_calculator.attribute(obs, (j, hidx, widx))[
-                        0, :, hmn:hmx, wmn:wmx
-                    ]
-                    .cpu()
-                    .numpy()
-                )
+        stas[layer_name] = np.zeros((ochns, nclrs, hrf_size, wrf_size))
 
-                stas[lyrnm][j] = grad
+        for j in range(ochns):
+            x.retain_grad()
+            y = x[0, j, hidx, widx]
+            y.backward(retain_graph=True)
+
+            grad = obs.grad[0, :, hmn:hmx, wmn:wmx].cpu().numpy()
+            stas[layer_name][j] = grad
+
+            obs.grad.zero_()
 
     return stas
 
@@ -215,7 +227,7 @@ def layer_spectral_analysis(
 def cnn_statistics(
     device: torch.device,
     dataset: Dataset[Tuple[Tensor, int]],
-    encoder: ConvolutionalEncoder,
+    brain: Brain,
     max_sample_size: int = 0,
 ) -> Dict[str, Dict[str, FloatArray]]:
     """Compute statistics for a convolutional encoder model.
@@ -259,7 +271,7 @@ def cnn_statistics(
         If max_sample_size is specified and smaller than the dataset size, a random subset of the data is used.
 
     """
-    encoder.eval()
+    input_shape, cnn_layers = get_cnn_circuit(brain)
 
     # Set sample size
     original_size = len(dataset)
@@ -276,14 +288,14 @@ def cnn_statistics(
     results: Dict[str, Dict[str, FloatArray]] = {}
 
     # Compute receptive fields for all layers
-    receptive_fields = cnn_linear_receptive_fields(device, encoder)
+    receptive_fields = cnn_linear_receptive_fields(device, input_shape, cnn_layers)
 
     # Analyze input data
     input_spectral = layer_spectral_analysis(device, dataloader)
     input_histograms = layer_pixel_histograms(device, dataloader)
     # num channels as FloatArray
-    num_channels0 = encoder.input_shape[0]
-    num_channels = np.array(num_channels0, dtype=np)
+    num_channels0 = input_shape[0]
+    num_channels = np.array(num_channels0, dtype=np.float64)
 
     results["input"] = {
         "receptive_fields": np.eye(num_channels0)[
@@ -298,21 +310,25 @@ def cnn_statistics(
         "num_channels": num_channels,
     }
 
+    sublayers: List[nn.Module] = []
     # Analyze each layer
-    for name, layer in encoder.conv_head.named_children():
+    for name, layer in cnn_layers.items():
+        sublayers.append(layer)
         if hasattr(layer, "out_channels"):
             num_channels = layer.out_channels
 
-        # Only analyze activation layers
-        if not is_activation(layer):
+        # Only analyze input layers
+        if is_activation(layer):
             continue
 
         # Create a temporary model up to the current layer
-        temp_model = nn.Sequential(
-            *list(encoder.conv_head.children())[
-                : list(encoder.conv_head.named_children()).index((name, layer)) + 1
-            ]
-        )
+        temp_model = nn.Sequential(*sublayers)
+
+        # nn.Sequential(
+        #             *list(cnn_layers.conv_head.children())[
+        #                 : list(cnn_layers.conv_head.named_children()).index((name, layer)) + 1
+        #             ]
+        #         )
 
         # Create a new dataloader that applies the temporary model to the data
         transformed_dataloader = _TransformedDataLoader(device, dataloader, temp_model)
@@ -333,6 +349,46 @@ def cnn_statistics(
         }
 
     return results
+
+
+def get_cnn_circuit(brain: Brain) -> Tuple[Tuple[int, ...], OrderedDict[str, nn.Module]]:
+    """Find the longest path starting from a sensor, along a path of ConvolutionalEncoders. This likely won't work very well for particularly complex graphs.
+
+    Returns
+    -------
+    OrderedDict[str, nn.Module]: A dictionary of layer names and modules.
+
+    """
+    cnn_paths: List[List[str]] = []
+
+    # Create for the subgraph of sensors and cnns
+    cnn_nodes = [
+        node
+        for node, circuit in brain.circuits.items()
+        if isinstance(circuit, ConvolutionalEncoder)
+    ]
+    sensor_nodes = [node for node in brain.sensors]
+    subgraph = nx.subgraph(brain.connectome, cnn_nodes + sensor_nodes)
+    end_nodes = [node for node in cnn_nodes if not list(subgraph.successors(node))]
+
+    for sensor in sensor_nodes:
+        cnn_paths.extend(nx.all_simple_paths(subgraph, source=sensor, target=end_nodes))
+
+    # find the longest path
+    cnn_path = max(cnn_paths, key=len)
+    logger.info(f"Circuit path for analysis: {cnn_path}")
+    # Split off the sensor node
+    sensor, *cnn_path = cnn_path
+    # collect list of cnns
+    cnn_circuits = [brain.circuits[node] for node in cnn_path]
+    # Combine all cnn layers
+    tuples: List[Tuple[str, nn.Module]] = []
+    for circuit in cnn_circuits:
+        for name, module in circuit.conv_head.named_children():
+            tuples.extend([(name, module)])
+
+    input_shape = brain.sensors[sensor]
+    return input_shape, OrderedDict(tuples)
 
 
 class _TransformedDataLoader(DataLoader[Tuple[Tensor, int]]):

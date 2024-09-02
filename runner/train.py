@@ -3,14 +3,14 @@ import time
 from typing import Dict, List, Tuple
 
 import torch
-import torch.nn as nn
-import wandb
 from omegaconf import DictConfig
 from torch import Tensor
 from torch.utils.data import DataLoader, Dataset
 
+import wandb
 from retinal_rl.classification.training import process_dataset, run_epoch
 from retinal_rl.models.brain import Brain
+from retinal_rl.models.optimizer import BrainOptimizer
 from runner.analyze import analyze
 from runner.util import save_checkpoint
 
@@ -22,6 +22,7 @@ def train(
     cfg: DictConfig,
     device: torch.device,
     brain: Brain,
+    optimizer: BrainOptimizer,
     train_set: Dataset[Tuple[Tensor, int]],
     test_set: Dataset[Tuple[Tensor, int]],
     completed_epochs: int,
@@ -30,19 +31,19 @@ def train(
     trainloader = DataLoader(train_set, batch_size=64, shuffle=True)
     testloader = DataLoader(test_set, batch_size=64, shuffle=False)
 
-    class_objective = nn.CrossEntropyLoss()
-    recon_objective = nn.MSELoss()
+    torch.autograd.set_detect_anomaly(True)
+
     wall_time = time.time()
     epoch_wall_time = 0
 
     if completed_epochs == 0:
         brain.train()
         train_losses = process_dataset(
-            device, brain, class_objective, recon_objective, trainloader, is_training=True
+            device, brain, optimizer, trainloader, is_training=False
         )
         brain.eval()
         test_losses = process_dataset(
-            device, brain, class_objective, recon_objective, testloader, is_training=False
+            device, brain, optimizer, testloader, is_training=False
         )
 
         # Initialize the history
@@ -71,9 +72,8 @@ def train(
         brain, history = run_epoch(
             device,
             brain,
+            optimizer,
             history,
-            class_objective,
-            recon_objective,
             trainloader,
             testloader,
         )
@@ -91,6 +91,7 @@ def train(
                 cfg.system.checkpoint_dir,
                 cfg.system.max_checkpoints,
                 brain,
+                optimizer,
                 history,
                 epoch,
             )

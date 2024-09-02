@@ -17,30 +17,12 @@ circuits:
     kernel_size: ${kernel_size}
     stride:  ${stride}
     act_name: ${activation}
-    loss_weights:
-      classification: 0.1
-      reconstruction: 0.9
-    reg_weights:
-      l1_weight: 0.0001
-      l2_weight: 0.0001
-    optimizer:
-      _target_: torch.optim.Adam
-      lr: 0.0003
   fc_feedforward:
     _target_: retinal_rl.models.circuits.fully_connected.FullyConnectedEncoder
     output_shape:
       - ${latent_dimension}
     hidden_units: []
     act_name: ${activation}
-    optimizer:
-      _target_: torch.optim.Adam
-      lr: 0.0003
-    loss_weights:
-      classification: 0.1
-      reconstruction: 0.9
-    reg_weights:
-      l1_weight: 0.0001
-      l2_weight: 0.0001
   decoder:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
     num_layers: 4
@@ -48,24 +30,6 @@ circuits:
     kernel_size: ${kernel_size}
     stride:  ${stride}
     act_name: ${activation}
-    optimizer:
-      _target_: torch.optim.Adam
-      lr: 0.0003
-    loss_weights:
-      classification: 0.1
-      reconstruction: 0.9
-    reg_weights:
-      l1_weight: 0.0001
-      l2_weight: 0.0001
   classifier:
     _target_: retinal_rl.models.circuits.task_head.linear_classifier.LinearClassifier
     num_classes: ${dataset.num_classes}
-    optimizer:
-      _target_: torch.optim.Adam
-      lr: 0.0003
-    loss_weights:
-      classification: 0.1
-      reconstruction: 0.9
-    reg_weights:
-      l1_weight: 0.0001
-      l2_weight: 0.0001

@@ -1,13 +1,21 @@
-"""Defines the base class for neural circuits and its metaclass."""
+"""Defines the base class for neural circuits."""
 
 import inspect
-from abc import ABC
-from typing import Any, Dict, List, Optional, Type, get_type_hints
+from abc import ABC, abstractmethod
+from typing import Any, List, Type, get_type_hints
 
 import torch
 import torch.nn as nn
 import torchscan
-from torch.optim import Optimizer
+
+ACTIVATION_MAP = {
+    "elu": lambda: nn.ELU(inplace=False),
+    "relu": lambda: nn.ReLU(inplace=False),
+    "tanh": lambda: nn.Tanh(),
+    "softplus": lambda: nn.Softplus(),
+    "identity": lambda: nn.Identity(inplace=False),
+    "leakyrelu": lambda: nn.LeakyReLU(negative_slope=0.01, inplace=False),
+}
 
 
 class NeuralCircuit(nn.Module, ABC):
@@ -16,8 +24,6 @@ class NeuralCircuit(nn.Module, ABC):
     def __init__(
         self,
         input_shape: List[int],
-        loss_weights: Dict[str, float],
-        reg_weights: Dict[str, float],
     ) -> None:
         """Initialize the base model.
 
@@ -29,9 +35,6 @@ class NeuralCircuit(nn.Module, ABC):
         super().__init__()
 
         self._input_shape = input_shape
-        self.reg_weights: Dict[str, float] = reg_weights
-        self.loss_weights: Dict[str, float] = loss_weights
-        self.optimizer: Optional[Optimizer] = None
 
     def __init_subclass__(cls: Type[Any], **kwargs: Any) -> None:
         """Enforces that subclasses have specific parameters in their constructors.
@@ -65,12 +68,15 @@ class NeuralCircuit(nn.Module, ABC):
         """Run torchscan on the model."""
         torchscan.summary(self, tuple(self.input_shape), receptive_field=True)
 
+    @abstractmethod
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass of the neural circuit."""
         x = x
         raise NotImplementedError("Each subclass must implement its own forward method.")
 
     @property
     def input_shape(self) -> List[int]:
+        """Return the shape of the input tensor."""
         return self._input_shape
 
     @property
@@ -82,30 +88,20 @@ class NeuralCircuit(nn.Module, ABC):
                 self.forward(torch.zeros(1, *self.input_shape).to(device)).shape[1:]
             )
 
-    def get_optimizer_state(self) -> Dict[str, Any]:
-        """Return the state of the optimizer."""
-        if self.optimizer is None:
-            return {}
-        return self.optimizer.state_dict()
-
-    def load_optimizer_state(self, state: Dict[str, Any]) -> None:
-        """Load the state of the optimizer."""
-        if self.optimizer is not None:
-            self.optimizer.load_state_dict(state)
-
     @staticmethod
     def str_to_activation(act: str) -> nn.Module:
+        """Convert a string to an activation function.
+
+        Args:
+        ----
+        act (str): The name of the activation function.
+
+        Returns:
+        -------
+        nn.Module: The activation function.
+
+        """
         act = str.lower(act)
-        if act == "elu":
-            return nn.ELU(inplace=True)
-        if act == "relu":
-            return nn.ReLU(inplace=True)
-        if act == "tanh":
-            return nn.Tanh()
-        if act == "softplus":
-            return nn.Softplus()
-        if act == "identity":
-            return nn.Identity(inplace=True)
-        if act == "leakyrelu":
-            return nn.LeakyReLU(negative_slope=0.01, inplace=True)
-        raise Exception("Unknown activation function")
+        if act in ACTIVATION_MAP:
+            return ACTIVATION_MAP[act]()
+        raise ValueError(f"Unknown activation function: {act}")

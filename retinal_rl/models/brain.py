@@ -1,5 +1,7 @@
+"""Provides the Brain class, which combines multiple NeuralCircuit instances into a single model by specifying a graph of connections between them."""
+
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, cast
 
 import networkx as nx
 import torch
@@ -13,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class Brain(nn.Module):
-    """The "overarching model" (brain) combining several "partial models" (circuits) - such as encoders, latents, decoders, and task heads - in a specified way."""
+    """The "overarching model" (brain) combining several "partial models" (circuits) - such as encoders, latents, decoders, and task heads specified by a graph."""
 
     def __init__(
         self,
@@ -22,33 +24,30 @@ class Brain(nn.Module):
         sensors: Dict[str, List[int]],
         connections: List[List[str]],
     ) -> None:
-        """Brain constructor.
+        """Initialize the brain with a set of circuits, sensors, and connections.
 
         Args:
         ----
         name: The name of the brain.
-        circuits: List of NeuralCircuit objects or dictionaries containing the configurations of the models.
-        sensors: Dictionary specifying the names and (tensor) shape of the sensors/stimuli.
-        connections: List of pairs of strings specifying the graphical structure of the brain.
+        circuits: A dictionary of circuit configurations.
+        sensors: A dictionary of sensor names and their dimensions.
+        connections: A list of connections between sensors and circuits.
 
         """
         super().__init__()
 
+        # Initialize attributes
         self.name = name
         self.circuits: Dict[str, NeuralCircuit] = {}
-
+        self._module_dict: nn.ModuleDict = nn.ModuleDict()
         self.connectome: nx.DiGraph[str] = nx.DiGraph()
         self.sensors: Dict[str, Tuple[int, ...]] = {}
         for sensor in sensors:
             self.sensors[sensor] = tuple(sensors[sensor])
 
         # Build the connectome
-        for stim in self.sensors:
-            self.connectome.add_node(stim)
-
-        for crcnm in circuits:
-            self.connectome.add_node(str(crcnm))
-
+        self.connectome.add_nodes_from(self.sensors.keys())
+        self.connectome.add_nodes_from(circuits.keys())
         for connection in connections:
             if connection[0] not in self.connectome.nodes:
                 raise ValueError(f"Node {connection[0]} not found in the connectome.")
@@ -67,51 +66,47 @@ class Brain(nn.Module):
 
         # Instantiate the neural circuits
         for node in nx.topological_sort(self.connectome):
-            if node not in self.sensors:
-                input_tensor = self._assemble_inputs(node, dummy_responses)
-                input_shape = list(input_tensor.shape[1:])
+            if node in self.sensors:
+                continue
 
-                circuit_config = OmegaConf.to_container(circuits[node], resolve=True)
-                # circuit_config = circuits[node]
-                optimizer_config = circuit_config.pop("optimizer", None)
+            input_tensor = self._assemble_inputs(node, dummy_responses)
+            input_shape = list(input_tensor.shape[1:])
+            circuit_config = OmegaConf.to_container(circuits[node], resolve=True)
+            circuit_config = cast(Dict[str, Any], circuit_config)
 
-                # Check for an explicit output_shape key
-                if "output_shape" in circuit_config:
-                    output_shape = circuit_config["output_shape"]
-                    if isinstance(output_shape, str):
-                        parts = output_shape.split(".")
-                        if len(parts) == 2 and parts[0] in self.circuits:
-                            circuit_name, property_name = parts
-                            output_shape = getattr(
-                                self.circuits[circuit_name], property_name
-                            )
-                        else:
-                            raise ValueError(
-                                f"Invalid format or reference in output_shape: {output_shape}"
-                            )
-                    circuit = instantiate(
-                        circuit_config,
-                        input_shape=input_shape,
-                        output_shape=output_shape,
-                        _recursive_=False,
-                    )
-                else:
-                    circuit = instantiate(
-                        circuit_config,
-                        input_shape=input_shape,
-                        _recursive_=False,
-                    )
+            # Check for an explicit output_shape key
+            if "output_shape" in circuit_config:
+                output_shape = circuit_config["output_shape"]
+                if isinstance(output_shape, str):
+                    output_shape = self._resolve_output_shape(output_shape)
+                circuit = instantiate(
+                    circuit_config,
+                    input_shape=input_shape,
+                    output_shape=output_shape,
+                )
+            else:
+                circuit = instantiate(
+                    circuit_config,
+                    input_shape=input_shape,
+                )
 
-                # Set attribute to register the module with pytorch
-                setattr(self, f"_circuit_{name}", circuit)
-                dummy_responses[node] = circuit(input_tensor)
+            # Set attribute to register the module with pytorch
+            dummy_responses[node] = circuit(input_tensor)
 
-                if optimizer_config:
-                    optimizer = instantiate(optimizer_config, circuit.parameters())
-                    circuit.optimizer = optimizer
-                self.circuits[node] = circuit
+            self.circuits[node] = circuit
+            self._module_dict[node] = circuit
+
+    def _resolve_output_shape(self, output_shape: str) -> Tuple[int, ...]:
+        parts = output_shape.split(".")
+        if len(parts) == 2 and parts[0] in self.circuits:
+            circuit_name, property_name = parts
+            return getattr(self.circuits[circuit_name], property_name)
+        raise ValueError(
+            f"Invalid format for output_shape: {output_shape}. Must be of the form 'circuit_name.property_name'"
+        )
 
     def forward(self, stimuli: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """Forward pass of the brain. Computed by following the connectome from sensors through the circuits."""
         responses: Dict[str, torch.Tensor] = {}
 
         for node in nx.topological_sort(self.connectome):
@@ -122,68 +117,8 @@ class Brain(nn.Module):
                 responses[node] = self.circuits[node](input)
         return responses
 
-    def optimize(self, loss_dict: Dict[str, torch.Tensor]) -> Dict[str, float]:
-        final_losses: Dict[str, float] = {}
-        for circuit_name, circuit in self.circuits.items():
-            if circuit.optimizer:
-                # Compute total loss for this circuit
-                total_loss = torch.tensor(
-                    0.0, device=next(circuit.parameters()).device, requires_grad=True
-                )
-                for loss_type, loss_value in loss_dict.items():
-                    if loss_type in circuit.loss_weights:
-                        total_loss += circuit.loss_weights[loss_type] * loss_value
-
-                # Add L1 weight regularization
-                if "l1_weight" in circuit.reg_weights:
-                    l1_weight = circuit.reg_weights["l1_weight"]
-                    l1_reg = torch.mean(
-                        torch.stack([p.abs().mean() for p in circuit.parameters()])
-                    )
-                    total_loss += l1_weight * l1_reg
-
-                if "l2_weight" in circuit.reg_weights:
-                    l2_weight = circuit.reg_weights["l2_weight"]
-                    l2_reg = torch.mean(
-                        torch.stack([p.pow(2).mean() for p in circuit.parameters()])
-                    )
-                    total_loss += l2_weight * torch.sqrt(l2_reg)
-
-                # Backward pass and optimize
-                circuit.optimizer.zero_grad()
-                total_loss.backward()
-                circuit.optimizer.step()
-
-                # Store the final loss
-                final_losses[circuit_name] = total_loss.item()
-
-            else:
-                # For circuits without optimizers, just clean up any gradients
-                for param in circuit.parameters():
-                    if param.grad is not None:
-                        param.grad.zero_()
-
-        return final_losses
-
-    def get_optimizer_states(self) -> Dict[str, Any]:
-        optimizer_states: Dict[str, Any] = {}
-        for name, circuit in self.circuits.items():
-            state = circuit.get_optimizer_state()
-            if state:
-                optimizer_states[name] = state
-        return optimizer_states
-
-    def load_optimizer_states(self, optimizer_states: Dict[str, Any]) -> None:
-        for name, state in optimizer_states.items():
-            if name in self.circuits:
-                self.circuits[name].load_optimizer_state(state)
-            else:
-                logger.warning(
-                    f"Circuit '{name}' not found in the current Brain instance."
-                )
-
     def scan_circuits(self):
-        """Runs torchscan on all circuits and concatenates the reports."""
+        """Run torchscan on all circuits and concatenates the reports."""
         # Print connectome
         print("\n\nConnectome:\n")
         print("Nodes: ", self.connectome.nodes)
@@ -192,7 +127,7 @@ class Brain(nn.Module):
         # Run scans on all circuits
         dummy_stimulus: Dict[str, torch.Tensor] = {}
         for sensor in self.sensors:
-            dummy_stimulus[sensor] = torch.rand((1, *self.sensors[sensor]), device="cuda")
+            dummy_stimulus[sensor] = torch.rand((1, *self.sensors[sensor]))
 
         for crcnm, circuit in self.circuits.items():
             print(
@@ -210,10 +145,10 @@ class Brain(nn.Module):
             if pred in responses:
                 inputs.append(responses[pred])
             else:
-                ValueError(f"Input node {pred} to node {node} does not (yet) exist")
+                raise ValueError(f"Input node {pred} to node {node} does not (yet) exist")
         if len(inputs) == 0:
-            ValueError(f"No inputs to node {node}")
-        elif len(inputs) == 1:
+            raise ValueError(f"No inputs to node {node}")
+        if len(inputs) == 1:
             input = inputs[0]
         else:
             # flatten the inputs and concatenate them

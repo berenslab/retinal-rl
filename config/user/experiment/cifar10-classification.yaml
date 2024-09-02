@@ -4,6 +4,7 @@ defaults:
   - override /sweep: decoders
   - override /dataset: cifar10
   - override /brain: cnn-decoder
+  - override /optimizer: cnn-decoder
 
 # This must match the experiment file name
 experiment: cifar10-classification

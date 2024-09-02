@@ -5,12 +5,12 @@ from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import torch
-import wandb
 from matplotlib.figure import Figure
 from omegaconf import DictConfig
 from torch import Tensor
 from torch.utils.data import Dataset
 
+import wandb
 from retinal_rl.analysis.plot import (
     layer_receptive_field_plots,
     plot_channel_statistics,
@@ -19,7 +19,6 @@ from retinal_rl.analysis.plot import (
 )
 from retinal_rl.analysis.statistics import cnn_statistics, reconstruct_images
 from retinal_rl.models.brain import Brain
-from retinal_rl.models.circuits.convolutional import ConvolutionalEncoder
 
 logger = logging.getLogger(__name__)
 
@@ -94,40 +93,30 @@ def analyze(
         _save_figure(cfg, "", "training_histories", hist_fig)
         plt.close(hist_fig)
 
-    # Plot receptive fields
-    if "cnn_encoder" in brain.circuits:
-        cnn_encoder = brain.circuits["cnn_encoder"]
-        if isinstance(cnn_encoder, ConvolutionalEncoder):
-            # CNN analysis
-            cnn_analysis = cnn_statistics(device, test_set, cnn_encoder, 1000)
-            for layer_name, layer_data in cnn_analysis.items():
-                layer_rfs = layer_receptive_field_plots(layer_data["receptive_fields"])
-                _process_figure(
-                    cfg,
-                    copy_checkpoint,
-                    layer_rfs,
-                    "receptive_fields",
-                    f"{layer_name}",
-                    epoch,
-                )
+    # CNN analysis
+    cnn_analysis = cnn_statistics(device, test_set, brain, 1000)
+    for layer_name, layer_data in cnn_analysis.items():
+        layer_rfs = layer_receptive_field_plots(layer_data["receptive_fields"])
+        _process_figure(
+            cfg,
+            copy_checkpoint,
+            layer_rfs,
+            "receptive_fields",
+            f"{layer_name}",
+            epoch,
+        )
 
-                num_channels = int(layer_data["num_channels"])
-                for channel in range(num_channels):
-                    channel_fig = plot_channel_statistics(layer_data, layer_name, channel)
-                    _process_figure(
-                        cfg,
-                        copy_checkpoint,
-                        channel_fig,
-                        f"{layer_name}_layer_channel_analysis",
-                        f"channel_{channel}",
-                        epoch,
-                    )
-        else:
-            logger.warning(
-                f"cnn_encoder is not a ConvolutionalEncoder, but a {type(cnn_encoder)}"
+        num_channels = int(layer_data["num_channels"])
+        for channel in range(num_channels):
+            channel_fig = plot_channel_statistics(layer_data, layer_name, channel)
+            _process_figure(
+                cfg,
+                copy_checkpoint,
+                channel_fig,
+                f"{layer_name}_layer_channel_analysis",
+                f"channel_{channel}",
+                epoch,
             )
-    else:
-        logger.info("cnn_encoder not found in brain circuits")
     rec_dict = reconstruct_images(device, brain, train_set, test_set, 5)
     recon_fig = plot_reconstructions(**rec_dict, num_samples=5)
     _process_figure(

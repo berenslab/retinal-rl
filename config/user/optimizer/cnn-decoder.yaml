@@ -1,0 +1,24 @@
+reconstruction:
+  optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0003
+  objectives:
+    - _target_: retinal_rl.models.objective.ReconstructionLoss
+      weight: 1
+  target_circuits:
+    - cnn_encoder
+    - fc_feedforward
+    - decoder
+    - classifier
+classification:
+  optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0003
+  objectives:
+    - _target_: retinal_rl.classification.objective.ClassificationLoss
+      weight: 1
+  target_circuits:
+    - cnn_encoder
+    - fc_feedforward
+    - decoder
+    - classifier

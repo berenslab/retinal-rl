@@ -24,37 +24,62 @@ def plot_training_histories(histories: Dict[str, List[float]]) -> Figure:
         Figure: Matplotlib figure containing the plotted histories.
 
     """
+    train_metrics = [
+        key.split("_", 1)[1] for key in histories.keys() if key.startswith("train_")
+    ]
+    test_metrics = [
+        key.split("_", 1)[1] for key in histories.keys() if key.startswith("test_")
+    ]
+
+    # Use the intersection of train and test metrics to ensure we have both for each metric
+    metrics = list(set(train_metrics) & set(test_metrics))
+
+    # Determine the number of rows needed (2 metrics per row)
+    num_rows = (len(metrics) + 1) // 2
+
     fig: Figure
     axs: List[Axes]
-    fig, axs = plt.subplots(3, 1, figsize=(12, 12), constrained_layout=True)  # type: ignore
+    fig, axs = plt.subplots(
+        num_rows, 2, figsize=(15, 5 * num_rows), constrained_layout=True
+    )
+    axs = axs.flatten() if num_rows > 1 else [axs]
 
-    metrics: List[str] = ["total", "fraction_correct", "reconstruction"]
     for idx, metric in enumerate(metrics):
         ax: Axes = axs[idx]
         lbl: str = " ".join([word.capitalize() for word in metric.split("_")])
-        ax.plot(  # type: ignore
-            histories[f"train_{metric}"],
-            label=f"{lbl} Training Error",
-            color="black",
-        )
-        ax.plot(  # type: ignore
-            histories[f"test_{metric}"],
-            label=f"{lbl} Test Error",
-            color="red",
-        )
-        ax.set_xlabel("Epochs")  # type: ignore
-        ax.set_ylabel("Loss")  # type: ignore
-        ax.legend()  # type: ignore
-        ax.grid(True)  # type: ignore
+
+        if f"train_{metric}" in histories:
+            ax.plot(
+                histories[f"train_{metric}"],
+                label=f"{lbl} Training",
+                color="black",
+            )
+        if f"test_{metric}" in histories:
+            ax.plot(
+                histories[f"test_{metric}"],
+                label=f"{lbl} Test",
+                color="red",
+            )
+
+        ax.set_xlabel("Epochs")
+        ax.set_ylabel("Value")
+        ax.set_title(lbl)
+        ax.legend()
+        ax.grid(True)
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
-    fig.suptitle("Training and Test Losses", fontsize=16)  # type: ignore
+    # Remove any unused subplots
+    for idx in range(len(metrics), len(axs)):
+        fig.delaxes(axs[idx])
+
+    fig.suptitle("Training and Test Metrics", fontsize=16)
     return fig
 
 
 def plot_channel_statistics(
     layer_data: Dict[str, FloatArray], layer_name: str, channel: int
 ) -> Figure:
+    """Plot receptive fields, pixel histograms, and autocorrelation plots for a single channel in a layer."""
     fig, axs = plt.subplots(2, 3, figsize=(20, 10))
     fig.suptitle(f"Layer: {layer_name}, Channel: {channel}", fontsize=16)
 

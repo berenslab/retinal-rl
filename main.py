@@ -5,6 +5,7 @@ import torch
 from omegaconf import DictConfig
 
 from retinal_rl.models.brain import Brain
+from retinal_rl.models.optimizer import BrainOptimizer
 from runner.analyze import analyze
 from runner.dataset import get_datasets
 from runner.initialize import initialize
@@ -25,8 +26,9 @@ def program(cfg: DictConfig):
         sys.exit(0)
 
     device = torch.device(cfg.system.device)
+
     brain = Brain(**cfg.brain).to(device)
-    optimizer = torch.optim.Adam(brain.parameters(), lr=cfg.training.learning_rate)
+    optimizer = BrainOptimizer(brain, dict(cfg.optimizer))
 
     if cfg.command == "scan":
         brain.scan_circuits()

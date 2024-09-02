@@ -2,7 +2,7 @@
 
 import logging
 from collections import OrderedDict
-from typing import Dict, List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -41,16 +41,15 @@ class ConvolutionalEncoder(NeuralCircuit):
     def __init__(
         self,
         input_shape: List[int],
-        loss_weights: Dict[str, float],
-        reg_weights: Dict[str, float],
         num_layers: int,
         num_channels: List[int],
         kernel_size: Union[int, List[int]],
         stride: Union[int, List[int]],
         act_name: str,
+        layer_names: Optional[List[str]] = None,
     ):
         # add parameters to model and apply changes for internal use
-        super().__init__(input_shape, loss_weights, reg_weights)
+        super().__init__(input_shape)
 
         self.num_layers = num_layers
         self.num_channels = assert_list(num_channels, self.num_layers)
@@ -64,9 +63,17 @@ class ConvolutionalEncoder(NeuralCircuit):
         # Define convolutional layers
         for i in range(num_layers):
             in_channels = self.input_shape[0] if i == 0 else self.num_channels[i - 1]
+            lyrnm = (
+                f"{layer_names[i]} Input" if layer_names is not None else "conv" + str(i)
+            )
+            actnm = (
+                f"{layer_names[i]} Activation"
+                if layer_names is not None
+                else self.act_name + str(i)
+            )
             conv_layers.append(
                 (
-                    "conv" + str(i),
+                    lyrnm,
                     torch.nn.Conv2d(
                         in_channels,
                         self.num_channels[i],
@@ -76,9 +83,7 @@ class ConvolutionalEncoder(NeuralCircuit):
                     ),
                 )
             )
-            conv_layers.append(
-                (self.act_name + str(i), self.str_to_activation(self.act_name))
-            )
+            conv_layers.append((actnm, self.str_to_activation(self.act_name)))
         self.conv_head = nn.Sequential(OrderedDict(conv_layers))
 
     def forward(self, x: Tensor):
@@ -91,16 +96,15 @@ class ConvolutionalDecoder(NeuralCircuit):
     def __init__(
         self,
         input_shape: List[int],
-        loss_weights: Dict[str, float],
-        reg_weights: Dict[str, float],
         num_layers: int,
         num_channels: List[int],
         kernel_size: Union[int, List[int]],
         stride: Union[int, List[int]],
         act_name: str,
+        layer_names: Optional[List[str]] = None,
     ):
         # add parameters to model and apply changes for internal use
-        super().__init__(input_shape, loss_weights, reg_weights)
+        super().__init__(input_shape)
 
         self.num_layers = num_layers
         self.num_channels = assert_list(num_channels, self.num_layers)
@@ -119,9 +123,16 @@ class ConvolutionalDecoder(NeuralCircuit):
                 in_channels = self.input_shape[0]
             else:
                 in_channels = self.num_channels[i - 1]
+            lyrnm = layer_names[i] if layer_names is not None else "deconv" + str(i)
+            actnm = (
+                f"{layer_names[i]} Activation"
+                if layer_names is not None
+                else self.act_name + str(i)
+            )
+
             deconv_layers.append(
                 (
-                    "deconv" + str(i),
+                    lyrnm,
                     torch.nn.ConvTranspose2d(
                         in_channels,
                         self.num_channels[i],
@@ -132,9 +143,7 @@ class ConvolutionalDecoder(NeuralCircuit):
                 )
             )
             if i < num_layers - 1:
-                deconv_layers.append(
-                    (self.act_name + str(i), self.str_to_activation(self.act_name))
-                )
+                deconv_layers.append((actnm, self.str_to_activation(self.act_name)))
         deconv_layers.append(("output_activation", nn.Tanh()))
         self.deconv_head = nn.Sequential(OrderedDict(deconv_layers))
 

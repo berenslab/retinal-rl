@@ -1,7 +1,7 @@
 """Fully connected neural circuits for encoding and decoding data."""
 
 from collections import OrderedDict
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 import torch
 import torch.nn as nn
@@ -25,13 +25,11 @@ class FullyConnectedEncoder(NeuralCircuit):
     def __init__(
         self,
         input_shape: List[int],
-        loss_weights: Dict[str, float],
-        reg_weights: Dict[str, float],
         output_shape: List[int],
         hidden_units: List[int],
         act_name: str,
     ):
-        super().__init__(input_shape, loss_weights, reg_weights)
+        super().__init__(input_shape)
 
         self._output_shape = output_shape
         self.hidden_units = hidden_units
@@ -77,13 +75,11 @@ class FullyConnectedDecoder(NeuralCircuit):
     def __init__(
         self,
         input_shape: List[int],
-        loss_weights: Dict[str, float],
-        reg_weights: Dict[str, float],
         output_shape: List[int],
         hidden_units: List[int],
         act_name: str,
     ):
-        super().__init__(input_shape, loss_weights, reg_weights)
+        super().__init__(input_shape)
 
         self._output_shape = output_shape
         self.hidden_units = hidden_units
