@@ -45,6 +45,6 @@ class PercentCorrect(Objective):
                 f"Shape mismatch: predictions {predictions.shape}, classes {classes.shape}"
             )
         _, predicted = predictions.max(1)
-        correct = (predicted == classes).sum().item()
+        correct = (predicted == classes).sum()
         total = classes.size(0)
         return correct / total
