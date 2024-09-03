@@ -9,3 +9,5 @@ parameters:
     values: ['specialized', 'classification', 'reconstruction']
   brain:
     value: 'specialized-cnn-decoder'
+  dataset:
+    value: 'cifar10-large'
