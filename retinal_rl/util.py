@@ -36,7 +36,7 @@ def encoder_out_size(mdls: List[nn.Module], hght0: int, wdth0: int) -> Tuple[int
     for mdl in mdls:
         if is_activation(mdl):
             continue
-        if not _is_convolutional_layer(mdl):
+        if not is_convolutional_layer(mdl):
             raise NotImplementedError("Only convolutional layers are supported")
 
         krnsz = _double_up(mdl.kernel_size)
@@ -74,7 +74,7 @@ def rf_size_and_start(mdls: List[nn.Module], hidx: int, widx: int):
     for mdl in mdls:
         if is_activation(mdl):
             continue
-        if not _is_convolutional_layer(mdl):
+        if not is_convolutional_layer(mdl):
             raise NotImplementedError("Only convolutional layers are supported")
 
         hksz, wksz = _double_up(mdl.kernel_size)
@@ -110,7 +110,7 @@ def is_activation(mdl: nn.Module) -> bool:
     )
 
 
-def _is_convolutional_layer(mdl: nn.Module) -> bool:
+def is_convolutional_layer(mdl: nn.Module) -> bool:
     return isinstance(mdl, (nn.Conv1d, nn.Conv2d, nn.Conv3d))
 
 

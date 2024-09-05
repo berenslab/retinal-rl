@@ -103,7 +103,7 @@ def _initialize_reload(
 
     # Load the state dict into the brain model
     checkpoint = torch.load(checkpoint_file)
-    brain.load_state_dict(checkpoint["model_state_dict"])
+    brain.load_state_dict(checkpoint["brain_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     completed_epochs = checkpoint["completed_epochs"]
     history = checkpoint["training_history"]

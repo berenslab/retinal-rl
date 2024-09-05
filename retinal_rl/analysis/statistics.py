@@ -1,3 +1,5 @@
+"""Functions for analysis and statistics on a Brain model."""
+
 import logging
 from typing import Dict, Iterator, List, OrderedDict, Tuple, cast
 
@@ -11,7 +13,11 @@ from torch.utils.data import DataLoader, Dataset, Subset
 
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.circuits.convolutional import ConvolutionalEncoder
-from retinal_rl.util import FloatArray, is_activation, rf_size_and_start
+from retinal_rl.util import (
+    FloatArray,
+    is_activation,
+    rf_size_and_start,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -62,64 +68,65 @@ def cnn_linear_receptive_fields(
     input_shape: Tuple[int, ...],
     layers: OrderedDict[str, nn.Module],
 ) -> Dict[str, FloatArray]:
-    """Return the receptive fields of every layer of a convnet as computed by neural gradients.
+    """Return the linear receptive fields (derivative of the output w.r.t. the input) for each layer in a CNN.
 
-    The returned dictionary is indexed by layer name and the shape of the array
-    (#layer_channels, #input_channels, #rf_height, #rf_width).
+    The returned dictionary is indexed by layer name and the shape of the array (#layer_channels, #input_channels, #rf_height, #rf_width).
+
+    Args:
+    ----
+        device (torch.device): The device to run computations on.
+        input_shape (Tuple[int, ...]): The input shape of the data.
+        layers (OrderedDict[str, nn.Module]): A dictionary of layer names and modules.
+
     """
     nclrs, hght, wdth = input_shape
 
     imgsz = [1, nclrs, hght, wdth]
     obs = torch.zeros(size=imgsz, device=device, requires_grad=True)
 
-    stas: Dict[str, FloatArray] = {}
-
-    # Create a sequential model from the layers
-    model = nn.Sequential(layers)
-    model.to(device)
-    model.eval()
+    lrfs: Dict[str, FloatArray] = {}
 
     hmn: int = 0
-    hmx: int = 0
 
-    mdls: List[nn.Module] = []
+    head_layers: List[nn.Module] = []
 
     for layer_name, layer in layers.items():
+        layer.to(device)
+        layer.eval()
         # Forward pass through all preceding layers
-        mdls.append(layer)
-        x = obs
-        for prev_layer in model:
-            x = prev_layer(x)
-            if prev_layer == layer:
-                break
+        head_layers.append(layer)
+        # Sequential model up to the current layer
+        head_model = nn.Sequential(*head_layers)
+        x = head_model(obs)
 
-        if not hasattr(layer, "out_channels"):
+        if is_activation(layer):
             continue  # Skip layers without out_channels (e.g., activation functions)
 
-        ochns = layer.out_channels
+        ochns: int
+
+        if isinstance(layer, nn.Conv2d):
+            ochns: int = layer.out_channels
+        else:
+            raise NotImplementedError(
+                "Can only compute receptive fields for 2d convolutional layers"
+            )
+
         hsz, wsz = x.shape[2:]  # Get the current height and width
 
         hidx = (hsz - 1) // 2
         widx = (wsz - 1) // 2
 
-        hrf_size, wrf_size, hmn, wmn = rf_size_and_start(mdls, hidx, widx)
-
-        hmx = hmn + hrf_size
-        wmx = wmn + wrf_size
-
-        stas[layer_name] = np.zeros((ochns, nclrs, hrf_size, wrf_size))
+        hrf_size, wrf_size, hmn, wmn = rf_size_and_start(head_layers, hidx, widx)
+        grads: List[Tensor] = []
 
         for j in range(ochns):
-            x.retain_grad()
-            y = x[0, j, hidx, widx]
-            y.backward(retain_graph=True)
-
-            grad = obs.grad[0, :, hmn:hmx, wmn:wmx].cpu().numpy()
-            stas[layer_name][j] = grad
-
-            obs.grad.zero_()
-
-    return stas
+            grad = torch.autograd.grad(x[0, j, hidx, widx], obs, retain_graph=True)[0]
+            # lrfs[layer_name][j] = (
+            #     grad[0, :, hmn : hmn + hrf_size, wmn : wmn + wrf_size].cpu().numpy()
+            # )
+            grads.append(grad[0, :, hmn : hmn + hrf_size, wmn : wmn + wrf_size])
+        lrfs[layer_name] = torch.stack(grads).cpu().numpy()
+    return lrfs
 
 
 def layer_pixel_histograms(
