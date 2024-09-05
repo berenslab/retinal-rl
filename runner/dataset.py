@@ -3,13 +3,10 @@ from typing import Callable, Tuple
 
 import hydra
 from omegaconf import DictConfig
-from torch import Tensor
-from torch.utils.data import ConcatDataset, Dataset
+from torch.utils.data import ConcatDataset
 from torchvision import datasets, transforms
 
-from retinal_rl.classification.dataset import ScaleShiftTransform
-
-Imageset = Dataset[Tuple[Tensor, int]]
+from retinal_rl.classification.dataset import Imageset, ScaleShiftTransform
 
 
 def get_datasets(

@@ -1,10 +1,20 @@
 import logging
-from typing import List
+from typing import List, Sized, Tuple
 
 import numpy as np
 from PIL import Image
+from torch import Tensor
+from torch.utils.data import Dataset, Subset
 
 logger = logging.getLogger(__name__)
+
+
+class Imageset(Dataset[Tuple[Tensor, int]], Sized):
+    pass
+
+
+class ImageSubset(Subset[Tuple[Tensor, int]], Imageset):
+    pass
 
 
 class ScaleShiftTransform:

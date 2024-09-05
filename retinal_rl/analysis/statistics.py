@@ -9,8 +9,9 @@ import torch
 import torch.fft as fft
 import torch.nn as nn
 from torch import Tensor
-from torch.utils.data import DataLoader, Dataset, Subset
+from torch.utils.data import DataLoader
 
+from retinal_rl.classification.dataset import Imageset, ImageSubset
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.circuits.convolutional import ConvolutionalEncoder
 from retinal_rl.util import (
@@ -25,23 +26,37 @@ logger = logging.getLogger(__name__)
 def reconstruct_images(
     device: torch.device,
     brain: Brain,
-    test_set: Dataset[Tuple[Tensor, int]],
-    train_set: Dataset[Tuple[Tensor, int]],
+    test_set: Imageset,
+    train_set: Imageset,
     sample_size: int,
 ) -> Dict[str, List[Tuple[Tensor, int]]]:
-    """Reconstruct images from a dataset using a trained Brain."""
+    """Compute reconstructions of a set of training and test images using a Brain model.
+
+    Args:
+    ----
+        device (torch.device): The device to run computations on.
+        brain (Brain): The trained Brain model.
+        test_set (Imageset): The test dataset.
+        train_set (Imageset): The training dataset.
+        sample_size (int): The number of samples to reconstruct
+
+    Returns:
+    -------
+    Dict[str, List[Tuple[Tensor, int]]]: A dictionary containing the following keys: "train_subset", "train_estimates", "test_subset", "test_estimates".
+
+    """
     brain.eval()  # Set the model to evaluation mode
 
     def collect_reconstructions(
-        data_set: Dataset[Tuple[Tensor, int]], sample_size: int
+        dataset: Imageset, sample_size: int
     ) -> Tuple[List[Tuple[Tensor, int]], List[Tuple[Tensor, int]]]:
         subset: List[Tuple[Tensor, int]] = []
         estimates: List[Tuple[Tensor, int]] = []
-        indices = torch.randperm(len(data_set))[:sample_size]
+        indices = torch.randperm(len(dataset))[:sample_size]
 
         with torch.no_grad():  # Disable gradient computation
             for index in indices:
-                img, k = data_set[index]
+                img, k = dataset[index]
                 img = img.to(device)
                 stimulus = {"vision": img.unsqueeze(0)}
                 response = brain(stimulus)
@@ -63,40 +78,106 @@ def reconstruct_images(
     }
 
 
-def cnn_linear_receptive_fields(
+def cnn_statistics(
     device: torch.device,
-    input_shape: Tuple[int, ...],
-    layers: OrderedDict[str, nn.Module],
-) -> Dict[str, FloatArray]:
-    """Return the linear receptive fields (derivative of the output w.r.t. the input) for each layer in a CNN.
+    dataset: Imageset,
+    brain: Brain,
+    max_sample_size: int = 0,
+) -> Dict[str, Dict[str, FloatArray]]:
+    """Compute statistics for a convolutional encoder model.
 
-    The returned dictionary is indexed by layer name and the shape of the array (#layer_channels, #input_channels, #rf_height, #rf_width).
+    This function analyzes the input data and each layer of the convolutional encoder,
+    computing various statistical measures and properties.
 
     Args:
     ----
         device (torch.device): The device to run computations on.
-        input_shape (Tuple[int, ...]): The input shape of the data.
-        layers (OrderedDict[str, nn.Module]): A dictionary of layer names and modules.
+        dataset (Imageset): The dataset to analyze.
+        brain (Brain): The trained Brain model.
+        max_sample_size (int, optional): Maximum number of samples to use. If 0, use all samples. Defaults to 0.
+
+    Returns:
+    -------
+        Dict[str, Dict[str, FloatArray]]: A nested dictionary containing statistics for the input and each layer.
+        The outer dictionary is keyed by layer names (with "input" for the input data), and each inner dictionary
+        contains the following keys:
+
+        - "receptive_fields": FloatArray of shape (out_channels, in_channels, height, width)
+            Receptive fields for the layer (identity matrix for input).
+        - "pixel_histograms": FloatArray of shape (num_channels, num_bins)
+            Histograms of pixel values for each channel.
+        - "histogram_bin_edges": FloatArray of shape (num_bins + 1,)
+            Bin edges for the pixel histograms.
+        - "mean_power_spectrum": FloatArray of shape (height, width)
+            Mean power spectrum across all channels.
+        - "var_power_spectrum": FloatArray of shape (height, width)
+            Variance of the power spectrum across all channels.
+        - "mean_autocorr": FloatArray of shape (height, width)
+            Mean autocorrelation across all channels.
+        - "var_autocorr": FloatArray of shape (height, width)
+            Variance of the autocorrelation across all channels.
+        - "num_channels": FloatArray of shape (1,)
+            Number of channels in the layer.
+
+    Note:
+    ----
+        The function only analyzes the longest sequence of convolutional layers it can find.
+        If max_sample_size is specified and smaller than the dataset size, a random subset of the data is used.
 
     """
+    # Get the input shape and the CNN layers
+    brain.eval()
+    brain.to(device)
+    input_shape, cnn_layers = get_cnn_circuit(brain)
     nclrs, hght, wdth = input_shape
 
+    # Prepare subsample
+    original_size = len(dataset)
+    logger.info(f"Original dataset size: {original_size}")
+
+    if max_sample_size > 0 and original_size > max_sample_size:
+        indices: List[int] = torch.randperm(original_size)[:max_sample_size].tolist()
+        dataset = ImageSubset(dataset, indices=indices)
+        logger.info(f"Reducing dataset size for cnn_statistics to {max_sample_size}")
+    else:
+        logger.info("Using full dataset for cnn_statistics")
+
+    dataloader = DataLoader(dataset, batch_size=64, shuffle=False)
+
+    # Initialize results dictionary
+    results: Dict[str, Dict[str, FloatArray]] = {}
+
+    # Analyze input statistics
+    input_spectral = layer_spectral_analysis(device, dataloader)
+    input_histograms = layer_pixel_histograms(device, dataloader)
+    # num channels as FloatArray
+
+    # Load input statistics into results dictionary
+    results["input"] = {
+        "receptive_fields": np.eye(nclrs)[
+            :, :, np.newaxis, np.newaxis
+        ],  # Identity for input
+        "pixel_histograms": input_histograms["channel_histograms"],
+        "histogram_bin_edges": input_histograms["bin_edges"],
+        "mean_power_spectrum": input_spectral["mean_power_spectrum"],
+        "var_power_spectrum": input_spectral["var_power_spectrum"],
+        "mean_autocorr": input_spectral["mean_autocorr"],
+        "var_autocorr": input_spectral["var_autocorr"],
+        "num_channels": np.array(nclrs, dtype=np.float64),
+    }
+
+    # Initialize loop variables
     imgsz = [1, nclrs, hght, wdth]
     obs = torch.zeros(size=imgsz, device=device, requires_grad=True)
-
-    lrfs: Dict[str, FloatArray] = {}
-
     hmn: int = 0
-
     head_layers: List[nn.Module] = []
 
-    for layer_name, layer in layers.items():
-        layer.to(device)
-        layer.eval()
-        # Forward pass through all preceding layers
+    # Analyze each layer
+    for layer_name, layer in cnn_layers.items():
         head_layers.append(layer)
         # Sequential model up to the current layer
         head_model = nn.Sequential(*head_layers)
+
         x = head_model(obs)
 
         if is_activation(layer):
@@ -111,6 +192,7 @@ def cnn_linear_receptive_fields(
                 "Can only compute receptive fields for 2d convolutional layers"
             )
 
+        # Compute receptive fields
         hsz, wsz = x.shape[2:]  # Get the current height and width
 
         hidx = (hsz - 1) // 2
@@ -121,12 +203,68 @@ def cnn_linear_receptive_fields(
 
         for j in range(ochns):
             grad = torch.autograd.grad(x[0, j, hidx, widx], obs, retain_graph=True)[0]
-            # lrfs[layer_name][j] = (
-            #     grad[0, :, hmn : hmn + hrf_size, wmn : wmn + wrf_size].cpu().numpy()
-            # )
             grads.append(grad[0, :, hmn : hmn + hrf_size, wmn : wmn + wrf_size])
-        lrfs[layer_name] = torch.stack(grads).cpu().numpy()
-    return lrfs
+        lrfs = torch.stack(grads).cpu().numpy()
+
+        # Create a new dataloader that applies the temporary model to the data
+        transformed_dataloader = _TransformedDataLoader(device, dataloader, head_model)
+
+        # Perform spectral analysis and histogram computation on the transformed data
+        layer_spectral = layer_spectral_analysis(device, transformed_dataloader)
+        layer_histograms = layer_pixel_histograms(device, transformed_dataloader)
+
+        results[layer_name] = {
+            "receptive_fields": lrfs,
+            "pixel_histograms": layer_histograms["channel_histograms"],
+            "histogram_bin_edges": layer_histograms["bin_edges"],
+            "mean_power_spectrum": layer_spectral["mean_power_spectrum"],
+            "var_power_spectrum": layer_spectral["var_power_spectrum"],
+            "mean_autocorr": layer_spectral["mean_autocorr"],
+            "var_autocorr": layer_spectral["var_autocorr"],
+            "num_channels": np.array(ochns, dtype=np.float64),
+        }
+
+    return results
+
+
+def get_cnn_circuit(brain: Brain) -> Tuple[Tuple[int, ...], OrderedDict[str, nn.Module]]:
+    """Find the longest path starting from a sensor, along a path of ConvolutionalEncoders. This likely won't work very well for particularly complex graphs.
+
+    Returns
+    -------
+    OrderedDict[str, nn.Module]: A dictionary of layer names and modules.
+
+    """
+    cnn_paths: List[List[str]] = []
+
+    # Create for the subgraph of sensors and cnns
+    cnn_nodes = [
+        node
+        for node, circuit in brain.circuits.items()
+        if isinstance(circuit, ConvolutionalEncoder)
+    ]
+    sensor_nodes = [node for node in brain.sensors]
+    subgraph = nx.subgraph(brain.connectome, cnn_nodes + sensor_nodes)
+    end_nodes = [node for node in cnn_nodes if not list(subgraph.successors(node))]
+
+    for sensor in sensor_nodes:
+        cnn_paths.extend(nx.all_simple_paths(subgraph, source=sensor, target=end_nodes))
+
+    # find the longest path
+    cnn_path = max(cnn_paths, key=len)
+    logger.info(f"Circuit path for analysis: {cnn_path}")
+    # Split off the sensor node
+    sensor, *cnn_path = cnn_path
+    # collect list of cnns
+    cnn_circuits = [brain.circuits[node] for node in cnn_path]
+    # Combine all cnn layers
+    tuples: List[Tuple[str, nn.Module]] = []
+    for circuit in cnn_circuits:
+        for name, module in circuit.conv_head.named_children():
+            tuples.extend([(name, module)])
+
+    input_shape = brain.sensors[sensor]
+    return input_shape, OrderedDict(tuples)
 
 
 def layer_pixel_histograms(
@@ -183,7 +321,18 @@ def layer_spectral_analysis(
     device: torch.device,
     dataloader: DataLoader[Tuple[Tensor, int]],
 ) -> Dict[str, FloatArray]:
-    """Compute power spectrum statistics for each channel across all data in a dataset."""
+    """Compute spectral analysis statistics for each channel across all data in a dataset.
+
+    Args:
+    ----
+        device (torch.device): The device to run computations on.
+        dataloader (DataLoader): The data loader to use.
+
+    Returns:
+    -------
+    Dict[str, FloatArray]: A dictionary containing the following keys: "mean_power_spectrum", "var_power_spectrum", "mean_autocorr", "var_autocorr".
+
+    """
     first_batch, _ = next(iter(dataloader))
     first_batch = first_batch.to(device)
     image_size = first_batch.shape[1:]
@@ -229,173 +378,6 @@ def layer_spectral_analysis(
         "mean_autocorr": mean_autocorr.cpu().numpy(),
         "var_autocorr": var_autocorr.cpu().numpy(),
     }
-
-
-def cnn_statistics(
-    device: torch.device,
-    dataset: Dataset[Tuple[Tensor, int]],
-    brain: Brain,
-    max_sample_size: int = 0,
-) -> Dict[str, Dict[str, FloatArray]]:
-    """Compute statistics for a convolutional encoder model.
-
-    This function analyzes the input data and each layer of the convolutional encoder,
-    computing various statistical measures and properties.
-
-    Args:
-    ----
-        device (torch.device): The device to run computations on.
-        dataset (Dataset[Tuple[Tensor, int]]): The dataset to analyze.
-        encoder (ConvolutionalEncoder): The convolutional encoder model to analyze.
-        max_sample_size (int, optional): Maximum number of samples to use. If 0, use all samples. Defaults to 0.
-
-    Returns:
-    -------
-        Dict[str, Dict[str, FloatArray]]: A nested dictionary containing statistics for the input and each layer.
-        The outer dictionary is keyed by layer names (with "input" for the input data), and each inner dictionary
-        contains the following keys:
-
-        - "receptive_fields": FloatArray of shape (out_channels, in_channels, height, width)
-            Receptive fields for the layer (identity matrix for input).
-        - "pixel_histograms": FloatArray of shape (num_channels, num_bins)
-            Histograms of pixel values for each channel.
-        - "histogram_bin_edges": FloatArray of shape (num_bins + 1,)
-            Bin edges for the pixel histograms.
-        - "mean_power_spectrum": FloatArray of shape (height, width)
-            Mean power spectrum across all channels.
-        - "var_power_spectrum": FloatArray of shape (height, width)
-            Variance of the power spectrum across all channels.
-        - "mean_autocorr": FloatArray of shape (height, width)
-            Mean autocorrelation across all channels.
-        - "var_autocorr": FloatArray of shape (height, width)
-            Variance of the autocorrelation across all channels.
-        - "num_channels": FloatArray of shape (1,)
-            Number of channels in the layer.
-
-    Note:
-    ----
-        The function only analyzes activation layers in the encoder's convolutional head.
-        If max_sample_size is specified and smaller than the dataset size, a random subset of the data is used.
-
-    """
-    input_shape, cnn_layers = get_cnn_circuit(brain)
-
-    # Set sample size
-    original_size = len(dataset)
-    logger.info(f"Original dataset size: {original_size}")
-
-    if max_sample_size > 0 and original_size > max_sample_size:
-        indices: List[int] = torch.randperm(original_size)[:max_sample_size].tolist()
-        dataset = Subset(dataset, indices=indices)
-        logger.info(f"Reducing dataset size for cnn_statistics to {max_sample_size}")
-    else:
-        logger.info("Using full dataset for cnn_statistics")
-
-    dataloader = DataLoader(dataset, batch_size=64, shuffle=False)
-    results: Dict[str, Dict[str, FloatArray]] = {}
-
-    # Compute receptive fields for all layers
-    receptive_fields = cnn_linear_receptive_fields(device, input_shape, cnn_layers)
-
-    # Analyze input data
-    input_spectral = layer_spectral_analysis(device, dataloader)
-    input_histograms = layer_pixel_histograms(device, dataloader)
-    # num channels as FloatArray
-    num_channels0 = input_shape[0]
-    num_channels = np.array(num_channels0, dtype=np.float64)
-
-    results["input"] = {
-        "receptive_fields": np.eye(num_channels0)[
-            :, :, np.newaxis, np.newaxis
-        ],  # Identity for input
-        "pixel_histograms": input_histograms["channel_histograms"],
-        "histogram_bin_edges": input_histograms["bin_edges"],
-        "mean_power_spectrum": input_spectral["mean_power_spectrum"],
-        "var_power_spectrum": input_spectral["var_power_spectrum"],
-        "mean_autocorr": input_spectral["mean_autocorr"],
-        "var_autocorr": input_spectral["var_autocorr"],
-        "num_channels": num_channels,
-    }
-
-    sublayers: List[nn.Module] = []
-    # Analyze each layer
-    for name, layer in cnn_layers.items():
-        sublayers.append(layer)
-        if hasattr(layer, "out_channels"):
-            num_channels = layer.out_channels
-
-        # Only analyze input layers
-        if is_activation(layer):
-            continue
-
-        # Create a temporary model up to the current layer
-        temp_model = nn.Sequential(*sublayers)
-
-        # nn.Sequential(
-        #             *list(cnn_layers.conv_head.children())[
-        #                 : list(cnn_layers.conv_head.named_children()).index((name, layer)) + 1
-        #             ]
-        #         )
-
-        # Create a new dataloader that applies the temporary model to the data
-        transformed_dataloader = _TransformedDataLoader(device, dataloader, temp_model)
-
-        # Perform spectral analysis and histogram computation on the transformed data
-        layer_spectral = layer_spectral_analysis(device, transformed_dataloader)
-        layer_histograms = layer_pixel_histograms(device, transformed_dataloader)
-
-        results[name] = {
-            "receptive_fields": receptive_fields[name],
-            "pixel_histograms": layer_histograms["channel_histograms"],
-            "histogram_bin_edges": layer_histograms["bin_edges"],
-            "mean_power_spectrum": layer_spectral["mean_power_spectrum"],
-            "var_power_spectrum": layer_spectral["var_power_spectrum"],
-            "mean_autocorr": layer_spectral["mean_autocorr"],
-            "var_autocorr": layer_spectral["var_autocorr"],
-            "num_channels": np.array([num_channels], dtype=np),
-        }
-
-    return results
-
-
-def get_cnn_circuit(brain: Brain) -> Tuple[Tuple[int, ...], OrderedDict[str, nn.Module]]:
-    """Find the longest path starting from a sensor, along a path of ConvolutionalEncoders. This likely won't work very well for particularly complex graphs.
-
-    Returns
-    -------
-    OrderedDict[str, nn.Module]: A dictionary of layer names and modules.
-
-    """
-    cnn_paths: List[List[str]] = []
-
-    # Create for the subgraph of sensors and cnns
-    cnn_nodes = [
-        node
-        for node, circuit in brain.circuits.items()
-        if isinstance(circuit, ConvolutionalEncoder)
-    ]
-    sensor_nodes = [node for node in brain.sensors]
-    subgraph = nx.subgraph(brain.connectome, cnn_nodes + sensor_nodes)
-    end_nodes = [node for node in cnn_nodes if not list(subgraph.successors(node))]
-
-    for sensor in sensor_nodes:
-        cnn_paths.extend(nx.all_simple_paths(subgraph, source=sensor, target=end_nodes))
-
-    # find the longest path
-    cnn_path = max(cnn_paths, key=len)
-    logger.info(f"Circuit path for analysis: {cnn_path}")
-    # Split off the sensor node
-    sensor, *cnn_path = cnn_path
-    # collect list of cnns
-    cnn_circuits = [brain.circuits[node] for node in cnn_path]
-    # Combine all cnn layers
-    tuples: List[Tuple[str, nn.Module]] = []
-    for circuit in cnn_circuits:
-        for name, module in circuit.conv_head.named_children():
-            tuples.extend([(name, module)])
-
-    input_shape = brain.sensors[sensor]
-    return input_shape, OrderedDict(tuples)
 
 
 class _TransformedDataLoader(DataLoader[Tuple[Tensor, int]]):
