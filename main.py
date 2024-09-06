@@ -44,13 +44,11 @@ def program(cfg: DictConfig):
         optimizer,
     )
     # Sanity checking
+    check_parameter_overlap(optimizer)
 
     # Debug mode operations
     if cfg.command == "debug":
         print("Running debug checks...")
-
-        print("Checking for parameter overlap between optimizers:")
-        check_parameter_overlap(optimizer)
 
         print("\nComparing gradient computation methods:")
         gradients_match, discrepancies = compare_gradient_computation(

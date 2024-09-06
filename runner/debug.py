@@ -1,5 +1,6 @@
 """Debug module for comparing gradient computations in the Brain model training process."""
 
+import logging
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import torch
@@ -11,6 +12,8 @@ from retinal_rl.classification.dataset import Imageset
 from retinal_rl.classification.training import get_context
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.optimizer import BrainOptimizer
+
+logger = logging.getLogger(__name__)
 
 
 def get_optimizer_params(optimizer: Optimizer) -> Set[torch.Tensor]:
@@ -37,9 +40,9 @@ def check_parameter_overlap(brain_optimizer: BrainOptimizer) -> None:
         warning_msg = "Parameter overlap detected between optimizers:"
         for (opt1, opt2), shared in overlaps.items():
             warning_msg += f"\n  - {opt1} and {opt2}: {len(shared)} shared parameters"
-        print(warning_msg)
+        logger.critical(warning_msg)
     else:
-        print("No parameter overlap detected.")
+        logger.info("No optimizer parameter overlap detected.")
 
 
 def compare_gradient_computation(
@@ -97,11 +100,9 @@ def compute_efficient_gradients(
         name: [] for name in brain_optimizer.optimizers.keys()
     }
 
-    for name, opt in brain_optimizer.optimizers.items():
-        opt.zero_grad()
-
     retain_graph = True
     for i, (name, opt) in enumerate(brain_optimizer.optimizers.items()):
+        opt.zero_grad()
         if i == len(brain_optimizer.optimizers) - 1:
             retain_graph = False
         loss, _ = brain_optimizer.compute_loss(name, context)
