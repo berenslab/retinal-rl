@@ -64,10 +64,10 @@ class ConvolutionalEncoder(NeuralCircuit):
         for i in range(num_layers):
             in_channels = self.input_shape[0] if i == 0 else self.num_channels[i - 1]
             lyrnm = (
-                f"{layer_names[i]} Input" if layer_names is not None else "conv" + str(i)
+                f"{layer_names[i]}_input" if layer_names is not None else "conv" + str(i)
             )
             actnm = (
-                f"{layer_names[i]} Activation"
+                f"{layer_names[i]}_activation"
                 if layer_names is not None
                 else self.act_name + str(i)
             )
@@ -123,9 +123,13 @@ class ConvolutionalDecoder(NeuralCircuit):
                 in_channels = self.input_shape[0]
             else:
                 in_channels = self.num_channels[i - 1]
-            lyrnm = layer_names[i] if layer_names is not None else "deconv" + str(i)
+            lyrnm = (
+                f"{layer_names[i]}_input"
+                if layer_names is not None
+                else "deconv" + str(i)
+            )
             actnm = (
-                f"{layer_names[i]} Activation"
+                f"{layer_names[i]}_activation"
                 if layer_names is not None
                 else self.act_name + str(i)
             )

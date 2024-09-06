@@ -8,7 +8,7 @@ from torch import Tensor
 from retinal_rl.models.objective import Objective
 
 
-class ClassificationLoss(Objective):
+class ClassificationObjective(Objective):
     """Objective for computing the cross entropy loss."""
 
     def __init__(self, weight: float = 1.0):

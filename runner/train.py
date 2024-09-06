@@ -1,13 +1,13 @@
 import logging
 import time
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import torch
 from omegaconf import DictConfig
-from torch import Tensor
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 
 import wandb
+from retinal_rl.classification.dataset import Imageset
 from retinal_rl.classification.training import process_dataset, run_epoch
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.optimizer import BrainOptimizer
@@ -23,15 +23,13 @@ def train(
     device: torch.device,
     brain: Brain,
     optimizer: BrainOptimizer,
-    train_set: Dataset[Tuple[Tensor, int]],
-    test_set: Dataset[Tuple[Tensor, int]],
+    train_set: Imageset,
+    test_set: Imageset,
     completed_epochs: int,
-    history: Dict[str, List[float]],
+    histories: Dict[str, List[float]],
 ):
     trainloader = DataLoader(train_set, batch_size=64, shuffle=True)
     testloader = DataLoader(test_set, batch_size=64, shuffle=False)
-
-    torch.autograd.set_detect_anomaly(True)
 
     wall_time = time.time()
     epoch_wall_time = 0
@@ -48,15 +46,15 @@ def train(
 
         # Initialize the history
         for key in train_losses:
-            history[f"train_{key}"] = [train_losses[key]]
+            histories[f"train_{key}"] = [train_losses[key]]
         for key in test_losses:
-            history[f"test_{key}"] = [test_losses[key]]
+            histories[f"test_{key}"] = [test_losses[key]]
 
         analyze(
             cfg,
             device,
             brain,
-            history,
+            histories,
             train_set,
             test_set,
             completed_epochs,
@@ -64,16 +62,16 @@ def train(
         )
 
         if cfg.logging.use_wandb:
-            _log_statistics(completed_epochs, epoch_wall_time, history)
+            _log_statistics(completed_epochs, epoch_wall_time, histories)
 
     log.info("Initialization complete.")
 
     for epoch in range(completed_epochs + 1, cfg.training.num_epochs + 1):
-        brain, history = run_epoch(
+        brain, histories = run_epoch(
             device,
             brain,
             optimizer,
-            history,
+            histories,
             trainloader,
             testloader,
         )
@@ -92,7 +90,7 @@ def train(
                 cfg.system.max_checkpoints,
                 brain,
                 optimizer,
-                history,
+                histories,
                 epoch,
             )
 
@@ -100,7 +98,7 @@ def train(
                 cfg,
                 device,
                 brain,
-                history,
+                histories,
                 train_set,
                 test_set,
                 epoch,
@@ -108,7 +106,7 @@ def train(
             )
 
         if cfg.logging.use_wandb:
-            _log_statistics(epoch, epoch_wall_time, history)
+            _log_statistics(epoch, epoch_wall_time, histories)
 
 
 def _log_statistics(

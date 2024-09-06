@@ -86,7 +86,7 @@ class BrainOptimizer:
         for objective in self.objectives[optimizer_name]:
             loss, raw_loss = objective(context)
             total_loss += loss
-            obj_dict[objective.display_name] = raw_loss.item()
+            obj_dict[objective.key_name] = raw_loss.item()
         return total_loss, obj_dict
 
     def compute_losses(
@@ -110,8 +110,8 @@ class BrainOptimizer:
         obj_dict: Dict[str, float] = {}
         for name in self.optimizers.keys():
             loss, sub_obj_dict = self.compute_loss(name, context)
-            losses[name] = loss.item()
-            obj_dict.update({f"{name}_{k}": v for k, v in sub_obj_dict.items()})
+            losses[f"{name}_optimizer_loss"] = loss.item()
+            obj_dict.update(sub_obj_dict)
         return losses, obj_dict
 
     def optimize(
@@ -141,8 +141,8 @@ class BrainOptimizer:
             optimizer.zero_grad()
             loss, sub_obj_dict = self.compute_loss(name, context)
             loss.backward(retain_graph=retain_graph)
-            losses[name] = loss.item()
-            obj_dict.update({f"{name}_{k}": v for k, v in sub_obj_dict.items()})
+            losses[f"{name}_optimizer_loss"] = loss.item()
+            obj_dict.update(sub_obj_dict)
 
         for name, optimizer in self.optimizers.items():
             optimizer.step()

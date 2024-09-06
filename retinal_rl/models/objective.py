@@ -8,6 +8,8 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+from retinal_rl.util import camel_to_snake
+
 
 class Objective(ABC):
     """Base class for objectives that can be used to train a model."""
@@ -37,15 +39,12 @@ class Objective(ABC):
         pass
 
     @property
-    def display_name(self) -> str:
+    def key_name(self) -> str:
         """Return a user-friendly name for the objective."""
-        name = re.sub(r"(?<!^)(?=[A-Z])", " ", self.__class__.__name__)
-        name = name.replace("KL", "KL-Divergence")
-        name = name.replace("L1", "L1-")
-        return name.replace("L2", "L2-")
+        return camel_to_snake(re.sub(r"(?<!^)(?=[A-Z])", "_", self.__class__.__name__))
 
 
-class ReconstructionLoss(Objective):
+class ReconstructionObjective(Objective):
     """Objective for computing the reconstruction loss between inputs and reconstructions."""
 
     def __init__(self, weight: float = 1.0):

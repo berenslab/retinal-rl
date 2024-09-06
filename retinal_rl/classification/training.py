@@ -91,13 +91,15 @@ def process_dataset(
         if is_training:
             brain.train()
             losses, obj_dict = optimizer.optimize(context)
-            total_losses.update(losses)
-            total_losses.update(obj_dict)
         else:
             brain.eval()
             losses, obj_dict = optimizer.compute_losses(context)
-            total_losses.update(losses)
-            total_losses.update(obj_dict)
+
+        # Accumulate losses and objectives
+        for key, value in losses.items():
+            total_losses[key] = total_losses.get(key, 0.0) + value
+        for key, value in obj_dict.items():
+            total_losses[key] = total_losses.get(key, 0.0) + value
 
         steps += 1
 

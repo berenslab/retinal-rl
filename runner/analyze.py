@@ -1,23 +1,22 @@
 import logging
 import os
 import shutil
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import torch
 from matplotlib.figure import Figure
 from omegaconf import DictConfig
-from torch import Tensor
-from torch.utils.data import Dataset
 
 import wandb
 from retinal_rl.analysis.plot import (
     layer_receptive_field_plots,
     plot_channel_statistics,
+    plot_histories,
     plot_reconstructions,
-    plot_training_histories,
 )
 from retinal_rl.analysis.statistics import cnn_statistics, reconstruct_images
+from retinal_rl.classification.dataset import Imageset
 from retinal_rl.models.brain import Brain
 
 logger = logging.getLogger(__name__)
@@ -82,15 +81,15 @@ def analyze(
     device: torch.device,
     brain: Brain,
     histories: Dict[str, List[float]],
-    train_set: Dataset[Tuple[Tensor, int]],
-    test_set: Dataset[Tuple[Tensor, int]],
+    train_set: Imageset,
+    test_set: Imageset,
     epoch: int,
     copy_checkpoint: bool = False,
 ):
     # Plot training histories (this never gets logged to wandb)
     if not cfg.logging.use_wandb:
-        hist_fig = plot_training_histories(histories)
-        _save_figure(cfg, "", "training_histories", hist_fig)
+        hist_fig = plot_histories(histories)
+        _save_figure(cfg, "", "histories", hist_fig)
         plt.close(hist_fig)
 
     # CNN analysis

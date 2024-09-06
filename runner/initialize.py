@@ -106,7 +106,7 @@ def _initialize_reload(
     brain.load_state_dict(checkpoint["brain_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     completed_epochs = checkpoint["completed_epochs"]
-    history = checkpoint["training_history"]
+    history = checkpoint["histories"]
 
     if cfg.logging.use_wandb:
         wandb.init(

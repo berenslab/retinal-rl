@@ -1,7 +1,7 @@
 """Functions for analysis and statistics on a Brain model."""
 
 import logging
-from typing import Dict, Iterator, List, OrderedDict, Tuple, cast
+from typing import Dict, List, OrderedDict, Tuple, cast
 
 import networkx as nx
 import numpy as np
@@ -128,7 +128,7 @@ def cnn_statistics(
     # Get the input shape and the CNN layers
     brain.eval()
     brain.to(device)
-    input_shape, cnn_layers = get_cnn_circuit(brain)
+    input_shape, cnn_layers = _get_cnn_circuit(brain)
     nclrs, hght, wdth = input_shape
 
     # Prepare subsample
@@ -148,8 +148,8 @@ def cnn_statistics(
     results: Dict[str, Dict[str, FloatArray]] = {}
 
     # Analyze input statistics
-    input_spectral = layer_spectral_analysis(device, dataloader)
-    input_histograms = layer_pixel_histograms(device, dataloader)
+    input_spectral = _layer_spectral_analysis(device, dataloader, nn.Identity())
+    input_histograms = _layer_pixel_histograms(device, dataloader, nn.Identity())
     # num channels as FloatArray
 
     # Load input statistics into results dictionary
@@ -206,12 +206,9 @@ def cnn_statistics(
             grads.append(grad[0, :, hmn : hmn + hrf_size, wmn : wmn + wrf_size])
         lrfs = torch.stack(grads).cpu().numpy()
 
-        # Create a new dataloader that applies the temporary model to the data
-        transformed_dataloader = _TransformedDataLoader(device, dataloader, head_model)
-
         # Perform spectral analysis and histogram computation on the transformed data
-        layer_spectral = layer_spectral_analysis(device, transformed_dataloader)
-        layer_histograms = layer_pixel_histograms(device, transformed_dataloader)
+        layer_spectral = _layer_spectral_analysis(device, dataloader, head_model)
+        layer_histograms = _layer_pixel_histograms(device, dataloader, head_model)
 
         results[layer_name] = {
             "receptive_fields": lrfs,
@@ -227,36 +224,38 @@ def cnn_statistics(
     return results
 
 
-def get_cnn_circuit(brain: Brain) -> Tuple[Tuple[int, ...], OrderedDict[str, nn.Module]]:
-    """Find the longest path starting from a sensor, along a path of ConvolutionalEncoders. This likely won't work very well for particularly complex graphs.
-
-    Returns
-    -------
-    OrderedDict[str, nn.Module]: A dictionary of layer names and modules.
-
-    """
+def _get_cnn_circuit(brain: Brain) -> Tuple[Tuple[int, ...], OrderedDict[str, nn.Module]]:
+    """Find the longest path starting from a sensor, along a path of ConvolutionalEncoders. This likely won't work very well for particularly complex graphs."""
     cnn_paths: List[List[str]] = []
 
     # Create for the subgraph of sensors and cnns
-    cnn_nodes = [
-        node
-        for node, circuit in brain.circuits.items()
-        if isinstance(circuit, ConvolutionalEncoder)
+    cnn_dict: Dict[str, ConvolutionalEncoder] = {}
+    for node, circuit in brain.circuits.items():
+        if isinstance(circuit, ConvolutionalEncoder):
+            cnn_dict[node] = circuit
+
+    cnn_nodes = list(cnn_dict.keys())
+    sensor_nodes = [node for node in brain.sensors.keys()]
+    subgraph: nx.DiGraph[str] = nx.DiGraph(
+        nx.subgraph(brain.connectome, cnn_nodes + sensor_nodes)
+    )
+    end_nodes: List[str] = [
+        node for node in cnn_nodes if not list(subgraph.successors(node))
     ]
-    sensor_nodes = [node for node in brain.sensors]
-    subgraph = nx.subgraph(brain.connectome, cnn_nodes + sensor_nodes)
-    end_nodes = [node for node in cnn_nodes if not list(subgraph.successors(node))]
 
     for sensor in sensor_nodes:
-        cnn_paths.extend(nx.all_simple_paths(subgraph, source=sensor, target=end_nodes))
+        for end_node in end_nodes:
+            cnn_paths.extend(
+                nx.all_simple_paths(subgraph, source=sensor, target=end_node)
+            )
 
     # find the longest path
-    cnn_path = max(cnn_paths, key=len)
-    logger.info(f"Circuit path for analysis: {cnn_path}")
+    path = max(cnn_paths, key=len)
+    logger.info(f"Convolutional circuit path for analysis: {path}")
     # Split off the sensor node
-    sensor, *cnn_path = cnn_path
+    sensor, *path = path
     # collect list of cnns
-    cnn_circuits = [brain.circuits[node] for node in cnn_path]
+    cnn_circuits: List[ConvolutionalEncoder] = [cnn_dict[node] for node in path]
     # Combine all cnn layers
     tuples: List[Tuple[str, nn.Module]] = []
     for circuit in cnn_circuits:
@@ -267,12 +266,16 @@ def get_cnn_circuit(brain: Brain) -> Tuple[Tuple[int, ...], OrderedDict[str, nn.
     return input_shape, OrderedDict(tuples)
 
 
-def layer_pixel_histograms(
-    device: torch.device, dataloader: DataLoader[Tuple[Tensor, int]], num_bins: int = 20
+def _layer_pixel_histograms(
+    device: torch.device,
+    dataloader: DataLoader[Tuple[Tensor, int]],
+    model: nn.Module,
+    num_bins: int = 20,
 ) -> Dict[str, FloatArray]:
     """Compute histograms of pixel/activation values for each channel across all data in a dataset."""
     first_batch, _ = next(iter(dataloader))
-    first_batch = first_batch.to(device)
+    with torch.no_grad():
+        first_batch = model(first_batch.to(device))
     num_channels: int = first_batch.shape[1]
 
     # Initialize variables for dynamic range computation
@@ -283,7 +286,8 @@ def layer_pixel_histograms(
     total_elements = 0
 
     for batch, _ in dataloader:
-        batch = batch.to(device)
+        with torch.no_grad():
+            batch = model(batch.to(device))
         batch_min, _ = batch.view(-1, num_channels).min(dim=0)
         batch_max, _ = batch.view(-1, num_channels).max(dim=0)
         global_min = torch.min(global_min, batch_min)
@@ -298,7 +302,8 @@ def layer_pixel_histograms(
     )
 
     for batch, _ in dataloader:
-        batch = batch.to(device)
+        with torch.no_grad():
+            batch = model(batch.to(device))
         for c in range(num_channels):
             channel_data = batch[:, c, :, :].reshape(-1)
             hist = torch.histc(
@@ -317,24 +322,15 @@ def layer_pixel_histograms(
     }
 
 
-def layer_spectral_analysis(
+def _layer_spectral_analysis(
     device: torch.device,
     dataloader: DataLoader[Tuple[Tensor, int]],
+    model: nn.Module,
 ) -> Dict[str, FloatArray]:
-    """Compute spectral analysis statistics for each channel across all data in a dataset.
-
-    Args:
-    ----
-        device (torch.device): The device to run computations on.
-        dataloader (DataLoader): The data loader to use.
-
-    Returns:
-    -------
-    Dict[str, FloatArray]: A dictionary containing the following keys: "mean_power_spectrum", "var_power_spectrum", "mean_autocorr", "var_autocorr".
-
-    """
+    """Compute spectral analysis statistics for each channel across all data in a dataset."""
     first_batch, _ = next(iter(dataloader))
-    first_batch = first_batch.to(device)
+    with torch.no_grad():
+        first_batch = model(first_batch.to(device))
     image_size = first_batch.shape[1:]
 
     # Initialize variables for dynamic range computation
@@ -347,7 +343,8 @@ def layer_spectral_analysis(
     count = 0
 
     for batch, _ in dataloader:
-        batch = batch.to(device)
+        with torch.no_grad():
+            batch = model(batch.to(device))
         for image in batch:
             count += 1
 
@@ -378,31 +375,3 @@ def layer_spectral_analysis(
         "mean_autocorr": mean_autocorr.cpu().numpy(),
         "var_autocorr": var_autocorr.cpu().numpy(),
     }
-
-
-class _TransformedDataLoader(DataLoader[Tuple[Tensor, int]]):
-    def __init__(
-        self,
-        device: torch.device,
-        dataloader: DataLoader[Tuple[Tensor, int]],
-        model: nn.Module,
-    ):
-        self.dataloader = dataloader
-        self.model = model.to(device)
-        self.device = device
-        super().__init__(
-            dataloader.dataset,
-            batch_size=dataloader.batch_size,
-        )
-
-    def __iter__(self) -> Iterator[Tuple[Tensor, int]]:
-        self.model.eval()
-        with torch.no_grad():
-            for batch in self.dataloader:
-                inputs, labels = batch
-                inputs = inputs.to(self.device)
-                transformed_inputs = self.model(inputs)
-                yield transformed_inputs, labels
-
-    def __len__(self) -> int:
-        return len(self.dataloader)

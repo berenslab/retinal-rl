@@ -21,7 +21,7 @@ def save_checkpoint(
     max_checkpoints: int,
     brain: nn.Module,
     optimizer: BrainOptimizer,
-    history: dict[str, List[float]],
+    histories: dict[str, List[float]],
     completed_epochs: int,
 ) -> None:
     current_file = os.path.join(data_dir, "current_checkpoint.pt")
@@ -30,7 +30,7 @@ def save_checkpoint(
         "completed_epochs": completed_epochs,
         "brain_state_dict": brain.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
-        "training_history": history,
+        "histories": histories,
     }
 
     # Save checkpoint

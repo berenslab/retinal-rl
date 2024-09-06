@@ -12,7 +12,7 @@ from torch import Tensor
 from retinal_rl.util import FloatArray
 
 
-def plot_training_histories(histories: Dict[str, List[float]]) -> Figure:
+def plot_histories(histories: Dict[str, List[float]]) -> Figure:
     """Plot training and test losses over epochs.
 
     Args:

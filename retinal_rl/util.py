@@ -1,3 +1,4 @@
+import re
 from math import ceil, floor
 from typing import List, Tuple, Union
 
@@ -27,6 +28,15 @@ def assert_list(
     return _list
 
 
+def camel_to_snake(name: str) -> str:
+    """Convert a CamelCase string to snake_case."""
+    # This regex looks for uppercase letters
+    # If it's at the start of the string, it just lowercase it
+    # If it's preceded by a lowercase letter, it adds an underscore before it
+    pattern = re.compile(r"(?<!^)(?=[A-Z])")
+    return pattern.sub("_", name).lower()
+
+
 def encoder_out_size(mdls: List[nn.Module], hght0: int, wdth0: int) -> Tuple[int, int]:
     """Compute the size of the encoder output, where mdls is the list of encoder modules."""
     hght = hght0
@@ -36,13 +46,13 @@ def encoder_out_size(mdls: List[nn.Module], hght0: int, wdth0: int) -> Tuple[int
     for mdl in mdls:
         if is_activation(mdl):
             continue
-        if not is_convolutional_layer(mdl):
+        if isinstance(mdl, nn.Conv2d):
+            krnsz = _double_up(mdl.kernel_size)
+            strd = _double_up(mdl.stride)
+            pad = _double_up(mdl.padding)
+            dila = _double_up(mdl.dilation)
+        else:
             raise NotImplementedError("Only convolutional layers are supported")
-
-        krnsz = _double_up(mdl.kernel_size)
-        strd = _double_up(mdl.stride)
-        pad = _double_up(mdl.padding)
-        dila = _double_up(mdl.dilation)
 
         if dila[0] != 1 or dila[1] != 1:
             raise NotImplementedError("Dilation not implemented")
@@ -74,12 +84,12 @@ def rf_size_and_start(mdls: List[nn.Module], hidx: int, widx: int):
     for mdl in mdls:
         if is_activation(mdl):
             continue
-        if not is_convolutional_layer(mdl):
+        if isinstance(mdl, nn.Conv2d):
+            hksz, wksz = _double_up(mdl.kernel_size)
+            hstrd, wstrd = _double_up(mdl.stride)
+            hpad, wpad = _double_up(mdl.padding)
+        else:
             raise NotImplementedError("Only convolutional layers are supported")
-
-        hksz, wksz = _double_up(mdl.kernel_size)
-        hstrd, wstrd = _double_up(mdl.stride)
-        hpad, wpad = _double_up(mdl.padding)
 
         hrf_size += (hksz - 1) * hrf_scale
         wrf_size += (wksz - 1) * wrf_scale
@@ -114,7 +124,7 @@ def is_convolutional_layer(mdl: nn.Module) -> bool:
     return isinstance(mdl, (nn.Conv1d, nn.Conv2d, nn.Conv3d))
 
 
-def _double_up(x: Union[int, List[int]]):
+def _double_up(x: Union[int, Tuple[int, ...]]):
     if isinstance(x, int):
         return (x, x)
     return x

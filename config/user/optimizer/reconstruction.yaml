@@ -3,7 +3,7 @@ reconstruction:
     _target_: torch.optim.Adam
     lr: 0.0003
   objectives:
-    - _target_: retinal_rl.models.objective.ReconstructionLoss
+    - _target_: retinal_rl.models.objective.ReconstructionObjective
       weight: 1
   target_circuits:
     - cnn_encoder1

@@ -18,7 +18,7 @@ circuits:
     kernel_size: [8,6]
     stride: 2
     act_name: elu
-    layer_names: ["Bipolar", "Retinal Ganglion"]
+    layer_names: ["bipolar", "retinal_ganglion"]
   cnn_encoder2:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 1
@@ -26,7 +26,7 @@ circuits:
     kernel_size: 4
     stride: 2 
     act_name: elu
-    layer_names: ["V1"]
+    layer_names: ["v1"]
   fc_feedforward:
     _target_: retinal_rl.models.circuits.fully_connected.FullyConnectedEncoder
     output_shape:
