@@ -1,7 +1,7 @@
 """Module for managing optimization of complex neural network models with multiple circuits."""
 
 import logging
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Tuple
 
 import torch
 from hydra.utils import instantiate
@@ -176,27 +176,3 @@ class BrainOptimizer:
         # Reinitialize optimizers and objectives
         for name, state_dict in state_dict.items():
             self.optimizers[name].load_state_dict(state_dict)
-
-    def check_parameter_overlap(self) -> None:
-        """Check for parameter overlap between optimizers."""
-        param_sets: Dict[str, Set[torch.Tensor]] = {}
-
-        for optimizer_name, optimizer_state_dict in self.state_dict().items():
-            params: Set[torch.Tensor] = set()
-            for group in optimizer_state_dict["param_groups"]:
-                params.update(group["params"])
-            param_sets[optimizer_name] = params
-
-        overlaps: Dict[Tuple[str, str], Set[torch.Tensor]] = {}
-        for name1, params1 in param_sets.items():
-            for name2, params2 in param_sets.items():
-                if name1 < name2:  # Avoid duplicate comparisons
-                    shared_params = params1.intersection(params2)
-                    if shared_params:
-                        overlaps[(name1, name2)] = shared_params
-
-        if overlaps:
-            warning_msg = "Parameter overlap detected between optimizers:"
-            for (opt1, opt2), shared in overlaps.items():
-                warning_msg += f"\n  - {opt1} and {opt2}: {len(shared)} shared parameters"
-            logger.warning(warning_msg)

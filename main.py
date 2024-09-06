@@ -8,6 +8,7 @@ from retinal_rl.models.brain import Brain
 from retinal_rl.models.optimizer import BrainOptimizer
 from runner.analyze import analyze
 from runner.dataset import get_datasets
+from runner.debug import check_parameter_overlap, compare_gradient_computation
 from runner.initialize import initialize
 from runner.sweep import launch_sweep
 from runner.train import train
@@ -43,7 +44,31 @@ def program(cfg: DictConfig):
         optimizer,
     )
     # Sanity checking
-    optimizer.check_parameter_overlap
+
+    # Debug mode operations
+    if cfg.command == "debug":
+        print("Running debug checks...")
+
+        print("Checking for parameter overlap between optimizers:")
+        check_parameter_overlap(optimizer)
+
+        print("\nComparing gradient computation methods:")
+        gradients_match, discrepancies = compare_gradient_computation(
+            device, brain, optimizer, train_set
+        )
+
+        if gradients_match:
+            print("All gradients match within tolerance.")
+        else:
+            print("Discrepancies found in gradient computation:")
+            for param, diff in discrepancies.items():
+                if diff is None:
+                    print(f"  {param}: Mismatch (one gradient is None)")
+                else:
+                    print(f"  {param}: {diff}")
+
+        print("\nDebug checks completed.")
+        sys.exit(0)
 
     if cfg.command == "train":
         train(
