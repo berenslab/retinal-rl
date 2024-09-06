@@ -42,6 +42,8 @@ def program(cfg: DictConfig):
         brain,
         optimizer,
     )
+    # Sanity checking
+    optimizer.check_parameter_overlap
 
     if cfg.command == "train":
         train(

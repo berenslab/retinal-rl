@@ -1,6 +1,7 @@
 """Module for managing optimization of complex neural network models with multiple circuits."""
 
-from typing import Any, Dict, List, Tuple
+import logging
+from typing import Any, Dict, List, Set, Tuple
 
 import torch
 from hydra.utils import instantiate
@@ -9,6 +10,8 @@ from torch.optim import Optimizer
 
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.objective import Objective
+
+logger = logging.getLogger(__name__)
 
 
 class BrainOptimizer:
@@ -160,7 +163,7 @@ class BrainOptimizer:
         """
         return {name: opt.state_dict() for name, opt in self.optimizers.items()}
 
-    def load_state_dict(self, state_dicts: Dict[str, Any]) -> None:
+    def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
         """Load a state dictionary into the BrainOptimizer.
 
         This method reinitializes optimizers and objectives based on the loaded state.
@@ -171,5 +174,29 @@ class BrainOptimizer:
 
         """
         # Reinitialize optimizers and objectives
-        for name, state_dict in state_dicts.items():
+        for name, state_dict in state_dict.items():
             self.optimizers[name].load_state_dict(state_dict)
+
+    def check_parameter_overlap(self) -> None:
+        """Check for parameter overlap between optimizers."""
+        param_sets: Dict[str, Set[torch.Tensor]] = {}
+
+        for optimizer_name, optimizer_state_dict in self.state_dict().items():
+            params: Set[torch.Tensor] = set()
+            for group in optimizer_state_dict["param_groups"]:
+                params.update(group["params"])
+            param_sets[optimizer_name] = params
+
+        overlaps: Dict[Tuple[str, str], Set[torch.Tensor]] = {}
+        for name1, params1 in param_sets.items():
+            for name2, params2 in param_sets.items():
+                if name1 < name2:  # Avoid duplicate comparisons
+                    shared_params = params1.intersection(params2)
+                    if shared_params:
+                        overlaps[(name1, name2)] = shared_params
+
+        if overlaps:
+            warning_msg = "Parameter overlap detected between optimizers:"
+            for (opt1, opt2), shared in overlaps.items():
+                warning_msg += f"\n  - {opt1} and {opt2}: {len(shared)} shared parameters"
+            logger.warning(warning_msg)
