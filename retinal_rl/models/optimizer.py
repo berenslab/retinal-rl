@@ -171,13 +171,16 @@ class BrainOptimizer:
         for i, name in enumerate(self.optimizers.keys()):
             # Skip training if the optimizer is not at a training epoch
             if not self._is_training_epoch(name, context["epoch"]):
-                return self.compute_losses(context)
+                loss, sub_obj_dict = self.compute_loss(name, context)
+                losses[f"{name}_optimizer_loss"] = loss.item()
+                obj_dict.update(sub_obj_dict)
+                continue
 
             if i == len(self.optimizers) - 1:
                 retain_graph = False
             self.optimizers[name].zero_grad()
             loss, sub_obj_dict = self.compute_loss(name, context)
-            loss.backward(retain_graph=False)
+            loss.backward(retain_graph=retain_graph)
             losses[f"{name}_optimizer_loss"] = loss.item()
             obj_dict.update(sub_obj_dict)
 

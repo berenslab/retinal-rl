@@ -15,7 +15,7 @@ from runner.analyze import analyze
 from runner.util import save_checkpoint
 
 # Initialize the logger
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def train(
@@ -62,9 +62,9 @@ def train(
         )
 
         if cfg.logging.use_wandb:
-            _log_statistics(initial_epoch, epoch_wall_time, history)
+            _wandb_log_statistics(initial_epoch, epoch_wall_time, history)
 
-    log.info("Initialization complete.")
+    logger.info("Initialization complete.")
 
     for epoch in range(initial_epoch + 1, cfg.training.num_epochs + 1):
         brain, history = run_epoch(
@@ -80,10 +80,10 @@ def train(
         new_wall_time = time.time()
         epoch_wall_time = new_wall_time - wall_time
         wall_time = new_wall_time
-        log.info(f"Epoch {epoch} complete. Epoch Wall Time: {epoch_wall_time:.2f}s.")
+        logger.info(f"Epoch {epoch} complete. Wall Time: {epoch_wall_time:.2f}s.")
 
         if epoch % cfg.training.checkpoint_step == 0:
-            log.info("Saving checkpoint and plots.")
+            logger.info("Saving checkpoint and plots.")
 
             save_checkpoint(
                 cfg.system.data_dir,
@@ -107,10 +107,10 @@ def train(
             )
 
         if cfg.logging.use_wandb:
-            _log_statistics(epoch, epoch_wall_time, history)
+            _wandb_log_statistics(epoch, epoch_wall_time, history)
 
 
-def _log_statistics(
+def _wandb_log_statistics(
     epoch: int, epoch_wall_time: float, histories: Dict[str, List[float]]
 ) -> None:
     log_dict = {
