@@ -47,10 +47,18 @@ class BrainOptimizer:
         self.objectives: Dict[str, List[Objective]] = {}
         self.target_circuits: Dict[str, List[str]] = {}
         self.device = next(brain.parameters()).device
+        self.min_epochs: Dict[str, int] = {}
+        self.max_epochs: Dict[str, int] = {}
 
         for name, config in optimizer_configs.items():
             # Collect parameters from target circuits
             params = []
+            self.min_epochs[name] = 0
+            self.max_epochs[name] = -1
+            if "min_epoch" in config:
+                self.min_epochs[name] = config.min_epoch
+            if "max_epoch" in config:
+                self.max_epochs[name] = config.max_epoch
             self.target_circuits[name] = config.target_circuits
             for circuit_name in config.target_circuits:
                 if circuit_name in brain.circuits:
@@ -67,6 +75,9 @@ class BrainOptimizer:
             self.objectives[name] = [
                 instantiate(obj_config) for obj_config in config.objectives
             ]
+            logger.info(
+                f"Initalized optimizer: {name}, with objectives: {[obj.key_name for obj in self.objectives[name]]}, and target circuits: {[circuit_name for circuit_name in config.target_circuits]}"
+            )
 
     def compute_loss(
         self, optimizer_name: str, context: Dict[str, torch.Tensor]
@@ -117,6 +128,25 @@ class BrainOptimizer:
             obj_dict.update(sub_obj_dict)
         return losses, obj_dict
 
+    def _is_training_epoch(self, name: str, epoch: int) -> bool:
+        """Check if the optimizer should continue training.
+
+        Args:
+        ----
+            name (str): Name of the optimizer.
+            epoch (int): Current epoch number.
+
+        Returns:
+        -------
+            bool: True if the optimizer should continue training, False otherwise.
+
+        """
+        if epoch < self.min_epochs[name]:
+            return False
+        if self.max_epochs[name] < 0:
+            return True
+        return epoch < self.max_epochs[name]
+
     def optimize(
         self, context: Dict[str, Any]
     ) -> Tuple[Dict[str, float], Dict[str, float]]:
@@ -138,12 +168,16 @@ class BrainOptimizer:
         losses: Dict[str, float] = {}
         obj_dict: Dict[str, float] = {}
         retain_graph = True
-        for i, (name, optimizer) in enumerate(self.optimizers.items()):
+        for i, name in enumerate(self.optimizers.keys()):
+            # Skip training if the optimizer is not at a training epoch
+            if not self._is_training_epoch(name, context["epoch"]):
+                return self.compute_losses(context)
+
             if i == len(self.optimizers) - 1:
                 retain_graph = False
-            optimizer.zero_grad()
+            self.optimizers[name].zero_grad()
             loss, sub_obj_dict = self.compute_loss(name, context)
-            loss.backward(retain_graph=retain_graph)
+            loss.backward(retain_graph=False)
             losses[f"{name}_optimizer_loss"] = loss.item()
             obj_dict.update(sub_obj_dict)
 

@@ -18,8 +18,9 @@ from retinal_rl.models.optimizer import BrainOptimizer
 def run_epoch(
     device: torch.device,
     brain: Brain,
-    optimizer: BrainOptimizer,
+    brain_optimizer: BrainOptimizer,
     history: Dict[str, List[float]],
+    epoch: int,
     trainloader: DataLoader[Tuple[Tensor, int]],
     testloader: DataLoader[Tuple[Tensor, int]],
 ) -> Tuple[Brain, Dict[str, List[float]]]:
@@ -33,7 +34,7 @@ def run_epoch(
     ----
         device (torch.device): The device to run the computations on.
         brain (Brain): The Brain model to train and evaluate.
-        optimizer (BrainOptimizer): The optimizer for updating the model parameters.
+        brain_optimizer (BrainOptimizer): The optimizer for updating the model parameters.
         history (Dict[str, List[float]]): A dictionary to store the training history.
         trainloader (DataLoader): DataLoader for the training dataset.
         testloader (DataLoader): DataLoader for the test dataset.
@@ -44,9 +45,11 @@ def run_epoch(
 
     """
     train_losses = process_dataset(
-        device, brain, optimizer, trainloader, is_training=True
+        device, brain, brain_optimizer, epoch, trainloader, is_training=True
     )
-    test_losses = process_dataset(device, brain, optimizer, testloader, is_training=False)
+    test_losses = process_dataset(
+        device, brain, brain_optimizer, epoch, testloader, is_training=False
+    )
 
     # Update history
     for key, value in train_losses.items():
@@ -60,7 +63,8 @@ def run_epoch(
 def process_dataset(
     device: torch.device,
     brain: Brain,
-    optimizer: BrainOptimizer,
+    brain_optimizer: BrainOptimizer,
+    epoch: int,
     dataloader: DataLoader[Tuple[Tensor, int]],
     is_training: bool,
 ) -> Dict[str, float]:
@@ -73,7 +77,7 @@ def process_dataset(
     ----
         device (torch.device): The device to run the computations on.
         brain (Brain): The Brain model to process the data.
-        optimizer (BrainOptimizer): The optimizer for updating the model parameters.
+        brain_optimizer (BrainOptimizer): The optimizer for updating the model parameters.
         dataloader (DataLoader): The DataLoader containing the dataset to process.
         is_training (bool): Whether to perform optimization (True) or just evaluate (False).
 
@@ -86,14 +90,14 @@ def process_dataset(
     steps = 0
 
     for batch in dataloader:
-        context = get_context(device, brain, batch)
+        context = get_context(device, brain, epoch, batch)
 
         if is_training:
             brain.train()
-            losses, obj_dict = optimizer.optimize(context)
+            losses, obj_dict = brain_optimizer.optimize(context)
         else:
             brain.eval()
-            losses, obj_dict = optimizer.compute_losses(context)
+            losses, obj_dict = brain_optimizer.compute_losses(context)
 
         # Accumulate losses and objectives
         for key, value in losses.items():
@@ -110,6 +114,7 @@ def process_dataset(
 def get_context(
     device: torch.device,
     brain: Brain,
+    epoch: int,
     batch: Tuple[torch.Tensor, torch.Tensor],
 ) -> Dict[str, Any]:
     """Calculate the loss dictionary for a single batch.
@@ -138,7 +143,7 @@ def get_context(
     return {
         "inputs": inputs,
         "classes": classes,
-        "predictions": responses["classifier"],
-        "reconstructions": responses["decoder"],
+        "responses": responses,
         "parameters": brain.parameters(),
+        "epoch": epoch,
     }

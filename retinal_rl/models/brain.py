@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
+from torch import Tensor
 
 from retinal_rl.models.neural_circuit import NeuralCircuit
 
@@ -105,9 +106,9 @@ class Brain(nn.Module):
             f"Invalid format for output_shape: {output_shape}. Must be of the form 'circuit_name.property_name'"
         )
 
-    def forward(self, stimuli: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(self, stimuli: Dict[str, Tensor]) -> Dict[str, Tensor]:
         """Forward pass of the brain. Computed by following the connectome from sensors through the circuits."""
-        responses: Dict[str, torch.Tensor] = {}
+        responses: Dict[str, Tensor] = {}
 
         for node in nx.topological_sort(self.connectome):
             if node in self.sensors:
@@ -125,7 +126,7 @@ class Brain(nn.Module):
         print("Edges: ", self.connectome.edges)
 
         # Run scans on all circuits
-        dummy_stimulus: Dict[str, torch.Tensor] = {}
+        dummy_stimulus: Dict[str, Tensor] = {}
         for sensor in self.sensors:
             dummy_stimulus[sensor] = torch.rand((1, *self.sensors[sensor]))
 
@@ -135,12 +136,10 @@ class Brain(nn.Module):
             )
             circuit.scan()
 
-    def _assemble_inputs(
-        self, node: str, responses: Dict[str, torch.Tensor]
-    ) -> torch.Tensor:
+    def _assemble_inputs(self, node: str, responses: Dict[str, Tensor]) -> Tensor:
         """Assemble the inputs to a given node by concatenating the responses of its predecessors."""
-        inputs: List[torch.Tensor] = []
-        input = torch.Tensor()
+        inputs: List[Tensor] = []
+        input = Tensor()
         for pred in self.connectome.predecessors(node):
             if pred in responses:
                 inputs.append(responses[pred])

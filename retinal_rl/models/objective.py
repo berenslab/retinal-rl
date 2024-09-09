@@ -1,6 +1,5 @@
 """Objectives for training models."""
 
-import re
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Tuple
 
@@ -41,7 +40,7 @@ class Objective(ABC):
     @property
     def key_name(self) -> str:
         """Return a user-friendly name for the objective."""
-        return camel_to_snake(re.sub(r"(?<!^)(?=[A-Z])", "_", self.__class__.__name__))
+        return camel_to_snake(self.__class__.__name__)
 
 
 class ReconstructionObjective(Objective):
@@ -54,8 +53,8 @@ class ReconstructionObjective(Objective):
 
     def compute_value(self, context: Dict[str, Any]) -> Tensor:
         """Compute the mean squared error between inputs and reconstructions."""
-        inputs = context["inputs"]
-        reconstructions = context["reconstructions"]
+        inputs = context["responses"]["vision"]
+        reconstructions = context["responses"]["decoder"]
 
         if inputs.shape != reconstructions.shape:
             raise ValueError(
@@ -85,35 +84,42 @@ class L2WeightRegularizer(Objective):
 class L1Sparsity(Objective):
     """Objective for computing the L1 sparsity of activations."""
 
-    def __init__(self, weight: float = 1.0):
+    def __init__(self, weight: float, targets: List[str]):
         """Initialize the L1 sparsity objective."""
+        self.targets = targets
         super().__init__(weight)
 
     def compute_value(self, context: Dict[str, Any]) -> Tensor:
         """Compute the L1 sparsity of activations."""
-        activations = context["activations"]
-        if not activations:
-            raise ValueError("No activations found in context")
-
-        return torch.mean(torch.stack([act.abs().mean() for act in activations.values()]))
+        activations: List[Tensor] = []
+        responses = context["responses"]
+        for target in self.targets:
+            if target not in responses:
+                raise ValueError(f"Target {target} not found in responses")
+            activations.append(responses[target])
+        return torch.mean(torch.stack([act.abs().mean() for act in activations]))
 
 
 class KLDivergenceSparsity(Objective):
     """Objective for computing the KL divergence sparsity of activations."""
 
-    def __init__(self, weight: float = 1.0, target_sparsity: float = 0.05):
+    def __init__(self, weight: float, targets: List[str], target_sparsity: float = 0.05):
         """Initialize the KL divergence sparsity objective."""
-        super().__init__(weight)
+        self.targets = targets
         self.target_sparsity = target_sparsity
+        super().__init__(weight)
 
     def compute_value(self, context: Dict[str, Any]) -> torch.Tensor:
         """Compute the KL divergence sparsity of activations."""
-        activations = context["activations"]
-        if not activations:
-            raise ValueError("No activations found in context")
+        responses = context["responses"]
+        activations: List[Tensor] = []
+        for target in self.targets:
+            if target not in responses:
+                raise ValueError(f"Target {target} not found in responses")
+            activations.append(responses[target])
 
         kl_divs: List[Tensor] = []
-        for act in activations.values():
+        for act in activations:
             avg_activation = torch.mean(act, dim=0)
             kl_div = self.target_sparsity * torch.log(
                 self.target_sparsity / (avg_activation + 1e-8)

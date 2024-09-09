@@ -29,7 +29,7 @@ def program(cfg: DictConfig):
     device = torch.device(cfg.system.device)
 
     brain = Brain(**cfg.brain).to(device)
-    optimizer = BrainOptimizer(brain, dict(cfg.optimizer))
+    brain_optimizer = BrainOptimizer(brain, dict(cfg.optimizer))
 
     if cfg.command == "scan":
         brain.scan_circuits()
@@ -38,13 +38,13 @@ def program(cfg: DictConfig):
 
     train_set, test_set = get_datasets(cfg)
 
-    brain, optimizer, histories, completed_epochs = initialize(
+    brain, brain_optimizer, histories, completed_epochs = initialize(
         cfg,
         brain,
-        optimizer,
+        brain_optimizer,
     )
     # Sanity checking
-    check_parameter_overlap(optimizer)
+    check_parameter_overlap(brain_optimizer)
 
     # Debug mode operations
     if cfg.command == "debug":
@@ -52,7 +52,7 @@ def program(cfg: DictConfig):
 
         print("\nComparing gradient computation methods:")
         gradients_match, discrepancies = compare_gradient_computation(
-            device, brain, optimizer, train_set
+            device, brain, brain_optimizer, train_set
         )
 
         if gradients_match:
@@ -73,7 +73,7 @@ def program(cfg: DictConfig):
             cfg,
             device,
             brain,
-            optimizer,
+            brain_optimizer,
             train_set,
             test_set,
             completed_epochs,
