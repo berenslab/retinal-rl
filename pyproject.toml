@@ -2,6 +2,7 @@
 include = ["retinal_rl"]
 typeCheckingMode = "strict"
 reportMissingTypeStubs = "warning"
+reportUnknownVariableType = "warning"
 reportUnknownMemberType = "warning"
 reportUnknownArgumentType = "warning"
 

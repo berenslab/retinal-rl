@@ -1,7 +1,7 @@
 """Module for managing optimization of complex neural network models with multiple circuits."""
 
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 from hydra.utils import instantiate
@@ -167,7 +167,10 @@ class BrainOptimizer:
         """
         losses: Dict[str, float] = {}
         obj_dict: Dict[str, float] = {}
+
+        self._set_requires_grad(False)
         retain_graph = True
+
         for i, name in enumerate(self.optimizers.keys()):
             # Skip training if the optimizer is not at a training epoch
             if not self._is_training_epoch(name, context["epoch"]):
@@ -176,6 +179,7 @@ class BrainOptimizer:
                 obj_dict.update(sub_obj_dict)
                 continue
 
+            self._set_requires_grad(True, self.optimizers[name])
             if i == len(self.optimizers) - 1:
                 retain_graph = False
             self.optimizers[name].zero_grad()
@@ -183,6 +187,7 @@ class BrainOptimizer:
             loss.backward(retain_graph=retain_graph)
             losses[f"{name}_optimizer_loss"] = loss.item()
             obj_dict.update(sub_obj_dict)
+            self._set_requires_grad(False, self.optimizers[name])
 
         for name, optimizer in self.optimizers.items():
             optimizer.step()
@@ -213,3 +218,16 @@ class BrainOptimizer:
         # Reinitialize optimizers and objectives
         for name, state_dict in state_dict.items():
             self.optimizers[name].load_state_dict(state_dict)
+
+    def _set_requires_grad(
+        self, requires_grad: bool, optimizer: Optional[Optimizer] = None
+    ):
+        if optimizer is None:
+            for opt in self.optimizers.values():
+                for param_group in opt.param_groups:
+                    for param in param_group["params"]:
+                        param.requires_grad = requires_grad
+        else:
+            for param_group in optimizer.param_groups:
+                for param in param_group["params"]:
+                    param.requires_grad = requires_grad

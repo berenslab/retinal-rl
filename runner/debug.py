@@ -18,7 +18,10 @@ logger = logging.getLogger(__name__)
 
 def get_optimizer_params(optimizer: Optimizer) -> Set[torch.Tensor]:
     """Get the parameters of an optimizer."""
-    return set(optimizer.param_groups[0]["params"])
+    params: Set[torch.Tensor] = set()
+    for param_group in optimizer.param_groups:
+        params.update(set(param_group["params"]))
+    return params
 
 
 def check_parameter_overlap(brain_optimizer: BrainOptimizer) -> None:
@@ -73,7 +76,7 @@ def compare_gradient_computation(
     dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
 
     for batch_idx, batch in enumerate(dataloader):
-        context = get_context(device, brain, batch)
+        context = get_context(device, brain, 0, batch)
 
         efficient_grads = compute_efficient_gradients(optimizer, context)
         ground_truth_grads = compute_ground_truth_gradients(
