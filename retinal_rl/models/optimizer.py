@@ -168,7 +168,7 @@ class BrainOptimizer:
         losses: Dict[str, float] = {}
         obj_dict: Dict[str, float] = {}
 
-        self._set_requires_grad(False)
+        # self._set_requires_grad(False)
         retain_graph = True
 
         for i, name in enumerate(self.optimizers.keys()):
@@ -179,7 +179,7 @@ class BrainOptimizer:
                 obj_dict.update(sub_obj_dict)
                 continue
 
-            self._set_requires_grad(True, self.optimizers[name])
+            # self._set_requires_grad(True, self.optimizers[name])
             if i == len(self.optimizers) - 1:
                 retain_graph = False
             self.optimizers[name].zero_grad()
@@ -187,10 +187,8 @@ class BrainOptimizer:
             loss.backward(retain_graph=retain_graph)
             losses[f"{name}_optimizer_loss"] = loss.item()
             obj_dict.update(sub_obj_dict)
-            self._set_requires_grad(False, self.optimizers[name])
-
-        for name, optimizer in self.optimizers.items():
-            optimizer.step()
+            # self._set_requires_grad(False, self.optimizers[name])
+            self.optimizers[name].step()
 
         return losses, obj_dict
 
