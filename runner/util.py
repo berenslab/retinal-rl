@@ -1,3 +1,5 @@
+"""Utility functions for the runner module."""
+
 ### Imports ###
 
 import logging
@@ -9,6 +11,7 @@ import torch
 import torch.nn as nn
 from omegaconf import DictConfig
 
+from retinal_rl.models.objective import ContextT
 from retinal_rl.models.optimizer import BrainOptimizer
 
 # Initialize the logger
@@ -20,10 +23,11 @@ def save_checkpoint(
     checkpoint_dir: str,
     max_checkpoints: int,
     brain: nn.Module,
-    optimizer: BrainOptimizer,
+    optimizer: BrainOptimizer[ContextT],
     histories: dict[str, List[float]],
     completed_epochs: int,
 ) -> None:
+    """Save a checkpoint of the model and optimizer state."""
     current_file = os.path.join(data_dir, "current_checkpoint.pt")
     checkpoint_file = os.path.join(checkpoint_dir, f"epoch_{completed_epochs}.pt")
     checkpoint_dict: Dict[str, Any] = {
@@ -50,6 +54,7 @@ def save_checkpoint(
 
 
 def delete_results(cfg: DictConfig) -> None:
+    """Delete the results directory."""
     run_dir: str = cfg.system.run_dir
 
     if not os.path.exists(run_dir):

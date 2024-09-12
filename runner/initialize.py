@@ -11,6 +11,7 @@ from omegaconf import DictConfig
 
 import wandb
 from retinal_rl.models.brain import Brain
+from retinal_rl.models.objective import ContextT
 from retinal_rl.models.optimizer import BrainOptimizer
 from runner.util import save_checkpoint
 
@@ -21,8 +22,8 @@ logger = logging.getLogger(__name__)
 def initialize(
     cfg: DictConfig,
     brain: Brain,
-    optimizer: BrainOptimizer,
-) -> Tuple[Brain, BrainOptimizer, Dict[str, List[float]], int]:
+    optimizer: BrainOptimizer[ContextT],
+) -> Tuple[Brain, BrainOptimizer[ContextT], Dict[str, List[float]], int]:
     """Initialize the Brain, Optimizers, and training histories. Checks whether the experiment directory exists and loads the model and history if it does. Otherwise, initializes a new model and history."""
     wandb_sweep_id = os.getenv("WANDB_SWEEP_ID", "local")
     logger.info(f"Run Name: {cfg.run_name}")
@@ -38,8 +39,8 @@ def initialize(
 def _initialize_create(
     cfg: DictConfig,
     brain: Brain,
-    optimizer: BrainOptimizer,
-) -> Tuple[Brain, BrainOptimizer, Dict[str, List[float]], int]:
+    optimizer: BrainOptimizer[ContextT],
+) -> Tuple[Brain, BrainOptimizer[ContextT], Dict[str, List[float]], int]:
     epoch = 0
     logger.info(
         f"Experiment path {cfg.system.run_dir} does not exist. Initializing {cfg.run_name}."
@@ -89,8 +90,8 @@ def _initialize_create(
 def _initialize_reload(
     cfg: DictConfig,
     brain: Brain,
-    optimizer: BrainOptimizer,
-) -> Tuple[Brain, BrainOptimizer, Dict[str, List[float]], int]:
+    optimizer: BrainOptimizer[ContextT],
+) -> Tuple[Brain, BrainOptimizer[ContextT], Dict[str, List[float]], int]:
     logger.info(
         f"Experiment dir {cfg.system.run_dir} exists. Loading existing model and history."
     )

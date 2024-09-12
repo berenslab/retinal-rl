@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 
 import wandb
 from retinal_rl.classification.dataset import Imageset
+from retinal_rl.classification.objective import ClassificationContext
 from retinal_rl.classification.training import process_dataset, run_epoch
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.optimizer import BrainOptimizer
@@ -22,7 +23,7 @@ def train(
     cfg: DictConfig,
     device: torch.device,
     brain: Brain,
-    optimizer: BrainOptimizer,
+    optimizer: BrainOptimizer[ClassificationContext],
     train_set: Imageset,
     test_set: Imageset,
     initial_epoch: int,

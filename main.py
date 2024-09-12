@@ -4,6 +4,7 @@ import hydra
 import torch
 from omegaconf import DictConfig
 
+from retinal_rl.classification.objective import ClassificationContext
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.optimizer import BrainOptimizer
 from runner.analyze import analyze
@@ -29,7 +30,7 @@ def program(cfg: DictConfig):
     device = torch.device(cfg.system.device)
 
     brain = Brain(**cfg.brain).to(device)
-    brain_optimizer = BrainOptimizer(brain, dict(cfg.optimizer))
+    brain_optimizer = BrainOptimizer[ClassificationContext](brain, dict(cfg.optimizer))
 
     if cfg.command == "scan":
         brain.scan_circuits()
