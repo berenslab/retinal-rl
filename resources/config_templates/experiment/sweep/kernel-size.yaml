@@ -1,0 +1,9 @@
+# wandb sweep
+description: Evaluating the effect of kernel size.
+program: main.py
+method: grid
+project: retinal-rl
+
+parameters:
+  experiment.kernel_size:
+    values: [6,8,10]

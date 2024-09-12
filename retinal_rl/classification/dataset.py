@@ -20,15 +20,17 @@ class ImageSubset(Subset[Tuple[Tensor, int]], Imageset):
 class ScaleShiftTransform:
     def __init__(
         self,
-        visual_field: List[int],
+        vision_width: int,
+        vision_height: int,
         image_rescale_range: List[float],
     ) -> None:
-        self.target_size = visual_field
+        self.vision_width = vision_width
+        self.vision_height = vision_height
         self.image_rescale_range = image_rescale_range
 
     def __call__(self, img: Image.Image) -> Image.Image:
         # Scale the image
-        visual_field = tuple(self.target_size)
+        visual_field = (self.vision_width, self.vision_height)
         scale_range = tuple(self.image_rescale_range)
 
         scale_factor = np.random.uniform(scale_range[0], scale_range[1])

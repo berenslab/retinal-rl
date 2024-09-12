@@ -1,16 +1,16 @@
-# @package _global_
 defaults:
   - _self_
-  - override /sweep: decoders
-  - override /dataset: cifar10
-  - override /brain: cnn-decoder
-  - override /optimizer: cnn-decoder
+  - sweep: kernel-size
+  - dataset: cifar10-large
+  - brain: retinal-classifier
+  - optimizer: class-recon
 
 # This must match the experiment file name
-experiment: cifar10-classification
+experiment: cifar10-class-recon
 
 # Parameters to sweep in this experiment (this will mostly be overridden)
 latent_dimension: 128
+hidden_units: 64
 activation: "elu"
 kernel_size: [8,6,4,2]
 stride: 2

@@ -1,0 +1,54 @@
+name: cnn-decoder
+sensors:
+  vision:
+    - ${experiment.dataset.num_colours}
+    - ${experiment.dataset.vision_height}
+    - ${experiment.dataset.vision_width}
+connections:
+  - ["vision", "retina"]
+  - ["retina","thalamus"]
+  - ["thalamus","v1"]
+  - ["v1", "pfc"]
+  - ["pfc", "classifier"]
+  - ["lgn", "decoder"]
+circuits:
+  retina:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 2
+    num_channels: [16,32]
+    kernel_size: ${experiment.kernel_size}
+    stride: 2
+    act_name: ${experiment.activation}
+    layer_names: ["bipolar", "retinal_ganglion"]
+  thalamus:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 1
+    num_channels: 64
+    kernel_size: ${experiment.kernel_size}
+    stride: 2
+    act_name: ${experiment.activation}
+    layer_names: ["lgn"]
+  visual_cortex:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 1
+    num_channels: 64
+    kernel_size: ${experiment.kernel_size}
+    stride: 2 
+    act_name: ${experiment.activation}
+    layer_names: ["v1"]
+  pfc:
+    _target_: retinal_rl.models.circuits.fully_connected.FullyConnectedEncoder
+    output_shape:
+      - ${experiment.latent_size}
+    hidden_units: [${experiment.hidden_units]
+    act_name: ${experiment.activation}
+  decoder:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
+    num_layers: 3
+    num_channels: [32,16,3]
+    kernel_size: ${experiment.kernel_size}
+    stride:  2
+    act_name: ${experiment.activation}
+  classifier:
+    _target_: retinal_rl.models.circuits.task_head.linear_classifier.LinearClassifier
+    num_classes: ${experiment.dataset.num_classes}

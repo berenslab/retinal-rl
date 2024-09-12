@@ -1,0 +1,44 @@
+recon:
+  optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0003
+  min_epoch: 0
+  max_epoch: 100
+  objectives:
+    - _target_: retinal_rl.models.objective.ReconstructionObjective
+      weight: 1
+    - _target_: retinal_rl.models.objective.L1Sparsity
+      weight: 0.001
+      targets:
+        - retina
+    - _target_: retinal_rl.models.objective.L2WeightRegularizer
+      weight: 0.001
+  target_circuits:
+    - retina
+mixed:
+  optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0003
+  min_epoch: 0
+  max_epoch: 100
+  objectives:
+    - _target_: retinal_rl.models.objective.ReconstructionObjective
+      weight: 0.99
+    - _target_: retinal_rl.classification.objective.ClassificationObjective
+      weight: 0.01
+  target_circuits:
+    - lgn
+class:
+  optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.0003
+  min_epoch: 0
+  objectives:
+    - _target_: retinal_rl.classification.objective.ClassificationObjective
+      weight: 1
+    - _target_: retinal_rl.classification.objective.PercentCorrect
+      weight: 0
+  target_circuits:
+    - v1
+    - pfc
+    - classifier

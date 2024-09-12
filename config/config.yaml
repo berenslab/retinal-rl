@@ -1,20 +1,10 @@
 defaults:
   - _self_
-  - dataset: ??
-  - sweep: ??
-  - brain: ??
-  - optimizer: ??
+  - experiment: cifar10-classification-reconstruction
   - override hydra/job_logging: custom
 
 command: scan
 run_name: 'run_${now:%Y-%m-%d-%H-%M-%S}'
-
-training:
-  recon_weight: 0.9
-  learning_rate: 0.0003
-  num_epochs: 100
-  checkpoint_step: 5
-
 
 hydra:
   output_subdir: config
@@ -42,15 +32,15 @@ system:
   checkpoint_plot_dir: ${system.plot_dir}/checkpoints
   wandb_preempt: False
 
-logging:
-  use_wandb: True
+use_wandb: True
 
 sweep:
-  command:
-    - \${env}
-    - python
-    - \${program}
-    - -m
-    - command=train
-    - +experiment=${experiment}
-    - \${args_no_hyphens}
+  experiment:
+    command:
+      - \${env}
+      - python
+      - \${program}
+      - -m
+      - command=train
+      - +experiment=${experiment}
+      - \${args_no_hyphens}

@@ -20,7 +20,6 @@ class Brain(nn.Module):
 
     def __init__(
         self,
-        name: str,
         circuits: Dict[str, DictConfig],
         sensors: Dict[str, List[int]],
         connections: List[List[str]],
@@ -29,7 +28,6 @@ class Brain(nn.Module):
 
         Args:
         ----
-        name: The name of the brain.
         circuits: A dictionary of circuit configurations.
         sensors: A dictionary of sensor names and their dimensions.
         connections: A list of connections between sensors and circuits.
@@ -38,7 +36,6 @@ class Brain(nn.Module):
         super().__init__()
 
         # Initialize attributes
-        self.name = name
         self.circuits: Dict[str, NeuralCircuit] = {}
         self._module_dict: nn.ModuleDict = nn.ModuleDict()
         self.connectome: nx.DiGraph[str] = nx.DiGraph()
