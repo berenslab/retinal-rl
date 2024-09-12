@@ -118,9 +118,11 @@ def make_retinal_env_from_spec(spec, _env_name, cfg, env_config, render_mode: Op
     Makes a Retinal environment from a DoomSpec instance.
     """
 
-    res = "{cfg.res_w}x{cfg.res_h}".format(cfg=cfg)
+    # res = "{cfg.res_w}x{cfg.res_h}".format(cfg=cfg)
+    # There are two kinds of resolution: The one for which doom creates the img output, here 160x120 is the smallest possible
+    # The other is the resize resolution which will be taken from the cfg.res_w/h
 
-    return make_doom_env_impl(spec, cfg=cfg, env_config=env_config, render_mode=render_mode, custom_resolution=res, **kwargs)
+    return make_doom_env_impl(spec, cfg=cfg, env_config=env_config, render_mode=render_mode, **kwargs)
 
 def register_retinal_env(scene_name: str, cache_dir: str, input_satiety: bool):
     cfg_path = os.path.join(cache_dir, "scenarios", scene_name + ".cfg") # TODO: Check if this stays
