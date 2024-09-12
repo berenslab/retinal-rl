@@ -1,4 +1,3 @@
-name: cnn-decoder
 sensors:
   vision:
     - ${experiment.dataset.num_colours}
@@ -40,7 +39,8 @@ circuits:
     _target_: retinal_rl.models.circuits.fully_connected.FullyConnectedEncoder
     output_shape:
       - ${experiment.latent_size}
-    hidden_units: [${experiment.hidden_units]
+    hidden_units: 
+      - ${experiment.hidden_units}
     act_name: ${experiment.activation}
   decoder:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
