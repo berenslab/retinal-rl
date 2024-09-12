@@ -11,6 +11,8 @@ from torch.utils.data import Dataset
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.circuits.convolutional import ConvolutionalEncoder
 from retinal_rl.models.util import encoder_out_size, rf_size_and_start
+from tqdm import tqdm
+import math
 
 
 def gradient_receptive_fields(
@@ -72,6 +74,112 @@ def gradient_receptive_fields(
 
     return stas
 
+def _activation_triggered_average(model: nn.Module, n_batch: int = 2048, rf_size=None, device=None):
+    model.eval()
+    if rf_size is None:
+        _out_channels, input_size = get_input_output_shape(model)
+    else:
+        input_size = rf_size
+    input_tensor = torch.randn((n_batch, *input_size), requires_grad=False, device=device)
+    output = model(input_tensor)
+    output = sum_collapse_output(output)
+    input_tensor = input_tensor[:, None, :, :, :].expand(
+        -1, output.shape[1], -1, -1, -1
+    )
+
+    weights = output[:, :, None, None, None].expand(-1, -1, *input_size)
+    weight_sums = output.abs().sum(0)
+    weight_sums[weight_sums == 0] = 1
+    weighted = (weights.abs() * input_tensor).sum(0) / weight_sums[:, None, None, None]
+    return weighted.cpu().detach() / n_batch
+
+def activation_triggered_average(
+    model: nn.Module, n_batch: int = 2048, n_iter: int = 1, rf_size=None, device=None
+):
+    weighted = _activation_triggered_average(model, n_batch, device=device)
+    for _ in tqdm(range(n_iter - 1), total=n_iter, initial=1):
+        weighted += _activation_triggered_average(model, n_batch, rf_size, device=device)
+    return weighted.cpu().detach() / n_iter
+
+def sum_collapse_output(out_tensor):
+    if len(out_tensor.shape) > 2:
+        sum_dims = [2+i for i in range(len(out_tensor.shape)-2)]
+        out_tensor = torch.sum(out_tensor, dim=sum_dims)
+    return out_tensor
+
+
+def get_input_output_shape(model: nn.Sequential):
+    """
+    Calculates the 'minimal' input and output of a sequential model.
+    If last layer is a convolutional layer, output is assumed to be the number of channels (so 1x1 in space).
+    Takes into account if last layer is a pooling layer.
+    For linear layer obviously the number of out_features.
+    TODO: assert kernel sizes etc are quadratic / implement adaptation to non quadratic kernels
+    """
+    _first = 0
+    down_stream_linear = False
+    num_outputs = None
+    for i, layer in enumerate(reversed(model)):
+        _first += 1
+        if isinstance(layer, nn.Linear):
+            num_outputs = layer.out_features
+            in_channels = 1
+            in_size = layer.in_features
+            down_stream_linear = True
+            break
+        elif isinstance(layer, nn.Conv2d):
+            num_outputs = layer.out_channels
+            in_channels = layer.in_channels
+            in_size = layer.in_channels * ((layer.kernel_size[0]-1)*layer.dilation[0]+1) ** 2
+            break
+        elif isinstance(layer, nn.MaxPool2d) or isinstance(layer, nn.AvgPool2d):
+            for prev_layer in reversed(model[:-i-1]):
+                if isinstance(prev_layer, nn.Conv2d):
+                    in_channels = prev_layer.out_channels
+                    break
+                elif isinstance(prev_layer, nn.Linear):
+                    in_channels=1
+                else:
+                    raise Exception("layer before pooling needs to be conv or linear")
+            _kernel_size = layer.kernel_size if isinstance(layer.kernel_size, int) else layer.kernel_size[0]
+            in_size = _kernel_size**2 * in_channels
+            break
+
+
+    for i, layer in enumerate(reversed(model[:-_first])):
+        if isinstance(layer, nn.Linear):
+            if num_outputs is None:
+                num_outputs = layer.out_features
+            in_channels = 1
+            in_size = layer.in_features
+            down_stream_linear = True
+        elif isinstance(layer, nn.Conv2d):
+            if num_outputs is None:
+                num_outputs = layer.out_channels
+            in_size = math.sqrt(in_size / in_channels)
+            in_channels = layer.in_channels
+            in_size = (
+                (in_size - 1) * layer.stride[0]
+                - 2 * layer.padding[0] * down_stream_linear
+                + ((layer.kernel_size[0]-1)*layer.dilation[0]+1) 
+            )
+            in_size = in_size**2 * in_channels
+        elif isinstance(layer, nn.MaxPool2d) or isinstance(layer, nn.AvgPool2d):
+            for prev_layer in reversed(model[:-i-_first-1]):
+                if isinstance(prev_layer, nn.Conv2d):
+                    in_channels = prev_layer.out_channels
+                    break
+            in_size = math.sqrt(in_size / in_channels)
+            in_size = (
+                (in_size - 1) * layer.stride[0]
+                - 2 * layer.padding[0] * down_stream_linear
+                + layer.kernel_size
+            )
+            in_size = in_size**2 * in_channels
+
+    in_size = math.floor(math.sqrt(in_size / in_channels))
+    input_size = (in_channels, in_size, in_size)
+    return num_outputs, input_size
 
 def get_reconstructions(
     device: torch.device,
