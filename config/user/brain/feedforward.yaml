@@ -1,4 +1,4 @@
-name: pure-cnn
+name: feedforward
 sensors:
   vision:
     - ${dataset.num_colours}
