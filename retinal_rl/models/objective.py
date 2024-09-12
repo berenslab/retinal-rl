@@ -111,16 +111,16 @@ class L2WeightRegularizer(Objective[ContextT]):
 class L1Sparsity(Objective[ContextT]):
     """Objective for computing the L1 sparsity of activations."""
 
-    def __init__(self, weight: float, targets: List[str]):
+    def __init__(self, weight: float, target_responses: List[str]):
         """Initialize the L1 sparsity objective."""
-        self.targets = targets
+        self.target_responses = target_responses
         super().__init__(weight)
 
     def compute_value(self, context: ContextT) -> Tensor:
         """Compute the L1 sparsity of activations."""
         activations: List[Tensor] = []
         responses = context.responses
-        for target in self.targets:
+        for target in self.target_responses:
             if target not in responses:
                 raise ValueError(f"Target {target} not found in responses")
             activations.append(responses[target])

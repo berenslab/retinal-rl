@@ -6,10 +6,10 @@ sensors:
 connections:
   - ["vision", "retina"]
   - ["retina","thalamus"]
-  - ["thalamus","v1"]
-  - ["v1", "pfc"]
+  - ["thalamus","visual_cortex"]
+  - ["visual_cortex", "pfc"]
   - ["pfc", "classifier"]
-  - ["lgn", "decoder"]
+  - ["thalamus", "decoder"]
 circuits:
   retina:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder

@@ -6,11 +6,11 @@ defaults:
   - optimizer: class-recon
 
 # This must match the experiment file name
-experiment: cifar10-class-recon
+name: cifar10-class-recon
 
 # Parameters to sweep in this experiment (this will mostly be overridden)
-latent_dimension: 128
+latent_size: 128
 hidden_units: 64
 activation: "elu"
-kernel_size: [8,6,4,2]
+kernel_size: 8
 stride: 2

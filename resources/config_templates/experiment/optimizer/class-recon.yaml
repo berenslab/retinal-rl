@@ -9,7 +9,7 @@ recon:
       weight: 1
     - _target_: retinal_rl.models.objective.L1Sparsity
       weight: 0.001
-      targets:
+      target_responses:
         - retina
     - _target_: retinal_rl.models.objective.L2WeightRegularizer
       weight: 0.001
@@ -27,7 +27,7 @@ mixed:
     - _target_: retinal_rl.classification.objective.ClassificationObjective
       weight: 0.01
   target_circuits:
-    - lgn
+    - thalamus
 class:
   optimizer:
     _target_: torch.optim.Adam
@@ -39,6 +39,6 @@ class:
     - _target_: retinal_rl.classification.objective.PercentCorrect
       weight: 0
   target_circuits:
-    - v1
+    - visual_cortex
     - pfc
     - classifier

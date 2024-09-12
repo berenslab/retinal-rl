@@ -31,8 +31,10 @@ def _program(cfg: DictConfig):
 
     device = torch.device(cfg.system.device)
 
-    brain = Brain(**cfg.brain).to(device)
-    brain_optimizer = BrainOptimizer[ClassificationContext](brain, dict(cfg.optimizer))
+    brain = Brain(**cfg.experiment.brain).to(device)
+    brain_optimizer = BrainOptimizer[ClassificationContext](
+        brain, dict(cfg.experiment.optimizer)
+    )
 
     if cfg.command == "scan":
         brain.scan_circuits()

@@ -8,7 +8,7 @@ run_name: 'run_${now:%Y-%m-%d-%H-%M-%S}'
 hydra:
   output_subdir: config
   run:
-    dir: experiments/${experiment}/single-run/${run_name}
+    dir: experiments/${experiment.name}/single-run/${run_name}
   job:
     chdir: True
     config:
@@ -16,10 +16,8 @@ hydra:
         exclude_keys:
           - experiment
           - command
-  searchpath:
-    - file://config/user
   sweep:
-    dir: experiments/${experiment}/sweep/${oc.env:WANDB_SWEEP_ID,local}
+    dir: experiments/${experiment.name}/sweep/${oc.env:WANDB_SWEEP_ID,local}
     subdir: ${run_name}
 system:
   device: cuda
