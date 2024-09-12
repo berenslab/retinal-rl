@@ -6,12 +6,16 @@ Brain and BrainOptimizer classes to perform model training and evaluation.
 """
 
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
 import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 
+from retinal_rl.classification.objective import (
+    ClassificationContext,
+    get_classification_context,
+)
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.optimizer import BrainOptimizer
 
@@ -21,7 +25,7 @@ logger = logging.getLogger(__name__)
 def run_epoch(
     device: torch.device,
     brain: Brain,
-    brain_optimizer: BrainOptimizer,
+    brain_optimizer: BrainOptimizer[ClassificationContext],
     history: Dict[str, List[float]],
     epoch: int,
     trainloader: DataLoader[Tuple[Tensor, int]],
@@ -69,7 +73,7 @@ def run_epoch(
 def process_dataset(
     device: torch.device,
     brain: Brain,
-    brain_optimizer: BrainOptimizer,
+    brain_optimizer: BrainOptimizer[ClassificationContext],
     epoch: int,
     dataloader: DataLoader[Tuple[Tensor, int]],
     is_training: bool,
@@ -97,7 +101,7 @@ def process_dataset(
     steps = 0
 
     for batch in dataloader:
-        context = get_context(device, brain, epoch, batch)
+        context = get_classification_context(device, brain, epoch, batch)
 
         if is_training:
             brain.train()
@@ -116,42 +120,3 @@ def process_dataset(
 
     # Calculate average losses
     return {key: value / steps for key, value in total_losses.items()}
-
-
-def get_context(
-    device: torch.device,
-    brain: Brain,
-    epoch: int,
-    batch: Tuple[torch.Tensor, torch.Tensor],
-) -> Dict[str, Any]:
-    """Calculate the loss dictionary for a single batch.
-
-    This function processes a single batch of data through the Brain model and prepares
-    a context dictionary for the optimizer to calculate losses.
-
-    Args:
-    ----
-        device (torch.device): The device to run the computations on.
-        brain (Brain): The Brain model to process the data.
-        epoch (int): The current epoch number.
-        batch (Tuple[torch.Tensor, torch.Tensor]): A tuple containing input data and labels.
-
-    Returns:
-    -------
-        Dict[str, torch.Tensor]: A context dictionary containing all necessary information
-                                 for loss calculation and optimization.
-
-    """
-    inputs, classes = batch
-    inputs, classes = inputs.to(device), classes.to(device)
-
-    stimuli = {"vision": inputs}
-    responses = brain(stimuli)
-
-    return {
-        "inputs": inputs,
-        "classes": classes,
-        "responses": responses,
-        "parameters": brain.parameters(),
-        "epoch": epoch,
-    }

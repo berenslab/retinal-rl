@@ -1,7 +1,7 @@
-"""Objectives for training models."""
+"""Objectives for training models, and the context required to evaluate them."""
 
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Tuple
+from abc import abstractmethod
+from typing import Dict, Generic, List, Tuple, TypeVar
 
 import torch
 import torch.nn as nn
@@ -9,20 +9,47 @@ from torch import Tensor
 
 from retinal_rl.util import camel_to_snake
 
+ContextT = TypeVar("ContextT", bound="BaseContext")
 
-class Objective(ABC):
+
+class BaseContext:
+    """Base class for all context objects used in the brain model.
+
+    This class provides the common attributes shared across all context types.
+
+    Attributes
+    ----------
+        responses (Dict[str, Tensor]): The outputs from various parts of the brain model.
+        parameters (Any): The current parameters of the brain model.
+        epoch (int): The current training epoch.
+
+    """
+
+    def __init__(
+        self,
+        responses: Dict[str, Tensor],
+        parameters: List[nn.Parameter],
+        epoch: int,
+    ):
+        """Initialize the context object with responses, parameters, and the current epoch."""
+        self.responses = responses
+        self.parameters = parameters
+        self.epoch = epoch
+
+
+class Objective(Generic[ContextT]):
     """Base class for objectives that can be used to train a model."""
 
     def __init__(self, weight: float = 1.0):
         """Initialize the objective with a weight."""
         self.weight = weight
 
-    def __call__(self, context: Dict[str, Any]) -> Tuple[Tensor, Tensor]:
+    def __call__(self, context: ContextT) -> Tuple[Tensor, Tensor]:
         """Compute the weighted loss for this objective.
 
         Args:
         ----
-            context (Dict[str, Any]): Context information for computing objectives.
+            context (ContextT): Context information for computing objectives.
 
         Returns:
         -------
@@ -33,7 +60,7 @@ class Objective(ABC):
         return (self.weight * value, value)
 
     @abstractmethod
-    def compute_value(self, context: Dict[str, Any]) -> Tensor:
+    def compute_value(self, context: ContextT) -> Tensor:
         """Compute the value for this objective. The context dictionary contains the necessary information to compute the objective."""
         pass
 
@@ -43,7 +70,7 @@ class Objective(ABC):
         return camel_to_snake(self.__class__.__name__)
 
 
-class ReconstructionObjective(Objective):
+class ReconstructionObjective(Objective[ContextT]):
     """Objective for computing the reconstruction loss between inputs and reconstructions."""
 
     def __init__(self, weight: float = 1.0):
@@ -51,10 +78,10 @@ class ReconstructionObjective(Objective):
         super().__init__(weight)
         self.loss_fn = nn.MSELoss(reduction="mean")
 
-    def compute_value(self, context: Dict[str, Any]) -> Tensor:
+    def compute_value(self, context: ContextT) -> Tensor:
         """Compute the mean squared error between inputs and reconstructions."""
-        inputs = context["responses"]["vision"]
-        reconstructions = context["responses"]["decoder"]
+        inputs = context.responses["vision"]
+        reconstructions = context.responses["decoder"]
 
         if inputs.shape != reconstructions.shape:
             raise ValueError(
@@ -64,16 +91,16 @@ class ReconstructionObjective(Objective):
         return self.loss_fn(reconstructions, inputs)
 
 
-class L2WeightRegularizer(Objective):
+class L2WeightRegularizer(Objective[ContextT]):
     """Objective for computing the L2 norm of model weights."""
 
     def __init__(self, weight: float = 1.0):
         """Initialize the L2 weight regularizer."""
         super().__init__(weight)
 
-    def compute_value(self, context: Dict[str, Any]) -> torch.Tensor:
+    def compute_value(self, context: ContextT) -> torch.Tensor:
         """Compute the L2 norm of model weights."""
-        parameters = context["parameters"]
+        parameters = context.parameters
         if not parameters:
             raise ValueError("No parameters found in context")
 
@@ -81,7 +108,7 @@ class L2WeightRegularizer(Objective):
         return torch.mean(torch.stack(l2_norms))
 
 
-class L1Sparsity(Objective):
+class L1Sparsity(Objective[ContextT]):
     """Objective for computing the L1 sparsity of activations."""
 
     def __init__(self, weight: float, targets: List[str]):
@@ -89,10 +116,10 @@ class L1Sparsity(Objective):
         self.targets = targets
         super().__init__(weight)
 
-    def compute_value(self, context: Dict[str, Any]) -> Tensor:
+    def compute_value(self, context: ContextT) -> Tensor:
         """Compute the L1 sparsity of activations."""
         activations: List[Tensor] = []
-        responses = context["responses"]
+        responses = context.responses
         for target in self.targets:
             if target not in responses:
                 raise ValueError(f"Target {target} not found in responses")
@@ -100,7 +127,7 @@ class L1Sparsity(Objective):
         return torch.mean(torch.stack([act.abs().mean() for act in activations]))
 
 
-class KLDivergenceSparsity(Objective):
+class KLDivergenceSparsity(Objective[ContextT]):
     """Objective for computing the KL divergence sparsity of activations."""
 
     def __init__(self, weight: float, targets: List[str], target_sparsity: float = 0.05):
@@ -109,9 +136,9 @@ class KLDivergenceSparsity(Objective):
         self.target_sparsity = target_sparsity
         super().__init__(weight)
 
-    def compute_value(self, context: Dict[str, Any]) -> torch.Tensor:
+    def compute_value(self, context: ContextT) -> torch.Tensor:
         """Compute the KL divergence sparsity of activations."""
-        responses = context["responses"]
+        responses = context.responses
         activations: List[Tensor] = []
         for target in self.targets:
             if target not in responses:

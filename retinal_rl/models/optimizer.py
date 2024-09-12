@@ -1,31 +1,35 @@
 """Module for managing optimization of complex neural network models with multiple circuits."""
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Generic, List, OrderedDict, Tuple
 
+import networkx as nx
 import torch
 from hydra.utils import instantiate
 from omegaconf import DictConfig
 from torch.optim import Optimizer
 
 from retinal_rl.models.brain import Brain
-from retinal_rl.models.objective import Objective
+from retinal_rl.models.objective import ContextT, Objective
 
 logger = logging.getLogger(__name__)
 
 
-class BrainOptimizer:
+class BrainOptimizer(Generic[ContextT]):
     """Manages multiple optimizers that target NeuralCircuits in a Brain.
 
     This class handles the initialization, state management, and optimization steps
     for multiple optimizers, each associated with specific circuits and objectives.
 
+
     Attributes
     ----------
         brain (Brain): The neural network model being optimized.
-        optimizers (Dict[str, Optimizer]): Instantiated optimizers.
+        optimizers (OrderedDict[str, Optimizer]): Instantiated optimizers, sorted based on connectome.
         objectives (Dict[str, List[Objective]]): Objectives for each optimizer.
         target_circuits (Dict[str, List[str]]): Target circuits for each optimizer.
+        min_epochs (Dict[str, int]): Minimum epochs for each optimizer.
+        max_epochs (Dict[str, int]): Maximum epochs for each optimizer.
 
     """
 
@@ -43,23 +47,37 @@ class BrainOptimizer:
             ValueError: If a specified circuit is not found in the brain.
 
         """
-        self.optimizers: Dict[str, Optimizer] = {}
-        self.objectives: Dict[str, List[Objective]] = {}
+        self.objectives: Dict[str, List[Objective[ContextT]]] = {}
         self.target_circuits: Dict[str, List[str]] = {}
         self.device = next(brain.parameters()).device
         self.min_epochs: Dict[str, int] = {}
         self.max_epochs: Dict[str, int] = {}
 
-        for name, config in optimizer_configs.items():
+        # Start preparing ordered dict of optimizers
+        topo_sort = list(nx.topological_sort(brain.connectome))
+        circuit_order = {circuit: i for i, circuit in enumerate(topo_sort)}
+
+        def sort_key(item: Tuple[str, DictConfig]) -> int:
+            return max(circuit_order[circuit] for circuit in item[1].target_circuits)
+
+        # Sort optimizer configs based on the maximum position of their target circuits
+        sorted_configs: List[Tuple[str, DictConfig]] = sorted(
+            optimizer_configs.items(),
+            key=sort_key,
+            reverse=True,
+        )
+
+        # Initialize optimizers in the sorted order
+        self.optimizers: OrderedDict[str, Optimizer] = OrderedDict()
+        for name, config in sorted_configs:
             # Collect parameters from target circuits
             params = []
-            self.min_epochs[name] = 0
-            self.max_epochs[name] = -1
-            if "min_epoch" in config:
-                self.min_epochs[name] = config.min_epoch
-            if "max_epoch" in config:
-                self.max_epochs[name] = config.max_epoch
-            self.target_circuits[name] = config.target_circuits
+            self.min_epochs[name] = config.get("min_epoch", 0)
+            self.max_epochs[name] = config.get("max_epoch", -1)
+            if not set(config.target_circuits).issubset(brain.connectome.nodes):
+                raise ValueError(
+                    f"Some target circuits for optimizer {name} are not in the brain's connectome"
+                )
             for circuit_name in config.target_circuits:
                 if circuit_name in brain.circuits:
                     params.extend(brain.circuits[circuit_name].parameters())
@@ -78,16 +96,17 @@ class BrainOptimizer:
             logger.info(
                 f"Initalized optimizer: {name}, with objectives: {[obj.key_name for obj in self.objectives[name]]}, and target circuits: {[circuit_name for circuit_name in config.target_circuits]}"
             )
+        logger.info(f"Optimizer evaluation order: {list(self.optimizers.keys())}")
 
     def compute_loss(
-        self, optimizer_name: str, context: Dict[str, torch.Tensor]
+        self, optimizer_name: str, context: ContextT
     ) -> Tuple[torch.Tensor, Dict[str, float]]:
         """Compute the total loss for a specific optimizer.
 
         Args:
         ----
             optimizer_name (str): Name of the optimizer.
-            context (Dict[str, torch.Tensor]): Context information for computing objectives.
+            context (ContextT]): Context information for computing objectives.
 
         Returns:
         -------
@@ -104,7 +123,7 @@ class BrainOptimizer:
         return total_loss, obj_dict
 
     def compute_losses(
-        self, context: Dict[str, Any]
+        self, context: ContextT
     ) -> Tuple[Dict[str, float], Dict[str, float]]:
         """Compute losses for all optimizers without performing optimization steps.
 
@@ -147,9 +166,7 @@ class BrainOptimizer:
             return True
         return epoch < self.max_epochs[name]
 
-    def optimize(
-        self, context: Dict[str, Any]
-    ) -> Tuple[Dict[str, float], Dict[str, float]]:
+    def optimize(self, context: ContextT) -> Tuple[Dict[str, float], Dict[str, float]]:
         """Perform an optimization step for all optimizers.
 
         This method computes losses, performs backpropagation, and updates parameters
@@ -157,7 +174,7 @@ class BrainOptimizer:
 
         Args:
         ----
-            context (Dict[str, Any]): Context information for computing objectives.
+            context (ContextT): Context information for computing objectives.
 
         Returns:
         -------
@@ -168,18 +185,16 @@ class BrainOptimizer:
         losses: Dict[str, float] = {}
         obj_dict: Dict[str, float] = {}
 
-        # self._set_requires_grad(False)
         retain_graph = True
 
         for i, name in enumerate(self.optimizers.keys()):
             # Skip training if the optimizer is not at a training epoch
-            if not self._is_training_epoch(name, context["epoch"]):
+            if not self._is_training_epoch(name, context.epoch):
                 loss, sub_obj_dict = self.compute_loss(name, context)
                 losses[f"{name}_optimizer_loss"] = loss.item()
                 obj_dict.update(sub_obj_dict)
                 continue
 
-            # self._set_requires_grad(True, self.optimizers[name])
             if i == len(self.optimizers) - 1:
                 retain_graph = False
             self.optimizers[name].zero_grad()
@@ -187,7 +202,6 @@ class BrainOptimizer:
             loss.backward(retain_graph=retain_graph)
             losses[f"{name}_optimizer_loss"] = loss.item()
             obj_dict.update(sub_obj_dict)
-            # self._set_requires_grad(False, self.optimizers[name])
             self.optimizers[name].step()
 
         return losses, obj_dict
@@ -216,16 +230,3 @@ class BrainOptimizer:
         # Reinitialize optimizers and objectives
         for name, state_dict in state_dict.items():
             self.optimizers[name].load_state_dict(state_dict)
-
-    def _set_requires_grad(
-        self, requires_grad: bool, optimizer: Optional[Optimizer] = None
-    ):
-        if optimizer is None:
-            for opt in self.optimizers.values():
-                for param_group in opt.param_groups:
-                    for param in param_group["params"]:
-                        param.requires_grad = requires_grad
-        else:
-            for param_group in optimizer.param_groups:
-                for param in param_group["params"]:
-                    param.requires_grad = requires_grad

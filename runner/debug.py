@@ -1,7 +1,7 @@
 """Debug module for comparing gradient computations in the Brain model training process."""
 
 import logging
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 import torch
 from torch import Tensor
@@ -9,7 +9,10 @@ from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
 from retinal_rl.classification.dataset import Imageset
-from retinal_rl.classification.training import get_context
+from retinal_rl.classification.objective import (
+    ClassificationContext,
+    get_classification_context,
+)
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.optimizer import BrainOptimizer
 
@@ -24,7 +27,9 @@ def get_optimizer_params(optimizer: Optimizer) -> Set[torch.Tensor]:
     return params
 
 
-def check_parameter_overlap(brain_optimizer: BrainOptimizer) -> None:
+def check_parameter_overlap(
+    brain_optimizer: BrainOptimizer[ClassificationContext],
+) -> None:
     """Check for parameter overlap between optimizers."""
     param_sets: Dict[str, Set[torch.Tensor]] = {}
 
@@ -51,7 +56,7 @@ def check_parameter_overlap(brain_optimizer: BrainOptimizer) -> None:
 def compare_gradient_computation(
     device: torch.device,
     brain: Brain,
-    optimizer: BrainOptimizer,
+    optimizer: BrainOptimizer[ClassificationContext],
     dataset: Imageset,
 ) -> Tuple[bool, Dict[str, Optional[float]]]:
     """Compare gradient computations between efficient and ground truth methods.
@@ -60,7 +65,7 @@ def compare_gradient_computation(
     ----
         device (torch.device): The device to run computations on.
         brain (Brain): The Brain model.
-        optimizer (BrainOptimizer): The optimizer for the Brain model.
+        optimizer (BrainOptimizer[ClassificationContext]): The optimizer for the Brain model.
         dataloader (DataLoader): DataLoader for the dataset.
         num_batches (int): Number of batches to process for comparison.
 
@@ -76,7 +81,7 @@ def compare_gradient_computation(
     dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
 
     for batch_idx, batch in enumerate(dataloader):
-        context = get_context(device, brain, 0, batch)
+        context = get_classification_context(device, brain, 0, batch)
 
         efficient_grads = compute_efficient_gradients(optimizer, context)
         ground_truth_grads = compute_ground_truth_gradients(
@@ -96,7 +101,7 @@ def compare_gradient_computation(
 
 
 def compute_efficient_gradients(
-    brain_optimizer: BrainOptimizer, context: Dict[str, Any]
+    brain_optimizer: BrainOptimizer[ClassificationContext], context: ClassificationContext
 ) -> Dict[str, List[Tensor | None]]:
     """Compute gradients using the efficient method."""
     grads: Dict[str, List[Tensor | None]] = {
@@ -119,7 +124,7 @@ def compute_efficient_gradients(
 
 
 def compute_ground_truth_gradients(
-    brain_optimizer: BrainOptimizer,
+    brain_optimizer: BrainOptimizer[ClassificationContext],
     brain: Brain,
     device: torch.device,
     batch: Tuple[Tensor, Tensor],
@@ -133,8 +138,8 @@ def compute_ground_truth_gradients(
         opt.zero_grad()
 
     for name, opt in brain_optimizer.optimizers.items():
-        # Use get_context to ensure a fresh computational graph
-        context = get_context(device, brain, batch)
+        # Use get_classification_context to ensure a fresh computational graph
+        context = get_classification_context(device, brain, 0, batch)
         loss, _ = brain_optimizer.compute_loss(name, context)
         loss.backward()
 
