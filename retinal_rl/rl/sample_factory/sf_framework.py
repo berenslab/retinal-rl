@@ -33,6 +33,7 @@ import os
 from argparse import Namespace
 from omegaconf.omegaconf import OmegaConf
 
+
 class SFFramework(TrainingFramework):
 
     def __init__(self, cfg: DictConfig, data_root: str):
@@ -45,7 +46,7 @@ class SFFramework(TrainingFramework):
         # Register retinal environments and models.
         register_retinal_env(self.sf_cfg.env, self.data_root, self.sf_cfg.input_satiety)
         global_model_factory().register_actor_critic_factory(SampleFactoryBrain)
-        
+
     def train(self):
         # Run simulation
         if not (self.sf_cfg.dry_run):
@@ -59,7 +60,7 @@ class SFFramework(TrainingFramework):
             return status
 
     @staticmethod
-    def load_brain_from_checkpoint(path: str, device=None) -> torch.nn.Module:
+    def load_brain_from_checkpoint(path: str, load_weights = True, device=None) -> torch.nn.Module:
         with open(os.path.join(path, "config.json")) as f:
             config = Namespace(**json.load(f))
         checkpoint_dict, config = get_checkpoint(config)
@@ -69,7 +70,8 @@ class SFFramework(TrainingFramework):
             if "brain" in key:
                 brain_dict[key[6:]] = model_dict[key]
         brain = Brain(**config["brain"])
-        brain.load_state_dict(brain_dict)
+        if load_weights:
+            brain.load_state_dict(brain_dict)
         brain.to(device)
         return brain
 
@@ -116,17 +118,18 @@ class SFFramework(TrainingFramework):
         cfg.cli_args[name] = value
 
     @staticmethod
-    def _get_default_cfg(
-        envname: str = "",
-    ) -> Config:  # TODO: get rid of intermediate parser step?!
+    def _get_default_cfg(envname: str = "") -> Config:
+        # TODO: get rid of intermediate parser step?!
 
         mock_argv = ["--env", envname]
         # SF needs an env name in argv.
         # Also, when loading from a checkpoint arguments in argv will not be overridden by arguments defined in the ckpt cfg.
         parser, cfg = parse_sf_args(mock_argv, evaluation=True)
 
-        add_retinal_env_args(    parser  )  # TODO: Replace with hydra style default to have all in one place & style (sf_config_hydra.yaml?)
-        add_retinal_env_eval_args(parser)   # Actually, discuss that. Would avoid having a unified interface
+        add_retinal_env_args(parser)
+        # TODO: Replace with hydra style default to have all in one place & style (sf_config_hydra.yaml?)
+        add_retinal_env_eval_args(parser)
+        # Actually, discuss that. Would avoid having a unified interface
         retinal_override_defaults(parser)
 
         sf_cfg = parse_full_cfg(parser, mock_argv)

@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 from sample_factory.model.actor_critic import ActorCritic
 from sample_factory.model.encoder import Encoder
 from sample_factory.model.decoder import Decoder
@@ -38,7 +38,7 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         self.critic_linear = nn.Linear(decoder_out_size, 1)
         self.action_parameterization = self.get_action_parameterization(
             decoder_out_size
-        )
+        ) # boils down to a linear layer mapping to num_action_outputs
 
     def set_brain(self, brain: Brain):
         """
@@ -49,11 +49,11 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         enc, core, dec = self.get_encoder_decoder(brain)
         self.brain = brain
         self.encoder_name = enc
-        self.decoder_name = dec
         self.core_mode = core
+        self.decoder_name = dec
 
     @staticmethod
-    def get_encoder_decoder(brain: Brain):
+    def get_encoder_decoder(brain: Brain) -> Tuple[str, CoreMode, str]:
         assert "vision" in brain.sensors.keys()  # needed as input
         # potential TODO: add other input sources if needed?
 
