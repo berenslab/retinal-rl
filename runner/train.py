@@ -122,11 +122,10 @@ def train(
                 epoch,
                 True,
             )
+            logger.info("Analysis complete.")
 
         if cfg.use_wandb:
             _wandb_log_statistics(epoch, epoch_wall_time, history)
-
-        logger.info("Analysis complete.")
 
 
 def _wandb_log_statistics(

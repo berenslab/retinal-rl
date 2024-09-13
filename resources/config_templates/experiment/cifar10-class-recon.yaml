@@ -1,7 +1,9 @@
 # This is the main entry point for users to specify their config parameters, and
 # should be freely copied and edited.
 
-# Defaults for the various subconfigs.
+# Defaults for the various subconfigs. Can be overriden from the commandline
+# with e.g. experiment/brain=new_brain, where new_brain.yaml lives in the brain
+# subdirectory
 defaults:
   - _self_
   - sweep: kernel-size
