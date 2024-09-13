@@ -74,7 +74,7 @@ def gradient_receptive_fields(
 
     return stas
 
-def _activation_triggered_average(model: nn.Module, n_batch: int = 2048, rf_size=None, device=None):
+def _activation_triggered_average(model: nn.Sequential, n_batch: int = 2048, rf_size=None, device=None):
     model.eval()
     if rf_size is None:
         _out_channels, input_size = get_input_output_shape(model)
@@ -94,12 +94,16 @@ def _activation_triggered_average(model: nn.Module, n_batch: int = 2048, rf_size
     return weighted.cpu().detach() / n_batch
 
 def activation_triggered_average(
-    model: nn.Module, n_batch: int = 2048, n_iter: int = 1, rf_size=None, device=None
-):
-    weighted = _activation_triggered_average(model, n_batch, device=device)
-    for _ in tqdm(range(n_iter - 1), total=n_iter, initial=1):
-        weighted += _activation_triggered_average(model, n_batch, rf_size, device=device)
-    return weighted.cpu().detach() / n_iter
+    model: nn.Sequential, n_batch: int = 2048, n_iter: int = 1, rf_size=None, device=None
+) -> Dict[str, NDArray[np.float64]]:
+    stas: Dict[str, NDArray[np.float64]] = {}
+    with torch.no_grad():
+        for index, (layer_name, mdl) in tqdm(enumerate(model.named_children()), total=len(model)):
+            weighted = _activation_triggered_average(model[:index+1], n_batch, device=device)
+            for _ in tqdm(range(n_iter - 1), total=n_iter-1, leave=False):
+                weighted += _activation_triggered_average(model[:index+1], n_batch, rf_size, device=device)
+            stas[layer_name] = weighted.cpu().detach().numpy() / n_iter
+    return stas
 
 def sum_collapse_output(out_tensor):
     if len(out_tensor.shape) > 2:
