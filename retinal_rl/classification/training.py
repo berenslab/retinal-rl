@@ -107,8 +107,9 @@ def process_dataset(
             brain.train()
             losses, obj_dict = brain_optimizer.optimize(context)
         else:
-            brain.eval()
-            losses, obj_dict = brain_optimizer.compute_losses(context)
+            with torch.no_grad():
+                brain.eval()
+                losses, obj_dict = brain_optimizer.compute_losses(context)
 
         # Accumulate losses and objectives
         for key, value in losses.items():

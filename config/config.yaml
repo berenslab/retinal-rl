@@ -23,8 +23,9 @@ system:
   device: cuda
   run_dir: ${hydra:runtime.output_dir}
   data_dir: data
-  checkpoint_dir: ${system.data_dir}/checkpoints
+  checkpoint_step: 5
   max_checkpoints: 5
+  checkpoint_dir: ${system.data_dir}/checkpoints
   plot_dir: ${system.data_dir}/plots
   checkpoint_plot_dir: ${system.plot_dir}/checkpoints
   wandb_preempt: False

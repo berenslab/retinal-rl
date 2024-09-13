@@ -1,6 +1,6 @@
 """Objectives for training models."""
 
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
@@ -25,13 +25,12 @@ class ClassificationContext(BaseContext):
     def __init__(
         self,
         responses: Dict[str, Tensor],
-        parameters: List[nn.Parameter],
         epoch: int,
         inputs: Tensor,
         classes: Tensor,
     ):
         """Initialize the classification context object."""
-        super().__init__(responses, parameters, epoch)
+        super().__init__(responses, epoch)
         self.inputs = inputs
         self.classes = classes
 
@@ -46,7 +45,7 @@ class ClassificationObjective(Objective[ClassificationContext]):
 
     def compute_value(self, context: ClassificationContext) -> Tensor:
         """Compute the cross entropy loss between the predictions and the targets."""
-        predictions = context.responses["classifier"]
+        predictions = context.responses["classifier"].detach().requires_grad_(True)
         classes = context.classes
 
         if predictions.shape[0] != classes.shape[0]:
@@ -66,7 +65,7 @@ class PercentCorrect(Objective[ClassificationContext]):
 
     def compute_value(self, context: ClassificationContext) -> Tensor:
         """Compute the percent correct classification."""
-        predictions = context.responses["classifier"]
+        predictions = context.responses["classifier"].detach().requires_grad_(True)
         classes = context.classes
         if predictions.shape[0] != classes.shape[0]:
             raise ValueError(
@@ -110,7 +109,6 @@ def get_classification_context(
 
     return ClassificationContext(
         responses=responses,
-        parameters=list(brain.parameters()),
         epoch=epoch,
         inputs=inputs,
         classes=classes,

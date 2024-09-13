@@ -20,7 +20,6 @@ class BaseContext:
     Attributes
     ----------
         responses (Dict[str, Tensor]): The outputs from various parts of the brain model.
-        parameters (Any): The current parameters of the brain model.
         epoch (int): The current training epoch.
 
     """
@@ -28,12 +27,10 @@ class BaseContext:
     def __init__(
         self,
         responses: Dict[str, Tensor],
-        parameters: List[nn.Parameter],
         epoch: int,
     ):
-        """Initialize the context object with responses, parameters, and the current epoch."""
+        """Initialize the context object with responses, and the current epoch."""
         self.responses = responses
-        self.parameters = parameters
         self.epoch = epoch
 
 
@@ -80,8 +77,8 @@ class ReconstructionObjective(Objective[ContextT]):
 
     def compute_value(self, context: ContextT) -> Tensor:
         """Compute the mean squared error between inputs and reconstructions."""
-        inputs = context.responses["vision"]
-        reconstructions = context.responses["decoder"]
+        inputs = context.responses["vision"].detach()
+        reconstructions = context.responses["decoder"].detach().requires_grad_(True)
 
         if inputs.shape != reconstructions.shape:
             raise ValueError(
@@ -89,23 +86,6 @@ class ReconstructionObjective(Objective[ContextT]):
             )
 
         return self.loss_fn(reconstructions, inputs)
-
-
-class L2WeightRegularizer(Objective[ContextT]):
-    """Objective for computing the L2 norm of model weights."""
-
-    def __init__(self, weight: float = 1.0):
-        """Initialize the L2 weight regularizer."""
-        super().__init__(weight)
-
-    def compute_value(self, context: ContextT) -> torch.Tensor:
-        """Compute the L2 norm of model weights."""
-        parameters = context.parameters
-        if not parameters:
-            raise ValueError("No parameters found in context")
-
-        l2_norms = [p.pow(2).mean() for p in parameters]
-        return torch.mean(torch.stack(l2_norms))
 
 
 class L1Sparsity(Objective[ContextT]):
@@ -123,7 +103,7 @@ class L1Sparsity(Objective[ContextT]):
         for target in self.target_responses:
             if target not in responses:
                 raise ValueError(f"Target {target} not found in responses")
-            activations.append(responses[target])
+            activations.append(responses[target].detach().requires_grad_(True))
         return torch.mean(torch.stack([act.abs().mean() for act in activations]))
 
 
@@ -143,7 +123,7 @@ class KLDivergenceSparsity(Objective[ContextT]):
         for target in self.targets:
             if target not in responses:
                 raise ValueError(f"Target {target} not found in responses")
-            activations.append(responses[target])
+            activations.append(responses[target].detach().requires_grad_(True))
 
         kl_divs: List[Tensor] = []
         for act in activations:

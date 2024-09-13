@@ -11,8 +11,6 @@ recon:
       weight: 0.001
       target_responses:
         - retina
-    - _target_: retinal_rl.models.objective.L2WeightRegularizer
-      weight: 0.001
   target_circuits:
     - retina
 mixed:
