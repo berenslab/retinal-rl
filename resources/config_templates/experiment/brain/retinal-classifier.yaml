@@ -1,24 +1,35 @@
+# Configuration for a retinal classifier neural network
+
+# Define the input sensor
 sensors:
-  vision:
-    - ${experiment.dataset.num_colours}
-    - ${experiment.dataset.vision_height}
-    - ${experiment.dataset.vision_width}
+  vision: # Vision is a list of 3 elements
+    - ${experiment.dataset.num_colours}  # Number of color channels
+    - ${experiment.dataset.vision_height}  # Height of the input image
+    - ${experiment.dataset.vision_width}  # Width of the input image
+
+# Define how the various NeuralCircuits are connected to each other
 connections:
-  - ["vision", "retina"]
-  - ["retina","thalamus"]
-  - ["thalamus","visual_cortex"]
-  - ["visual_cortex", "pfc"]
-  - ["pfc", "classifier"]
-  - ["thalamus", "decoder"]
+  - ["vision", "retina"]  # Input to retina
+  - ["retina","thalamus"]  # Retina to thalamus
+  - ["thalamus","visual_cortex"]  # Thalamus to visual cortex
+  - ["visual_cortex", "pfc"]  # Visual cortex to prefrontal cortex
+  - ["pfc", "classifier"]  # Prefrontal cortex to classifier
+  - ["thalamus", "decoder"]  # Thalamus to decoder (for reconstruction)
+
+# Define the individual nodes (neural circuits) of the network. Many circuit
+# parameters are interpolated from the experiment config.
 circuits:
+  # Retina: initial processing of visual input
   retina:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 2
-    num_channels: [16,32]
+    num_channels: [16,32]  # Two layers with 16 and 32 channels
     kernel_size: ${experiment.kernel_size}
-    stride: 2
+    stride: ${experiment.stride}
     act_name: ${experiment.activation}
-    layer_names: ["bipolar", "retinal_ganglion"]
+    layer_names: ["bipolar", "retinal_ganglion"]  # Names inspired by retinal cell types
+
+  # Thalamus: relay and processing station
   thalamus:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 1
@@ -26,7 +37,9 @@ circuits:
     kernel_size: ${experiment.kernel_size}
     stride: ${experiment.stride}
     act_name: ${experiment.activation}
-    layer_names: ["lgn"]
+    layer_names: ["lgn"]  # Lateral Geniculate Nucleus
+
+  # Visual Cortex: higher-level visual processing
   visual_cortex:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 1
@@ -34,21 +47,27 @@ circuits:
     kernel_size: ${experiment.kernel_size}
     stride: ${experiment.stride} 
     act_name: ${experiment.activation}
-    layer_names: ["v1"]
+    layer_names: ["v1"]  # Primary Visual Cortex
+
+  # Prefrontal Cortex: high-level cognitive processing
   pfc:
     _target_: retinal_rl.models.circuits.fully_connected.FullyConnectedEncoder
     output_shape:
-      - ${experiment.latent_size}
+      - ${experiment.latent_size}  # Size of the latent representation
     hidden_units: 
-      - ${experiment.hidden_units}
+      - ${experiment.hidden_units}  # Number of hidden units
     act_name: ${experiment.activation}
+
+  # Decoder: for reconstructing the input from the latent representation
   decoder:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
     num_layers: 3
-    num_channels: [32,16,3]
+    num_channels: [32,16,3]  # For a symmetric encoder, this should be the reverse of the num_channels in the CNN layers up to the point of decoding (in this case, the thalamus)
     kernel_size: ${experiment.kernel_size}
     stride: ${experiment.stride}
     act_name: ${experiment.activation}
+
+  # Classifier: for categorizing the input into classes
   classifier:
     _target_: retinal_rl.models.circuits.task_head.linear_classifier.LinearClassifier
-    num_classes: ${experiment.dataset.num_classes}
+    num_classes: ${experiment.dataset.num_classes}  # Number of output classes

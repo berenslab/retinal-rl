@@ -1,44 +1,55 @@
+# Base configuration file for the project. Typically this file won't be
+# modified directly.
+
 defaults:
   - _self_
-  - override hydra/job_logging: custom
+  - override hydra/job_logging: custom  # Override logging config
 
+# We run scan by default
 command: scan
+
+# Default run name format, using current date and time
 run_name: 'run_${now:%Y-%m-%d-%H-%M-%S}'
 
+# Hydra configuration
 hydra:
-  output_subdir: config
+  output_subdir: config  # Subdirectory for Hydra output in the run directory
   run:
-    dir: experiments/${experiment.name}/single-run/${run_name}
+    dir: experiments/${experiment.name}/single-run/${run_name}  # Directory for single runs
   job:
-    chdir: True
+    chdir: True  # Change working directory to the run directory
     config:
       override_dirname:
-        exclude_keys:
+        exclude_keys:  # Keys to exclude from the override dirname. Not currently used.
           - experiment
           - command
   sweep:
-    dir: experiments/${experiment.name}/sweep/${oc.env:WANDB_SWEEP_ID,local}
-    subdir: ${run_name}
-system:
-  device: cuda
-  run_dir: ${hydra:runtime.output_dir}
-  data_dir: data
-  checkpoint_step: 5
-  max_checkpoints: 5
-  checkpoint_dir: ${system.data_dir}/checkpoints
-  plot_dir: ${system.data_dir}/plots
-  checkpoint_plot_dir: ${system.plot_dir}/checkpoints
-  wandb_preempt: False
+    dir: experiments/${experiment.name}/sweep/${oc.env:WANDB_SWEEP_ID,local}  # Directory for sweep runs - defined by wandb sweep id when using wandb.
+    subdir: ${run_name}  # The subdirectory in the sweep dir is the run_name
 
+# System configuration
+system:
+  device: cuda  # We use cuda by default
+  run_dir: ${hydra:runtime.output_dir}  # Access run directory at runtime
+  data_dir: data  # Root directory in run_dir where all run data is saved
+  checkpoint_step: 5  # Save checkpoints every 5 steps
+  max_checkpoints: 5  # Maximum number of checkpoints to keep
+  checkpoint_dir: ${system.data_dir}/checkpoints  # Directory for checkpoints
+  plot_dir: ${system.data_dir}/plots  # Directory for plots
+  checkpoint_plot_dir: ${system.plot_dir}/checkpoints  # Directory for checkpoint plots
+  wandb_preempt: False  # Whether to enable Weights & Biases preemption
+
+# Whether to use Weights & Biases for logging
 use_wandb: True
 
+# Sweep command setup 
 sweep:
   experiment:
     command:
-      - \${env}
-      - python
-      - \${program}
-      - -m
-      - command=train
-      - +experiment=${experiment}
-      - \${args_no_hyphens}
+      - \${env}  # Environment variables
+      - python  # Python interpreter
+      - \${program}  # Program to run
+      - -m  # Run as module
+      - command=train  # Set command to train
+      - +experiment=${experiment}  # Add experiment configuration
+      - \${args_no_hyphens}  # Additional arguments without hyphens

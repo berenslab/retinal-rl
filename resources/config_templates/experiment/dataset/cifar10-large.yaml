@@ -1,7 +1,9 @@
-name: cifar10
-num_classes: 10
-num_colours: 3
-vision_width: 160
-vision_height: 160
-image_rescale_range: [1,5]
-sample_size_multiplier: 5
+# The configuration for the dataset in classification experiments.
+
+name: cifar10 # Name of the dataset
+num_classes: 10 # Number of classes
+num_colours: 3 # Number of colours
+vision_width: 160 # Width of the image
+vision_height: 160 # Height of the image
+image_rescale_range: [1,5] # Range for randomized rescaling of default images. (Base CIFAR10 size is 32x32)
+sample_size_multiplier: 5 # Multiplier on the base sample size (For CIFAR10, Train is 50000, test is 10000)
