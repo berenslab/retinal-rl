@@ -1,3 +1,5 @@
+"""Training loop for the Brain."""
+
 import logging
 import time
 from typing import Dict, List
@@ -123,6 +125,8 @@ def train(
 
         if cfg.use_wandb:
             _wandb_log_statistics(epoch, epoch_wall_time, history)
+
+        logger.info("Analysis complete.")
 
 
 def _wandb_log_statistics(

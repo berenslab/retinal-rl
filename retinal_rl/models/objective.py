@@ -77,8 +77,8 @@ class ReconstructionObjective(Objective[ContextT]):
 
     def compute_value(self, context: ContextT) -> Tensor:
         """Compute the mean squared error between inputs and reconstructions."""
-        inputs = context.responses["vision"].detach()
-        reconstructions = context.responses["decoder"].detach().requires_grad_(True)
+        inputs = context.responses["vision"]
+        reconstructions = context.responses["decoder"]
 
         if inputs.shape != reconstructions.shape:
             raise ValueError(
@@ -103,7 +103,7 @@ class L1Sparsity(Objective[ContextT]):
         for target in self.target_responses:
             if target not in responses:
                 raise ValueError(f"Target {target} not found in responses")
-            activations.append(responses[target].detach().requires_grad_(True))
+            activations.append(responses[target])
         return torch.mean(torch.stack([act.abs().mean() for act in activations]))
 
 
@@ -123,7 +123,7 @@ class KLDivergenceSparsity(Objective[ContextT]):
         for target in self.targets:
             if target not in responses:
                 raise ValueError(f"Target {target} not found in responses")
-            activations.append(responses[target].detach().requires_grad_(True))
+            activations.append(responses[target])
 
         kl_divs: List[Tensor] = []
         for act in activations:

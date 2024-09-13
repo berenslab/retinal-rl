@@ -6,6 +6,7 @@ from typing import Any, Dict, Generic, List, Tuple
 import torch
 from hydra.utils import instantiate
 from omegaconf import DictConfig
+from torch import Tensor
 from torch.optim import Optimizer
 
 from retinal_rl.models.brain import Brain
@@ -52,6 +53,7 @@ class BrainOptimizer(Generic[ContextT]):
         self.min_epochs: Dict[str, int] = {}
         self.max_epochs: Dict[str, int] = {}
         self.optimizers: Dict[str, Optimizer] = {}
+        self.params: Dict[str, List[Tensor]] = {}
 
         # Initialize optimizers in the sorted order
         for name, config in optimizer_configs.items():
@@ -73,6 +75,7 @@ class BrainOptimizer(Generic[ContextT]):
 
             # Initialize optimizer
             self.optimizers[name] = instantiate(config.optimizer, params=params)
+            self.params[name] = params
 
             # Initialize objectives
             self.objectives[name] = [
@@ -172,22 +175,35 @@ class BrainOptimizer(Generic[ContextT]):
 
         retain_graph = True
 
-        for i, name in enumerate(self.optimizers.keys()):
-            # Skip training if the optimizer is not at a training epoch
-            if not self._is_training_epoch(name, context.epoch):
-                loss, sub_obj_dict = self.compute_loss(name, context)
-                losses[f"{name}_optimizer_loss"] = loss.item()
-                obj_dict.update(sub_obj_dict)
-                continue
-
-            if i == len(self.optimizers) - 1:
-                retain_graph = False
-            self.optimizers[name].zero_grad()
+        for i, (name, optimizer) in enumerate(self.optimizers.items()):
+            # Compute losses
             loss, sub_obj_dict = self.compute_loss(name, context)
-            loss.backward(retain_graph=retain_graph)
             losses[f"{name}_optimizer_loss"] = loss.item()
             obj_dict.update(sub_obj_dict)
-            self.optimizers[name].step()
+
+            # Skip training if the optimizer is not at a training epoch
+            if not self._is_training_epoch(name, context.epoch):
+                continue
+
+            # Get parameters for this optimizer
+            params = self.params[name]
+
+            # Set retain_graph to True for all but the last optimizer
+            retain_graph = i < len(self.optimizers) - 1
+
+            # Compute gradients
+            grads = torch.autograd.grad(
+                loss, params, create_graph=False, retain_graph=retain_graph
+            )
+
+            # Manually update parameters
+            with torch.no_grad():
+                for param, grad in zip(params, grads):
+                    param.grad = grad
+
+            # Perform optimization step
+            optimizer.step()
+            optimizer.zero_grad(set_to_none=True)
 
         return losses, obj_dict
 

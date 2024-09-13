@@ -109,7 +109,7 @@ class Brain(nn.Module):
 
         for node in nx.topological_sort(self.connectome):
             if node in self.sensors:
-                responses[node] = stimuli[node].clone()
+                responses[node] = stimuli[node]
             else:
                 input = self._assemble_inputs(node, responses)
                 responses[node] = self.circuits[node](input)

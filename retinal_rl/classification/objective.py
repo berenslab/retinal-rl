@@ -45,7 +45,7 @@ class ClassificationObjective(Objective[ClassificationContext]):
 
     def compute_value(self, context: ClassificationContext) -> Tensor:
         """Compute the cross entropy loss between the predictions and the targets."""
-        predictions = context.responses["classifier"].detach().requires_grad_(True)
+        predictions = context.responses["classifier"]
         classes = context.classes
 
         if predictions.shape[0] != classes.shape[0]:
@@ -65,7 +65,7 @@ class PercentCorrect(Objective[ClassificationContext]):
 
     def compute_value(self, context: ClassificationContext) -> Tensor:
         """Compute the percent correct classification."""
-        predictions = context.responses["classifier"].detach().requires_grad_(True)
+        predictions = context.responses["classifier"]
         classes = context.classes
         if predictions.shape[0] != classes.shape[0]:
             raise ValueError(
