@@ -1,9 +1,8 @@
 """Module for managing optimization of complex neural network models with multiple circuits."""
 
 import logging
-from typing import Any, Dict, Generic, List, OrderedDict, Tuple
+from typing import Any, Dict, Generic, List, Tuple
 
-import networkx as nx
 import torch
 from hydra.utils import instantiate
 from omegaconf import DictConfig
@@ -52,24 +51,10 @@ class BrainOptimizer(Generic[ContextT]):
         self.device = next(brain.parameters()).device
         self.min_epochs: Dict[str, int] = {}
         self.max_epochs: Dict[str, int] = {}
-
-        # Start preparing ordered dict of optimizers
-        topo_sort = list(nx.topological_sort(brain.connectome))
-        circuit_order = {circuit: i for i, circuit in enumerate(topo_sort)}
-
-        def sort_key(item: Tuple[str, DictConfig]) -> int:
-            return max(circuit_order[circuit] for circuit in item[1].target_circuits)
-
-        # Sort optimizer configs based on the maximum position of their target circuits
-        sorted_configs: List[Tuple[str, DictConfig]] = sorted(
-            optimizer_configs.items(),
-            key=sort_key,
-            reverse=True,
-        )
+        self.optimizers: Dict[str, Optimizer] = {}
 
         # Initialize optimizers in the sorted order
-        self.optimizers: OrderedDict[str, Optimizer] = OrderedDict()
-        for name, config in sorted_configs:
+        for name, config in optimizer_configs.items():
             # Collect parameters from target circuits
             params = []
             self.min_epochs[name] = config.get("min_epoch", 0)

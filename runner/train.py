@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 import wandb
 from retinal_rl.classification.dataset import Imageset
 from retinal_rl.classification.objective import ClassificationContext
-from retinal_rl.classification.training import run_epoch
+from retinal_rl.classification.training import process_dataset, run_epoch
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.optimizer import BrainOptimizer
 from runner.analyze import analyze
@@ -29,42 +29,56 @@ def train(
     initial_epoch: int,
     history: Dict[str, List[float]],
 ):
+    """Train the Brain model using the specified optimizer.
+
+    Args:
+    ----
+        cfg (DictConfig): The configuration for the experiment.
+        device (torch.device): The device to run the computations on.
+        brain (Brain): The Brain model to train and evaluate.
+        brain_optimizer (BrainOptimizer): The optimizer for updating the model parameters.
+        train_set (Imageset): The training dataset.
+        test_set (Imageset): The test dataset.
+        initial_epoch (int): The epoch to start training from.
+        history (Dict[str, List[float]]): The training history.
+
+    """
     trainloader = DataLoader(train_set, batch_size=64, shuffle=True)
     testloader = DataLoader(test_set, batch_size=64, shuffle=False)
 
     wall_time = time.time()
     epoch_wall_time = 0
 
-    # if initial_epoch == 0:
-    #     brain.train()
-    #     train_losses = process_dataset(
-    #         device, brain, brain_optimizer, initial_epoch, trainloader, is_training=False
-    #     )
-    #     brain.eval()
-    #     test_losses = process_dataset(
-    #         device, brain, brain_optimizer, initial_epoch, testloader, is_training=False
-    #     )
-    #
-    #     # Initialize the history
-    #     for key in train_losses:
-    #         history[f"train_{key}"] = [train_losses[key]]
-    #     for key in test_losses:
-    #         history[f"test_{key}"] = [test_losses[key]]
-    #
-    #     analyze(
-    #         cfg,
-    #         device,
-    #         brain,
-    #         history,
-    #         train_set,
-    #         test_set,
-    #         initial_epoch,
-    #         True,
-    #     )
-    #
-    #     if cfg.use_wandb:
-    #         _wandb_log_statistics(initial_epoch, epoch_wall_time, history)
-    #
+    if initial_epoch == 0:
+        brain.train()
+        train_losses = process_dataset(
+            device, brain, brain_optimizer, initial_epoch, trainloader, is_training=False
+        )
+        brain.eval()
+        test_losses = process_dataset(
+            device, brain, brain_optimizer, initial_epoch, testloader, is_training=False
+        )
+
+        # Initialize the history
+        for key in train_losses:
+            history[f"train_{key}"] = [train_losses[key]]
+        for key in test_losses:
+            history[f"test_{key}"] = [test_losses[key]]
+
+        analyze(
+            cfg,
+            device,
+            brain,
+            history,
+            train_set,
+            test_set,
+            initial_epoch,
+            True,
+        )
+
+        if cfg.use_wandb:
+            _wandb_log_statistics(initial_epoch, epoch_wall_time, history)
+
     logger.info("Initialization complete.")
 
     for epoch in range(initial_epoch + 1, brain_optimizer.num_epochs() + 1):
