@@ -23,7 +23,7 @@ def train(
     cfg: DictConfig,
     device: torch.device,
     brain: Brain,
-    optimizer: BrainOptimizer[ClassificationContext],
+    brain_optimizer: BrainOptimizer[ClassificationContext],
     train_set: Imageset,
     test_set: Imageset,
     initial_epoch: int,
@@ -35,14 +35,16 @@ def train(
     wall_time = time.time()
     epoch_wall_time = 0
 
+    torch.autograd.set_detect_anomaly(True)
+
     if initial_epoch == 0:
         brain.train()
         train_losses = process_dataset(
-            device, brain, optimizer, initial_epoch, trainloader, is_training=False
+            device, brain, brain_optimizer, initial_epoch, trainloader, is_training=False
         )
         brain.eval()
         test_losses = process_dataset(
-            device, brain, optimizer, initial_epoch, testloader, is_training=False
+            device, brain, brain_optimizer, initial_epoch, testloader, is_training=False
         )
 
         # Initialize the history
@@ -51,27 +53,27 @@ def train(
         for key in test_losses:
             history[f"test_{key}"] = [test_losses[key]]
 
-        analyze(
-            cfg,
-            device,
-            brain,
-            history,
-            train_set,
-            test_set,
-            initial_epoch,
-            True,
-        )
+        # analyze(
+        #     cfg,
+        #     device,
+        #     brain,
+        #     history,
+        #     train_set,
+        #     test_set,
+        #     initial_epoch,
+        #     True,
+        # )
 
-        if cfg.logging.use_wandb:
+        if cfg.use_wandb:
             _wandb_log_statistics(initial_epoch, epoch_wall_time, history)
 
     logger.info("Initialization complete.")
 
-    for epoch in range(initial_epoch + 1, cfg.training.num_epochs + 1):
+    for epoch in range(initial_epoch + 1, brain_optimizer.num_epochs() + 1):
         brain, history = run_epoch(
             device,
             brain,
-            optimizer,
+            brain_optimizer,
             history,
             epoch,
             trainloader,
@@ -91,7 +93,7 @@ def train(
                 cfg.system.checkpoint_dir,
                 cfg.system.max_checkpoints,
                 brain,
-                optimizer,
+                brain_optimizer,
                 history,
                 epoch,
             )
@@ -107,7 +109,7 @@ def train(
                 True,
             )
 
-        if cfg.logging.use_wandb:
+        if cfg.use_wandb:
             _wandb_log_statistics(epoch, epoch_wall_time, history)
 
 

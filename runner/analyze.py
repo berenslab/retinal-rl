@@ -66,7 +66,7 @@ def _process_figure(
     file_name: str,
     epoch: int,
 ) -> None:
-    if cfg.logging.use_wandb:
+    if cfg.use_wandb:
         title = f"{_wandb_title(sub_dir)}/{_wandb_title(file_name)}"
         wandb.log({title: fig}, commit=False)
     else:
@@ -87,7 +87,7 @@ def analyze(
     copy_checkpoint: bool = False,
 ):
     # Plot training histories (this never gets logged to wandb)
-    if not cfg.logging.use_wandb:
+    if not cfg.use_wandb:
         hist_fig = plot_histories(histories)
         _save_figure(cfg, "", "histories", hist_fig)
         plt.close(hist_fig)

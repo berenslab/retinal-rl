@@ -53,7 +53,7 @@ def _initialize_create(
     # initialize the training histories
     histories: Dict[str, List[float]] = {}
 
-    if cfg.logging.use_wandb:
+    if cfg.use_wandb:
         # convert DictConfig to dict
         dict_conf = omegaconf.OmegaConf.to_container(
             cfg, resolve=True, throw_on_missing=True
@@ -109,7 +109,7 @@ def _initialize_reload(
     completed_epochs = checkpoint["completed_epochs"]
     history = checkpoint["histories"]
 
-    if cfg.logging.use_wandb:
+    if cfg.use_wandb:
         wandb.init(
             project="retinal-rl",
             group=cfg.experiment,

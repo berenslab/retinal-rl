@@ -15,8 +15,9 @@ def get_datasets(
     transform = transforms.Compose(
         [
             ScaleShiftTransform(
-                cfg.dataset.visual_field,
-                cfg.dataset.image_rescale_range,
+                cfg.experiment.dataset.vision_width,
+                cfg.experiment.dataset.vision_height,
+                cfg.experiment.dataset.image_rescale_range,
             ),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
@@ -24,8 +25,8 @@ def get_datasets(
     )
 
     train_set, test_set = multiply_dataset(
-        load_dataset_factory(cfg.dataset.name, transform),
-        cfg.dataset.sample_size_multiplier,
+        load_dataset_factory(cfg.experiment.dataset.name, transform),
+        cfg.experiment.dataset.sample_size_multiplier,
     )
 
     return train_set, test_set

@@ -230,3 +230,13 @@ class BrainOptimizer(Generic[ContextT]):
         # Reinitialize optimizers and objectives
         for name, state_dict in state_dict.items():
             self.optimizers[name].load_state_dict(state_dict)
+
+    def num_epochs(self) -> int:
+        """Get the maximum number of epochs over all optimizers.
+
+        Returns
+        -------
+            int: The maximum number of epochs across all optimizers.
+
+        """
+        return max(self.max_epochs.values())
