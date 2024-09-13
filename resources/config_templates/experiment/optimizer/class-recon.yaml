@@ -13,7 +13,7 @@ recon:
       weight: 0.001
       target_responses:
         - retina
-  target_circuits: # Circuit parameters to optimize with this optimizer
+  target_circuits: # Circuit parameters to optimize with this optimizer.  We train the retina and the decoder exclusively to maximize reconstruction
     - retina
     - decoder
 mixed:
@@ -27,7 +27,7 @@ mixed:
       weight: 0.99
     - _target_: retinal_rl.classification.objective.ClassificationObjective
       weight: 0.01
-  target_circuits:
+  target_circuits: # The thalamus is somewhat sensitive to task objectives
     - thalamus
 class:
   optimizer:
@@ -40,7 +40,7 @@ class:
       weight: 1
     - _target_: retinal_rl.classification.objective.PercentCorrect
       weight: 0
-  target_circuits:
+  target_circuits: # Visual cortex and downstream layers are driven by the task
     - visual_cortex
     - pfc
     - classifier
