@@ -24,7 +24,7 @@ circuits:
     num_layers: 1
     num_channels: 64
     kernel_size: ${experiment.kernel_size}
-    stride: 2
+    stride: ${experiment.stride}
     act_name: ${experiment.activation}
     layer_names: ["lgn"]
   visual_cortex:
@@ -32,7 +32,7 @@ circuits:
     num_layers: 1
     num_channels: 64
     kernel_size: ${experiment.kernel_size}
-    stride: 2 
+    stride: ${experiment.stride} 
     act_name: ${experiment.activation}
     layer_names: ["v1"]
   pfc:
@@ -47,7 +47,7 @@ circuits:
     num_layers: 3
     num_channels: [32,16,3]
     kernel_size: ${experiment.kernel_size}
-    stride:  2
+    stride: ${experiment.stride}
     act_name: ${experiment.activation}
   classifier:
     _target_: retinal_rl.models.circuits.task_head.linear_classifier.LinearClassifier

@@ -13,6 +13,7 @@ recon:
         - retina
   target_circuits:
     - retina
+    - decoder
 mixed:
   optimizer:
     _target_: torch.optim.Adam
@@ -31,6 +32,7 @@ class:
     _target_: torch.optim.Adam
     lr: 0.0003
   min_epoch: 0
+  max_epoch: 100
   objectives:
     - _target_: retinal_rl.classification.objective.ClassificationObjective
       weight: 1

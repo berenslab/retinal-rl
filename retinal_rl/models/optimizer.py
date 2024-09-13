@@ -84,7 +84,6 @@ class BrainOptimizer(Generic[ContextT]):
             logger.info(
                 f"Initalized optimizer: {name}, with objectives: {[obj.key_name for obj in self.objectives[name]]}, and target circuits: {[circuit_name for circuit_name in config.target_circuits]}"
             )
-        logger.info(f"Optimizer evaluation order: {list(self.optimizers.keys())}")
 
     def compute_loss(
         self, optimizer_name: str, context: ContextT
@@ -201,6 +200,7 @@ class BrainOptimizer(Generic[ContextT]):
                 for param, grad in zip(params, grads):
                     param.grad = grad
 
+        for optimizer in self.optimizers.values():
             # Perform optimization step
             optimizer.step()
             optimizer.zero_grad(set_to_none=True)
