@@ -19,6 +19,8 @@ from tqdm.auto import tqdm
 greyscale = np.array([0.299, 0.587, 0.114])
 
 
+#TODO: Get rid and merge with other analysis / plot stuff
+
 # Custom writer class to save frames as PNG files
 class PNGWriter(AbstractMovieWriter):
     def setup(self, fig, outfile, dpi, *args):

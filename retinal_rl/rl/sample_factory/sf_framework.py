@@ -19,14 +19,14 @@ from torch.utils.data import Dataset
 from retinal_rl.models.brain import Brain
 from retinal_rl.framework_interface import TrainingFramework
 from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
-from retinal_rl.rl.system.arguments import (
+from retinal_rl.rl.sample_factory.arguments import (
     add_retinal_env_args,
     add_retinal_env_eval_args,
     retinal_override_defaults,
 )
 import json
-from retinal_rl.rl.system.environment import register_retinal_env
-from retinal_rl.rl.system.exec import RetinalAlgoObserver
+from retinal_rl.rl.sample_factory.environment import register_retinal_env
+from retinal_rl.rl.sample_factory.observer import RetinalAlgoObserver
 import torch
 from sample_factory.enjoy import enjoy
 

@@ -9,10 +9,11 @@ from sample_factory.envs.env_utils import register_env
 from sf_examples.vizdoom.doom.doom_utils import DoomSpec, make_doom_env_impl
 
 import gymnasium as gym
-#import gym
-from gymnasium.spaces import Discrete
-#from gym.spaces import Discrete
 
+# import gym
+from gymnasium.spaces import Discrete
+
+# from gym.spaces import Discrete
 
 
 ### Action Spaces ###
@@ -23,6 +24,7 @@ def key_to_action_basic(key):
 
     table = {Key.left: 0, Key.right: 1, Key.up: 2, Key.down: 3}
     return table.get(key, None)
+
 
 def doom_action_space_basic():
     """
@@ -43,6 +45,7 @@ def doom_action_space_basic():
 
 
 ### Wrappers ###
+
 
 class SatietyInput(gym.Wrapper):
     """Add game variables to the observation space + reward shaping."""
@@ -72,7 +75,9 @@ class SatietyInput(gym.Wrapper):
     def _parse_info(self, obs, info):
 
         # we don't really care how much negative health we have, dead is dead
-        hlth = float(info["HEALTH"]) #TODO: Used when input_satiety = true - but info does not contain HEALTH
+        hlth = float(
+            info["HEALTH"]
+        )  # TODO: Used when input_satiety = true - but info does not contain HEALTH
         # clip health to [-1,1]
         hlth = np.clip(hlth, 0, 100)
         satiety = (hlth - 50) / 50.0
@@ -100,20 +105,25 @@ class SatietyInput(gym.Wrapper):
 
 ### Retinal Environments ###
 
-def retinal_doomspec(scene_name : str, cfg_path : str, sat_in: bool):
+
+def retinal_doomspec(scene_name: str, cfg_path: str, sat_in: bool):
     ewraps = []
 
     if sat_in:
         ewraps = [(SatietyInput, {})]
 
-    return DoomSpec( scene_name
-                    , cfg_path
-                    , doom_action_space_basic()
-                    , reward_scaling=1
-                    , extra_wrappers= ewraps
-                    )
+    return DoomSpec(
+        scene_name,
+        cfg_path,
+        doom_action_space_basic(),
+        reward_scaling=1,
+        extra_wrappers=ewraps,
+    )
 
-def make_retinal_env_from_spec(spec, _env_name, cfg, env_config, render_mode: Optional[str] = None, **kwargs):
+
+def make_retinal_env_from_spec(
+    spec, _env_name, cfg, env_config, render_mode: Optional[str] = None, **kwargs
+):
     """
     Makes a Retinal environment from a DoomSpec instance.
     """
@@ -122,10 +132,15 @@ def make_retinal_env_from_spec(spec, _env_name, cfg, env_config, render_mode: Op
     # There are two kinds of resolution: The one for which doom creates the img output, here 160x120 is the smallest possible
     # The other is the resize resolution which will be taken from the cfg.res_w/h
 
-    return make_doom_env_impl(spec, cfg=cfg, env_config=env_config, render_mode=render_mode, **kwargs)
+    return make_doom_env_impl(
+        spec, cfg=cfg, env_config=env_config, render_mode=render_mode, **kwargs
+    )
+
 
 def register_retinal_env(scene_name: str, cache_dir: str, input_satiety: bool):
-    cfg_path = os.path.join(cache_dir, "scenarios", scene_name + ".cfg") # TODO: Check if this stays
+    cfg_path = os.path.join(
+        cache_dir, "scenarios", scene_name + ".cfg"
+    )  # TODO: Check if this stays
 
     env_spec = retinal_doomspec(scene_name, cfg_path, input_satiety)
     make_env_func = functools.partial(make_retinal_env_from_spec, env_spec)

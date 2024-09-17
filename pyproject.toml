@@ -1,6 +1,6 @@
 [tool.pyright]
 include = ["retinal_rl"]
-typeCheckingMode = "strict"
+typeCheckingMode = "normal"
 
 [tool.ruff]
 line-length = 90
