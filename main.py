@@ -2,6 +2,7 @@
 
 import sys
 import os
+import warnings
 
 import hydra
 import torch
@@ -36,9 +37,12 @@ def _program(cfg: DictConfig):
     device = torch.device(cfg.system.device)
 
     brain = Brain(**cfg.experiment.brain).to(device)
-    brain_optimizer = BrainOptimizer[ClassificationContext](
-        brain, dict(cfg.experiment.optimizer)
-    )
+    if hasattr(cfg.experiment, 'optimizer'):
+        brain_optimizer = BrainOptimizer[ClassificationContext](
+            brain, dict(cfg.experiment.optimizer)
+        )
+    else:
+        warnings.warn("No Optimizer specified, is that wanted?")
 
     if cfg.command == "scan":
         brain.scan_circuits()
@@ -105,11 +109,11 @@ def _program(cfg: DictConfig):
 
         raise ValueError("Invalid run_mode")
 
-    if cfg.command.run_mode == "train":
+    if cfg.command == "train":
         framework.train()
         sys.exit(0)
 
-    if cfg.command.run_mode == "analyze":
+    if cfg.command == "analyze":
         framework.analyze(cfg, device, brain, histories, None, None, completed_epochs)
         sys.exit(0)
 

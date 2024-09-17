@@ -1,4 +1,5 @@
 from typing import Dict, List, Tuple
+import warnings
 
 import numpy as np
 import torch
@@ -97,7 +98,7 @@ def activation_triggered_average(
     model: nn.Sequential, n_batch: int = 2048, n_iter: int = 1, rf_size=None, device=None
 ) -> Dict[str, NDArray[np.float64]]:
     # TODO: WIP
-    raise Warning("Code is not tested and might contain bugs.")
+    warnings.warn("Code is not tested and might contain bugs.")
     stas: Dict[str, NDArray[np.float64]] = {}
     with torch.no_grad():
         for index, (layer_name, mdl) in tqdm(enumerate(model.named_children()), total=len(model)):

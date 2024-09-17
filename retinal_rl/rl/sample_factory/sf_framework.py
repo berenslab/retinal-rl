@@ -96,7 +96,7 @@ class SFFramework(TrainingFramework):
         return brain
 
     def to_sf_cfg(self, cfg: DictConfig) -> Config:
-        sf_cfg = self._get_default_cfg(cfg.rl.env_name)  # Load Defaults
+        sf_cfg = self._get_default_cfg(cfg.experiment.rl.env_name)  # Load Defaults
 
         # overwrite default values with those set in cfg
         # TODO: which other parameters need to be set_
@@ -107,7 +107,7 @@ class SFFramework(TrainingFramework):
         self._set_cfg_cli_argument(sf_cfg, "res_w", cfg.experiment.rl.viewport_width)
         self._set_cfg_cli_argument(sf_cfg, "env", cfg.experiment.rl.env_name)
         self._set_cfg_cli_argument(sf_cfg, "input_satiety", cfg.experiment.rl.input_satiety)
-        self._set_cfg_cli_argument(sf_cfg, "device", cfg.experiment.system.device)
+        self._set_cfg_cli_argument(sf_cfg, "device", cfg.system.device)
         self._set_cfg_cli_argument(sf_cfg, "optimizer", cfg.experiment.training.optimizer)
 
         self._set_cfg_cli_argument(sf_cfg, "brain", OmegaConf.to_object(cfg.experiment.brain))
