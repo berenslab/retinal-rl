@@ -50,8 +50,8 @@ class SFFramework(TrainingFramework):
         # Run simulation
         if not (self.sf_cfg.dry_run):
             cfg, runner = make_runner(self.sf_cfg)
-            if cfg.online_analysis:
-                runner.register_observer(RetinalAlgoObserver(self.sf_cfg))
+            # if cfg.online_analysis:
+            #     runner.register_observer(RetinalAlgoObserver(self.sf_cfg))
 
             status = runner.init()
             if status == ExperimentStatus.SUCCESS:
@@ -98,17 +98,17 @@ class SFFramework(TrainingFramework):
 
         # overwrite default values with those set in cfg
         # TODO: which other parameters need to be set_
-        self._set_cfg_cli_argument(sf_cfg, "learning_rate", cfg.training.learning_rate)
+        self._set_cfg_cli_argument(sf_cfg, "learning_rate", cfg.experiment.training.learning_rate)
         # Using this function is necessary to make sure that the parameters are not overwritten when sample_factory loads a checkpoint
 
-        self._set_cfg_cli_argument(sf_cfg, "res_h", cfg.rl.viewport_height)
-        self._set_cfg_cli_argument(sf_cfg, "res_w", cfg.rl.viewport_width)
-        self._set_cfg_cli_argument(sf_cfg, "env", cfg.rl.env_name)
-        self._set_cfg_cli_argument(sf_cfg, "input_satiety", cfg.rl.input_satiety)
-        self._set_cfg_cli_argument(sf_cfg, "device", cfg.system.device)
-        self._set_cfg_cli_argument(sf_cfg, "optimizer", cfg.training.optimizer)
+        self._set_cfg_cli_argument(sf_cfg, "res_h", cfg.experiment.rl.viewport_height)
+        self._set_cfg_cli_argument(sf_cfg, "res_w", cfg.experiment.rl.viewport_width)
+        self._set_cfg_cli_argument(sf_cfg, "env", cfg.experiment.rl.env_name)
+        self._set_cfg_cli_argument(sf_cfg, "input_satiety", cfg.experiment.rl.input_satiety)
+        self._set_cfg_cli_argument(sf_cfg, "device", cfg.experiment.system.device)
+        self._set_cfg_cli_argument(sf_cfg, "optimizer", cfg.experiment.training.optimizer)
 
-        self._set_cfg_cli_argument(sf_cfg, "brain", OmegaConf.to_object(cfg.brain))
+        self._set_cfg_cli_argument(sf_cfg, "brain", OmegaConf.to_object(cfg.experiment.brain))
         return sf_cfg
 
     def analyze(
