@@ -9,9 +9,10 @@ from torch import Tensor
 def rescaleZeroOne(input):
     return (input - input.min()) / (input.max() - input.min())
 
-def receptive_field_plots(lyr_rfs: NDArray[np.float64], max_cols: int = 8, rgb_rfs=False) -> Figure:
+def receptive_field_plots(lyr_rfs: NDArray[np.float64], max_cols: int = 8, rgb_rfs=False, rescale_individual = True) -> Figure:
     """Plot the receptive fields of a convolutional layer."""
     ochns, nclrs, _, _ = lyr_rfs.shape
+    lyr_rfs = rescaleZeroOne(lyr_rfs) # scale all to [0,1]
     rgb_rfs = rgb_rfs and (nclrs == 3)
 
     # Calculate the number of rows needed based on max_cols
@@ -51,7 +52,7 @@ def receptive_field_plots(lyr_rfs: NDArray[np.float64], max_cols: int = 8, rgb_r
                     fig.colorbar(im, ax=ax, cmap=cmaps[j], location="right")
         else:
             ax = axs[i]
-            rescaled_img = rescaleZeroOne(lyr_rfs[i])
+            rescaled_img = rescaleZeroOne(lyr_rfs[i]) if rescale_individual else lyr_rfs[i]
             im = ax.imshow(np.moveaxis(rescaled_img,0,2))
             ax.set_xticks([])
             ax.set_yticks([])
