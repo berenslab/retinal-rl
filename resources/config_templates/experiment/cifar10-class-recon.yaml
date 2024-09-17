@@ -13,6 +13,7 @@ defaults:
 
 # This *must* match the experiment file name
 name: cifar10-class-recon
+framework: classification
 
 # This is a free list of parameters that can be interpolated by the subconfigs
 # in sweep, dataset, brain, and optimizer. A major use for this is interpolating
