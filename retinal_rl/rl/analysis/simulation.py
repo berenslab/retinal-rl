@@ -1,11 +1,7 @@
 ### Util for preparing simulations and data for analysis
 
-from typing import Tuple
+from typing import Any, Dict, Tuple
 import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import train_test_split
-from sklearn.utils import shuffle
 import torch
 
 torch.backends.cudnn.enabled=False
@@ -28,7 +24,7 @@ from sample_factory.utils.utils import log
 
 from retinal_rl.util import obs_dict_to_tuple,obs_to_img,from_float_to_rgb
 
-def get_checkpoint(cfg: Config):
+def get_checkpoint(cfg: Config) -> tuple[Dict[str, Any], AttrDict]:
     """
     Load the model from checkpoint, initialize the environment, and return both.
     """
@@ -41,7 +37,7 @@ def get_checkpoint(cfg: Config):
     policy_id = cfg.policy_index
     name_prefix = dict(latest="checkpoint", best="best")[cfg.load_checkpoint_kind]
     checkpoints = Learner.get_checkpoints(Learner.checkpoint_dir(cfg, policy_id), f"{name_prefix}_*")
-    checkpoint_dict = Learner.load_checkpoint(checkpoints, device)
+    checkpoint_dict:Dict[str, Any] = Learner.load_checkpoint(checkpoints, device)
 
     return checkpoint_dict,cfg
 

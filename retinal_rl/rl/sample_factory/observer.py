@@ -48,7 +48,7 @@ class RetinalAlgoObserver(AlgoObserver):
 
     def on_training_step(self, runner: Runner, _) -> None:
         """Called after each training step."""
-        TODO: Check and refactor
+        # TODO: Check and refactor
         if self.current_process is None:
 
             total_env_steps = sum(runner.env_steps.values())

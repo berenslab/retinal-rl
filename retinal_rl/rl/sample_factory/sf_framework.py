@@ -1,5 +1,4 @@
-from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from omegaconf import DictConfig
 from sample_factory.algo.utils.context import global_model_factory
@@ -7,12 +6,11 @@ from sample_factory.algo.utils.misc import ExperimentStatus
 from sample_factory.cfg.arguments import (
     parse_full_cfg,
     parse_sf_args,
-    load_from_checkpoint,
 )
 from sample_factory.train import make_runner
-from sample_factory.utils.typing import ActionSpace, Config, ObsSpace
-from retinal_rl.rl.analysis.simulation import get_checkpoint, get_brain_env
-from torch import Tensor, optim
+from sample_factory.utils.typing import Config
+from retinal_rl.rl.analysis.simulation import get_checkpoint
+from torch import Tensor
 import argparse
 from torch.utils.data import Dataset
 
@@ -61,12 +59,14 @@ class SFFramework(TrainingFramework):
             return status
 
     @staticmethod
-    def load_brain_from_checkpoint(path: str, load_weights=True, device=None) -> Brain:
+    def load_brain_from_checkpoint(
+        path: str, load_weights: bool = True, device: Optional[torch.device] = None
+    ) -> Brain:
         with open(os.path.join(path, "config.json")) as f:
             config = Namespace(**json.load(f))
         checkpoint_dict, config = get_checkpoint(config)
-        model_dict = checkpoint_dict["model"]
-        brain_dict = {}
+        model_dict: Dict[str, Any] = checkpoint_dict["model"]
+        brain_dict: Dict[str, Any] = {}
         for key in model_dict.keys():
             if "brain" in key:
                 brain_dict[key[6:]] = model_dict[key]
@@ -78,7 +78,7 @@ class SFFramework(TrainingFramework):
 
     @staticmethod
     def load_brain_and_config(
-        config_path: str, weights_path: str, device=None
+        config_path: str, weights_path: str, device: Optional[torch.device] = None
     ) -> Brain:
         with open(os.path.join(config_path, "config.json")) as f:
             config = json.load(f)
@@ -127,7 +127,7 @@ class SFFramework(TrainingFramework):
         return status
 
     @staticmethod
-    def _set_cfg_cli_argument(cfg: Namespace, name, value):
+    def _set_cfg_cli_argument(cfg: Namespace, name: str, value: Any):
         """
         sample_factory overwrites arguments with those read from a checkpoint
         if they are not additionally added to the "cli_args"
@@ -142,7 +142,7 @@ class SFFramework(TrainingFramework):
         mock_argv = ["--env", envname]
         # SF needs an env name in argv.
         # Also, when loading from a checkpoint arguments in argv will not be overridden by arguments defined in the ckpt cfg.
-        parser, cfg = parse_sf_args(mock_argv, evaluation=True)
+        parser, _ = parse_sf_args(mock_argv, evaluation=True)
 
         add_retinal_env_args(parser)
         # TODO: Replace with hydra style default to have all in one place & style (sf_config_hydra.yaml?)
