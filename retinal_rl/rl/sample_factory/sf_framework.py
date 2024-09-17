@@ -13,6 +13,7 @@ from sample_factory.train import make_runner
 from sample_factory.utils.typing import ActionSpace, Config, ObsSpace
 from retinal_rl.rl.analysis.simulation import get_checkpoint, get_brain_env
 from torch import Tensor, optim
+import argparse
 from torch.utils.data import Dataset
 
 from retinal_rl.models.brain import Brain
@@ -60,7 +61,7 @@ class SFFramework(TrainingFramework):
             return status
 
     @staticmethod
-    def load_brain_from_checkpoint(path: str, load_weights = True, device=None) -> torch.nn.Module:
+    def load_brain_from_checkpoint(path: str, load_weights=True, device=None) -> Brain:
         with open(os.path.join(path, "config.json")) as f:
             config = Namespace(**json.load(f))
         checkpoint_dict, config = get_checkpoint(config)
@@ -72,6 +73,23 @@ class SFFramework(TrainingFramework):
         brain = Brain(**config["brain"])
         if load_weights:
             brain.load_state_dict(brain_dict)
+        brain.to(device)
+        return brain
+
+    @staticmethod
+    def load_brain_and_config(
+        config_path: str, weights_path: str, device=None
+    ) -> Brain:
+        with open(os.path.join(config_path, "config.json")) as f:
+            config = json.load(f)
+        checkpoint_dict = torch.load(weights_path)
+        model_dict = checkpoint_dict["model"]
+        brain_dict = {}
+        for key in model_dict.keys():
+            if "brain" in key:
+                brain_dict[key[6:]] = model_dict[key]
+        brain = Brain(**config["brain"])
+        brain.load_state_dict(brain_dict)
         brain.to(device)
         return brain
 
@@ -95,7 +113,7 @@ class SFFramework(TrainingFramework):
 
     def analyze(
         self,
-        _cfg: DictConfig,
+        cfg: DictConfig,
         device: torch.device,
         brain: Brain,
         histories: Dict[str, List[float]],
@@ -118,7 +136,7 @@ class SFFramework(TrainingFramework):
         cfg.cli_args[name] = value
 
     @staticmethod
-    def _get_default_cfg(envname: str = "") -> Config:
+    def _get_default_cfg(envname: str = "") -> argparse.Namespace:
         # TODO: get rid of intermediate parser step?!
 
         mock_argv = ["--env", envname]
