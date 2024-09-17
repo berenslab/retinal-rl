@@ -88,21 +88,26 @@ def _activation_triggered_average(model: nn.Sequential, n_batch: int = 2048, rf_
     )
 
     weights = output[:, :, None, None, None].expand(-1, -1, *input_size)
-    weight_sums = output.abs().sum(0)
+    weight_sums = output.sum(0)
     weight_sums[weight_sums == 0] = 1
-    weighted = (weights.abs() * input_tensor).sum(0) / weight_sums[:, None, None, None]
-    return weighted.cpu().detach() / n_batch
+    weighted = (weights * input_tensor).sum(0)
+    return weighted.cpu().detach(), weight_sums.cpu().detach()
 
 def activation_triggered_average(
     model: nn.Sequential, n_batch: int = 2048, n_iter: int = 1, rf_size=None, device=None
 ) -> Dict[str, NDArray[np.float64]]:
+    # TODO: WIP
+    raise Warning("Code is not tested and might contain bugs.")
     stas: Dict[str, NDArray[np.float64]] = {}
     with torch.no_grad():
         for index, (layer_name, mdl) in tqdm(enumerate(model.named_children()), total=len(model)):
-            weighted = _activation_triggered_average(model[:index+1], n_batch, device=device)
+            weighted, weight_sums = _activation_triggered_average(model[:index+1], n_batch, device=device)
             for _ in tqdm(range(n_iter - 1), total=n_iter-1, leave=False):
-                weighted += _activation_triggered_average(model[:index+1], n_batch, rf_size, device=device)
-            stas[layer_name] = weighted.cpu().detach().numpy() / n_iter
+                it_weighted, it_weight_sums = _activation_triggered_average(model[:index+1], n_batch, rf_size, device=device)
+                weighted += it_weighted
+                weight_sums += it_weight_sums
+            stas[layer_name] = (weighted.cpu().detach() / weight_sums[:, None, None, None] / len(weight_sums)).numpy()
+        torch.cuda.empty_cache()
     return stas
 
 def sum_collapse_output(out_tensor):
