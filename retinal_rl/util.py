@@ -44,7 +44,7 @@ def encoder_out_size(mdls: List[nn.Module], hght0: int, wdth0: int) -> Tuple[int
 
     # iterate over modules that are not activations
     for mdl in mdls:
-        if _is_activation(mdl):
+        if is_activation(mdl):
             continue
         if isinstance(mdl, nn.Conv2d):
             krnsz = _double_up(mdl.kernel_size)
@@ -82,9 +82,9 @@ def rf_size_and_start(mdls: List[nn.Module], hidx: int, widx: int):
     wmn = widx
 
     for mdl in mdls:
-        if _is_activation(mdl):
+        if is_activation(mdl):
             continue
-        if not (_is_convolutional_layer(mdl) or _is_base_pooling_layer(mdl)):
+        if not (is_convolutional_layer(mdl) or is_base_pooling_layer(mdl)):
             raise NotImplementedError("Only convolutional and basic pooling layers are supported")
 
         hksz, wksz = _double_up(mdl.kernel_size)
@@ -120,14 +120,14 @@ class Activation(Enum):
             act_module = self.value(inplace=True)
         return act_module
 
-def _is_activation(mdl: nn.Module) -> bool:
+def is_activation(mdl: nn.Module) -> bool:
     """Check if the module is an activation function."""
     return mdl.__class__ in [act.value for act in Activation]
 
-def _is_convolutional_layer(mdl: nn.Module) -> bool:
+def is_convolutional_layer(mdl: nn.Module) -> bool:
     return isinstance(mdl, (nn.Conv1d, nn.Conv2d, nn.Conv3d))
 
-def _is_base_pooling_layer(mdl: nn.Module) -> bool:
+def is_base_pooling_layer(mdl: nn.Module) -> bool:
     return isinstance(mdl, (nn.AvgPool1d, nn.AvgPool2d, nn.AvgPool3d, nn.MaxPool1d, nn.MaxPool2d, nn.MaxPool3d))
 
 def _double_up(x: Union[int, Tuple[int, ...]]):

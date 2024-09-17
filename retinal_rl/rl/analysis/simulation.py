@@ -24,23 +24,6 @@ from sample_factory.utils.utils import log
 
 from retinal_rl.util import obs_dict_to_tuple,obs_to_img,from_float_to_rgb
 
-def get_checkpoint(cfg: Config) -> tuple[Dict[str, Any], AttrDict]:
-    """
-    Load the model from checkpoint, initialize the environment, and return both.
-    """
-    #verbose = False
-
-    cfg = load_from_checkpoint(cfg)
-
-    device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
-
-    policy_id = cfg.policy_index
-    name_prefix = dict(latest="checkpoint", best="best")[cfg.load_checkpoint_kind]
-    checkpoints = Learner.get_checkpoints(Learner.checkpoint_dir(cfg, policy_id), f"{name_prefix}_*")
-    checkpoint_dict:Dict[str, Any] = Learner.load_checkpoint(checkpoints, device)
-
-    return checkpoint_dict,cfg
-
 def get_brain_env(cfg: Config, checkpoint_dict) -> Tuple[ActorCritic,BatchedVecEnv,AttrDict,int]:
     """
     Load the model from checkpoint, initialize the environment, and return both.

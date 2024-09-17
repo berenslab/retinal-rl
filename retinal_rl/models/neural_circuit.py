@@ -7,7 +7,7 @@ from typing import Any, List, Type, get_type_hints
 import torch
 import torch.nn as nn
 import torchscan
-from retinal_rl.models.util import Activation
+from retinal_rl.util import Activation
 
 class NeuralCircuit(nn.Module, ABC):
     """Base class for neural circuits."""

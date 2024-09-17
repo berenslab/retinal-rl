@@ -9,7 +9,9 @@ from sample_factory.cfg.arguments import (
 )
 from sample_factory.train import make_runner
 from sample_factory.utils.typing import Config
-from retinal_rl.rl.analysis.simulation import get_checkpoint
+from sample_factory.cfg.arguments import load_from_checkpoint
+from sample_factory.algo.learning.learner import Learner
+from sample_factory.utils.attr_dict import AttrDict
 from torch import Tensor
 import argparse
 from torch.utils.data import Dataset
@@ -24,7 +26,7 @@ from retinal_rl.rl.sample_factory.arguments import (
 )
 import json
 from retinal_rl.rl.sample_factory.environment import register_retinal_env
-from retinal_rl.rl.sample_factory.observer import RetinalAlgoObserver
+# from retinal_rl.rl.sample_factory.observer import RetinalAlgoObserver
 import torch
 from sample_factory.enjoy import enjoy
 
@@ -64,7 +66,7 @@ class SFFramework(TrainingFramework):
     ) -> Brain:
         with open(os.path.join(path, "config.json")) as f:
             config = Namespace(**json.load(f))
-        checkpoint_dict, config = get_checkpoint(config)
+        checkpoint_dict, config = SFFramework.get_checkpoint(config)
         model_dict: Dict[str, Any] = checkpoint_dict["model"]
         brain_dict: Dict[str, Any] = {}
         for key in model_dict.keys():
@@ -152,6 +154,24 @@ class SFFramework(TrainingFramework):
 
         sf_cfg = parse_full_cfg(parser, mock_argv)
         return sf_cfg
+    
+    @staticmethod
+    def get_checkpoint(cfg: Config) -> tuple[Dict[str, Any], AttrDict]:
+        """
+        Load the model from checkpoint, initialize the environment, and return both.
+        """
+        #verbose = False
+
+        cfg = load_from_checkpoint(cfg)
+
+        device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
+
+        policy_id = cfg.policy_index
+        name_prefix = dict(latest="checkpoint", best="best")[cfg.load_checkpoint_kind]
+        checkpoints = Learner.get_checkpoints(Learner.checkpoint_dir(cfg, policy_id), f"{name_prefix}_*")
+        checkpoint_dict:Dict[str, Any] = Learner.load_checkpoint(checkpoints, device)
+
+        return checkpoint_dict,cfg
 
 
 def brain_from_actor_critic(actor_critic: SampleFactoryBrain) -> Brain:
