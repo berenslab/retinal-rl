@@ -93,6 +93,7 @@ dependencies:
   - mysql=5.7.24
   - ncurses=6.4
   - nettle=3.7.3
+  - networkx
   - numexpr=2.8.7
   - numpy=1.26.4
   - numpy-base=1.26.4
@@ -157,8 +158,8 @@ dependencies:
       - gitpython==3.1.43
       - grpcio==1.63.0
       - gymnasium==0.29.1
-      - hiyapyco==0.5.5
       - huggingface-hub==0.23.0
+      - hydra-core
       - jinja2==3.1.4
       - kiwisolver==1.4.5
       - markdown==3.6
@@ -185,6 +186,7 @@ dependencies:
       - tensorboardx==2.6.2.2
       - threadpoolctl==3.5.0
       - torchscan==0.1.2
+      - torchinfo
       - tqdm==4.66.4
       - tzdata==2024.1
       - vizdoom==1.2.3

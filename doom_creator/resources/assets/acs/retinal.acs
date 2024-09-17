@@ -1,0 +1,188 @@
+// Directives
+
+#library "RETINAL"
+#include "zcommon.acs"
+
+// Variables
+
+// Global Variables
+// Reward
+global int 0:reward;
+
+// Frequency and amount of metabolic damage
+global int 1:metabolic_delay;
+global int 2:metabolic_damage;
+global str 3:actor_names[];
+global str 4:actor_num_textures[];
+
+// Nourishment variables
+global int 5:nourishment_unique;
+global int 6:nourishment_init;
+global int 7:nourishment_delay;
+
+// Poison variables
+global int 8:poison_unique;
+global int 9:poison_init;
+global int 10:poison_delay;
+
+// Obstacle variables
+global int 11:obstacle_unique;
+global int 12:obstacle_init;
+global int 13:obstacle_delay;
+
+// Distractor variables
+global int 14:distractor_unique;
+global int 15:distractor_init;
+global int 16:distractor_delay;
+
+// Stats
+global int 17:health_gathered;
+global int 18:num_nourishments;
+global int 19:num_poisons;
+
+// Spawn Behaviour
+global bool 20:spawn_relative;
+global int 21:spawn_range;
+
+// Spawning actor by index
+function void SpawnActor(int oid) {
+
+    int tid = UniqueTID();
+    str act = actor_names[oid];
+
+    str texture_num = random(0,actor_num_textures[oid] - 1);
+    str texture = StrParam(s:"Texture",d:texture_num);
+
+    int spawn_x = random(-spawn_range+1.0, spawn_range-1.0);
+    int spawn_y = random(-spawn_range+1.0, spawn_range-1.0);
+
+    if (spawn_relative) {
+        // Get player position
+        int player_x = GetActorX(0);
+        int player_y = GetActorY(0);
+                
+        // Calculate spawn position
+        spawn_x = player_x + spawn_x;
+        spawn_y = player_y + spawn_y;
+    }
+
+    // print(s:act);
+    Spawn(act, spawn_x, spawn_y, 20.0, tid);
+    SetActorState(tid, texture);
+}
+
+// Random object generation
+function void randomNourishment(void) {
+    int oid = random(0,nourishment_unique-1);
+    SpawnActor(oid);
+    num_nourishments = num_nourishments + 1;
+}
+
+function void randomPoison(void) {
+    int poison_offset = nourishment_unique;
+    int oid = random(0,poison_unique-1);
+    SpawnActor(oid+poison_offset);
+    num_poisons = num_poisons + 1;
+}
+
+function void randomObstacle(void) {
+    int obstacle_offset = nourishment_unique + poison_unique;
+    int oid = random(0,obstacle_unique-1);
+    SpawnActor(oid+obstacle_offset);
+}
+
+function void randomDistractor(void) {
+    int distractor_offset = nourishment_unique + poison_unique + obstacle_unique;
+    int oid = random(0,distractor_unique-1);
+    SpawnActor(oid+distractor_offset);
+}
+
+// Environment behaviour
+script "Nourishment Spawning" ENTER {
+
+    reward = 0;
+
+    int i;
+
+    for(i=0;i<nourishment_init;++i) { randomNourishment(); }
+
+    while(nourishment_delay) {
+        delay(nourishment_delay);
+        randomNourishment();
+    }
+}
+
+script "Poison Spawning" ENTER {
+
+    int i;
+
+    for(i=0;i<poison_init;++i) { randomPoison(); }
+
+    while(poison_delay > 0) {
+        delay(poison_delay);
+        randomPoison();
+    }
+}
+
+script "Obstacle Spawning" ENTER {
+
+    int i;
+
+    for(i=0;i<obstacle_init;++i) { randomObstacle(); }
+
+    while(obstacle_delay > 0) {
+        delay(obstacle_delay);
+        randomObstacle();
+    }
+}
+
+script "Distractor Spawning" ENTER {
+
+    int i;
+
+    for(i=0;i<distractor_init;++i) { randomDistractor(); }
+
+    while(distractor_delay > 0) {
+        delay(distractor_delay);
+        randomDistractor();
+    }
+}
+
+script "Agent Metabolism" ENTER {
+
+    while(metabolic_delay > 0) {
+        delay(metabolic_delay);
+        Thing_Damage(0,metabolic_damage);
+    }
+}
+
+// Tracking stats
+script 10 (int pickedup) {
+
+    health_gathered = health_gathered + pickedup;
+    if(pickedup > 0) { num_nourishments = num_nourishments - 1; }
+    if(pickedup < 0) { num_poisons = num_poisons - 1; }
+
+ }
+
+script "Agent Initialization" ENTER {
+
+    int act_x = random(-spawn_range/10,spawn_range/10);
+    int act_y = random(-spawn_range/10,spawn_range/10);
+    SetActorPosition(0, act_x, act_y, 0.0, 0);
+    SetActorAngle(0,random(0.0,1.0));
+    ClearInventory();
+
+    int tcks = 0;
+    health_gathered = 0;
+
+    while(true) {
+        int curr_health = PlayerHealth();
+        reward = reward + curr_health;
+        // print(i:reward);
+        // print(i:health_gathered);
+        delay(1);
+        // print(s:"Num Nourishments: ",i:num_nourishments, s:"; Num Poisons: ",i:num_poisons);
+    }
+}
+

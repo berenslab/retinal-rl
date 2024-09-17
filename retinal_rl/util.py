@@ -1,3 +1,4 @@
+from enum import Enum
 import re
 from math import ceil, floor
 from typing import List, Tuple, Union
@@ -7,7 +8,6 @@ import torch.nn as nn
 from numpy.typing import NDArray
 
 FloatArray = NDArray[np.float64]
-
 
 def assert_list(
     list_candidate: Union[int, List[int]],
@@ -44,7 +44,7 @@ def encoder_out_size(mdls: List[nn.Module], hght0: int, wdth0: int) -> Tuple[int
 
     # iterate over modules that are not activations
     for mdl in mdls:
-        if is_activation(mdl):
+        if _is_activation(mdl):
             continue
         if isinstance(mdl, nn.Conv2d):
             krnsz = _double_up(mdl.kernel_size)
@@ -82,14 +82,14 @@ def rf_size_and_start(mdls: List[nn.Module], hidx: int, widx: int):
     wmn = widx
 
     for mdl in mdls:
-        if is_activation(mdl):
+        if _is_activation(mdl):
             continue
-        if isinstance(mdl, nn.Conv2d):
-            hksz, wksz = _double_up(mdl.kernel_size)
-            hstrd, wstrd = _double_up(mdl.stride)
-            hpad, wpad = _double_up(mdl.padding)
-        else:
-            raise NotImplementedError("Only convolutional layers are supported")
+        if not (_is_convolutional_layer(mdl) or _is_base_pooling_layer(mdl)):
+            raise NotImplementedError("Only convolutional and basic pooling layers are supported")
+
+        hksz, wksz = _double_up(mdl.kernel_size)
+        hstrd, wstrd = _double_up(mdl.stride)
+        hpad, wpad = _double_up(mdl.padding)
 
         hrf_size += (hksz - 1) * hrf_scale
         wrf_size += (wksz - 1) * wrf_scale
@@ -106,23 +106,29 @@ def rf_size_and_start(mdls: List[nn.Module], hidx: int, widx: int):
     return hrf_size, wrf_size, hmn, wmn
 
 
-def is_activation(mdl: nn.Module) -> bool:
+class Activation(Enum):
+    elu = nn.ELU
+    relu = nn.ReLU
+    tanh = nn.Tanh
+    softplus = nn.Softplus
+    leaky = nn.LeakyReLU
+    identity = nn.Identity
+
+    def __call__(self) -> nn.Module:
+        act_module = self.value()
+        if hasattr(act_module, "inplace"):
+            act_module = self.value(inplace=True)
+        return act_module
+
+def _is_activation(mdl: nn.Module) -> bool:
     """Check if the module is an activation function."""
-    return any(
-        [
-            isinstance(mdl, nn.ELU),
-            isinstance(mdl, nn.ReLU),
-            isinstance(mdl, nn.Tanh),
-            isinstance(mdl, nn.Softplus),
-            isinstance(mdl, nn.Identity),
-            isinstance(mdl, nn.LeakyReLU),
-        ]
-    )
+    return mdl.__class__ in [act.value for act in Activation]
 
-
-def is_convolutional_layer(mdl: nn.Module) -> bool:
+def _is_convolutional_layer(mdl: nn.Module) -> bool:
     return isinstance(mdl, (nn.Conv1d, nn.Conv2d, nn.Conv3d))
 
+def _is_base_pooling_layer(mdl: nn.Module) -> bool:
+    return isinstance(mdl, (nn.AvgPool1d, nn.AvgPool2d, nn.AvgPool3d, nn.MaxPool1d, nn.MaxPool2d, nn.MaxPool3d))
 
 def _double_up(x: Union[int, Tuple[int, ...]]):
     if isinstance(x, int):

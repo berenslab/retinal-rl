@@ -1,0 +1,48 @@
+# @package _global_
+defaults:
+  - /brain: feedforward
+  - override /dataset: retinal_env
+  - override /command: train
+  - _self_
+
+framework: rl
+# set resolution to smaller size
+dataset:
+  vision_width: 80
+  vision_height: 60
+rl:
+  env_name: gathering-cifar10
+  viewport_width: ${dataset.vision_width}
+  viewport_height:  ${dataset.vision_height}
+  input_satiety: true
+
+# This must match the experiment file name
+experiment: gathering-cifar10-fcs
+
+training:
+  optimizer: adam
+  learning_rate: 0.0001
+
+
+# overwrite model params to those we want to use and sweep through
+brain:
+  circuits:
+    encoder:
+      num_layers: 4
+      num_channels: [8,16,32,32]
+      kernel_size: ${kernel_size}
+      stride:  ${stride}
+      act_name: ${activation}
+    action_decoder:
+      output_shape: [64]
+      hidden_units: [64,64]
+      act_name: ${latent_activation}
+
+# Parameters to sweep in this experiment (this will mostly be overridden)
+activation: "leaky"
+kernel_size: [6,6,6,6]
+stride: [2,2,2,2]
+latent_activation: "leaky"
+
+logging:
+  use_wandb: true

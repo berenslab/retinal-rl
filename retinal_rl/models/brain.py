@@ -14,6 +14,8 @@ from retinal_rl.models.neural_circuit import NeuralCircuit
 
 logger = logging.getLogger(__name__)
 
+from retinal_rl.models.neural_circuit import NeuralCircuit
+
 
 class Brain(nn.Module):
     """The "overarching model" (brain) combining several "partial models" (circuits) - such as encoders, latents, decoders, and task heads specified by a graph."""

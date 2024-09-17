@@ -1,6 +1,7 @@
 """Main entry point for the retinal RL project."""
 
 import sys
+import os
 
 import hydra
 import torch
@@ -9,6 +10,9 @@ from omegaconf import DictConfig
 from retinal_rl.classification.objective import ClassificationContext
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.optimizer import BrainOptimizer
+from retinal_rl.framework_interface import TrainingFramework
+from retinal_rl.models.brain import Brain
+from retinal_rl.rl.sample_factory.sf_framework import SFFramework
 from runner.analyze import analyze
 from runner.dataset import get_datasets
 from runner.debug import check_parameter_overlap, compare_gradient_computation
@@ -41,53 +45,72 @@ def _program(cfg: DictConfig):
         # brain.visualize_connectome()
         sys.exit(0)
 
-    train_set, test_set = get_datasets(cfg)
+    framework: TrainingFramework
 
-    brain, brain_optimizer, histories, completed_epochs = initialize(
-        cfg,
-        brain,
-        brain_optimizer,
-    )
-    # Sanity checking
-    check_parameter_overlap(brain_optimizer)
+    cache_path = os.path.join(hydra.utils.get_original_cwd(), "cache")
+    if cfg.experiment.framework == "rl":
+        framework = SFFramework(cfg, data_root=cache_path)
+    else:
+        # TODO: Make ClassifierEngine
+        train_set, test_set = get_datasets(cfg)
 
-    # Debug mode operations
-    if cfg.command == "debug":
-        print("Running debug checks...")
-
-        print("\nComparing gradient computation methods:")
-        gradients_match, discrepancies = compare_gradient_computation(
-            device, brain, brain_optimizer, train_set
-        )
-
-        if gradients_match:
-            print("All gradients match within tolerance.")
-        else:
-            print("Discrepancies found in gradient computation:")
-            for param, diff in discrepancies.items():
-                if diff is None:
-                    print(f"  {param}: Mismatch (one gradient is None)")
-                else:
-                    print(f"  {param}: {diff}")
-
-        print("\nDebug checks completed.")
-        sys.exit(0)
-
-    if cfg.command == "train":
-        train(
+        brain, brain_optimizer, histories, completed_epochs = initialize(
             cfg,
-            device,
             brain,
             brain_optimizer,
-            train_set,
-            test_set,
-            completed_epochs,
-            histories,
         )
+        # Sanity checking
+        check_parameter_overlap(brain_optimizer)
+
+        # Debug mode operations
+        if cfg.command == "debug":
+            print("Running debug checks...")
+
+            print("\nComparing gradient computation methods:")
+            gradients_match, discrepancies = compare_gradient_computation(
+                device, brain, brain_optimizer, train_set
+            )
+
+            if gradients_match:
+                print("All gradients match within tolerance.")
+            else:
+                print("Discrepancies found in gradient computation:")
+                for param, diff in discrepancies.items():
+                    if diff is None:
+                        print(f"  {param}: Mismatch (one gradient is None)")
+                    else:
+                        print(f"  {param}: {diff}")
+
+            print("\nDebug checks completed.")
+            sys.exit(0)
+
+        if cfg.command == "train":
+            train(
+                cfg,
+                device,
+                brain,
+                brain_optimizer,
+                train_set,
+                test_set,
+                completed_epochs,
+                histories,
+            )
+            sys.exit(0)
+
+        if cfg.command == "analyze":
+            analyze(
+                cfg, device, brain, histories, train_set, test_set, completed_epochs
+            )
+            sys.exit(0)
+
+        raise ValueError("Invalid run_mode")
+
+    if cfg.command.run_mode == "train":
+        framework.train()
         sys.exit(0)
 
-    if cfg.command == "analyze":
-        analyze(cfg, device, brain, histories, train_set, test_set, completed_epochs)
+    if cfg.command.run_mode == "analyze":
+        framework.analyze(cfg, device, brain, histories, None, None, completed_epochs)
         sys.exit(0)
 
     raise ValueError("Invalid run_mode")

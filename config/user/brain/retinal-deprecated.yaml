@@ -1,0 +1,17 @@
+name: retinal-deprecated
+sensors:
+  vision:
+    - ${dataset.num_colours}
+    - ${dataset.vision_height}
+    - ${dataset.vision_width}
+connections:
+  - ["vision", "encoder"]
+  - ["encoder", "core"]
+circuits:
+  encoder:
+    _target_: retinal_rl.models.circuits.retinal_deprecated.RetinalEncoder
+    bp_channels: ${bp_channels}
+    act_name: ${activation}
+    out_shape: ${latent_dim}
+  core:
+    _target_: retinal_rl.models.circuits.latent_core.LatentFFN

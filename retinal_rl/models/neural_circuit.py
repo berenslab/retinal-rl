@@ -7,16 +7,7 @@ from typing import Any, List, Type, get_type_hints
 import torch
 import torch.nn as nn
 import torchscan
-
-ACTIVATION_MAP = {
-    "elu": lambda: nn.ELU(inplace=False),
-    "relu": lambda: nn.ReLU(inplace=False),
-    "tanh": lambda: nn.Tanh(),
-    "softplus": lambda: nn.Softplus(),
-    "identity": lambda: nn.Identity(inplace=False),
-    "leakyrelu": lambda: nn.LeakyReLU(negative_slope=0.01, inplace=False),
-}
-
+from retinal_rl.models.util import Activation
 
 class NeuralCircuit(nn.Module, ABC):
     """Base class for neural circuits."""
@@ -102,6 +93,4 @@ class NeuralCircuit(nn.Module, ABC):
 
         """
         act = str.lower(act)
-        if act in ACTIVATION_MAP:
-            return ACTIVATION_MAP[act]()
-        raise ValueError(f"Unknown activation function: {act}")
+        return Activation[act]()

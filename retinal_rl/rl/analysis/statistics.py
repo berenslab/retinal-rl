@@ -1,183 +1,230 @@
-import torch
-
-from tqdm import tqdm
+from typing import Dict, List, Tuple
 
 import numpy as np
-
-from openTSNE import TSNE
-
+import torch
+import torch.nn as nn
 from captum.attr import NeuronGradient
+from numpy.typing import NDArray
+from torch import Tensor
+from torch.utils.data import Dataset
 
+from retinal_rl.models.brain import Brain
+from retinal_rl.models.circuits.convolutional import ConvolutionalEncoder
+from retinal_rl.models.util import encoder_out_size, rf_size_and_start
 from tqdm import tqdm
+import math
 
-from retinal_rl.util import encoder_out_size, rf_size_and_start
 
+def gradient_receptive_fields(
+    device: torch.device, enc: ConvolutionalEncoder
+) -> Dict[str, NDArray[np.float64]]:
+    """Return the receptive fields of every layer of a convnet as computed by neural gradients.
 
-def gaussian_noise_stas(cfg, env, actor_critic, nbtch, nreps, prgrs):
+    The returned dictionary is indexed by layer name and the shape of the array
+    (#layer_channels, #input_channels, #rf_height, #rf_width).
     """
-    Returns the receptive fields of every layer of a convnet as computed by spike-triggered averaging.
-    """
-
-    enc = actor_critic.encoder.vision_model
-    dev = torch.device("cpu" if cfg.device == "cpu" else "cuda")
-
-    nclrs, hght, wdth = list(env.observation_space["obs"].shape)
-    ochns = nclrs
-
-    btchsz = [nbtch, nclrs, hght, wdth]
-
-    stas = {}
-
-    repttl = len(enc.conv_head) * nreps
-    mdls = []
-
-    with torch.no_grad():
-
-        with tqdm(total=repttl, desc="Generating STAs", disable=not (prgrs)) as pbar:
-
-            for lyrnm, mdl in enc.conv_head.named_children():
-
-                mdls.append(mdl)
-                subenc = torch.nn.Sequential(*mdls)
-
-                # check if mdl has out channels
-                if hasattr(mdl, "out_channels"):
-                    ochns = mdl.out_channels
-                hsz, wsz = encoder_out_size(subenc, hght, wdth)
-
-                hidx = (hsz - 1) // 2
-                widx = (wsz - 1) // 2
-
-                hrf_size, wrf_size, hmn, wmn = rf_size_and_start(subenc, hidx, widx)
-
-                hmx = hmn + hrf_size
-                wmx = wmn + wrf_size
-
-                stas[lyrnm] = np.zeros((ochns, nclrs, hrf_size, wrf_size))
-
-                for _ in range(nreps):
-
-                    pbar.update(1)
-
-                    for j in range(ochns):
-
-                        obss = torch.randn(size=btchsz, device=dev)
-                        obss1 = obss[:, :, hmn:hmx, wmn:wmx].cpu()
-                        outs = subenc(obss)[:, j, hidx, widx].cpu()
-
-                        if torch.sum(outs) != 0:
-                            stas[lyrnm][j] += (
-                                np.average(obss1, axis=0, weights=outs) / nreps
-                            )
-
-    return stas
-
-
-def gradient_receptive_fields(cfg, env, actor_critic, prgrs):
-    """
-    Returns the receptive fields of every layer of a convnet as computed by neural gradients.
-    """
-
-    enc = actor_critic.encoder.vision_model
-    dev = torch.device("cpu" if cfg.device == "cpu" else "cuda")
-
-    nclrs, hght, wdth = list(env.observation_space["obs"].shape)
-    ochns = nclrs
+    enc.eval()
+    nclrs, hght, wdth = enc.input_shape
+    out_channels = nclrs
 
     imgsz = [1, nclrs, hght, wdth]
     # Obs requires grad
-    obs = torch.zeros(size=imgsz, device=dev, requires_grad=True)
+    obs = torch.zeros(size=imgsz, device=device, requires_grad=True)
 
-    stas = {}
+    stas: Dict[str, NDArray[np.float64]] = {}
 
-    repttl = len(enc.conv_head)
-    mdls = []
+    mdls: List[nn.Module] = []
 
     with torch.no_grad():
+        for layer_name, mdl in enc.conv_head.named_children():
+            gradient_calculator = NeuronGradient(enc, mdl)
+            mdls.append(mdl)
 
-        with tqdm(
-            total=repttl, desc="Generating Attributions", disable=not (prgrs)
-        ) as pbar:
+            # check if mdl has out channels
+            if hasattr(mdl, "out_channels"):
+                out_channels = mdl.out_channels
+            hsz, wsz = encoder_out_size(mdls, hght, wdth)
 
-            for lyrnm, mdl in enc.conv_head.named_children():
+            hidx = (hsz - 1) // 2
+            widx = (wsz - 1) // 2
 
-                gradient_calculator = NeuronGradient(enc, mdl)
-                mdls.append(mdl)
-                subenc = torch.nn.Sequential(*mdls)
+            hrf_size, wrf_size, h_min, w_min = rf_size_and_start(mdls, hidx, widx)
 
-                # check if mdl has out channels
-                if hasattr(mdl, "out_channels"):
-                    ochns = mdl.out_channels
-                hsz, wsz = encoder_out_size(subenc, hght, wdth)
+            # Assert min max is in bounds
+            # potential TODO: change input size if rf is larger than actual input
+            h_min = max(0,h_min)
+            w_min = max(0,w_min)
+            hrf_size = min(hght,hrf_size)
+            wrf_size = min(wdth,wrf_size)
 
-                hidx = (hsz - 1) // 2
-                widx = (wsz - 1) // 2
+            h_max = h_min + hrf_size
+            w_max = w_min + wrf_size
 
-                hrf_size, wrf_size, hmn, wmn = rf_size_and_start(subenc, hidx, widx)
+            stas[layer_name] = np.zeros((out_channels, nclrs, hrf_size, wrf_size))
+            for j in range(out_channels):
+                grad = (
+                    gradient_calculator.attribute(obs, (j, hidx, widx))[
+                        0, :, h_min:h_max, w_min:w_max
+                    ]
+                    .cpu()
+                    .numpy()
+                )
 
-                hmx = hmn + hrf_size
-                wmx = wmn + wrf_size
-
-                stas[lyrnm] = np.zeros((ochns, nclrs, hrf_size, wrf_size))
-
-                pbar.update(1)
-
-                for j in range(ochns):
-
-                    grad = (
-                        gradient_calculator.attribute(obs, (j, hidx, widx))[
-                            0, :, hmn:hmx, wmn:wmx
-                        ]
-                        .cpu()
-                        .numpy()
-                    )
-
-                    stas[lyrnm][j] = grad
+                stas[layer_name][j] = grad
 
     return stas
 
-
-def row_zscore(mat):
-    return (mat - np.mean(mat, 1)[:, np.newaxis]) / (
-        np.std(mat, 1)[:, np.newaxis] + 1e-8
+def _activation_triggered_average(model: nn.Sequential, n_batch: int = 2048, rf_size=None, device=None):
+    model.eval()
+    if rf_size is None:
+        _out_channels, input_size = get_input_output_shape(model)
+    else:
+        input_size = rf_size
+    input_tensor = torch.randn((n_batch, *input_size), requires_grad=False, device=device)
+    output = model(input_tensor)
+    output = sum_collapse_output(output)
+    input_tensor = input_tensor[:, None, :, :, :].expand(
+        -1, output.shape[1], -1, -1, -1
     )
 
+    weights = output[:, :, None, None, None].expand(-1, -1, *input_size)
+    weight_sums = output.sum(0)
+    weight_sums[weight_sums == 0] = 1
+    weighted = (weights * input_tensor).sum(0)
+    return weighted.cpu().detach(), weight_sums.cpu().detach()
 
-def fit_tsne_1d(data):
-    print("fitting 1d-tSNE...")
-    # default openTSNE params
-    tsne = TSNE(
-        n_components=1,
-        perplexity=20,
-        initialization="pca",
-        metric="euclidean",
-        n_jobs=8,
-        random_state=3,
-    )
+def activation_triggered_average(
+    model: nn.Sequential, n_batch: int = 2048, n_iter: int = 1, rf_size=None, device=None
+) -> Dict[str, NDArray[np.float64]]:
+    # TODO: WIP
+    raise Warning("Code is not tested and might contain bugs.")
+    stas: Dict[str, NDArray[np.float64]] = {}
+    with torch.no_grad():
+        for index, (layer_name, mdl) in tqdm(enumerate(model.named_children()), total=len(model)):
+            weighted, weight_sums = _activation_triggered_average(model[:index+1], n_batch, device=device)
+            for _ in tqdm(range(n_iter - 1), total=n_iter-1, leave=False):
+                it_weighted, it_weight_sums = _activation_triggered_average(model[:index+1], n_batch, rf_size, device=device)
+                weighted += it_weighted
+                weight_sums += it_weight_sums
+            stas[layer_name] = (weighted.cpu().detach() / weight_sums[:, None, None, None] / len(weight_sums)).numpy()
+        torch.cuda.empty_cache()
+    return stas
 
-    tsne_emb = tsne.fit(data)
-    return tsne_emb
-
-
-def fit_tsne(data):
-    print("fitting tSNE...")
-    # default openTSNE params
-    tsne = TSNE(
-        perplexity=30,
-        initialization="pca",
-        metric="euclidean",
-        n_jobs=8,
-        random_state=3,
-    )
-
-    tsne_emb = tsne.fit(data.T)
-    return tsne_emb
+def sum_collapse_output(out_tensor):
+    if len(out_tensor.shape) > 2:
+        sum_dims = [2+i for i in range(len(out_tensor.shape)-2)]
+        out_tensor = torch.sum(out_tensor, dim=sum_dims)
+    return out_tensor
 
 
-def get_stim_coll(all_health, health_dep=-8, death_dep=30):
+def get_input_output_shape(model: nn.Sequential):
+    """
+    Calculates the 'minimal' input and output of a sequential model.
+    If last layer is a convolutional layer, output is assumed to be the number of channels (so 1x1 in space).
+    Takes into account if last layer is a pooling layer.
+    For linear layer obviously the number of out_features.
+    TODO: assert kernel sizes etc are quadratic / implement adaptation to non quadratic kernels
+    """
+    _first = 0
+    down_stream_linear = False
+    num_outputs = None
+    for i, layer in enumerate(reversed(model)):
+        _first += 1
+        if isinstance(layer, nn.Linear):
+            num_outputs = layer.out_features
+            in_channels = 1
+            in_size = layer.in_features
+            down_stream_linear = True
+            break
+        elif isinstance(layer, nn.Conv2d):
+            num_outputs = layer.out_channels
+            in_channels = layer.in_channels
+            in_size = layer.in_channels * ((layer.kernel_size[0]-1)*layer.dilation[0]+1) ** 2
+            break
+        elif isinstance(layer, nn.MaxPool2d) or isinstance(layer, nn.AvgPool2d):
+            for prev_layer in reversed(model[:-i-1]):
+                if isinstance(prev_layer, nn.Conv2d):
+                    in_channels = prev_layer.out_channels
+                    break
+                elif isinstance(prev_layer, nn.Linear):
+                    in_channels=1
+                else:
+                    raise Exception("layer before pooling needs to be conv or linear")
+            _kernel_size = layer.kernel_size if isinstance(layer.kernel_size, int) else layer.kernel_size[0]
+            in_size = _kernel_size**2 * in_channels
+            break
 
-    stim_coll = np.diff(all_health)
-    stim_coll[stim_coll == health_dep] = 0  # excluding 'hunger' decrease
-    stim_coll[stim_coll > death_dep] = 0  # excluding decrease due to death
-    stim_coll[stim_coll < -death_dep] = 0
-    return stim_coll
+
+    for i, layer in enumerate(reversed(model[:-_first])):
+        if isinstance(layer, nn.Linear):
+            if num_outputs is None:
+                num_outputs = layer.out_features
+            in_channels = 1
+            in_size = layer.in_features
+            down_stream_linear = True
+        elif isinstance(layer, nn.Conv2d):
+            if num_outputs is None:
+                num_outputs = layer.out_channels
+            in_size = math.sqrt(in_size / in_channels)
+            in_channels = layer.in_channels
+            in_size = (
+                (in_size - 1) * layer.stride[0]
+                - 2 * layer.padding[0] * down_stream_linear
+                + ((layer.kernel_size[0]-1)*layer.dilation[0]+1) 
+            )
+            in_size = in_size**2 * in_channels
+        elif isinstance(layer, nn.MaxPool2d) or isinstance(layer, nn.AvgPool2d):
+            for prev_layer in reversed(model[:-i-_first-1]):
+                if isinstance(prev_layer, nn.Conv2d):
+                    in_channels = prev_layer.out_channels
+                    break
+            in_size = math.sqrt(in_size / in_channels)
+            in_size = (
+                (in_size - 1) * layer.stride[0]
+                - 2 * layer.padding[0] * down_stream_linear
+                + layer.kernel_size
+            )
+            in_size = in_size**2 * in_channels
+
+    in_size = math.floor(math.sqrt(in_size / in_channels))
+    input_size = (in_channels, in_size, in_size)
+    return num_outputs, input_size
+
+def get_reconstructions(
+    device: torch.device,
+    brain: Brain,
+    test_set: Dataset[Tuple[Tensor, int]],
+    train_set: Dataset[Tuple[Tensor, int]],
+    sample_size: int,
+) -> Dict[str, List[Tuple[Tensor, int]]]:
+    brain.eval()  # Set the model to evaluation mode
+
+    def collect_reconstructions(
+        data_set: Dataset[Tuple[Tensor, int]], sample_size: int
+    ) -> Tuple[List[Tuple[Tensor, int]], List[Tuple[Tensor, int]]]:
+        subset: List[Tuple[Tensor, int]] = []
+        estimates: List[Tuple[Tensor, int]] = []
+        indices = torch.randperm(len(data_set))[:sample_size]
+
+        with torch.no_grad():  # Disable gradient computation
+            for index in indices:
+                img, k = data_set[index]
+                img = img.to(device)
+                stimulus = {"vision": img.unsqueeze(0)}
+                response = brain(stimulus)
+                rec_img = response["decoder"].squeeze(0)
+                pred_k = response["classifier"].argmax().item()
+                subset.append((img.cpu(), k))
+                estimates.append((rec_img.cpu(), pred_k))
+
+        return subset, estimates
+
+    train_subset, train_estimates = collect_reconstructions(train_set, sample_size)
+    test_subset, test_estimates = collect_reconstructions(test_set, sample_size)
+
+    return {
+        "train_subset": train_subset,
+        "train_estimates": train_estimates,
+        "test_subset": test_subset,
+        "test_estimates": test_estimates,
+    }

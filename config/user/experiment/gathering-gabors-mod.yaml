@@ -1,0 +1,43 @@
+# @package _global_
+defaults:
+  - /brain: feedforward
+  - override /dataset: retinal_env
+  - override /command: train
+  - _self_
+
+framework: rl
+rl:
+  env_name: gathering-gabors
+  viewport_width: ${dataset.vision_width}
+  viewport_height:  ${dataset.vision_height}
+  input_satiety: true
+
+# This must match the experiment file name
+experiment: gathering-gabors-mod
+
+training:
+  optimizer: adam
+  learning_rate: 0.0001
+
+# overwrite model params to those we want to use and sweep through
+brain:
+  circuits:
+    encoder:
+      num_layers: 4
+      num_channels: [16,32,64,64]
+      kernel_size: ${kernel_size}
+      stride:  ${stride}
+      act_name: ${activation}
+    action_decoder:
+      output_shape: [32]
+      hidden_units: []
+      act_name: ${latent_activation}
+
+# Parameters to sweep in this experiment (this will mostly be overridden)
+activation: "leaky"
+kernel_size: [7,7,6,6]
+stride: [3,3,2,2]
+latent_activation: "leaky"
+
+logging:
+  use_wandb: true

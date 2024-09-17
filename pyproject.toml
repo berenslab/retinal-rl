@@ -24,3 +24,12 @@ ignore = ["E501"]  # Example: Ignore line length warnings
 
 [tool.ruff.format]
 docstring-code-format = true
+
+[tool.setuptools]
+
+[project]
+name = "retinal_rl"
+version="0.0.1"
+
+[tool.setuptools.packages.find]
+include =["retinal_rl*"]
