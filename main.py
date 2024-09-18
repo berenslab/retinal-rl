@@ -1,7 +1,7 @@
 """Main entry point for the retinal RL project."""
 
-import sys
 import os
+import sys
 import warnings
 
 import hydra
@@ -9,10 +9,9 @@ import torch
 from omegaconf import DictConfig
 
 from retinal_rl.classification.objective import ClassificationContext
-from retinal_rl.models.brain import Brain
-from retinal_rl.models.optimizer import BrainOptimizer
 from retinal_rl.framework_interface import TrainingFramework
 from retinal_rl.models.brain import Brain
+from retinal_rl.models.optimizer import BrainOptimizer
 from retinal_rl.rl.sample_factory.sf_framework import SFFramework
 from runner.analyze import analyze
 from runner.dataset import get_datasets
@@ -37,7 +36,7 @@ def _program(cfg: DictConfig):
     device = torch.device(cfg.system.device)
 
     brain = Brain(**cfg.experiment.brain).to(device)
-    if hasattr(cfg.experiment, 'optimizer'):
+    if hasattr(cfg.experiment, "optimizer"):
         brain_optimizer = BrainOptimizer[ClassificationContext](
             brain, dict(cfg.experiment.optimizer)
         )
@@ -102,9 +101,7 @@ def _program(cfg: DictConfig):
             sys.exit(0)
 
         if cfg.command == "analyze":
-            analyze(
-                cfg, device, brain, histories, train_set, test_set, completed_epochs
-            )
+            analyze(cfg, device, brain, histories, train_set, test_set, completed_epochs)
             sys.exit(0)
 
         raise ValueError("Invalid run_mode")

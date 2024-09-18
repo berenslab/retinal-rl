@@ -6,7 +6,7 @@ from omegaconf import DictConfig
 from torch.utils.data import ConcatDataset
 from torchvision import datasets, transforms
 
-from retinal_rl.classification.dataset import Imageset, ScaleShiftTransform
+from retinal_rl.dataset import Imageset, ScaleShiftTransform
 
 
 def get_datasets(
