@@ -1,134 +1,129 @@
-"""Provides custom dataset classes for image processing tasks, applicable to both classification and reinforcement learning scenarios.
+"""Provides a flexible Imageset class for image processing tasks, applicable to both classification and reinforcement learning scenarios.
 
 It includes:
-- Imageset: A flexible dataset class for image data that can apply different transformations
-            to source and input images.
-- ImageSubset: A subset of Imageset that maintains all transformation capabilities.
+- Imageset: A flexible wrapper class for image datasets that applies transformations
+            and handles dataset multiplication or on-the-fly transformations.
 """
 
 import logging
-from typing import List, Sized, Tuple
+from typing import List, Sequence, Tuple
 
-import torch
 import torch.nn as nn
 import torchvision.transforms.functional as tf
 from PIL import Image
 from torch import Tensor
-from torch.nn import Module
 from torch.utils.data import Dataset, Subset
 
 logger = logging.getLogger(__name__)
 
 
-class Imageset(Dataset[Tuple[Tensor, Tensor, int]], Sized):
-    """A flexible dataset class for image data that can apply different transformations to source and input images, with built-in normalization and tensor conversion."""
+class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
+    """A flexible wrapper class for image datasets that applies transformations and handles dataset multiplication or on-the-fly transformations."""
 
     def __init__(
         self,
-        image_paths: List[str],
-        labels: List[int],
-        source_transforms: List[Module] = [],
-        noise_transforms: List[Module] = [],
+        base_dataset: Dataset[Tuple[Image.Image, int]],
+        source_transforms: List[nn.Module] = [],
+        noise_transforms: List[nn.Module] = [],
         apply_normalization: bool = True,
         normalization_stats: Tuple[List[float], List[float]] = (
             [0.5, 0.5, 0.5],
             [0.5, 0.5, 0.5],
         ),
+        fixed_transformation: bool = False,
+        multiplier: int = 1,
     ) -> None:
         """Initialize the Imageset.
 
         Args:
-            image_paths (List[str]): List of paths to the images.
-            labels (List[int]): List of labels corresponding to the images.
-            source_transforms (List[Module]): Transformations to apply to the source image.
-            Used to as the target for denoising autoencoders.
-            noise_transforms (List[Module]): Additional transformations to apply to the input.
+        ----
+            base_dataset (Dataset): The base dataset to wrap.
+            source_transforms (Optional[List[nn.Module]]): List of transformations to apply to the source image.
+            noise_transforms (Optional[List[nn.Module]]): List of additional transformations to apply as noise.
             apply_normalization (bool): Whether to apply normalization after other transforms.
-            normalization_stats (Tuple[Tuple[float, float, float], Tuple[float, float, float]]):
-                Mean and std for normalization. Default is ((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)).
+            normalization_stats (Tuple[List[float], List[float]]):
+                Mean and std for normalization. Default is ([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]).
+            fixed_transformation (bool): Whether to apply transformations once and store results (True)
+                                         or apply them on-the-fly (False).
+            multiplier (int): Number of times to multiply the dataset (only used when fixed_transformation is True).
 
         """
-        self.image_paths = image_paths
-        self.labels = labels
-        self.source_transforms: nn.Sequential = nn.Sequential(*source_transforms)
-        self.input_transforms: nn.Sequential = nn.Sequential(*noise_transforms)
+        self.base_dataset = base_dataset
+        self.source_transforms = nn.Sequential(*source_transforms)
+        self.noise_transforms = nn.Sequential(*noise_transforms)
         self.apply_normalization = apply_normalization
         self.normalization_stats = normalization_stats
+        self.fixed_transformation = fixed_transformation
+        self.multiplier = multiplier if fixed_transformation else 1
+        self._base_len = 0
+        for _ in self.base_dataset:
+            self._base_len += 1
 
-    def __len__(self) -> int:
-        return len(self.image_paths)
+        if fixed_transformation:
+            self.transformed_dataset = self._create_fixed_dataset()
 
-    def __getitem__(self, idx: int) -> Tuple[Tensor, Tensor, int]:
-        img_path = self.image_paths[idx]
-        label = self.labels[idx]
+    def _create_fixed_dataset(self) -> List[Tuple[Tensor, Tensor, int]]:
+        transformed_data: List[Tuple[Tensor, Tensor, int]] = []
+        idx = 0
+        for img, label in self.base_dataset:
+            for _ in range(self.multiplier):
+                source_img = self.source_transforms(img)
+                noisy_img = self.noise_transforms(source_img)
+                transformed_data.append(
+                    (self._to_tensor(source_img), self._to_tensor(noisy_img), label)
+                )
+            idx += 1
+        return transformed_data
 
-        # Load the original image
-        img = Image.open(img_path).convert("RGB")
-
-        # Apply source transformations if any
-        source_img = self.source_transforms(img) if self.source_transforms else img
-
-        # Apply input transformations if any
-        input_img = (
-            self.input_transforms(source_img) if self.input_transforms else source_img
-        )
-
-        # Convert to tensor
-        source_tensor = tf.to_tensor(source_img)
-        input_tensor = tf.to_tensor(input_img)
-
-        # Apply normalization if enabled
+    def _to_tensor(self, img: Image.Image) -> Tensor:
+        tensor = tf.to_tensor(img)
         if self.apply_normalization:
             mean, std = self.normalization_stats
-            source_tensor = tf.normalize(source_tensor, mean, std)
-            input_tensor = tf.normalize(input_tensor, mean, std)
+            tensor = tf.normalize(tensor, mean, std)
+        return tensor
 
-        return input_tensor, source_tensor, label
+    def __len__(self) -> int:
+        if self.fixed_transformation:
+            return self._base_len * self.multiplier
+        logger.warning("Length of on-the-fly transformed dataset is not really fixed.")
+        return self._base_len
+
+    def __getitem__(self, idx: int) -> Tuple[Tensor, Tensor, int]:
+        if self.fixed_transformation:
+            return self.transformed_dataset[idx]
+
+        # For on-the-fly transformations
+        img, label = self.base_dataset[idx]
+
+        # Apply source transformations
+        source_img = self.source_transforms(img)
+        noisy_img = self.noise_transforms(source_img)
+
+        # Convert to tensor and normalize
+        source_tensor = self._to_tensor(source_img)
+        noisy_tensor = self._to_tensor(noisy_img)
+
+        return noisy_tensor, source_tensor, label
 
 
-class ImageSubset(Subset[Tuple[Tensor, Tensor, int]], Imageset):
-    """A subset of Imageset that maintains all transformation capabilities."""
+class ImageSubset(Subset[Tuple[Tensor, Tensor, int]]):
+    """A simple subset class that can be used to create a subset of any dataset."""
 
-    def __init__(self, dataset: Imageset, indices: List[int]) -> None:
+    def __init__(
+        self, dataset: Dataset[Tuple[Tensor, Tensor, int]], indices: Sequence[int]
+    ) -> None:
         """Initialize the ImageSubset.
 
         Args:
-            dataset (Imageset): The original dataset.
-            indices (List[int]): List of indices to include in the subset.
+        ----
+            dataset (Dataset[Tuple[Tensor, Tensor, int]]): The original dataset.
+            indices (Sequence[int]): Sequence of indices to include in the subset.
 
         """
         super().__init__(dataset, indices)
-        self.source_transforms = dataset.source_transforms
-        self.input_transforms = dataset.input_transforms
-        self.apply_normalization = dataset.apply_normalization
-        self.normalization_stats = dataset.normalization_stats
 
     def __getitem__(self, idx: int) -> Tuple[Tensor, Tensor, int]:
         return super().__getitem__(idx)
 
-
-# Utility function
-def create_image_subsets(
-    dataset: Imageset, split_ratio: float = 0.8
-) -> Tuple[ImageSubset, ImageSubset]:
-    """Create train and test subsets from an Imageset.
-
-    Args:
-        dataset (Imageset): The original dataset to split.
-        split_ratio (float): Ratio of data to use for training. Default is 0.8 (80% train, 20% test).
-
-    Returns:
-        Tuple[ImageSubset, ImageSubset]: Train and test subsets.
-
-    """
-    total_size = len(dataset)
-    train_size = int(total_size * split_ratio)
-
-    indices = torch.randperm(total_size).tolist()
-    train_indices = indices[:train_size]
-    test_indices = indices[train_size:]
-
-    train_subset = ImageSubset(dataset, train_indices)
-    test_subset = ImageSubset(dataset, test_indices)
-
-    return train_subset, test_subset
+    def __len__(self):
+        return len(self.indices)

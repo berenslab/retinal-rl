@@ -10,8 +10,7 @@ from typing import List, Tuple
 
 import numpy as np
 import torch.nn as nn
-import torchvision.transforms.functional as tf
-from PIL import Image
+from PIL import Image, ImageEnhance
 
 
 class ScaleShiftTransform(nn.Module):
@@ -30,9 +29,11 @@ class ScaleShiftTransform(nn.Module):
         """Apply the scale and shift transformation to an input image.
 
         Args:
+        ----
             img (Image.Image): The input PIL Image to transform.
 
         Returns:
+        -------
             Image.Image: The transformed PIL Image.
 
         """
@@ -82,9 +83,11 @@ class ShotNoiseTransform(nn.Module):
         """Apply shot noise to the input image.
 
         Args:
+        ----
             img (Image.Image): The input PIL Image to transform.
 
         Returns:
+        -------
             Image.Image: The transformed PIL Image with added shot noise.
 
         """
@@ -109,13 +112,16 @@ class ContrastTransform(nn.Module):
         """Apply random contrast adjustment to the input image.
 
         Args:
+        ----
             img (Image.Image): The input PIL Image to transform.
 
         Returns:
+        -------
             Image.Image: The transformed PIL Image with adjusted contrast.
 
         """
         contrast_factor = np.random.uniform(
             self.contrast_range[0], self.contrast_range[1]
         )
-        return tf.adjust_contrast(img, contrast_factor)
+        enhancer = ImageEnhance.Contrast(img)
+        return enhancer.enhance(contrast_factor)

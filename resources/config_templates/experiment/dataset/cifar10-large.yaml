@@ -1,9 +1,24 @@
-# The configuration for the dataset in classification experiments.
+# Configuration for the CIFAR10 dataset in classification experiments.
 
-name: cifar10 # Name of the dataset
-num_classes: 10 # Number of classes
-num_colours: 3 # Number of colours
-vision_width: 160 # Width of the image
-vision_height: 160 # Height of the image
-image_rescale_range: [1,5] # Range for randomized rescaling of default images. (Base CIFAR10 size is 32x32)
-sample_size_multiplier: 5 # Multiplier on the base sample size (For CIFAR10, Train is 50000, test is 10000)
+name: cifar10  # Name of the dataset
+
+imageset:
+  _target_: retinal_rl.dataset.Imageset
+  source_transforms:
+    - _target_: retinal_rl.dataset.transforms.ScaleShiftTransform
+      vision_width: 160
+      vision_height: 160
+      image_rescale_range: [1, 5]
+  noise_transforms:
+    - _target_: retinal_rl.dataset.transforms.ShotNoiseTransform
+      lambda_range: [0.8, 1.2]
+    - _target_: retinal_rl.dataset.transforms.ContrastTransform
+      contrast_range: [0.5, 1.5]
+  apply_normalization: true
+  normalization_stats:
+    mean: [0.4914, 0.4822, 0.4465]
+    std: [0.2023, 0.1994, 0.2010]
+  fixed_transformation: false
+  multiplier: 1
+
+train_ratio: 0.8  # Ratio of data to use for training (0.8 means 80% train, 20% test)

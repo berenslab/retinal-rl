@@ -11,7 +11,7 @@ import torch.nn as nn
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from retinal_rl.classification.dataset import Imageset, ImageSubset
+from retinal_rl.dataset import Imageset, ImageSubset
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.circuits.convolutional import ConvolutionalEncoder
 from retinal_rl.util import (
