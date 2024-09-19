@@ -8,11 +8,11 @@ from torch import Tensor
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
-from retinal_rl.classification.dataset import Imageset
 from retinal_rl.classification.objective import (
     ClassificationContext,
     get_classification_context,
 )
+from retinal_rl.dataset import Imageset
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.optimizer import BrainOptimizer
 

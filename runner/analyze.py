@@ -16,7 +16,7 @@ from retinal_rl.analysis.plot import (
     plot_reconstructions,
 )
 from retinal_rl.analysis.statistics import cnn_statistics, reconstruct_images
-from retinal_rl.classification.dataset import Imageset
+from retinal_rl.dataset import Imageset
 from retinal_rl.models.brain import Brain
 
 logger = logging.getLogger(__name__)

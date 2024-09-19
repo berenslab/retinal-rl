@@ -26,17 +26,21 @@ def get_datasets(cfg: DictConfig) -> Tuple[Imageset, Imageset]:
     os.makedirs(cache_dir, exist_ok=True)
 
     # Load the base datasets
-    if cfg.name.upper() == "CIFAR10":
+    if cfg.experiment.dataset.name.upper() == "CIFAR10":
         train_base = datasets.CIFAR10(root=cache_dir, train=True, download=True)
         test_base = datasets.CIFAR10(root=cache_dir, train=False, download=True)
-    elif cfg.name.upper() == "MNIST":
+    elif cfg.experiment.dataset.name.upper() == "MNIST":
         train_base = datasets.MNIST(root=cache_dir, train=True, download=True)
         test_base = datasets.MNIST(root=cache_dir, train=False, download=True)
     else:
         raise ValueError(f"Unsupported dataset: {cfg.name}")
 
     # Instantiate the Imagesets using Hydra
-    train_set = hydra.utils.instantiate(cfg.imageset, base_dataset=train_base)
-    test_set = hydra.utils.instantiate(cfg.imageset, base_dataset=test_base)
+    train_set = hydra.utils.instantiate(
+        cfg.experiment.dataset.imageset, base_dataset=train_base
+    )
+    test_set = hydra.utils.instantiate(
+        cfg.experiment.dataset.imageset, base_dataset=test_base
+    )
 
     return train_set, test_set

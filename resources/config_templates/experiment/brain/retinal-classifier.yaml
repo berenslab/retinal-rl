@@ -3,9 +3,9 @@
 # Define the input sensor
 sensors:
   vision: # Vision is a list of 3 elements
-    - ${experiment.dataset.num_colours}  # Number of color channels
-    - ${experiment.dataset.vision_height}  # Height of the input image
-    - ${experiment.dataset.vision_width}  # Width of the input image
+    - 3  # Number of color channels
+    - 160  # Height of the input image
+    - 160  # Width of the input image
 
 # Define how the various NeuralCircuits are connected to each other
 connections:
@@ -70,4 +70,4 @@ circuits:
   # Classifier: for categorizing the input into classes
   classifier:
     _target_: retinal_rl.models.circuits.task_head.linear_classifier.LinearClassifier
-    num_classes: ${experiment.dataset.num_classes}  # Number of output classes
+    num_classes: 10  # Number of output classes
