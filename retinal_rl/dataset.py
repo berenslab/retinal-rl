@@ -26,10 +26,8 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
         source_transforms: List[nn.Module] = [],
         noise_transforms: List[nn.Module] = [],
         apply_normalization: bool = True,
-        normalization_stats: Tuple[List[float], List[float]] = (
-            [0.5, 0.5, 0.5],
-            [0.5, 0.5, 0.5],
-        ),
+        normalization_mean: List[float] = [0.5, 0.5, 0.5],
+        normalization_std: List[float] = [0.5, 0.5, 0.5],
         fixed_transformation: bool = False,
         multiplier: int = 1,
     ) -> None:
@@ -52,7 +50,7 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
         self.source_transforms = nn.Sequential(*source_transforms)
         self.noise_transforms = nn.Sequential(*noise_transforms)
         self.apply_normalization = apply_normalization
-        self.normalization_stats = normalization_stats
+        self.normalization_stats = (normalization_mean, normalization_std)
         self.fixed_transformation = fixed_transformation
         self.multiplier = multiplier if fixed_transformation else 1
         self._base_len = 0
@@ -103,7 +101,7 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
         source_tensor = self._to_tensor(source_img)
         noisy_tensor = self._to_tensor(noisy_img)
 
-        return noisy_tensor, source_tensor, label
+        return source_tensor, noisy_tensor, label
 
 
 class ImageSubset(Subset[Tuple[Tensor, Tensor, int]]):

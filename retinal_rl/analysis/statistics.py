@@ -50,13 +50,15 @@ def reconstruct_images(
     def collect_reconstructions(
         dataset: Imageset, sample_size: int
     ) -> Tuple[List[Tuple[Tensor, int]], List[Tuple[Tensor, int]]]:
+        """Collect reconstructions for a subset of a dataset."""
         subset: List[Tuple[Tensor, int]] = []
         estimates: List[Tuple[Tensor, int]] = []
         indices = torch.randperm(len(dataset))[:sample_size]
 
         with torch.no_grad():  # Disable gradient computation
             for index in indices:
-                img, k = dataset[index]
+                src, img, k = dataset[index]
+                src = src.to(device)
                 img = img.to(device)
                 stimulus = {"vision": img.unsqueeze(0)}
                 response = brain(stimulus)
@@ -137,12 +139,14 @@ def cnn_statistics(
 
     if max_sample_size > 0 and original_size > max_sample_size:
         indices: List[int] = torch.randperm(original_size)[:max_sample_size].tolist()
-        dataset = ImageSubset(dataset, indices=indices)
+        subset = ImageSubset(dataset, indices=indices)
         logger.info(f"Reducing dataset size for cnn_statistics to {max_sample_size}")
     else:
+        indices = list(range(original_size))
+        subset = ImageSubset(dataset, indices=indices)
         logger.info("Using full dataset for cnn_statistics")
 
-    dataloader = DataLoader(dataset, batch_size=64, shuffle=False)
+    dataloader = DataLoader(subset, batch_size=64, shuffle=False)
 
     # Initialize results dictionary
     results: Dict[str, Dict[str, FloatArray]] = {}
@@ -268,12 +272,12 @@ def _get_cnn_circuit(brain: Brain) -> Tuple[Tuple[int, ...], OrderedDict[str, nn
 
 def _layer_pixel_histograms(
     device: torch.device,
-    dataloader: DataLoader[Tuple[Tensor, int]],
+    dataloader: DataLoader[Tuple[Tensor, Tensor, int]],
     model: nn.Module,
     num_bins: int = 20,
 ) -> Dict[str, FloatArray]:
     """Compute histograms of pixel/activation values for each channel across all data in a dataset."""
-    first_batch, _ = next(iter(dataloader))
+    _, first_batch, _ = next(iter(dataloader))
     with torch.no_grad():
         first_batch = model(first_batch.to(device))
     num_channels: int = first_batch.shape[1]
@@ -285,7 +289,7 @@ def _layer_pixel_histograms(
     # First pass: compute global min and max
     total_elements = 0
 
-    for batch, _ in dataloader:
+    for _, batch, _ in dataloader:
         with torch.no_grad():
             batch = model(batch.to(device))
         batch_min, _ = batch.view(-1, num_channels).min(dim=0)
@@ -301,7 +305,7 @@ def _layer_pixel_histograms(
         (num_channels, num_bins), dtype=torch.float64, device=device
     )
 
-    for batch, _ in dataloader:
+    for _, batch, _ in dataloader:
         with torch.no_grad():
             batch = model(batch.to(device))
         for c in range(num_channels):
@@ -324,11 +328,11 @@ def _layer_pixel_histograms(
 
 def _layer_spectral_analysis(
     device: torch.device,
-    dataloader: DataLoader[Tuple[Tensor, int]],
+    dataloader: DataLoader[Tuple[Tensor, Tensor, int]],
     model: nn.Module,
 ) -> Dict[str, FloatArray]:
     """Compute spectral analysis statistics for each channel across all data in a dataset."""
-    first_batch, _ = next(iter(dataloader))
+    _, first_batch, _ = next(iter(dataloader))
     with torch.no_grad():
         first_batch = model(first_batch.to(device))
     image_size = first_batch.shape[1:]
@@ -342,7 +346,7 @@ def _layer_spectral_analysis(
 
     count = 0
 
-    for batch, _ in dataloader:
+    for _, batch, _ in dataloader:
         with torch.no_grad():
             batch = model(batch.to(device))
         for image in batch:

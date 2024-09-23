@@ -60,8 +60,7 @@ def _initialize_create(
         )
         wandb.init(
             project="retinal-rl",
-            group=cfg.experiment,
-            job_type=cfg.brain.name,
+            group=cfg.experiment.name,
             config=dict_conf,
             name=cfg.run_name,
             id=cfg.run_name,

@@ -28,8 +28,8 @@ def run_epoch(
     brain_optimizer: BrainOptimizer[ClassificationContext],
     history: Dict[str, List[float]],
     epoch: int,
-    trainloader: DataLoader[Tuple[Tensor, int]],
-    testloader: DataLoader[Tuple[Tensor, int]],
+    trainloader: DataLoader[Tuple[Tensor, Tensor, int]],
+    testloader: DataLoader[Tuple[Tensor, Tensor, int]],
 ) -> Tuple[Brain, Dict[str, List[float]]]:
     """Perform a single training epoch and evaluation.
 
@@ -75,7 +75,7 @@ def process_dataset(
     brain: Brain,
     brain_optimizer: BrainOptimizer[ClassificationContext],
     epoch: int,
-    dataloader: DataLoader[Tuple[Tensor, int]],
+    dataloader: DataLoader[Tuple[Tensor, Tensor, int]],
     is_training: bool,
 ) -> Dict[str, float]:
     """Process a dataset (train or test) and return average losses.

@@ -26,11 +26,13 @@ class ClassificationContext(BaseContext):
         self,
         responses: Dict[str, Tensor],
         epoch: int,
+        sources: Tensor,
         inputs: Tensor,
         classes: Tensor,
     ):
         """Initialize the classification context object."""
         super().__init__(responses, epoch)
+        self.sources = sources
         self.inputs = inputs
         self.classes = classes
 
@@ -81,7 +83,7 @@ def get_classification_context(
     device: torch.device,
     brain: Brain,
     epoch: int,
-    batch: Tuple[torch.Tensor, torch.Tensor],
+    batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
 ) -> ClassificationContext:
     """Calculate the loss dictionary for a single batch.
 
@@ -101,8 +103,8 @@ def get_classification_context(
                                  for loss calculation and optimization.
 
     """
-    inputs, classes = batch
-    inputs, classes = inputs.to(device), classes.to(device)
+    sources, inputs, classes = batch
+    sources, inputs, classes = sources.to(device), inputs.to(device), classes.to(device)
 
     stimuli = {"vision": inputs}
     responses = brain(stimuli)
@@ -110,6 +112,7 @@ def get_classification_context(
     return ClassificationContext(
         responses=responses,
         epoch=epoch,
+        sources=sources,
         inputs=inputs,
         classes=classes,
     )
