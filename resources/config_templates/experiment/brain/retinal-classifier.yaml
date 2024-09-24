@@ -34,8 +34,8 @@ circuits:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 1
     num_channels: 64
-    kernel_size: 1
-    stride: 1
+    kernel_size: ${experiment.kernel_size}
+    stride: ${experiment.stride}
     act_name: ${experiment.activation}
     layer_names: ["lgn"]  # Lateral Geniculate Nucleus
 
@@ -63,8 +63,8 @@ circuits:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
     num_layers: 3
     num_channels: [32,16,3]  # For a symmetric encoder, this should be the reverse of the num_channels in the CNN layers up to the point of decoding (in this case, the thalamus)
-    kernel_size: [1,8,8]
-    stride: [1,2,2]
+    kernel_size: ${experiment.kernel_size}
+    stride: ${experiment.stride}
     act_name: ${experiment.activation}
 
   # Classifier: for categorizing the input into classes

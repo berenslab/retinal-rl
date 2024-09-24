@@ -69,8 +69,13 @@ class BrainOptimizer(Generic[ContextT]):
                 if circuit_name in brain.circuits:
                     params.extend(brain.circuits[circuit_name].parameters())
 
-            # Initialize optimizer
-            self.optimizers[name] = instantiate(config.optimizer, params=params)
+            # Initialize optimizer, as long as its not trivial.
+            if params:
+                self.optimizers[name] = instantiate(config.optimizer, params=params)
+            else:
+                logger.warning(
+                    f"Optimizer {name} not initialized - no parameters to optimize."
+                )
             self.params[name] = params
 
             # Initialize objectives

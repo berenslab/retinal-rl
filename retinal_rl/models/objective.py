@@ -110,9 +110,11 @@ class L1Sparsity(Objective[ContextT]):
 class KLDivergenceSparsity(Objective[ContextT]):
     """Objective for computing the KL divergence sparsity of activations."""
 
-    def __init__(self, weight: float, targets: List[str], target_sparsity: float = 0.05):
+    def __init__(
+        self, weight: float, target_responses: List[str], target_sparsity: float = 0.05
+    ):
         """Initialize the KL divergence sparsity objective."""
-        self.targets = targets
+        self.target_responses = target_responses
         self.target_sparsity = target_sparsity
         super().__init__(weight)
 
@@ -120,7 +122,7 @@ class KLDivergenceSparsity(Objective[ContextT]):
         """Compute the KL divergence sparsity of activations."""
         responses = context.responses
         activations: List[Tensor] = []
-        for target in self.targets:
+        for target in self.target_responses:
             if target not in responses:
                 raise ValueError(f"Target {target} not found in responses")
             activations.append(responses[target])
