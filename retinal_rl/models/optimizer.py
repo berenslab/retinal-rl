@@ -62,16 +62,12 @@ class BrainOptimizer(Generic[ContextT]):
             self.min_epochs[name] = config.get("min_epoch", 0)
             self.max_epochs[name] = config.get("max_epoch", -1)
             if not set(config.target_circuits).issubset(brain.connectome.nodes):
-                raise ValueError(
+                logger.warning(
                     f"Some target circuits for optimizer {name} are not in the brain's connectome"
                 )
             for circuit_name in config.target_circuits:
                 if circuit_name in brain.circuits:
                     params.extend(brain.circuits[circuit_name].parameters())
-                else:
-                    raise ValueError(
-                        f"Circuit: {circuit_name} associated with the Optimizer: {name} not found."
-                    )
 
             # Initialize optimizer
             self.optimizers[name] = instantiate(config.optimizer, params=params)
