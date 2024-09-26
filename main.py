@@ -23,7 +23,7 @@ from runner.util import delete_results
 
 
 # Hydra entry point
-@hydra.main(config_path="config", config_name="config", version_base=None)
+@hydra.main(config_path="config/base", config_name="config", version_base=None)
 def _program(cfg: DictConfig):
     if cfg.command == "clean":
         delete_results(cfg)

@@ -16,9 +16,11 @@ run_name: 'run_${now:%Y-%m-%d-%H-%M-%S}'
 
 # Hydra configuration
 hydra:
+  searchpath:
+    - file://config/user
   output_subdir: config  # Subdirectory for Hydra output in the run directory
   run:
-    dir: experiments/${experiment.name}/single-run/${run_name}  # Directory for single runs
+    dir: experiments/${hydra.runtime.choices.experiment}/single-run/${run_name}  # Directory for single runs
   job:
     chdir: True  # Change working directory to the run directory
     config:
@@ -27,7 +29,7 @@ hydra:
           - experiment
           - command
   sweep:
-    dir: experiments/${experiment.name}/sweep/${oc.env:WANDB_SWEEP_ID,local}  # Directory for sweep runs - defined by wandb sweep id when using wandb.
+    dir: experiments/${hydra.runtime.choices.experiment}/sweep/${oc.env:WANDB_SWEEP_ID,local}  # Directory for sweep runs
     subdir: ${run_name}  # The subdirectory in the sweep dir is the run_name
 
 # System configuration
@@ -46,13 +48,12 @@ system:
 use_wandb: True
 
 # Sweep command setup 
-experiment:
-  sweep:
-    command:
-      - \${env}  # Environment variables
-      - python  # Python interpreter
-      - \${program}  # Program to run
-      - -m  # Run as module
-      - command=train  # Set command to train
-      - +experiment=${experiment.name}  # Add experiment configuration
-      - \${args_no_hyphens}  # Additional arguments without hyphens
+sweep:
+  command:
+    - \${env}  # Environment variables
+    - python  # Python interpreter
+    - \${program}  # Program to run
+    - -m  # Run as module
+    - command=train  # Set command to train
+    - +experiment=${hydra.runtime.choices.experiment}  # Add experiment configuration
+    - \${args_no_hyphens}  # Additional arguments without hyphens

@@ -7,7 +7,7 @@ __pycache__/
 *.wad
 
 # user configs
-/config/experiment
+/config/user
 
 # Large scale resources
 /cache/
