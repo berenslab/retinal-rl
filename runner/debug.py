@@ -81,7 +81,7 @@ def compare_gradient_computation(
     dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
 
     for batch_idx, batch in enumerate(dataloader):
-        context = get_classification_context(device, brain, 0, batch)
+        context = get_classification_context(device, brain, batch, 0)
 
         efficient_grads = compute_efficient_gradients(optimizer, context)
         ground_truth_grads = compute_ground_truth_gradients(

@@ -101,7 +101,7 @@ def process_dataset(
     steps = 0
 
     for batch in dataloader:
-        context = get_classification_context(device, brain, epoch, batch)
+        context = get_classification_context(device, brain, batch, epoch)
 
         if is_training:
             brain.train()

@@ -24,16 +24,14 @@ class ClassificationContext(BaseContext):
 
     def __init__(
         self,
-        responses: Dict[str, Tensor],
-        epoch: int,
         sources: Tensor,
         inputs: Tensor,
         classes: Tensor,
+        responses: Dict[str, Tensor],
+        epoch: int,
     ):
         """Initialize the classification context object."""
-        super().__init__(responses, epoch)
-        self.sources = sources
-        self.inputs = inputs
+        super().__init__(sources, inputs, responses, epoch)
         self.classes = classes
 
 
@@ -82,8 +80,8 @@ class PercentCorrect(Objective[ClassificationContext]):
 def get_classification_context(
     device: torch.device,
     brain: Brain,
-    epoch: int,
     batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+    epoch: int,
 ) -> ClassificationContext:
     """Calculate the loss dictionary for a single batch.
 
@@ -110,9 +108,9 @@ def get_classification_context(
     responses = brain(stimuli)
 
     return ClassificationContext(
-        responses=responses,
-        epoch=epoch,
         sources=sources,
         inputs=inputs,
         classes=classes,
+        responses=responses,
+        epoch=epoch,
     )

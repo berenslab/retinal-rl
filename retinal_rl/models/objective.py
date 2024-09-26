@@ -26,11 +26,15 @@ class BaseContext:
 
     def __init__(
         self,
+        sources: Tensor,
+        inputs: Tensor,
         responses: Dict[str, Tensor],
         epoch: int,
     ):
         """Initialize the context object with responses, and the current epoch."""
         self.responses = responses
+        self.sources = sources
+        self.inputs = inputs
         self.epoch = epoch
 
 
@@ -77,15 +81,15 @@ class ReconstructionObjective(Objective[ContextT]):
 
     def compute_value(self, context: ContextT) -> Tensor:
         """Compute the mean squared error between inputs and reconstructions."""
-        inputs = context.responses["vision"]
+        sources = context.sources
         reconstructions = context.responses["decoder"]
 
-        if inputs.shape != reconstructions.shape:
+        if sources.shape != reconstructions.shape:
             raise ValueError(
-                f"Shape mismatch: inputs {inputs.shape}, reconstructions {reconstructions.shape}"
+                f"Shape mismatch: sources {sources.shape}, reconstructions {reconstructions.shape}"
             )
 
-        return self.loss_fn(reconstructions, inputs)
+        return self.loss_fn(reconstructions, sources)
 
 
 class L1Sparsity(Objective[ContextT]):
