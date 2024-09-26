@@ -13,6 +13,7 @@ from retinal_rl.analysis.plot import (
     layer_receptive_field_plots,
     plot_channel_statistics,
     plot_histories,
+    plot_receptive_field_sizes,
     plot_reconstructions,
 )
 from retinal_rl.analysis.statistics import cnn_statistics, reconstruct_images
@@ -94,7 +95,14 @@ def analyze(
 
     # CNN analysis
     cnn_analysis = cnn_statistics(device, test_set, brain, 1000)
+    if epoch == 0:
+        rf_sizes_fig = plot_receptive_field_sizes(cnn_analysis)
+        _save_figure(cfg, "", "receptive_field_sizes", rf_sizes_fig)
+
     for layer_name, layer_data in cnn_analysis.items():
+        if layer_name == "input" and epoch > 0:
+            continue
+
         layer_rfs = layer_receptive_field_plots(layer_data["receptive_fields"])
         _process_figure(
             cfg,

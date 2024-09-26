@@ -1,5 +1,6 @@
-from enum import Enum
+import logging
 import re
+from enum import Enum
 from math import ceil, floor
 from typing import List, Tuple, Union
 
@@ -8,6 +9,10 @@ import torch.nn as nn
 from numpy.typing import NDArray
 
 FloatArray = NDArray[np.float64]
+
+
+logger = logging.getLogger(__name__)
+
 
 def assert_list(
     list_candidate: Union[int, List[int]],
@@ -68,8 +73,10 @@ def encoder_out_size(mdls: List[nn.Module], hght0: int, wdth0: int) -> Tuple[int
     return hght, wdth
 
 
-def rf_size_and_start(mdls: List[nn.Module], hidx: int, widx: int):
-    """Compute the receptive field size and start for each layer of the encoder, where mdls is the list of encoder modules."""
+def rf_size_and_start(
+    mdls: List[nn.Module], hidx: int, widx: int
+) -> Tuple[int, int, int, int]:
+    """Compute the receptive field size and start position for sequence of modules."""
     hrf_size = 1
     hrf_scale = 1
     hrf_shift = 0
@@ -85,7 +92,9 @@ def rf_size_and_start(mdls: List[nn.Module], hidx: int, widx: int):
         if is_activation(mdl):
             continue
         if not (is_convolutional_layer(mdl) or is_base_pooling_layer(mdl)):
-            raise NotImplementedError("Only convolutional and basic pooling layers are supported")
+            raise NotImplementedError(
+                "Only convolutional and basic pooling layers are supported"
+            )
 
         hksz, wksz = _double_up(mdl.kernel_size)
         hstrd, wstrd = _double_up(mdl.stride)
@@ -120,15 +129,29 @@ class Activation(Enum):
             act_module = self.value(inplace=True)
         return act_module
 
+
 def is_activation(mdl: nn.Module) -> bool:
     """Check if the module is an activation function."""
     return mdl.__class__ in [act.value for act in Activation]
 
+
 def is_convolutional_layer(mdl: nn.Module) -> bool:
     return isinstance(mdl, (nn.Conv1d, nn.Conv2d, nn.Conv3d))
 
+
 def is_base_pooling_layer(mdl: nn.Module) -> bool:
-    return isinstance(mdl, (nn.AvgPool1d, nn.AvgPool2d, nn.AvgPool3d, nn.MaxPool1d, nn.MaxPool2d, nn.MaxPool3d))
+    return isinstance(
+        mdl,
+        (
+            nn.AvgPool1d,
+            nn.AvgPool2d,
+            nn.AvgPool3d,
+            nn.MaxPool1d,
+            nn.MaxPool2d,
+            nn.MaxPool3d,
+        ),
+    )
+
 
 def _double_up(x: Union[int, Tuple[int, ...]]):
     if isinstance(x, int):

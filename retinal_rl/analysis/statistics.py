@@ -1,9 +1,8 @@
 """Functions for analysis and statistics on a Brain model."""
 
 import logging
-from typing import Dict, List, OrderedDict, Tuple, cast
+from typing import Dict, List, Tuple, cast
 
-import networkx as nx
 import numpy as np
 import torch
 import torch.fft as fft
@@ -12,8 +11,7 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 
 from retinal_rl.dataset import Imageset, ImageSubset
-from retinal_rl.models.brain import Brain
-from retinal_rl.models.circuits.convolutional import ConvolutionalEncoder
+from retinal_rl.models.brain import Brain, get_cnn_circuit
 from retinal_rl.util import (
     FloatArray,
     is_activation,
@@ -130,7 +128,7 @@ def cnn_statistics(
     # Get the input shape and the CNN layers
     brain.eval()
     brain.to(device)
-    input_shape, cnn_layers = _get_cnn_circuit(brain)
+    input_shape, cnn_layers = get_cnn_circuit(brain)
     nclrs, hght, wdth = input_shape
 
     # Prepare subsample
@@ -161,6 +159,7 @@ def cnn_statistics(
         "receptive_fields": np.eye(nclrs)[
             :, :, np.newaxis, np.newaxis
         ],  # Identity for input
+        "shape": np.array(input_shape, dtype=np.float64),
         "pixel_histograms": input_histograms["channel_histograms"],
         "histogram_bin_edges": input_histograms["bin_edges"],
         "mean_power_spectrum": input_spectral["mean_power_spectrum"],
@@ -226,48 +225,6 @@ def cnn_statistics(
         }
 
     return results
-
-
-def _get_cnn_circuit(brain: Brain) -> Tuple[Tuple[int, ...], OrderedDict[str, nn.Module]]:
-    """Find the longest path starting from a sensor, along a path of ConvolutionalEncoders. This likely won't work very well for particularly complex graphs."""
-    cnn_paths: List[List[str]] = []
-
-    # Create for the subgraph of sensors and cnns
-    cnn_dict: Dict[str, ConvolutionalEncoder] = {}
-    for node, circuit in brain.circuits.items():
-        if isinstance(circuit, ConvolutionalEncoder):
-            cnn_dict[node] = circuit
-
-    cnn_nodes = list(cnn_dict.keys())
-    sensor_nodes = [node for node in brain.sensors.keys()]
-    subgraph: nx.DiGraph[str] = nx.DiGraph(
-        nx.subgraph(brain.connectome, cnn_nodes + sensor_nodes)
-    )
-    end_nodes: List[str] = [
-        node for node in cnn_nodes if not list(subgraph.successors(node))
-    ]
-
-    for sensor in sensor_nodes:
-        for end_node in end_nodes:
-            cnn_paths.extend(
-                nx.all_simple_paths(subgraph, source=sensor, target=end_node)
-            )
-
-    # find the longest path
-    path = max(cnn_paths, key=len)
-    logger.info(f"Convolutional circuit path for analysis: {path}")
-    # Split off the sensor node
-    sensor, *path = path
-    # collect list of cnns
-    cnn_circuits: List[ConvolutionalEncoder] = [cnn_dict[node] for node in path]
-    # Combine all cnn layers
-    tuples: List[Tuple[str, nn.Module]] = []
-    for circuit in cnn_circuits:
-        for name, module in circuit.conv_head.named_children():
-            tuples.extend([(name, module)])
-
-    input_shape = brain.sensors[sensor]
-    return input_shape, OrderedDict(tuples)
 
 
 def _layer_pixel_histograms(

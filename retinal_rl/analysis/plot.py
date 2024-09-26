@@ -1,15 +1,90 @@
 from typing import Dict, List, Tuple
 
 import matplotlib.gridspec as gridspec
+import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.fft as fft
+import seaborn as sns
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.ticker import MaxNLocator
 from torch import Tensor
 
 from retinal_rl.util import FloatArray
+
+
+def plot_receptive_field_sizes(results: Dict[str, Dict[str, FloatArray]]) -> Figure:
+    """Plot the receptive field sizes for each layer of the convolutional part of the network.
+
+    Args:
+    ----
+    - results: Dictionary containing the results from cnn_statistics function
+
+    """
+    # Get visual field size from the input shape
+    input_shape = results["input"]["shape"]
+    [_, height, width] = list(input_shape)
+
+    # Calculate receptive field sizes for each layer
+    rf_sizes: List[Tuple[int, int]] = []
+    layer_names: List[str] = []
+    for name, layer_data in results.items():
+        if name == "input":
+            continue
+        rf = layer_data["receptive_fields"]
+        rf_height, rf_width = rf.shape[2:]
+        rf_sizes.append((rf_height, rf_width))
+        layer_names.append(name)
+
+    rf_sizes.reverse()
+    layer_names.reverse()
+
+    # Set up the plot
+    fig, ax = plt.subplots(figsize=(10, 10))
+    ax.set_xlim(0, width)
+    ax.set_ylim(height, 0)  # Reverse y-axis to match image coordinates
+    ax.set_aspect("equal", "box")
+    ax.set_title("Receptive Field Sizes of Convolutional Layers")
+
+    # Set up grid lines
+    ax.set_xticks(np.arange(0, width + 1, 1), minor=True)
+    ax.set_yticks(np.arange(0, height + 1, 1), minor=True)
+    ax.grid(which="minor", color="gray", linestyle="-", linewidth=0.5, alpha=0.3)
+
+    # Set up major ticks and labels
+    major_ticks_x = [0, width // 2, width]
+    major_ticks_y = [0, height // 2, height]
+    ax.set_xticks(major_ticks_x)
+    ax.set_yticks(major_ticks_y)
+    ax.set_xticklabels(["0", f"{width // 2}", f"{width}"])
+    ax.set_yticklabels([f"{height}", f"{height // 2}", "0"])
+
+    # Use a color palette from seaborn
+    colors = sns.color_palette("husl", n_colors=len(rf_sizes))
+
+    # Plot receptive fields
+    for (rf_height, rf_width), color, name in zip(rf_sizes, colors, layer_names):
+        center_x, center_y = width // 2, height // 2
+        rect = patches.Rectangle(
+            (center_x - rf_width // 2, center_y - rf_height // 2),
+            rf_width,
+            rf_height,
+            fill=True,
+            facecolor=color,
+            edgecolor=color,
+            label=f"{name} ({rf_height}x{rf_width})",
+        )
+        ax.add_patch(rect)
+
+    # Add legend
+    ax.legend()
+
+    # Show the plot
+    plt.tight_layout()
+    plt.show()
+
+    return fig
 
 
 def plot_histories(histories: Dict[str, List[float]]) -> Figure:
