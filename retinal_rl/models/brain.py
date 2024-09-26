@@ -1,7 +1,7 @@
 """Provides the Brain class, which combines multiple NeuralCircuit instances into a single model by specifying a graph of connections between them."""
 
 import logging
-from typing import Any, Dict, List, Tuple, cast
+from typing import Any, Dict, List, OrderedDict, Tuple, cast
 
 import networkx as nx
 import torch
@@ -10,6 +10,7 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 from torch import Tensor
 
+from retinal_rl.models.circuits.convolutional import ConvolutionalEncoder
 from retinal_rl.models.neural_circuit import NeuralCircuit
 
 logger = logging.getLogger(__name__)
@@ -150,3 +151,45 @@ class Brain(nn.Module):
             # flatten the inputs and concatenate them
             input = torch.cat([inp.view(inp.size(0), -1) for inp in inputs], dim=1)
         return input
+
+
+def get_cnn_circuit(brain: Brain) -> Tuple[Tuple[int, ...], OrderedDict[str, nn.Module]]:
+    """Find the longest path starting from a sensor, along a path of ConvolutionalEncoders. This likely won't work very well for particularly complex graphs."""
+    cnn_paths: List[List[str]] = []
+
+    # Create for the subgraph of sensors and cnns
+    cnn_dict: Dict[str, ConvolutionalEncoder] = {}
+    for node, circuit in brain.circuits.items():
+        if isinstance(circuit, ConvolutionalEncoder):
+            cnn_dict[node] = circuit
+
+    cnn_nodes = list(cnn_dict.keys())
+    sensor_nodes = [node for node in brain.sensors.keys()]
+    subgraph: nx.DiGraph[str] = nx.DiGraph(
+        nx.subgraph(brain.connectome, cnn_nodes + sensor_nodes)
+    )
+    end_nodes: List[str] = [
+        node for node in cnn_nodes if not list(subgraph.successors(node))
+    ]
+
+    for sensor in sensor_nodes:
+        for end_node in end_nodes:
+            cnn_paths.extend(
+                nx.all_simple_paths(subgraph, source=sensor, target=end_node)
+            )
+
+    # find the longest path
+    path = max(cnn_paths, key=len)
+    logger.info(f"Convolutional circuit path for analysis: {path}")
+    # Split off the sensor node
+    sensor, *path = path
+    # collect list of cnns
+    cnn_circuits: List[ConvolutionalEncoder] = [cnn_dict[node] for node in path]
+    # Combine all cnn layers
+    tuples: List[Tuple[str, nn.Module]] = []
+    for circuit in cnn_circuits:
+        for name, module in circuit.conv_head.named_children():
+            tuples.extend([(name, module)])
+
+    input_shape = brain.sensors[sensor]
+    return input_shape, OrderedDict(tuples)
