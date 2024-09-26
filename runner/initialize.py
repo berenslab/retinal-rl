@@ -112,8 +112,8 @@ def _initialize_reload(
     if cfg.use_wandb:
         wandb.init(
             project="retinal-rl",
-            group=cfg.experiment,
-            job_type=cfg.brain.name,
+            group=cfg.hydra.choices.experiment,
+            job_type=cfg.hydra.choices.brain,
             name=cfg.run_name,
             id=cfg.run_name,
             resume="must",

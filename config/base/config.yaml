@@ -3,6 +3,10 @@
 
 defaults:
   - _self_
+  - brain: ???
+  - dataset: ???
+  - sweep: ???
+  - optimizer: ???
   - override hydra/job_logging: custom  # Override logging config
 
 # Defaults for the various subconfigs. Can be overriden from the commandline

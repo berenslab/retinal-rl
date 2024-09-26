@@ -11,5 +11,5 @@ method: grid
 project: retinal-rl
 
 parameters:
-  experiment.kernel_size:
+  kernel_size:
     values: [6,8,10]

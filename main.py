@@ -35,10 +35,10 @@ def _program(cfg: DictConfig):
 
     device = torch.device(cfg.system.device)
 
-    brain = Brain(**cfg.experiment.brain).to(device)
-    if hasattr(cfg.experiment, "optimizer"):
+    brain = Brain(**cfg.brain).to(device)
+    if hasattr(cfg, "optimizer"):
         brain_optimizer = BrainOptimizer[ClassificationContext](
-            brain, dict(cfg.experiment.optimizer)
+            brain, dict(cfg.optimizer)
         )
     else:
         warnings.warn("No Optimizer specified, is that wanted?")
@@ -51,7 +51,7 @@ def _program(cfg: DictConfig):
     framework: TrainingFramework
 
     cache_path = os.path.join(hydra.utils.get_original_cwd(), "cache")
-    if cfg.experiment.framework == "rl":
+    if cfg.framework == "rl":
         framework = SFFramework(cfg, data_root=cache_path)
     else:
         # TODO: Make ClassifierEngine
