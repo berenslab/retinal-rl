@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 def initialize(
     cfg: DictConfig,
     brain: Brain,
-    optimizer: BrainOptimizer[ContextT],
+    brain_optimizer: BrainOptimizer[ContextT],
 ) -> Tuple[Brain, BrainOptimizer[ContextT], Dict[str, List[float]], int]:
     """Initialize the Brain, Optimizers, and training histories. Checks whether the experiment directory exists and loads the model and history if it does. Otherwise, initializes a new model and history."""
     wandb_sweep_id = os.getenv("WANDB_SWEEP_ID", "local")
@@ -31,15 +31,15 @@ def initialize(
 
     # If continuing from a previous run, load the model and history
     if os.path.exists(cfg.system.data_dir):
-        return _initialize_reload(cfg, brain, optimizer)
+        return _initialize_reload(cfg, brain, brain_optimizer)
     # else, initialize a new model and history
-    return _initialize_create(cfg, brain, optimizer)
+    return _initialize_create(cfg, brain, brain_optimizer)
 
 
 def _initialize_create(
     cfg: DictConfig,
     brain: Brain,
-    optimizer: BrainOptimizer[ContextT],
+    brain_optimizer: BrainOptimizer[ContextT],
 ) -> Tuple[Brain, BrainOptimizer[ContextT], Dict[str, List[float]], int]:
     epoch = 0
     logger.info(
@@ -79,12 +79,12 @@ def _initialize_create(
         cfg.system.checkpoint_dir,
         cfg.system.max_checkpoints,
         brain,
-        optimizer,
+        brain_optimizer,
         histories,
         epoch,
     )
 
-    return brain, optimizer, histories, epoch
+    return brain, brain_optimizer, histories, epoch
 
 
 def _initialize_reload(

@@ -45,7 +45,6 @@ def _program(cfg: DictConfig):
 
     if cfg.command == "scan":
         brain.scan_circuits()
-        # brain.visualize_connectome()
         sys.exit(0)
 
     framework: TrainingFramework

@@ -3,6 +3,7 @@ from typing import Dict, List, Tuple
 import matplotlib.gridspec as gridspec
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
 import numpy.fft as fft
 import seaborn as sns
@@ -11,7 +12,135 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import MaxNLocator
 from torch import Tensor
 
+from retinal_rl.models.brain import Brain
+from retinal_rl.models.optimizer import BrainOptimizer, ContextT
 from retinal_rl.util import FloatArray
+
+
+def visualize_brain_and_optimizers(
+    brain: Brain, brain_optimizer: BrainOptimizer[ContextT]
+) -> None:
+    """Visualize the Brain's connectome organized by depth and highlight optimizer targets using border colors.
+
+    Args:
+    ----
+    - brain: The Brain instance
+    - brain_optimizer: The BrainOptimizer instance
+
+    """
+    graph = brain.connectome
+
+    # Compute the depth of each node
+    depths: Dict[str, int] = {}
+    for node in nx.topological_sort(graph):
+        depths[node] = max([depths[pred] for pred in graph.predecessors(node)] + [-1]) + 1
+
+    # Create a position dictionary based on depth
+    pos: Dict[str, Tuple[float, float]] = {}
+    nodes_at_depth: Dict[int, List[str]] = {}
+    for node, depth in depths.items():
+        if depth not in nodes_at_depth:
+            nodes_at_depth[depth] = []
+        nodes_at_depth[depth].append(node)
+
+    max_depth = max(depths.values())
+    for depth, nodes in nodes_at_depth.items():
+        width = len(nodes)
+        for i, node in enumerate(nodes):
+            pos[node] = ((i - width / 2) / (width + 1), -(max_depth - depth) / max_depth)
+
+    # Set up the plot
+    plt.figure(figsize=(12, 10))
+
+    # Draw edges
+    nx.draw_networkx_edges(graph, pos, edge_color="gray", arrows=True)
+
+    # Color scheme for different node types
+    color_map = {"sensor": "lightblue", "circuit": "lightgreen"}
+
+    # Generate colors for optimizers
+    optimizer_colors = sns.color_palette("husl", len(brain_optimizer.optimizers))
+
+    # Prepare node colors and edge colors
+    node_colors: List[str] = []
+    edge_colors: List[Tuple[float, float, float]] = []
+    for node in graph.nodes():
+        if node in brain.sensors:
+            node_colors.append(color_map["sensor"])
+        else:
+            node_colors.append(color_map["circuit"])
+
+        # Determine if the node is targeted by an optimizer
+        edge_color = "none"
+        for i, optimizer_name in enumerate(brain_optimizer.optimizers.keys()):
+            if node in brain_optimizer.target_circuits[optimizer_name]:
+                edge_color = optimizer_colors[i]
+                break
+        edge_colors.append(edge_color)
+
+    # Draw nodes with a single call
+    nx.draw_networkx_nodes(
+        graph,
+        pos,
+        node_color=node_colors,
+        edgecolors=edge_colors,
+        node_size=4000,
+        linewidths=5,
+    )
+
+    # Draw labels
+    nx.draw_networkx_labels(graph, pos, font_size=8, font_weight="bold")
+
+    # Add a legend for optimizers
+    legend_elements = [
+        plt.Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            label=f"Optimizer: {name}",
+            markerfacecolor="none",
+            markeredgecolor=color,
+            markersize=15,
+            markeredgewidth=3,
+        )
+        for name, color in zip(brain_optimizer.optimizers.keys(), optimizer_colors)
+    ]
+
+    # Add legend elements for sensor and circuit
+    legend_elements.extend(
+        [
+            plt.Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
+                label="Sensor",
+                markerfacecolor=color_map["sensor"],
+                markersize=15,
+            ),
+            plt.Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
+                label="Circuit",
+                markerfacecolor=color_map["circuit"],
+                markersize=15,
+            ),
+        ]
+    )
+
+    plt.legend(handles=legend_elements, loc="center left", bbox_to_anchor=(1, 0.5))
+
+    plt.title("Brain Connectome and Optimizer Targets")
+    plt.tight_layout()
+    plt.axis("off")
+    plt.show()
+
+
+# Usage:
+# visualize_brain_and_optimizers(brain, brain_optimizer)
 
 
 def plot_receptive_field_sizes(results: Dict[str, Dict[str, FloatArray]]) -> Figure:
@@ -80,9 +209,7 @@ def plot_receptive_field_sizes(results: Dict[str, Dict[str, FloatArray]]) -> Fig
     # Add legend
     ax.legend()
 
-    # Show the plot
     plt.tight_layout()
-    plt.show()
 
     return fig
 
