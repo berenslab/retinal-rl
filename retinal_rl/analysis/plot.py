@@ -1,3 +1,5 @@
+"""Utility functions for plotting the results of statistical analyses."""
+
 from typing import Dict, List, Tuple
 
 import matplotlib.gridspec as gridspec
@@ -9,6 +11,7 @@ import numpy.fft as fft
 import seaborn as sns
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from matplotlib.lines import Line2D
 from matplotlib.ticker import MaxNLocator
 from torch import Tensor
 
@@ -17,9 +20,9 @@ from retinal_rl.models.optimizer import BrainOptimizer, ContextT
 from retinal_rl.util import FloatArray
 
 
-def visualize_brain_and_optimizers(
+def plot_brain_and_optimizers(
     brain: Brain, brain_optimizer: BrainOptimizer[ContextT]
-) -> None:
+) -> Figure:
     """Visualize the Brain's connectome organized by depth and highlight optimizer targets using border colors.
 
     Args:
@@ -50,7 +53,7 @@ def visualize_brain_and_optimizers(
             pos[node] = ((i - width / 2) / (width + 1), -(max_depth - depth) / max_depth)
 
     # Set up the plot
-    plt.figure(figsize=(12, 10))
+    fig = plt.figure(figsize=(12, 10))
 
     # Draw edges
     nx.draw_networkx_edges(graph, pos, edge_color="gray", arrows=True)
@@ -93,7 +96,7 @@ def visualize_brain_and_optimizers(
 
     # Add a legend for optimizers
     legend_elements = [
-        plt.Line2D(
+        Line2D(
             [0],
             [0],
             marker="o",
@@ -110,7 +113,7 @@ def visualize_brain_and_optimizers(
     # Add legend elements for sensor and circuit
     legend_elements.extend(
         [
-            plt.Line2D(
+            Line2D(
                 [0],
                 [0],
                 marker="o",
@@ -119,7 +122,7 @@ def visualize_brain_and_optimizers(
                 markerfacecolor=color_map["sensor"],
                 markersize=15,
             ),
-            plt.Line2D(
+            Line2D(
                 [0],
                 [0],
                 marker="o",
@@ -136,11 +139,8 @@ def visualize_brain_and_optimizers(
     plt.title("Brain Connectome and Optimizer Targets")
     plt.tight_layout()
     plt.axis("off")
-    plt.show()
 
-
-# Usage:
-# visualize_brain_and_optimizers(brain, brain_optimizer)
+    return fig
 
 
 def plot_receptive_field_sizes(results: Dict[str, Dict[str, FloatArray]]) -> Figure:
@@ -374,9 +374,11 @@ def _set_integer_ticks(ax: Axes):
 
 # Function to plot the original and reconstructed images
 def plot_reconstructions(
-    train_subset: List[Tuple[Tensor, int]],
+    train_sources: List[Tuple[Tensor, int]],
+    train_inputs: List[Tuple[Tensor, int]],
     train_estimates: List[Tuple[Tensor, int]],
-    test_subset: List[Tuple[Tensor, int]],
+    test_sources: List[Tuple[Tensor, int]],
+    test_inputs: List[Tuple[Tensor, int]],
     test_estimates: List[Tuple[Tensor, int]],
     num_samples: int,
 ) -> Figure:
@@ -384,9 +386,11 @@ def plot_reconstructions(
 
     Args:
     ----
-        train_subset (List[Tuple[Tensor, int]]): List of original training images and their classes.
+        train_source (List[Tuple[Tensor, int]]): List of original source images and their classes.
+        train_input (List[Tuple[Tensor, int]]): List of original training images and their classes.
         train_estimates (List[Tuple[Tensor, int]]): List of reconstructed training images and their predicted classes.
-        test_subset (List[Tuple[Tensor, int]]): List of original test images and their classes.
+        test_source (List[Tuple[Tensor, int]]): List of original source images and their classes.
+        test_input (List[Tuple[Tensor, int]]): List of original test images and their classes.
         test_estimates (List[Tuple[Tensor, int]]): List of reconstructed test images and their predicted classes.
         num_samples (int): The number of samples to plot.
 
@@ -395,42 +399,54 @@ def plot_reconstructions(
         Figure: The matplotlib Figure object with the plotted images.
 
     """
-    fig, axes = plt.subplots(4, num_samples, figsize=(15, 10))
+    fig, axes = plt.subplots(6, num_samples, figsize=(15, 10))
 
     for i in range(num_samples):
-        # Unnormalize the original images
-        train_original, train_class = train_subset[i]
+        train_source, _ = train_sources[i]
+        train_input, train_class = train_inputs[i]
         train_recon, train_pred = train_estimates[i]
-        test_original, test_class = test_subset[i]
+        test_source, _ = test_sources[i]
+        test_input, test_class = test_inputs[i]
         test_recon, test_pred = test_estimates[i]
 
-        train_original = train_original.permute(1, 2, 0).numpy() * 0.5 + 0.5
+        # Unnormalize the original images
+        train_source = train_source.permute(1, 2, 0).numpy() * 0.5 + 0.5
+        train_input = train_input.permute(1, 2, 0).numpy() * 0.5 + 0.5
         train_recon = train_recon.permute(1, 2, 0).numpy() * 0.5 + 0.5
-        test_original = test_original.permute(1, 2, 0).numpy() * 0.5 + 0.5
+        test_source = test_source.permute(1, 2, 0).numpy() * 0.5 + 0.5
+        test_input = test_input.permute(1, 2, 0).numpy() * 0.5 + 0.5
         test_recon = test_recon.permute(1, 2, 0).numpy() * 0.5 + 0.5
 
-        axes[0, i].imshow(np.clip(train_original, 0, 1))
+        axes[0, i].imshow(np.clip(train_source, 0, 1))
         axes[0, i].axis("off")
         axes[0, i].set_title(f"Class: {train_class}")
 
-        axes[1, i].imshow(np.clip(train_recon, 0, 1))
+        axes[1, i].imshow(np.clip(train_input, 0, 1))
         axes[1, i].axis("off")
-        axes[1, i].set_title(f"Pred: {train_pred}")
+        axes[1, i].set_title(f"Class: {train_class}")
 
-        axes[2, i].imshow(np.clip(test_original, 0, 1))
+        axes[2, i].imshow(np.clip(train_recon, 0, 1))
         axes[2, i].axis("off")
-        axes[2, i].set_title(f"Class: {test_class}")
+        axes[2, i].set_title(f"Pred: {train_pred}")
 
-        axes[3, i].imshow(np.clip(test_recon, 0, 1))
+        axes[3, i].imshow(np.clip(test_source, 0, 1))
         axes[3, i].axis("off")
-        axes[3, i].set_title(f"Pred: {test_pred}")
+        axes[3, i].set_title(f"Class: {test_class}")
+
+        axes[4, i].imshow(np.clip(test_input, 0, 1))
+        axes[4, i].axis("off")
+        axes[4, i].set_title(f"Class: {test_class}")
+
+        axes[5, i].imshow(np.clip(test_recon, 0, 1))
+        axes[5, i].axis("off")
+        axes[5, i].set_title(f"Pred: {test_pred}")
 
     # Set y-axis labels for each row
 
     fig.text(
         0.02,
-        0.88,
-        "Train Originals",
+        0.90,
+        "Train Source",
         va="center",
         rotation="vertical",
         fontsize=12,
@@ -438,8 +454,8 @@ def plot_reconstructions(
     )
     fig.text(
         0.02,
-        0.62,
-        "Train Reconstructions",
+        0.74,
+        "Train Input",
         va="center",
         rotation="vertical",
         fontsize=12,
@@ -447,8 +463,8 @@ def plot_reconstructions(
     )
     fig.text(
         0.02,
-        0.38,
-        "Test Originals",
+        0.56,
+        "Train Recon.",
         va="center",
         rotation="vertical",
         fontsize=12,
@@ -456,8 +472,26 @@ def plot_reconstructions(
     )
     fig.text(
         0.02,
-        0.12,
-        "Test Reconstructions",
+        0.40,
+        "Test Source",
+        va="center",
+        rotation="vertical",
+        fontsize=12,
+        weight="bold",
+    )
+    fig.text(
+        0.02,
+        0.24,
+        "Test Input",
+        va="center",
+        rotation="vertical",
+        fontsize=12,
+        weight="bold",
+    )
+    fig.text(
+        0.02,
+        0.08,
+        "Test Recon.",
         va="center",
         rotation="vertical",
         fontsize=12,

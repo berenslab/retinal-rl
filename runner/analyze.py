@@ -11,6 +11,7 @@ from omegaconf import DictConfig
 import wandb
 from retinal_rl.analysis.plot import (
     layer_receptive_field_plots,
+    plot_brain_and_optimizers,
     plot_channel_statistics,
     plot_histories,
     plot_receptive_field_sizes,
@@ -19,8 +20,11 @@ from retinal_rl.analysis.plot import (
 from retinal_rl.analysis.statistics import cnn_statistics, reconstruct_images
 from retinal_rl.dataset import Imageset
 from retinal_rl.models.brain import Brain
+from retinal_rl.models.optimizer import BrainOptimizer, ContextT
 
 logger = logging.getLogger(__name__)
+
+init_dir = "initialization_analysis"
 
 
 def _save_figure(cfg: DictConfig, sub_dir: str, file_name: str, fig: Figure) -> None:
@@ -81,6 +85,7 @@ def analyze(
     cfg: DictConfig,
     device: torch.device,
     brain: Brain,
+    brain_optimizer: BrainOptimizer[ContextT],
     histories: Dict[str, List[float]],
     train_set: Imageset,
     test_set: Imageset,
@@ -97,10 +102,26 @@ def analyze(
     cnn_analysis = cnn_statistics(device, test_set, brain, 1000)
     if epoch == 0:
         rf_sizes_fig = plot_receptive_field_sizes(cnn_analysis)
-        _save_figure(cfg, "", "receptive_field_sizes", rf_sizes_fig)
+        _save_figure(cfg, init_dir, "receptive_field_sizes", rf_sizes_fig)
+        graph_fig = plot_brain_and_optimizers(brain, brain_optimizer)
+        _save_figure(cfg, init_dir, "brain_graph", graph_fig)
 
     for layer_name, layer_data in cnn_analysis.items():
-        if layer_name == "input" and epoch > 0:
+        if layer_name == "input":
+            if epoch == 0:
+                layer_rfs = layer_receptive_field_plots(layer_data["receptive_fields"])
+                _save_figure(cfg, init_dir, "input_rfs", layer_rfs)
+
+                num_channels = int(layer_data["num_channels"])
+                for channel in range(num_channels):
+                    channel_fig = plot_channel_statistics(layer_data, layer_name, channel)
+                    _save_figure(
+                        cfg,
+                        init_dir,
+                        f"input_channel_{channel}",
+                        channel_fig,
+                    )
+
             continue
 
         layer_rfs = layer_receptive_field_plots(layer_data["receptive_fields"])

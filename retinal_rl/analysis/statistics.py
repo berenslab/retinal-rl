@@ -47,33 +47,43 @@ def reconstruct_images(
 
     def collect_reconstructions(
         dataset: Imageset, sample_size: int
-    ) -> Tuple[List[Tuple[Tensor, int]], List[Tuple[Tensor, int]]]:
+    ) -> Tuple[
+        List[Tuple[Tensor, int]], List[Tuple[Tensor, int]], List[Tuple[Tensor, int]]
+    ]:
         """Collect reconstructions for a subset of a dataset."""
-        subset: List[Tuple[Tensor, int]] = []
+        source_subset: List[Tuple[Tensor, int]] = []
+        input_subset: List[Tuple[Tensor, int]] = []
         estimates: List[Tuple[Tensor, int]] = []
         indices = torch.randperm(len(dataset))[:sample_size]
 
         with torch.no_grad():  # Disable gradient computation
             for index in indices:
-                src, img, k = dataset[index]
+                src, img, k = dataset[int(index)]
                 src = src.to(device)
                 img = img.to(device)
                 stimulus = {"vision": img.unsqueeze(0)}
                 response = brain(stimulus)
                 rec_img = response["decoder"].squeeze(0)
                 pred_k = response["classifier"].argmax().item()
-                subset.append((img.cpu(), k))
+                source_subset.append((src.cpu(), k))
+                input_subset.append((img.cpu(), k))
                 estimates.append((rec_img.cpu(), pred_k))
 
-        return subset, estimates
+        return source_subset, input_subset, estimates
 
-    train_subset, train_estimates = collect_reconstructions(train_set, sample_size)
-    test_subset, test_estimates = collect_reconstructions(test_set, sample_size)
+    train_source, train_input, train_estimates = collect_reconstructions(
+        train_set, sample_size
+    )
+    test_source, test_input, test_estimates = collect_reconstructions(
+        test_set, sample_size
+    )
 
     return {
-        "train_subset": train_subset,
+        "train_sources": train_source,
+        "train_inputs": train_input,
         "train_estimates": train_estimates,
-        "test_subset": test_subset,
+        "test_sources": test_source,
+        "test_inputs": test_input,
         "test_estimates": test_estimates,
     }
 
