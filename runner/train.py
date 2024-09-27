@@ -62,10 +62,12 @@ def train(
         )
 
         # Initialize the history
-        for key in train_losses:
-            history[f"train_{key}"] = [train_losses[key]]
-        for key in test_losses:
-            history[f"test_{key}"] = [test_losses[key]]
+        logger.info("Epoch 0 training performance:")
+        for key, value in train_losses.items():
+            logger.info(f"{key}: {value:.4f}")
+            history[f"train_{key}"] = [value]
+        for key, value in test_losses.items():
+            history[f"test_{key}"] = [value]
 
         analyze(
             cfg,
