@@ -7,7 +7,7 @@ import torch
 from hydra.utils import instantiate
 from omegaconf import DictConfig
 from torch import Tensor
-from torch.optim import Optimizer
+from torch.optim.optimizer import Optimizer
 
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.objective import ContextT, Objective
@@ -61,6 +61,7 @@ class BrainOptimizer(Generic[ContextT]):
             params = []
             self.min_epochs[name] = config.get("min_epoch", 0)
             self.max_epochs[name] = config.get("max_epoch", -1)
+            self.target_circuits[name] = config.target_circuits
             if not set(config.target_circuits).issubset(brain.connectome.nodes):
                 logger.warning(
                     f"Some target circuits for optimizer {name} are not in the brain's connectome"
@@ -83,7 +84,7 @@ class BrainOptimizer(Generic[ContextT]):
                 instantiate(obj_config) for obj_config in config.objectives
             ]
             logger.info(
-                f"Initalized optimizer: {name}, with objectives: {[obj.key_name for obj in self.objectives[name]]}, and target circuits: {[circuit_name for circuit_name in config.target_circuits]}"
+                f"Initalized optimizer: {name}, with objectives: {[obj.key_name for obj in self.objectives[name]]}, and target circuits: {[circuit_name for circuit_name in self.target_circuits]}"
             )
 
     def compute_loss(
