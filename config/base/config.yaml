@@ -24,7 +24,7 @@ hydra:
     - file://config/user
   output_subdir: config  # Subdirectory for Hydra output in the run directory
   run:
-    dir: experiments/${hydra:runtime.choices.experiment}/single-run/${run_name}  # Directory for single runs
+    dir: experiments/single-run/${hydra:runtime.choices.experiment}/${run_name}  # Directory for single runs
   job:
     chdir: True  # Change working directory to the run directory
     config:
@@ -33,8 +33,8 @@ hydra:
           - experiment
           - command
   sweep:
-    dir: experiments/${hydra:runtime.choices.experiment}/sweep/${oc.env:WANDB_SWEEP_ID,local}  # Directory for sweep runs
-    subdir: ${run_name}  # The subdirectory in the sweep dir is the run_name
+    dir: experiments/multirun  # Directory for sweep runs
+    subdir: ${hydra:runtime.choices.experiment}/sweep/${oc.env:WANDB_SWEEP_ID,local}${run_name}  # Individual sweep run subdirectory
 
 # System configuration
 system:
