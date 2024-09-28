@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 import torch
 from torch import Tensor
-from torch.optim import Optimizer
+from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 
 from retinal_rl.classification.objective import (

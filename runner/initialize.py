@@ -7,6 +7,7 @@ from typing import Dict, List, Tuple
 
 import omegaconf
 import torch
+from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
 import wandb
@@ -60,8 +61,8 @@ def _initialize_create(
         )
         wandb.init(
             project="retinal-rl",
-            group=cfg.hydra.choices.experiment,
-            job_type=cfg.hydra.choices.brain,
+            group=HydraConfig.get().runtime.choices.experiment,
+            job_type=HydraConfig.get().runtime.choices.brain,
             config=dict_conf,
             name=cfg.run_name,
             id=cfg.run_name,
@@ -112,8 +113,8 @@ def _initialize_reload(
     if cfg.use_wandb:
         wandb.init(
             project="retinal-rl",
-            group=cfg.hydra.choices.experiment,
-            job_type=cfg.hydra.choices.brain,
+            group=HydraConfig.get().runtime.choices.experiment,
+            job_type=HydraConfig.get().runtime.choices.brain,
             name=cfg.run_name,
             id=cfg.run_name,
             resume="must",
