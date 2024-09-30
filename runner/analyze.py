@@ -73,7 +73,8 @@ def _process_figure(
 ) -> None:
     if cfg.use_wandb:
         title = f"{_wandb_title(sub_dir)}/{_wandb_title(file_name)}"
-        wandb.log({title: fig}, commit=False)
+        img = wandb.Image(fig)
+        wandb.log({title: img}, commit=False)
     else:
         _save_figure(cfg, sub_dir, file_name, fig)
         if copy_checkpoint:
