@@ -6,7 +6,7 @@ import warnings
 
 import hydra
 import torch
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 from retinal_rl.classification.objective import ClassificationContext
 from retinal_rl.framework_interface import TrainingFramework
@@ -20,6 +20,8 @@ from runner.initialize import initialize
 from runner.sweep import launch_sweep
 from runner.train import train
 from runner.util import delete_results
+
+OmegaConf.register_new_resolver("eval", eval)
 
 
 # Hydra entry point

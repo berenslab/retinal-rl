@@ -102,24 +102,26 @@ def analyze(
     cnn_analysis = cnn_statistics(device, test_set, brain, 1000)
     if epoch == 0:
         rf_sizes_fig = plot_receptive_field_sizes(cnn_analysis)
-        _save_figure(cfg, init_dir, "receptive_field_sizes", rf_sizes_fig)
+        _process_figure(cfg, False, rf_sizes_fig, init_dir, "receptive_field_sizes", 0)
         graph_fig = plot_brain_and_optimizers(brain, brain_optimizer)
-        _save_figure(cfg, init_dir, "brain_graph", graph_fig)
+        _process_figure(cfg, False, graph_fig, init_dir, "brain_graph", 0)
 
     for layer_name, layer_data in cnn_analysis.items():
         if layer_name == "input":
             if epoch == 0:
                 layer_rfs = layer_receptive_field_plots(layer_data["receptive_fields"])
-                _save_figure(cfg, init_dir, "input_rfs", layer_rfs)
+                _process_figure(cfg, False, layer_rfs, init_dir, "input_rfs", 0)
 
                 num_channels = int(layer_data["num_channels"])
                 for channel in range(num_channels):
                     channel_fig = plot_channel_statistics(layer_data, layer_name, channel)
-                    _save_figure(
+                    _process_figure(
                         cfg,
+                        False,
+                        channel_fig,
                         init_dir,
                         f"input_channel_{channel}",
-                        channel_fig,
+                        0,
                     )
 
             continue
