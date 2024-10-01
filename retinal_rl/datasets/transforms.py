@@ -43,7 +43,7 @@ class ScaleShiftTransform(nn.Module):
 
         scale_factor = np.random.uniform(scale_range[0], scale_range[1])
         scaled_size = (int(img.size[0] * scale_factor), int(img.size[1] * scale_factor))
-        img = img.resize(scaled_size, Image.LANCZOS)
+        img = img.resize(scaled_size, Image.LANCZOS)  # type: ignore
 
         # Create a black background
         background = Image.new("RGB", visual_field, (0, 0, 0))

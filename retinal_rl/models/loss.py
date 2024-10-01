@@ -1,4 +1,4 @@
-"""Objectives for training models, and the context required to evaluate them."""
+"""Losses for training models, and the context required to evaluate them."""
 
 from abc import abstractmethod
 from typing import Dict, Generic, List, Tuple, TypeVar
@@ -38,19 +38,19 @@ class BaseContext:
         self.epoch = epoch
 
 
-class Objective(Generic[ContextT]):
-    """Base class for objectives that can be used to train a model."""
+class Loss(Generic[ContextT]):
+    """Base class for losses that can be used to define a multiobjective optimization problem."""
 
     def __init__(self, weight: float = 1.0):
-        """Initialize the objective with a weight."""
+        """Initialize the loss with a weight."""
         self.weight = weight
 
     def __call__(self, context: ContextT) -> Tuple[Tensor, Tensor]:
-        """Compute the weighted loss for this objective.
+        """Compute the weighted loss for this loss.
 
         Args:
         ----
-            context (ContextT): Context information for computing objectives.
+            context (ContextT): Context information for computing losses.
 
         Returns:
         -------
@@ -62,20 +62,20 @@ class Objective(Generic[ContextT]):
 
     @abstractmethod
     def compute_value(self, context: ContextT) -> Tensor:
-        """Compute the value for this objective. The context dictionary contains the necessary information to compute the objective."""
+        """Compute the value for this losses The context dictionary contains the necessary information to compute the loss."""
         pass
 
     @property
     def key_name(self) -> str:
-        """Return a user-friendly name for the objective."""
+        """Return a user-friendly name for the loss."""
         return camel_to_snake(self.__class__.__name__)
 
 
-class ReconstructionObjective(Objective[ContextT]):
-    """Objective for computing the reconstruction loss between inputs and reconstructions."""
+class ReconstructionLoss(Loss[ContextT]):
+    """Loss for computing the reconstruction loss between inputs and reconstructions."""
 
     def __init__(self, weight: float = 1.0):
-        """Initialize the reconstruction loss objective."""
+        """Initialize the reconstruction loss loss."""
         super().__init__(weight)
         self.loss_fn = nn.MSELoss(reduction="mean")
 
@@ -92,11 +92,11 @@ class ReconstructionObjective(Objective[ContextT]):
         return self.loss_fn(reconstructions, sources)
 
 
-class L1Sparsity(Objective[ContextT]):
-    """Objective for computing the L1 sparsity of activations."""
+class L1Sparsity(Loss[ContextT]):
+    """Loss for computing the L1 sparsity of activations."""
 
     def __init__(self, weight: float, target_responses: List[str]):
-        """Initialize the L1 sparsity objective."""
+        """Initialize the L1 sparsity loss."""
         self.target_responses = target_responses
         super().__init__(weight)
 
@@ -111,13 +111,13 @@ class L1Sparsity(Objective[ContextT]):
         return torch.mean(torch.stack([act.abs().mean() for act in activations]))
 
 
-class KLDivergenceSparsity(Objective[ContextT]):
-    """Objective for computing the KL divergence sparsity of activations."""
+class KLDivergenceSparsity(Loss[ContextT]):
+    """Loss for computing the KL divergence sparsity of activations."""
 
     def __init__(
         self, weight: float, target_responses: List[str], target_sparsity: float = 0.05
     ):
-        """Initialize the KL divergence sparsity objective."""
+        """Initialize the KL divergence sparsity loss."""
         self.target_responses = target_responses
         self.target_sparsity = target_sparsity
         super().__init__(weight)

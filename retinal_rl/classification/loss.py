@@ -7,7 +7,7 @@ import torch.nn as nn
 from torch import Tensor
 
 from retinal_rl.models.brain import Brain
-from retinal_rl.models.objective import BaseContext, Objective
+from retinal_rl.models.loss import BaseContext, Loss
 
 
 class ClassificationContext(BaseContext):
@@ -35,11 +35,11 @@ class ClassificationContext(BaseContext):
         self.classes = classes
 
 
-class ClassificationObjective(Objective[ClassificationContext]):
-    """Objective for computing the cross entropy loss."""
+class ClassificationLoss(Loss[ClassificationContext]):
+    """Loss for computing the cross entropy loss."""
 
     def __init__(self, weight: float = 1.0):
-        """Initialize the classification loss objective."""
+        """Initialize the classification loss."""
         super().__init__(weight)
         self.loss_fn = nn.CrossEntropyLoss()
 
@@ -56,11 +56,11 @@ class ClassificationObjective(Objective[ClassificationContext]):
         return self.loss_fn(predictions, classes)
 
 
-class PercentCorrect(Objective[ClassificationContext]):
-    """Objective for computing the percent correct classification."""
+class PercentCorrect(Loss[ClassificationContext]):
+    """(Inverse) Loss for computing the percent correct classification."""
 
     def __init__(self, weight: float = 1.0):
-        """Initialize the percent correct classification objective."""
+        """Initialize the percent correct classification loss."""
         super().__init__(weight)
 
     def compute_value(self, context: ClassificationContext) -> Tensor:

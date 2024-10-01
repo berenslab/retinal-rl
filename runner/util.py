@@ -10,9 +10,7 @@ from typing import Any, Dict, List
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig
-
-from retinal_rl.models.objective import ContextT
-from retinal_rl.models.optimizer import BrainOptimizer
+from torch.optim.optimizer import Optimizer
 
 # Initialize the logger
 log = logging.getLogger(__name__)
@@ -23,7 +21,7 @@ def save_checkpoint(
     checkpoint_dir: str,
     max_checkpoints: int,
     brain: nn.Module,
-    optimizer: BrainOptimizer[ContextT],
+    optimizer: Optimizer,
     histories: dict[str, List[float]],
     completed_epochs: int,
 ) -> None:

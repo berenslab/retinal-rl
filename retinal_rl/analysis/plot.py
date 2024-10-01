@@ -16,13 +16,11 @@ from matplotlib.ticker import MaxNLocator
 from torch import Tensor
 
 from retinal_rl.models.brain import Brain
-from retinal_rl.models.optimizer import BrainOptimizer, ContextT
+from retinal_rl.models.goal import ContextT, Goal
 from retinal_rl.util import FloatArray
 
 
-def plot_brain_and_optimizers(
-    brain: Brain, brain_optimizer: BrainOptimizer[ContextT]
-) -> Figure:
+def plot_brain_and_optimizers(brain: Brain, goal: Goal[ContextT]) -> Figure:
     """Visualize the Brain's connectome organized by depth and highlight optimizer targets using border colors.
 
     Args:
@@ -62,7 +60,7 @@ def plot_brain_and_optimizers(
     color_map = {"sensor": "lightblue", "circuit": "lightgreen"}
 
     # Generate colors for optimizers
-    optimizer_colors = sns.color_palette("husl", len(brain_optimizer.optimizers))
+    optimizer_colors = sns.color_palette("husl", len(goal.losses))
 
     # Prepare node colors and edge colors
     node_colors: List[str] = []
@@ -75,8 +73,8 @@ def plot_brain_and_optimizers(
 
         # Determine if the node is targeted by an optimizer
         edge_color = "none"
-        for i, optimizer_name in enumerate(brain_optimizer.optimizers.keys()):
-            if node in brain_optimizer.target_circuits[optimizer_name]:
+        for i, optimizer_name in enumerate(goal.losses.keys()):
+            if node in goal.target_circuits[optimizer_name]:
                 edge_color = optimizer_colors[i]
                 break
         edge_colors.append(edge_color)
@@ -107,7 +105,7 @@ def plot_brain_and_optimizers(
             markersize=15,
             markeredgewidth=3,
         )
-        for name, color in zip(brain_optimizer.optimizers.keys(), optimizer_colors)
+        for name, color in zip(goal.losses.keys(), optimizer_colors)
     ]
 
     # Add legend elements for sensor and circuit
