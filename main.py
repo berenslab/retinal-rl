@@ -40,7 +40,7 @@ def _program(cfg: DictConfig):
     brain = Brain(**cfg.brain).to(device)
     if hasattr(cfg, "optimizer"):
         goal = Goal[ClassificationContext](brain, dict(cfg.optimizer.goal))
-        optimizer = instantiate(cfg.optimizer.optimizer, parameters=brain.parameters())
+        optimizer = instantiate(cfg.optimizer.optimizer, brain.parameters())
     else:
         warnings.warn("No optimizer config specified, is that wanted?")
 
