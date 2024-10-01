@@ -5,11 +5,11 @@ import time
 from typing import Dict, List
 
 import torch
-import wandb
 from omegaconf import DictConfig
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 
+import wandb
 from retinal_rl.classification.loss import ClassificationContext
 from retinal_rl.classification.training import process_dataset, run_epoch
 from retinal_rl.dataset import Imageset
@@ -113,7 +113,7 @@ def train(
                 cfg.system.checkpoint_dir,
                 cfg.system.max_checkpoints,
                 brain,
-                goal,
+                optimizer,
                 history,
                 epoch,
             )
