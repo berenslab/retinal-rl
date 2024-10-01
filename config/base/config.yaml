@@ -5,7 +5,6 @@ defaults:
   - _self_
   - brain: ???
   - dataset: ???
-  - sweep: ???
   - optimizer: ???
   - override hydra/job_logging: custom  # Override logging config
 
