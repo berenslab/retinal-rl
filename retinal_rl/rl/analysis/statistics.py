@@ -11,7 +11,7 @@ from torch.utils.data import Dataset
 
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.circuits.convolutional import ConvolutionalEncoder
-from retinal_rl.models.util import encoder_out_size, rf_size_and_start
+from retinal_rl.util import encoder_out_size, rf_size_and_start
 from tqdm import tqdm
 import math
 
