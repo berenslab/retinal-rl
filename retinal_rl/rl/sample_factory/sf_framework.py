@@ -67,12 +67,13 @@ class SFFramework(TrainingFramework):
         with open(os.path.join(path, "config.json")) as f:
             config = Namespace(**json.load(f))
         checkpoint_dict, config = SFFramework.get_checkpoint(config)
+        config = DictConfig(config)
         model_dict: Dict[str, Any] = checkpoint_dict["model"]
         brain_dict: Dict[str, Any] = {}
         for key in model_dict.keys():
             if "brain" in key:
                 brain_dict[key[6:]] = model_dict[key]
-        brain = Brain(**config["brain"])
+        brain = Brain(**config.brain)
         if load_weights:
             brain.load_state_dict(brain_dict)
         brain.to(device)
@@ -83,34 +84,34 @@ class SFFramework(TrainingFramework):
         config_path: str, weights_path: str, device: Optional[torch.device] = None
     ) -> Brain:
         with open(os.path.join(config_path, "config.json")) as f:
-            config = json.load(f)
+            config = DictConfig(json.load(f))
         checkpoint_dict = torch.load(weights_path)
         model_dict = checkpoint_dict["model"]
         brain_dict = {}
         for key in model_dict.keys():
             if "brain" in key:
                 brain_dict[key[6:]] = model_dict[key]
-        brain = Brain(**config["brain"])
+        brain = Brain(**config.brain)
         brain.load_state_dict(brain_dict)
         brain.to(device)
         return brain
 
     def to_sf_cfg(self, cfg: DictConfig) -> Config:
-        sf_cfg = self._get_default_cfg(cfg.experiment.rl.env_name)  # Load Defaults
+        sf_cfg = self._get_default_cfg(cfg.rl.env_name)  # Load Defaults
 
         # overwrite default values with those set in cfg
         # TODO: which other parameters need to be set_
-        self._set_cfg_cli_argument(sf_cfg, "learning_rate", cfg.experiment.training.learning_rate)
+        self._set_cfg_cli_argument(sf_cfg, "learning_rate", cfg.training.learning_rate)
         # Using this function is necessary to make sure that the parameters are not overwritten when sample_factory loads a checkpoint
 
-        self._set_cfg_cli_argument(sf_cfg, "res_h", cfg.experiment.rl.viewport_height)
-        self._set_cfg_cli_argument(sf_cfg, "res_w", cfg.experiment.rl.viewport_width)
-        self._set_cfg_cli_argument(sf_cfg, "env", cfg.experiment.rl.env_name)
-        self._set_cfg_cli_argument(sf_cfg, "input_satiety", cfg.experiment.rl.input_satiety)
+        self._set_cfg_cli_argument(sf_cfg, "res_h", cfg.rl.viewport_height)
+        self._set_cfg_cli_argument(sf_cfg, "res_w", cfg.rl.viewport_width)
+        self._set_cfg_cli_argument(sf_cfg, "env", cfg.rl.env_name)
+        self._set_cfg_cli_argument(sf_cfg, "input_satiety", cfg.rl.input_satiety)
         self._set_cfg_cli_argument(sf_cfg, "device", cfg.system.device)
-        self._set_cfg_cli_argument(sf_cfg, "optimizer", cfg.experiment.training.optimizer)
+        self._set_cfg_cli_argument(sf_cfg, "optimizer", cfg.training.optimizer)
 
-        self._set_cfg_cli_argument(sf_cfg, "brain", OmegaConf.to_object(cfg.experiment.brain))
+        self._set_cfg_cli_argument(sf_cfg, "brain", OmegaConf.to_object(cfg.brain))
         return sf_cfg
 
     def analyze(
