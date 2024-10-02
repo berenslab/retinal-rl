@@ -1,36 +1,38 @@
+"""Utility functions for the runner module."""
+
 ### Imports ###
 
 import logging
 import os
 import shutil
-from typing import List
+from typing import Any, Dict, List
 
 import torch
 import torch.nn as nn
-from torch.optim import Optimizer
+from omegaconf import DictConfig
+from torch.optim.optimizer import Optimizer
 
 # Initialize the logger
 log = logging.getLogger(__name__)
 
 
 def save_checkpoint(
-    data_path: str,
-    checkpoint_path: str,
+    data_dir: str,
+    checkpoint_dir: str,
     max_checkpoints: int,
     brain: nn.Module,
     optimizer: Optimizer,
-    history: dict[str, List[float]],
+    histories: dict[str, List[float]],
     completed_epochs: int,
 ) -> None:
-    current_file = os.path.join(data_path, "current_checkpoint.pt")
-    checkpoint_file = os.path.join(
-        checkpoint_path, f"checkpoint_epoch_{completed_epochs}.pt"
-    )
-    checkpoint_dict = {
+    """Save a checkpoint of the model and optimizer state."""
+    current_file = os.path.join(data_dir, "current_checkpoint.pt")
+    checkpoint_file = os.path.join(checkpoint_dir, f"epoch_{completed_epochs}.pt")
+    checkpoint_dict: Dict[str, Any] = {
         "completed_epochs": completed_epochs,
-        "model_state_dict": brain.state_dict(),
+        "brain_state_dict": brain.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
-        "training_history": history,
+        "histories": histories,
     }
 
     # Save checkpoint
@@ -41,37 +43,30 @@ def save_checkpoint(
 
     # Remove older checkpoints if the number exceeds the threshold
     checkpoints = sorted(
-        [f for f in os.listdir(checkpoint_path) if f.startswith("checkpoint_epoch_")],
-        key=lambda x: int(x.split("_")[2].split(".")[0]),
+        [f for f in os.listdir(checkpoint_dir) if f.startswith("epoch_")],
+        key=lambda x: int(x.split("_")[1].split(".")[0]),
         reverse=True,
     )
     while len(checkpoints) > max_checkpoints:
-        os.remove(os.path.join(checkpoint_path, checkpoints.pop()))
+        os.remove(os.path.join(checkpoint_dir, checkpoints.pop()))
 
 
-def delete_results(experiment_path: str, data_path: str) -> None:
-    """Delete the data directory after prompting the user for confirmation.
+def delete_results(cfg: DictConfig) -> None:
+    """Delete the results directory."""
+    run_dir: str = cfg.system.run_dir
 
-    Args:
-    ----
-        experiment_dir (str): Path to the experiment directory.
-        data_path (str): Path to the data directory to be deleted.
-
-    """
-    full_path = os.path.join(experiment_path, data_path)
-
-    if not os.path.exists(data_path):
-        print(f"Directory {data_path} does not exist.")
+    if not os.path.exists(run_dir):
+        print(f"Directory {run_dir} does not exist.")
         return
 
     confirmation = input(
-        f"Are you sure you want to delete the directory {full_path}? (Y/N): "
+        f"Are you sure you want to delete the directory {run_dir}? (Y/N): "
     )
 
     if confirmation.lower() == "y":
         try:
-            shutil.rmtree(data_path)
-            print(f"Directory {data_path} has been deleted.")
+            shutil.rmtree(run_dir)
+            print(f"Directory {run_dir} has been deleted.")
         except Exception as e:
             print(f"An error occurred while deleting the directory: {e}")
     else:

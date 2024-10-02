@@ -1,0 +1,21 @@
+# Configuration for the CIFAR10 dataset in classification experiments.
+
+name: cifar10  # Name of the dataset
+
+imageset:
+  _target_: retinal_rl.dataset.Imageset
+  source_transforms:
+    - _target_: retinal_rl.datasets.transforms.ScaleShiftTransform
+      vision_width: 160
+      vision_height: 160
+      image_rescale_range: [1, 5]
+  noise_transforms:
+    - _target_: retinal_rl.datasets.transforms.ShotNoiseTransform
+      lambda_range: [0.8, 1.2]
+    - _target_: retinal_rl.datasets.transforms.ContrastTransform
+      contrast_range: [0.5, 1.5]
+  apply_normalization: true
+  # normalization_mean: [0.4914, 0.4822, 0.4465]
+  # normalization_std: [0.2023, 0.1994, 0.2010]
+  fixed_transformation: false
+  multiplier: 1

@@ -1,18 +1,23 @@
-"""Defines the base class for neural circuits and its metaclass."""
+"""Defines the base class for neural circuits."""
 
 import inspect
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Any, List, Type, get_type_hints
 
 import torch
 import torch.nn as nn
 import torchscan
 
+from retinal_rl.util import Activation
+
 
 class NeuralCircuit(nn.Module, ABC):
     """Base class for neural circuits."""
 
-    def __init__(self, input_shape: List[int]) -> None:
+    def __init__(
+        self,
+        input_shape: List[int],
+    ) -> None:
         """Initialize the base model.
 
         Args:
@@ -56,12 +61,15 @@ class NeuralCircuit(nn.Module, ABC):
         """Run torchscan on the model."""
         torchscan.summary(self, tuple(self.input_shape), receptive_field=True)
 
+    @abstractmethod
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass of the neural circuit."""
         x = x
         raise NotImplementedError("Each subclass must implement its own forward method.")
 
     @property
     def input_shape(self) -> List[int]:
+        """Return the shape of the input tensor."""
         return self._input_shape
 
     @property
@@ -75,15 +83,16 @@ class NeuralCircuit(nn.Module, ABC):
 
     @staticmethod
     def str_to_activation(act: str) -> nn.Module:
+        """Convert a string to an activation function.
+
+        Args:
+        ----
+        act (str): The name of the activation function.
+
+        Returns:
+        -------
+        nn.Module: The activation function.
+
+        """
         act = str.lower(act)
-        if act == "elu":
-            return nn.ELU(inplace=True)
-        if act == "relu":
-            return nn.ReLU(inplace=True)
-        if act == "tanh":
-            return nn.Tanh()
-        if act == "softplus":
-            return nn.Softplus()
-        if act == "identity":
-            return nn.Identity(inplace=True)
-        raise Exception("Unknown activation function")
+        return Activation[act]()

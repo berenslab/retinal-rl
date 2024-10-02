@@ -6,6 +6,9 @@ __pycache__/
 # WADs
 *.wad
 
+# user configs
+/config/user
+
 # Large scale resources
 /cache/
 
@@ -137,6 +140,9 @@ venv.bak/
 # Spyder project settings
 .spyderproject
 .spyproject
+
+# vscode settings
+.vscode
 
 # Rope project settings
 .ropeproject

@@ -1,0 +1,72 @@
+spawn_objects:
+  relative: true
+  range: 1000.0
+metabolic:
+  delay: 2
+  damage: 1
+objects:
+  nourishment:
+    init: 30
+    delay: 10
+    actors:
+      nourishment-1:
+        healing: 10
+        textures:
+        - apples/red_apple.png
+        - gabors/high-0.png
+      nourishment-2:
+        healing: 20
+        textures:
+        - apples/red_apple.png
+        - gabors/high-0.png
+      nourishment-3:
+        healing: 30
+        textures:
+        - apples/red_apple.png
+        - gabors/low-90.png
+      nourishment-4:
+        healing: 40
+        textures:
+        - apples/red_apple.png
+        - gabors/low-135.png
+      nourishment-5:
+        healing: 50
+        textures:
+        - apples/red_apple.png
+        - gabors/high-90.png
+  poison:
+    init: 10
+    delay: 10
+    actors:
+      poison-1:
+        damage: 5
+        textures:
+        - apples/blue_apple.png
+        - gabors/low-45.png
+      poison-2:
+        damage: 10
+        textures:
+        - apples/blue_apple.png
+        - gabors/low-45.png
+      poison-3:
+        damage: 15
+        textures:
+        - apples/blue_apple.png
+        - gabors/high-45.png
+  distractor:
+    init: 40
+    delay: 30
+    actors:
+      distractor-1:
+        textures:
+          - 'apples/red_apple.png'
+      distractor-2:
+        textures:
+          - 'apples/blue_apple.png'
+  obstacle:
+    init: 40
+    delay: 0
+    actors:
+      obstacle-1:
+        textures:
+          - 'obstacles/tree.png'

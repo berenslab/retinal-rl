@@ -1,168 +1,130 @@
-### Imports ###
+"""Training module for the Brain model.
 
-from typing import List, Tuple
+This module contains functions for running training epochs, processing datasets,
+and calculating losses for the Brain model. It works in conjunction with the
+Brain and BrainOptimizer classes to perform model training and evaluation.
+"""
+
+import logging
+from typing import Dict, List, Tuple
 
 import torch
-import torch.nn as nn
 from torch import Tensor
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 
+from retinal_rl.classification.loss import (
+    ClassificationContext,
+    get_classification_context,
+)
 from retinal_rl.models.brain import Brain
+from retinal_rl.models.goal import Goal
+
+logger = logging.getLogger(__name__)
 
 
 def run_epoch(
     device: torch.device,
     brain: Brain,
-    history: dict[str, List[float]],
-    recon_weight: float,
+    goal: Goal[ClassificationContext],
     optimizer: Optimizer,
-    class_objective: nn.Module,
-    recon_objective: nn.Module,
-    trainloader: DataLoader[Tuple[Tensor, int]],
-    testloader: DataLoader[Tuple[Tensor, int]],
-) -> Tuple[Brain, dict[str, List[float]]]:
-    """Perform a single run with a train/test split."""
-    brain.train()  # Ensure the model is in training mode
+    history: Dict[str, List[float]],
+    epoch: int,
+    trainloader: DataLoader[Tuple[Tensor, Tensor, int]],
+    testloader: DataLoader[Tuple[Tensor, Tensor, int]],
+) -> Tuple[Brain, Dict[str, List[float]]]:
+    """Perform a single training epoch and evaluation.
 
-    train_loss, train_class_loss, train_frac_correct, train_recon_loss = train_epoch(
-        device,
-        brain,
-        optimizer,
-        recon_weight,
-        recon_objective,
-        class_objective,
-        trainloader,
+    This function runs the model through one complete pass of the training data
+    and then evaluates it on the test data. It updates the training history with
+    the results.
+
+    Args:
+    ----
+        device (torch.device): The device to run the computations on.
+        brain (Brain): The Brain model to train and evaluate.
+        goal (Goal): The goal object specifying the training objectives.
+        optimizer (Optimizer): The optimizer for updating the model parameters.
+        history (Dict[str, List[float]]): A dictionary to store the training history.
+        epoch (int): The current epoch number.
+        trainloader (DataLoader): DataLoader for the training dataset.
+        testloader (DataLoader): DataLoader for the test dataset.
+
+    Returns:
+    -------
+        Tuple[Brain, Dict[str, List[float]]]: The updated Brain model and the updated history.
+
+    """
+    train_losses = process_dataset(
+        device, brain, goal, optimizer, epoch, trainloader, is_training=True
     )
-    test_loss, test_class_loss, test_frac_correct, test_recon_loss = evaluate_model(
-        device,
-        brain,
-        recon_weight,
-        recon_objective,
-        class_objective,
-        testloader,
+    test_losses = process_dataset(
+        device, brain, goal, optimizer, epoch, testloader, is_training=False
     )
 
-    history["train_total"].append(train_loss)
-    history["train_classification"].append(train_class_loss)
-    history["train_fraction_correct"].append(train_frac_correct)
-    history["train_reconstruction"].append(train_recon_loss)
-    history["test_total"].append(test_loss)
-    history["test_classification"].append(test_class_loss)
-    history["test_fraction_correct"].append(test_frac_correct)
-    history["test_reconstruction"].append(test_recon_loss)
+    # Update history
+    logger.info(f"Epoch {epoch} training performance:")
+    for key, value in train_losses.items():
+        logger.info(f"{key}: {value:.4f}")
+        history.setdefault(f"train_{key}", []).append(value)
+    for key, value in test_losses.items():
+        history.setdefault(f"test_{key}", []).append(value)
 
     return brain, history
 
 
-def calculate_loss(
+def process_dataset(
     device: torch.device,
     brain: Brain,
-    recon_weight: float,
-    recon_objective: nn.Module,
-    class_objective: nn.Module,
-    batch: Tuple[torch.Tensor, torch.Tensor],
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-    inputs, classes = batch
-    inputs, classes = inputs.to(device), classes.to(device)
-
-    stimuli = {"vision": inputs}
-
-    response = brain(stimuli)
-    predicted_classes = response["classifier"]
-    reconstructions = response["decoder"]
-
-    class_loss = class_objective(predicted_classes, classes)
-    recon_loss = recon_objective(inputs, reconstructions)
-
-    class_weight = 1 - recon_weight
-    loss = class_weight * class_loss + recon_weight * recon_loss
-
-    # Calculate the number of correct predictions
-    _, predicted_labels = torch.max(predicted_classes, 1)
-    fraction_correct = torch.mean((predicted_labels == classes).float())
-
-    return loss, class_loss, fraction_correct, recon_loss
-
-
-def train_epoch(
-    device: torch.device,
-    brain: Brain,
+    goal: Goal[ClassificationContext],
     optimizer: Optimizer,
-    recon_weight: float,
-    recon_objective: nn.Module,
-    class_objective: nn.Module,
-    trainloader: DataLoader[Tuple[Tensor, int]],
-) -> Tuple[float, float, float, float]:
-    """Trains the model for one epoch.
+    epoch: int,
+    dataloader: DataLoader[Tuple[Tensor, Tensor, int]],
+    is_training: bool,
+) -> Dict[str, float]:
+    """Process a dataset (train or test) and return average losses.
 
-    Returns
+    This function runs the model on all batches in the given dataset. If in training mode,
+    it also performs optimization steps.
+
+    Args:
+    ----
+        device (torch.device): The device to run the computations on.
+        brain (Brain): The Brain model to process the data.
+        brain_optimizer (BrainOptimizer): The optimizer for updating the model parameters.
+        epoch (int): The current epoch number.
+        dataloader (DataLoader): The DataLoader containing the dataset to process.
+        is_training (bool): Whether to perform optimization (True) or just evaluate (False).
+
+    Returns:
     -------
-        Tuple[float, float,float]: A tuple containing the average loss,
-        reconstruction loss, and classification loss for the epoch.
+        Dict[str, float]: A dictionary of average losses for the processed dataset.
 
     """
-    losses: dict[str, List[torch.Tensor]]
-    losses = {
-        "total": [],
-        "classification": [],
-        "fraction_correct": [],
-        "reconstruction": [],
-    }
+    total_losses: Dict[str, float] = {}
+    steps = 0
 
-    for batch in trainloader:
-        optimizer.zero_grad()
+    for batch in dataloader:
+        context = get_classification_context(device, brain, batch, epoch)
 
-        loss, class_loss, frac_correct, recon_loss = calculate_loss(
-            device, brain, recon_weight, recon_objective, class_objective, batch
-        )
+        if is_training:
+            brain.train()
+            losses, obj_dict = goal.backward(context)
+            optimizer.step()
+            optimizer.zero_grad(set_to_none=True)
 
-        losses["total"].append(loss)
-        losses["classification"].append(class_loss)
-        losses["fraction_correct"].append(frac_correct)
-        losses["reconstruction"].append(recon_loss)
+        else:
+            with torch.no_grad():
+                brain.eval()
+                losses, obj_dict = goal.evaluate_objectives(context)
 
-        loss.backward()
-        optimizer.step()
+        # Accumulate losses and objectives
+        for key, value in losses.items():
+            total_losses[key] = total_losses.get(key, 0.0) + value
+        for key, value in obj_dict.items():
+            total_losses[key] = total_losses.get(key, 0.0) + value
 
-    avg_loss = torch.mean(torch.stack(losses["total"])).item()
-    avg_class_loss = torch.mean(torch.stack(losses["classification"])).item()
-    avg_frac_correct = torch.mean(torch.stack(losses["fraction_correct"])).item()
-    avg_recon_loss = torch.mean(torch.stack(losses["reconstruction"])).item()
-    return avg_loss, avg_class_loss, avg_frac_correct, avg_recon_loss
+        steps += 1
 
-
-def evaluate_model(
-    device: torch.device,
-    brain: Brain,
-    recon_weight: float,
-    recon_objective: torch.nn.Module,
-    class_objective: torch.nn.Module,
-    testloader: DataLoader[Tuple[Tensor, int]],
-) -> Tuple[float, float, float, float]:
-    brain.eval()  # Ensure the model is in evaluation mode
-
-    losses: dict[str, List[torch.Tensor]]
-    losses = {
-        "total": [],
-        "classification": [],
-        "fraction_correct": [],
-        "reconstruction": [],
-    }
-
-    with torch.no_grad():  # Disable gradient calculation
-        for batch in testloader:
-            loss, class_loss, frac_correct, recon_loss = calculate_loss(
-                device, brain, recon_weight, recon_objective, class_objective, batch
-            )
-
-            losses["total"].append(loss)
-            losses["classification"].append(class_loss)
-            losses["fraction_correct"].append(frac_correct)
-            losses["reconstruction"].append(recon_loss)
-
-    avg_loss = torch.mean(torch.stack(losses["total"])).item()
-    avg_class_loss = torch.mean(torch.stack(losses["classification"])).item()
-    avg_frac_correct = torch.mean(torch.stack(losses["fraction_correct"])).item()
-    avg_recon_loss = torch.mean(torch.stack(losses["reconstruction"])).item()
-    return avg_loss, avg_class_loss, avg_frac_correct, avg_recon_loss
+    # Calculate average losses
+    return {key: value / steps for key, value in total_losses.items()}

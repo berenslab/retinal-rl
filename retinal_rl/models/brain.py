@@ -1,49 +1,52 @@
-from typing import Dict, List, Tuple
+"""Provides the Brain class, which combines multiple NeuralCircuit instances into a single model by specifying a graph of connections between them."""
 
-import matplotlib.pyplot as plt
+import logging
+from typing import Any, Dict, List, OrderedDict, Tuple, cast
+
 import networkx as nx
 import torch
 import torch.nn as nn
 from hydra.utils import instantiate
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
+from torch import Tensor
+
+from retinal_rl.models.circuits.convolutional import ConvolutionalEncoder
+from retinal_rl.models.neural_circuit import NeuralCircuit
+
+logger = logging.getLogger(__name__)
 
 
 class Brain(nn.Module):
-    """The "overarching model" (brain) combining several "partial models" (circuits) - such as encoders, latents, decoders, and task heads - in a specified way."""
+    """The "overarching model" (brain) combining several "partial models" (circuits) - such as encoders, latents, decoders, and task heads specified by a graph."""
 
     def __init__(
         self,
-        name: str,
-        circuits: DictConfig,
+        circuits: Dict[str, DictConfig],
         sensors: Dict[str, List[int]],
         connections: List[List[str]],
     ) -> None:
-        """Brain constructor.
+        """Initialize the brain with a set of circuits, sensors, and connections.
 
         Args:
         ----
-        name: The name of the brain.
-        circuits: List of NeuralCircuit objects or dictionaries containing the configurations of the models.
-        sensors: Dictionary specifying the names and (tensor) shape of the sensors/stimuli.
-        connections: List of pairs of strings specifying the graphical structure of the brain.
+        circuits: A dictionary of circuit configurations.
+        sensors: A dictionary of sensor names and their dimensions.
+        connections: A list of connections between sensors and circuits.
 
         """
         super().__init__()
 
-        self.name = name
-        self.circuits = nn.ModuleDict()
-
+        # Initialize attributes
+        self.circuits: Dict[str, NeuralCircuit] = {}
+        self._module_dict: nn.ModuleDict = nn.ModuleDict()
         self.connectome: nx.DiGraph[str] = nx.DiGraph()
         self.sensors: Dict[str, Tuple[int, ...]] = {}
         for sensor in sensors:
             self.sensors[sensor] = tuple(sensors[sensor])
 
-        for stim in self.sensors:
-            self.connectome.add_node(stim)
-
-        for crcnm in circuits:
-            self.connectome.add_node(str(crcnm))
-
+        # Build the connectome
+        self.connectome.add_nodes_from(self.sensors.keys())
+        self.connectome.add_nodes_from(circuits.keys())
         for connection in connections:
             if connection[0] not in self.connectome.nodes:
                 raise ValueError(f"Node {connection[0]} not found in the connectome.")
@@ -55,62 +58,75 @@ class Brain(nn.Module):
         if not nx.is_directed_acyclic_graph(self.connectome):
             raise ValueError("The connectome should be a directed acyclic graph.")
 
+        # Create dummy responses to help calculate the input shape for each neural circuit
         dummy_responses = {
             sensor: torch.rand((1, *self.sensors[sensor])) for sensor in self.sensors
         }
 
+        # Instantiate the neural circuits
         for node in nx.topological_sort(self.connectome):
-            if node not in self.sensors:
-                input_tensor = self._calculate_inputs(node, dummy_responses)
-                input_shape = list(input_tensor.shape[1:])
+            if node in self.sensors:
+                continue
 
-                # Check for the output_shape key
-                if "output_shape" in circuits[node]:
-                    output_shape = circuits[node]["output_shape"]
-                    if isinstance(output_shape, str):
-                        parts = output_shape.split(".")
-                        if len(parts) == 2 and parts[0] in self.circuits:
-                            circuit_name, property_name = parts
-                            output_shape = getattr(
-                                self.circuits[circuit_name], property_name
-                            )
-                        else:
-                            raise ValueError(
-                                f"Invalid format or reference in output_shape: {output_shape}"
-                            )
-                    circuit = instantiate(
-                        circuits[node],
-                        input_shape=input_shape,
-                        output_shape=output_shape,
-                    )
-                else:
-                    circuit = instantiate(circuits[node], input_shape=input_shape)
+            input_tensor = self._assemble_inputs(node, dummy_responses)
+            input_shape = list(input_tensor.shape[1:])
+            circuit_config = OmegaConf.to_container(circuits[node], resolve=True)
+            circuit_config = cast(Dict[str, Any], circuit_config)
 
-                dummy_responses[node] = circuit(input_tensor)
-                self.circuits[node] = circuit
+            # Check for an explicit output_shape key
+            if "output_shape" in circuit_config:
+                output_shape = circuit_config["output_shape"]
+                if isinstance(output_shape, str):
+                    output_shape = self._resolve_output_shape(output_shape)
+                circuit = instantiate(
+                    circuit_config,
+                    input_shape=input_shape,
+                    output_shape=output_shape,
+                )
+            else:
+                circuit = instantiate(
+                    circuit_config,
+                    input_shape=input_shape,
+                )
 
-    def forward(self, stimuli: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        responses: Dict[str, torch.Tensor] = {}
+            # Set attribute to register the module with pytorch
+            dummy_responses[node] = circuit(input_tensor)
+
+            self.circuits[node] = circuit
+            self._module_dict[node] = circuit
+
+    def _resolve_output_shape(self, output_shape: str) -> Tuple[int, ...]:
+        parts = output_shape.split(".")
+        if len(parts) == 2 and parts[0] in self.circuits:
+            circuit_name, property_name = parts
+            return getattr(self.circuits[circuit_name], property_name)
+        raise ValueError(
+            f"Invalid format for output_shape: {output_shape}. Must be of the form 'circuit_name.property_name'"
+        )
+
+    def forward(self, stimuli: Dict[str, Tensor]) -> Dict[str, Tensor]:
+        """Forward pass of the brain. Computed by following the connectome from sensors through the circuits."""
+        responses: Dict[str, Tensor] = {}
 
         for node in nx.topological_sort(self.connectome):
             if node in self.sensors:
-                responses[node] = stimuli[node].clone()
+                responses[node] = stimuli[node]
             else:
-                input = self._calculate_inputs(node, responses)
+                input = self._assemble_inputs(node, responses)
                 responses[node] = self.circuits[node](input)
         return responses
 
     def scan_circuits(self):
-        """Runs torchscan on all circuits and concatenates the reports."""
+        """Run torchscan on all circuits and concatenates the reports."""
         # Print connectome
         print("\n\nConnectome:\n")
         print("Nodes: ", self.connectome.nodes)
         print("Edges: ", self.connectome.edges)
 
         # Run scans on all circuits
-        dummy_stimulus: Dict[str, torch.Tensor] = {}
+        dummy_stimulus: Dict[str, Tensor] = {}
         for sensor in self.sensors:
-            dummy_stimulus[sensor] = torch.rand((1, *self.sensors[sensor]), device="cuda")
+            dummy_stimulus[sensor] = torch.rand((1, *self.sensors[sensor]))
 
         for crcnm, circuit in self.circuits.items():
             print(
@@ -118,56 +134,62 @@ class Brain(nn.Module):
             )
             circuit.scan()
 
-    def visualize_connectome(self):
-        """Visualize the connectome using networkx and matplotlib."""
-        # Initialize a dictionary to hold input and output sizes for visualization
-        node_sizes = {}
-
-        # Collect sizes for sensors
-        for sensor in self.sensors:
-            node_sizes[sensor] = f"Input: {self.sensors[sensor]}"
-
-        # Collect sizes for circuits
-        dummy_stimulus: Dict[str, torch.Tensor] = {}
-        for sensor in self.sensors:
-            dummy_stimulus[sensor] = torch.rand((1, *self.sensors[sensor]))
-
-        for crcnm, circuit in self.circuits.items():
-            input_tensor = self._calculate_inputs(crcnm, dummy_stimulus)
-            input_shape = list(input_tensor.shape[1:])
-            dummy_responses = circuit(input_tensor)
-            output_shape = list(dummy_responses.shape[1:])
-            node_sizes[crcnm] = f"Input: {input_shape}\nOutput: {output_shape}"
-
-        # Visualize the connectome
-        pos = nx.spring_layout(self.connectome)
-        plt.figure(figsize=(12, 8))
-
-        # Draw the nodes with their sizes
-        nx.draw_networkx_nodes(
-            self.connectome, pos, node_color="lightblue", node_size=3000
-        )
-        nx.draw_networkx_edges(self.connectome, pos, arrows=True)
-        nx.draw_networkx_labels(self.connectome, pos, labels=node_sizes, font_size=10)
-
-        plt.title("Connectome Visualization")
-        plt.show()
-
-    def _calculate_inputs(
-        self, node: str, responses: Dict[str, torch.Tensor]
-    ) -> torch.Tensor:
-        inputs: List[torch.Tensor] = []
-        input = torch.Tensor()
+    def _assemble_inputs(self, node: str, responses: Dict[str, Tensor]) -> Tensor:
+        """Assemble the inputs to a given node by concatenating the responses of its predecessors."""
+        inputs: List[Tensor] = []
+        input = Tensor()
         for pred in self.connectome.predecessors(node):
             if pred in responses:
                 inputs.append(responses[pred])
             else:
-                ValueError(f"Input node {pred} to node {node} does not (yet) exist")
+                raise ValueError(f"Input node {pred} to node {node} does not (yet) exist")
         if len(inputs) == 0:
-            ValueError(f"No inputs to node {node}")
-        elif len(inputs) == 1:
+            raise ValueError(f"No inputs to node {node}")
+        if len(inputs) == 1:
             input = inputs[0]
         else:
             # flatten the inputs and concatenate them
             input = torch.cat([inp.view(inp.size(0), -1) for inp in inputs], dim=1)
         return input
+
+
+def get_cnn_circuit(brain: Brain) -> Tuple[Tuple[int, ...], OrderedDict[str, nn.Module]]:
+    """Find the longest path starting from a sensor, along a path of ConvolutionalEncoders. This likely won't work very well for particularly complex graphs."""
+    cnn_paths: List[List[str]] = []
+
+    # Create for the subgraph of sensors and cnns
+    cnn_dict: Dict[str, ConvolutionalEncoder] = {}
+    for node, circuit in brain.circuits.items():
+        if isinstance(circuit, ConvolutionalEncoder):
+            cnn_dict[node] = circuit
+
+    cnn_nodes = list(cnn_dict.keys())
+    sensor_nodes = [node for node in brain.sensors.keys()]
+    subgraph: nx.DiGraph[str] = nx.DiGraph(
+        nx.subgraph(brain.connectome, cnn_nodes + sensor_nodes)
+    )
+    end_nodes: List[str] = [
+        node for node in cnn_nodes if not list(subgraph.successors(node))
+    ]
+
+    for sensor in sensor_nodes:
+        for end_node in end_nodes:
+            cnn_paths.extend(
+                nx.all_simple_paths(subgraph, source=sensor, target=end_node)
+            )
+
+    # find the longest path
+    path = max(cnn_paths, key=len)
+    logger.info(f"Convolutional circuit path for analysis: {path}")
+    # Split off the sensor node
+    sensor, *path = path
+    # collect list of cnns
+    cnn_circuits: List[ConvolutionalEncoder] = [cnn_dict[node] for node in path]
+    # Combine all cnn layers
+    tuples: List[Tuple[str, nn.Module]] = []
+    for circuit in cnn_circuits:
+        for name, module in circuit.conv_head.named_children():
+            tuples.extend([(name, module)])
+
+    input_shape = brain.sensors[sensor]
+    return input_shape, OrderedDict(tuples)

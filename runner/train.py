@@ -1,111 +1,120 @@
+"""Training loop for the Brain."""
+
 import logging
 import time
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import torch
-import torch.nn as nn
 from omegaconf import DictConfig
-from torch import Tensor, optim
-from torch.utils.data import DataLoader, Dataset
+from torch.optim.optimizer import Optimizer
+from torch.utils.data import DataLoader
 
 import wandb
-from retinal_rl.classification.training import evaluate_model, run_epoch
+from retinal_rl.classification.loss import ClassificationContext
+from retinal_rl.classification.training import process_dataset, run_epoch
+from retinal_rl.dataset import Imageset
 from retinal_rl.models.brain import Brain
+from retinal_rl.models.goal import Goal
 from runner.analyze import analyze
 from runner.util import save_checkpoint
 
 # Initialize the logger
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def train(
     cfg: DictConfig,
     device: torch.device,
     brain: Brain,
-    optimizer: optim.Optimizer,
-    train_set: Dataset[Tuple[Tensor, int]],
-    test_set: Dataset[Tuple[Tensor, int]],
-    completed_epochs: int,
-    histories: Dict[str, List[float]],
+    goal: Goal[ClassificationContext],
+    optimizer: Optimizer,
+    train_set: Imageset,
+    test_set: Imageset,
+    initial_epoch: int,
+    history: Dict[str, List[float]],
 ):
+    """Train the Brain model using the specified optimizer.
+
+    Args:
+    ----
+        cfg (DictConfig): The configuration for the experiment.
+        device (torch.device): The device to run the computations on.
+        brain (Brain): The Brain model to train and evaluate.
+        goal (Goal): The optimizer for updating the model parameters.
+        train_set (Imageset): The training dataset.
+        test_set (Imageset): The test dataset.
+        initial_epoch (int): The epoch to start training from.
+        history (Dict[str, List[float]]): The training history.
+
+    """
     trainloader = DataLoader(train_set, batch_size=64, shuffle=True)
     testloader = DataLoader(test_set, batch_size=64, shuffle=False)
 
-    class_objective = nn.CrossEntropyLoss()
-    recon_objective = nn.MSELoss()
     wall_time = time.time()
     epoch_wall_time = 0
 
-    if completed_epochs == 0:
-        train_loss, train_class_loss, train_frac_correct, train_recon_loss = (
-            evaluate_model(
-                device,
-                brain,
-                cfg.training.recon_weight,
-                recon_objective,
-                class_objective,
-                trainloader,
-            )
+    if initial_epoch == 0:
+        brain.train()
+        train_losses = process_dataset(
+            device, brain, goal, optimizer, initial_epoch, trainloader, is_training=False
         )
-        test_loss, test_class_loss, test_frac_correct, test_recon_loss = evaluate_model(
-            device,
-            brain,
-            cfg.training.recon_weight,
-            recon_objective,
-            class_objective,
-            testloader,
+        brain.eval()
+        test_losses = process_dataset(
+            device, brain, goal, optimizer, initial_epoch, testloader, is_training=False
         )
 
-        histories["train_total"].append(train_loss)
-        histories["train_classification"].append(train_class_loss)
-        histories["train_fraction_correct"].append(train_frac_correct)
-        histories["train_reconstruction"].append(train_recon_loss)
-        histories["test_total"].append(test_loss)
-        histories["test_classification"].append(test_class_loss)
-        histories["test_fraction_correct"].append(test_frac_correct)
-        histories["test_reconstruction"].append(test_recon_loss)
+        # Initialize the history
+        logger.info("Epoch 0 training performance:")
+        for key, value in train_losses.items():
+            logger.info(f"{key}: {value:.4f}")
+            history[f"train_{key}"] = [value]
+        for key, value in test_losses.items():
+            history[f"test_{key}"] = [value]
 
         analyze(
             cfg,
             device,
             brain,
-            histories,
+            goal,
+            history,
             train_set,
             test_set,
-            completed_epochs,
+            initial_epoch,
             True,
         )
 
-        if cfg.logging.use_wandb:
-            _log_statistics(completed_epochs, epoch_wall_time, histories)
+        if cfg.use_wandb:
+            _wandb_log_statistics(initial_epoch, epoch_wall_time, history)
 
-    log.info("Initialization complete.")
+    logger.info("Initialization complete.")
 
-    for epoch in range(
-        completed_epochs + 1, completed_epochs + cfg.training.num_epochs + 1
-    ):
-        brain, histories = run_epoch(
+    for epoch in range(initial_epoch + 1, goal.num_epochs() + 1):
+        brain, history = run_epoch(
             device,
             brain,
-            histories,
-            cfg.training.recon_weight,
+            goal,
             optimizer,
-            class_objective,
-            recon_objective,
+            history,
+            epoch,
             trainloader,
             testloader,
         )
 
-        if epoch % cfg.training.checkpoint_step == 0:
-            log.info("Saving checkpoint and plots.")
+        new_wall_time = time.time()
+        epoch_wall_time = new_wall_time - wall_time
+        wall_time = new_wall_time
+        logger.info(f"Epoch {epoch} complete. Wall Time: {epoch_wall_time:.2f}s.")
+
+        if epoch % cfg.system.checkpoint_step == 0:
+            logger.info("Saving checkpoint and plots.")
 
             save_checkpoint(
-                cfg.system.data_path,
-                cfg.system.checkpoint_path,
+                cfg.system.data_dir,
+                cfg.system.checkpoint_dir,
                 cfg.system.max_checkpoints,
                 brain,
                 optimizer,
-                histories,
+                history,
                 epoch,
             )
 
@@ -113,38 +122,36 @@ def train(
                 cfg,
                 device,
                 brain,
-                histories,
+                goal,
+                history,
                 train_set,
                 test_set,
                 epoch,
                 True,
             )
+            logger.info("Analysis complete.")
 
-        new_wall_time = time.time()
-        epoch_wall_time = new_wall_time - wall_time
-        wall_time = new_wall_time
-        log.info(f"Epoch {epoch} complete. Epoch Wall Time: {epoch_wall_time:.2f}s.")
-
-        if cfg.logging.use_wandb:
-            _log_statistics(epoch, epoch_wall_time, histories)
+        if cfg.use_wandb:
+            _wandb_log_statistics(epoch, epoch_wall_time, history)
 
 
-def _log_statistics(
-    epoch: int, epoch_wall_time: float, histories: dict[str, List[float]]
+def _wandb_log_statistics(
+    epoch: int, epoch_wall_time: float, histories: Dict[str, List[float]]
 ) -> None:
-    """Logs the training and test histories in a readable format."""
-    # Flatten the hierarchical dictionary structure
     log_dict = {
         "Epoch": epoch,
         "Auxiliary/Epoch Wall Time": epoch_wall_time,
-        "Train/Total Loss": histories["train_total"][-1],
-        "Train/Classification Loss": histories["train_classification"][-1],
-        "Train/Fraction Correct": histories["train_fraction_correct"][-1],
-        "Train/Reconstruction Loss": histories["train_reconstruction"][-1],
-        "Test/Total Loss": histories["test_total"][-1],
-        "Test/Classification Loss": histories["test_classification"][-1],
-        "Test/Fraction Correct": histories["test_fraction_correct"][-1],
-        "Test/Reconstruction Loss": histories["test_reconstruction"][-1],
     }
+
+    for key, values in histories.items():
+        # Split the key into category (train/test) and metric name
+        category, *metric_parts = key.split("_")
+        metric_name = " ".join(word.capitalize() for word in metric_parts)
+
+        # Create the full log key
+        log_key = f"{category.capitalize()}/{metric_name}"
+
+        # Add to log dictionary
+        log_dict[log_key] = values[-1]
 
     wandb.log(log_dict, commit=True)

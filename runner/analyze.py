@@ -1,67 +1,49 @@
+import logging
 import os
 import shutil
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import torch
+import wandb
 from matplotlib.figure import Figure
 from omegaconf import DictConfig
-from torch import Tensor
-from torch.utils.data import Dataset
 
-import wandb
-from retinal_rl.classification.plot import (
-    plot_input_distributions,
-    plot_training_histories,
+from retinal_rl.analysis.plot import (
+    layer_receptive_field_plots,
+    plot_brain_and_optimizers,
+    plot_channel_statistics,
+    plot_histories,
+    plot_receptive_field_sizes,
+    plot_reconstructions,
 )
-from retinal_rl.models.analysis.plot import plot_reconstructions, receptive_field_plots
-from retinal_rl.models.analysis.statistics import (
-    get_reconstructions,
-    gradient_receptive_fields,
-)
+from retinal_rl.analysis.statistics import cnn_statistics, reconstruct_images
+from retinal_rl.dataset import Imageset
 from retinal_rl.models.brain import Brain
+from retinal_rl.models.goal import ContextT, Goal
 
-FigureDict = Dict[str, Figure]
+logger = logging.getLogger(__name__)
+
+init_dir = "initialization_analysis"
 
 
-def analyze(
-    cfg: DictConfig,
-    device: torch.device,
-    brain: Brain,
-    histories: Dict[str, List[float]],
-    train_set: Dataset[Tuple[Tensor, int]],
-    test_set: Dataset[Tuple[Tensor, int]],
-    epoch: int,
-    copy_checkpoint: bool = False,
-):
-    fig_dict: FigureDict = {}
+def _save_figure(cfg: DictConfig, sub_dir: str, file_name: str, fig: Figure) -> None:
+    dir = os.path.join(cfg.system.plot_dir, sub_dir)
+    os.makedirs(dir, exist_ok=True)
+    file_name = os.path.join(dir, f"{file_name}.png")
+    fig.savefig(file_name)
 
-    # Plot training histories
-    if not cfg.logging.use_wandb:
-        hist_fig = plot_training_histories(histories)
-        fig_dict["training-histories"] = hist_fig
 
-    # Plot input distributions if required
-    if cfg.command.plot_inputs:
-        rgb_fig = plot_input_distributions(train_set)
-        fig_dict["input-distributions"] = rgb_fig
+def _checkpoint_copy(cfg: DictConfig, sub_dir: str, file_name: str, epoch: int) -> None:
+    src_path = os.path.join(cfg.system.plot_dir, sub_dir, f"{file_name}.png")
 
-    # Plot receptive fields
-    rf_dict = gradient_receptive_fields(device, brain.circuits["encoder"])
-    for lyr, rfs in rf_dict.items():
-        rf_fig = receptive_field_plots(rfs)
-        fig_dict[f"receptive-fields/{lyr}-layer"] = rf_fig
+    dest_dir = os.path.join(
+        cfg.system.checkpoint_plot_dir, "checkpoints", f"epoch_{epoch}", sub_dir
+    )
+    os.makedirs(dest_dir, exist_ok=True)
+    dest_path = os.path.join(dest_dir, f"{file_name}.png")
 
-    # Plot reconstructions
-    rec_dict = get_reconstructions(device, brain, train_set, test_set, 5)
-    recon_fig = plot_reconstructions(**rec_dict, num_samples=5)
-    fig_dict["reconstructions"] = recon_fig
-
-    # Handle logging or saving of figures
-    if cfg.logging.use_wandb:
-        _log_figures(fig_dict)
-    else:
-        _save_figures(cfg, epoch, fig_dict, copy_checkpoint)
+    shutil.copy2(src_path, dest_path)
 
 
 def _wandb_title(title: str) -> str:
@@ -70,7 +52,7 @@ def _wandb_title(title: str) -> str:
 
     def capitalize_part(part: str) -> str:
         # Split the part by dashes
-        words = part.split("-")
+        words = part.split("_")
         # Capitalize each word
         capitalized_words = [word.capitalize() for word in words]
         # Join the words with spaces
@@ -81,46 +63,93 @@ def _wandb_title(title: str) -> str:
     return "/".join(capitalized_parts)
 
 
-def _log_figures(fig_dict: FigureDict) -> None:
-    """Log figures to wandb."""
-    fig_dict_prefixed = {
-        f"Figures/{_wandb_title(key)}": fig for key, fig in fig_dict.items()
-    }
-    wandb.log(fig_dict_prefixed, commit=False)
+def _process_figure(
+    cfg: DictConfig,
+    copy_checkpoint: bool,
+    fig: Figure,
+    sub_dir: str,
+    file_name: str,
+    epoch: int,
+) -> None:
+    if cfg.use_wandb:
+        title = f"{_wandb_title(sub_dir)}/{_wandb_title(file_name)}"
+        img = wandb.Image(fig)
+        wandb.log({title: img}, commit=False)
+    else:
+        _save_figure(cfg, sub_dir, file_name, fig)
+        if copy_checkpoint:
+            _checkpoint_copy(cfg, sub_dir, file_name, epoch)
+    plt.close(fig)
 
-    # Close the figures to free up memory
-    for fig in fig_dict.values():
-        plt.close(fig)
 
-
-def _save_figures(
-    cfg: DictConfig, epoch: int, fig_dict: FigureDict, copy_checkpoint: bool
+def analyze(
+    cfg: DictConfig,
+    device: torch.device,
+    brain: Brain,
+    goal: Goal[ContextT],
+    histories: Dict[str, List[float]],
+    train_set: Imageset,
+    test_set: Imageset,
+    epoch: int,
+    copy_checkpoint: bool = False,
 ):
-    plot_path = cfg.system.plot_path
-    os.makedirs(plot_path, exist_ok=True)
+    # Plot training histories (this never gets logged to wandb)
+    if not cfg.use_wandb:
+        hist_fig = plot_histories(histories)
+        _save_figure(cfg, "", "histories", hist_fig)
+        plt.close(hist_fig)
 
-    for key, fig in fig_dict.items():
-        fig_path = key.replace("/", os.sep)
-        full_path = os.path.join(plot_path, fig_path + ".png")
-        os.makedirs(os.path.dirname(full_path), exist_ok=True)
-        fig.savefig(full_path)
-        plt.close(fig)
+    # CNN analysis
+    cnn_analysis = cnn_statistics(device, test_set, brain, 1000)
+    if epoch == 0:
+        rf_sizes_fig = plot_receptive_field_sizes(cnn_analysis)
+        _process_figure(cfg, False, rf_sizes_fig, init_dir, "receptive_field_sizes", 0)
+        graph_fig = plot_brain_and_optimizers(brain, goal)
+        _process_figure(cfg, False, graph_fig, init_dir, "brain_graph", 0)
 
-    if copy_checkpoint:
-        checkpoint_plot_path = (
-            f"{cfg.system.checkpoint_plot_path}/checkpoint-epoch-{epoch}"
+    for layer_name, layer_data in cnn_analysis.items():
+        if layer_name == "input":
+            if epoch == 0:
+                layer_rfs = layer_receptive_field_plots(layer_data["receptive_fields"])
+                _process_figure(cfg, False, layer_rfs, init_dir, "input_rfs", 0)
+
+                num_channels = int(layer_data["num_channels"])
+                for channel in range(num_channels):
+                    channel_fig = plot_channel_statistics(layer_data, layer_name, channel)
+                    _process_figure(
+                        cfg,
+                        False,
+                        channel_fig,
+                        init_dir,
+                        f"input_channel_{channel}",
+                        0,
+                    )
+
+            continue
+
+        layer_rfs = layer_receptive_field_plots(layer_data["receptive_fields"])
+        _process_figure(
+            cfg,
+            copy_checkpoint,
+            layer_rfs,
+            "receptive_fields",
+            f"{layer_name}",
+            epoch,
         )
-        os.makedirs(checkpoint_plot_path, exist_ok=True)
 
-        # Copy 'receptive-fields' directory
-        src_dir = os.path.join(plot_path, "receptive-fields")
-        dst_dir = os.path.join(checkpoint_plot_path, "receptive-fields")
-        if os.path.exists(src_dir):
-            shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
-
-        # Copy 'reconstructions.png' file
-        src_file = os.path.join(plot_path, "reconstructions.png")
-        dst_file = os.path.join(checkpoint_plot_path, "reconstructions.png")
-        if os.path.exists(src_file):
-            os.makedirs(checkpoint_plot_path, exist_ok=True)
-            shutil.copy2(src_file, dst_file)
+        num_channels = int(layer_data["num_channels"])
+        for channel in range(num_channels):
+            channel_fig = plot_channel_statistics(layer_data, layer_name, channel)
+            _process_figure(
+                cfg,
+                copy_checkpoint,
+                channel_fig,
+                f"{layer_name}_layer_channel_analysis",
+                f"channel_{channel}",
+                epoch,
+            )
+    rec_dict = reconstruct_images(device, brain, train_set, test_set, 5)
+    recon_fig = plot_reconstructions(**rec_dict, num_samples=5)
+    _process_figure(
+        cfg, copy_checkpoint, recon_fig, "reconstruction", "reconstructions", epoch
+    )
