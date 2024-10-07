@@ -1,0 +1,18 @@
+name: Pylint
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: eWaterCycle/setup-apptainer@v2
+      with:
+        apptainer-version: 1.3.0
+
+    - name: Build Singularity container
+      run: apptainer build retinal-rl.sif resources/retinal-rl.def
+
+    - name: Run Pylint
+      run: singularity exec retinal-rl.sif pylint $(git diff --name-only origin/master origin/feat-ci-pipeline -- '*.py')
