@@ -12,7 +12,7 @@ jobs:
         apptainer-version: 1.3.0
 
     - name: Pulling Singularity container
-      run: singularity remote login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} ghcr.io; singularity pull oras://ghcr.io/berenslab/retinal-rl:singularity-latest
+      run: singularity registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io; singularity pull oras://ghcr.io/berenslab/retinal-rl:singularity-latest
 
     - name: Run Pylint
       run: singularity exec retinal-rl_singularity-image-latest.sif pylint $(git diff --name-only origin/master origin/feat-ci-pipeline -- '*.py')
