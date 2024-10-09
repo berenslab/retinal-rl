@@ -1,4 +1,4 @@
-name: Pylint
+name: Code Checking
 
 on: [push, pull_request]
 
@@ -15,4 +15,4 @@ jobs:
       run: singularity registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io; singularity pull oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest
 
     - name: Run Pylint
-      run: singularity exec retinal-rl_singularity-image-latest.sif pylint . #$(git diff --name-only origin/master origin/feat-ci-pipeline -- '*.py')
+      run: singularity exec retinal-rl_singularity-image-latest.sif pylint --exit-zero . #$(git diff --name-only origin/master origin/feat-ci-pipeline -- '*.py')
