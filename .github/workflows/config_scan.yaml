@@ -1,0 +1,21 @@
+name: Scan Configs
+
+on: [push, pull_request]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: eWaterCycle/setup-apptainer@v2
+      with:
+        apptainer-version: 1.3.0
+
+    - name: Pulling Singularity container
+      run: singularity registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io; singularity pull oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest
+
+    - name: Copy configs from resources directory
+      run: cp -r resources/config_templates/user/* config/user/
+
+    - name: Scan classification config
+      run: singularity exec retinal-rl_singularity-image-latest.sif python main.py -m +experiment=cifar10-class-recon command=scan
