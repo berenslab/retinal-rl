@@ -3,7 +3,7 @@ on: [pull_request,workflow_dispatch]
 
 jobs:
   init:
-    uses: ./.github/workflows/setup.yml
+    uses: ./.github/workflows/get_singularity.yml
     with:
       singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest
       sif_file: retinal-rl_singularity-image-latest.sif
@@ -12,7 +12,9 @@ jobs:
     needs: init
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v4
     - name: Scan classification config
       run: |
+        cp -r resources/config_templates/* config/
         singularity exec ~/singularity_images/retinal-rl_singularity-image-latest.sif \
         python main.py -m +experiment=cifar10-class-recon command=scan system.device=cpu

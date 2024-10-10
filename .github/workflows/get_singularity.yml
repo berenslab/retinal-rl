@@ -1,4 +1,4 @@
-name: Pull Singularity container & Setup Repository
+name: Get Singularity Container
 
 on:
   workflow_call:
@@ -13,10 +13,7 @@ on:
 jobs:
   init:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
+    steps:      
       - name: Setup Apptainer
         uses: eWaterCycle/setup-apptainer@v2
         with:
