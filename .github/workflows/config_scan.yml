@@ -1,5 +1,5 @@
 name: Scan Configs
-on: [push, pull_request]
+on: [pull_request,workflow_dispatch]
 jobs:
   scan:
     uses: ./.github/workflows/singularity_pull.yml

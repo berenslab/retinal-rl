@@ -1,6 +1,12 @@
 name: Code Checking
 
-on: [push, pull_request]
+on: 
+  push:
+    paths:
+      - '**/*.py'
+  pull_request:
+    branches:
+      - main
 
 jobs:
   lint:
