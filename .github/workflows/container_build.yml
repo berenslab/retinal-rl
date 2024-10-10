@@ -1,6 +1,11 @@
 name: Build Singularity Container
 
-on: [push, pull_request]
+on: 
+  schedule:
+    - cron: '0 2 1 * *'
+  push:
+    paths:
+      - 'resources/retinal-rl.def'
 
 jobs:
   singularity-build:
