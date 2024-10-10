@@ -1,17 +1,30 @@
 name: Scan Configs
 on: [pull_request,workflow_dispatch]
 
-jobs:
-  init:
-    uses: ./.github/workflows/get_singularity.yml
-    with:
-      singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest
-      sif_file: retinal-rl_singularity-image-latest.sif
+env:
+  singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest
+  sif_file: retinal-rl_singularity-image-latest.sif
 
+jobs:
   scan:
-    needs: init
     runs-on: ubuntu-latest
     steps:
+    - name: Setup Apptainer
+      uses: eWaterCycle/setup-apptainer@v2
+      with:
+        apptainer-version: 1.3.0
+    - name: Cache Singularity Image
+      id: cache-singularity
+      uses: actions/cache@v3
+      with:
+        path: ~/${{ env.sif_file }}
+        key: ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
+    - name: Pull Singularity container
+      if: steps.cache-singularity.outputs.cache-hit != 'true'
+      run: |
+        singularity registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
+        singularity pull ${{ env.sif_file }} ${{ env.singularity_image }}
+
     - uses: actions/checkout@v4
     - name: Scan classification config
       run: |
