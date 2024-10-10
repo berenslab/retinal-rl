@@ -24,8 +24,8 @@ circuits:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 2
     num_channels: [16,32]  # Two layers with 16 and 32 channels
-    kernel_size: ${kernel_size}
-    stride: ${stride}
+    kernel_size: 8
+    stride: 2
     act_name: ${activation}
     layer_names: ["bipolar", "retinal_ganglion"]  # Names inspired by retinal cell types
 
@@ -34,8 +34,8 @@ circuits:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 1
     num_channels: 64
-    kernel_size: ${kernel_size}
-    stride: ${stride}
+    kernel_size: 5
+    stride: 1
     act_name: ${activation}
     layer_names: ["lgn"]  # Lateral Geniculate Nucleus
 
@@ -44,8 +44,8 @@ circuits:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 1
     num_channels: 64
-    kernel_size: ${kernel_size}
-    stride: ${stride} 
+    kernel_size: 8
+    stride: 2
     act_name: ${activation}
     layer_names: ["v1"]  # Primary Visual Cortex
 
@@ -53,9 +53,9 @@ circuits:
   pfc:
     _target_: retinal_rl.models.circuits.fully_connected.FullyConnectedEncoder
     output_shape:
-      - ${latent_size}  # Size of the latent representation
+      - 128  # Size of the latent representation
     hidden_units: 
-      - ${hidden_units}  # Number of hidden units
+      - 64  # Number of hidden units
     act_name: ${activation}
 
   # Decoder: for reconstructing the input from the latent representation
@@ -63,8 +63,8 @@ circuits:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
     num_layers: 3
     num_channels: [32,16,3]  # For a symmetric encoder, this should be the reverse of the num_channels in the CNN layers up to the point of decoding (in this case, the thalamus)
-    kernel_size: ${kernel_size}
-    stride: ${stride}
+    kernel_size: [5,8,8]
+    stride: [1,2,2]
     act_name: ${activation}
 
   # Classifier: for categorizing the input into classes

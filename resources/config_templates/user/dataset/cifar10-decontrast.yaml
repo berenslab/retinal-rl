@@ -11,11 +11,9 @@ imageset:
       image_rescale_range: [1, 5]
   noise_transforms:
     - _target_: retinal_rl.datasets.transforms.ShotNoiseTransform
-      lambda_range: [0.8, 1.2]
+      lambda_range: [0.5, 1.5]
     - _target_: retinal_rl.datasets.transforms.ContrastTransform
-      contrast_range: [0.5, 1.5]
+      contrast_range: [0.01, 1.2]
   apply_normalization: true
-  # normalization_mean: [0.4914, 0.4822, 0.4465]
-  # normalization_std: [0.2023, 0.1994, 0.2010]
   fixed_transformation: false
   multiplier: 1

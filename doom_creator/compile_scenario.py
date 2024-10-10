@@ -1,3 +1,15 @@
+"""Scenario Compiler for Retinal-RL
+
+This module provides a utility to construct scenarios for the retinal-rl project.
+It merges YAML files from a specified directory into a scenario specification and
+subsequently compiles the scenario defined through those yaml files.
+
+Usage:
+    python -m exec.compile-scenario [options] [yaml_files...]
+
+Example:
+    python -m exec.compile-scenario gathering apples"""
+
 import argparse
 import os
 import sys
@@ -11,6 +23,13 @@ from doom_creator.util.texture import TextureType as TType
 
 
 def make_parser():
+    """
+    Create and configure an argument parser for the scenario compiler.
+    Check the parsers description and arguments help for further information.
+
+    Returns:
+        argparse.ArgumentParser: Configured argument parser for the scenario compiler.
+    """
     # Initialize parser
     Directories()
     parser = argparse.ArgumentParser(
@@ -22,7 +41,7 @@ def make_parser():
         running the first time one should use the --preload flag to download the
         necessary resources into the --out_dir ('{Directories().CACHE_DIR}').
         """,
-        epilog="Example: python -m exec.compile-scenario gathering apples",
+        epilog="Example: python -m exec.compile_scenario gathering apples",
     )
     # Positional argument for scenario yaml files (required, can be multiple)
     parser.add_argument(
@@ -44,7 +63,7 @@ def make_parser():
     parser.add_argument(
         "--dataset_dir",
         default=None,
-        help="source directory of a dataset (for preloading), if you already downloaded it somewhere",
+        help="source directory of a dataset (for preloading), if already downloaded somewhere",
     )
     parser.add_argument(
         "--resource_dir",
@@ -72,6 +91,15 @@ def make_parser():
 
 
 def main():
+    """
+    Main function to parse arguments and execute scenario compilation tasks.
+    
+    The function supports various modes of operation including preloading resources,
+    listing available YAML files, and creating scenarios. It also handles error
+    checking and warns the user if no actions are specified.
+
+    For a more detailed documentation, check the parser.
+    """
     # Parse args
     argv = sys.argv[1:]
     parser = make_parser()
@@ -92,7 +120,7 @@ def main():
         print(f"Listing contents of {dirs.SCENARIO_YAML_DIR}:")
         for flnm in os.listdir(dirs.SCENARIO_YAML_DIR):
             print(flnm)
-        print(f"If you want to load from a different folder, change this to")
+        print("If you want to load from a different folder, change this to")
     if do_make:
         cfg, needed_types = check_preload(cfg, args.test)
         any_dataset = False
