@@ -6,7 +6,7 @@ on:
       - '**/*.py'
   pull_request:
     branches:
-      - main
+      - master
 
 env:
   singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest
