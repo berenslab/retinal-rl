@@ -1,4 +1,4 @@
-name: Reusable Pull and Scan
+name: Pull Singularity container & Setup Repository
 
 on:
   workflow_call:
@@ -8,7 +8,7 @@ on:
         type: string
 
 jobs:
-  reusable_job:
+  setup:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,9 +19,5 @@ jobs:
         run: singularity registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
       - name: Pull Image
         run: singularity pull ${{ inputs.singularity_image }}
-      - name: Scan classification config
-        run: |
-          cp -r resources/config_templates/* config/
-          IMAGE_NAME=$(basename ${{ inputs.singularity_image }})
-          SIF_FILE="${IMAGE_NAME/:/_}.sif"
-          singularity exec $SIF_FILE python main.py -m +experiment=cifar10-class-recon command=scan system.device=cpu
+      - name: Copy Configs
+        run: cp -r resources/config_templates/* config/
