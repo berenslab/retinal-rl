@@ -13,10 +13,18 @@ jobs:
     uses: ./.github/workflows/setup.yml
     with:
       singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest
+      sif_file: retinal-rl_singularity-image-latest.sif
 
   lint:
     needs: init
     runs-on: ubuntu-latest
     steps:
+    - name: list directory
+      run: ls
+    - uses: actions/checkout@v4
+    - name: list directory
+      run: ls
     - name: Run Pylint
-      run: singularity exec retinal-rl_singularity-image-latest.sif pylint $(git diff --name-only origin/master HEAD -- '*.py')
+      run: |
+        singularity exec ~/singularity_images/retinal-rl_singularity-image-latest.sif \
+        pylint $(git diff --name-only origin/master HEAD -- '*.py')

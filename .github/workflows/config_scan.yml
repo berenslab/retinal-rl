@@ -6,10 +6,13 @@ jobs:
     uses: ./.github/workflows/setup.yml
     with:
       singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest
+      sif_file: retinal-rl_singularity-image-latest.sif
 
   scan:
     needs: init
     runs-on: ubuntu-latest
     steps:
     - name: Scan classification config
-      run: singularity exec retinal-rl_singularity-image-latest.sif python main.py -m +experiment=cifar10-class-recon command=scan system.device=cpu
+      run: |
+        singularity exec ~/singularity_images/retinal-rl_singularity-image-latest.sif \
+        python main.py -m +experiment=cifar10-class-recon command=scan system.device=cpu
