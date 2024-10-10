@@ -35,14 +35,14 @@ jobs:
       id: cache-singularity
       uses: actions/cache@v3
       with:
-        path: ~/${{ env.sif_file }}
+        path: ${{ env.sif_file }}
         key: ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
     - name: Pull Singularity container
       if: steps.cache-singularity.outputs.cache-hit != 'true'
       run: |
         singularity registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
         singularity pull ${{ env.sif_file }} ${{ env.singularity_image }}
-        
+
     - name: List current state
       run: | 
         ls
