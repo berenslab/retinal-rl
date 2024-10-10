@@ -16,6 +16,17 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Fetch all branches
+      run: git fetch --all
+
+    - name: List current state
+      run: | 
+        ls
+        pwd
     - name: Setup Apptainer
       uses: eWaterCycle/setup-apptainer@v2
       with:
@@ -31,17 +42,7 @@ jobs:
       run: |
         singularity registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
         singularity pull ${{ env.sif_file }} ${{ env.singularity_image }}
-
-    - name: List current state
-      run: | 
-        ls
-        pwd
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    - name: Fetch all branches
-      run: git fetch --all
+        
     - name: List current state
       run: | 
         ls
