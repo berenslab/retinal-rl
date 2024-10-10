@@ -1,19 +1,15 @@
 name: Scan Configs
 on: [pull_request,workflow_dispatch]
 
-env:
-  singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest
-  sif_file: retinal-rl_singularity-image-latest.sif
-
 jobs:
   init:
     uses: ./.github/workflows/setup.yml
     with:
-      singularity_image: ${{ env.singularity_image }}
+      singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest
 
   scan:
     needs: init
     runs-on: ubuntu-latest
     steps:
     - name: Scan classification config
-      run: singularity exec ${{ env.sif_file }} python main.py -m +experiment=cifar10-class-recon command=scan system.device=cpu
+      run: singularity exec retinal-rl_singularity-image-latest.sif python main.py -m +experiment=cifar10-class-recon command=scan system.device=cpu
