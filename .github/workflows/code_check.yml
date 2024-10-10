@@ -23,10 +23,6 @@ jobs:
     - name: Fetch all branches
       run: git fetch --all
 
-    - name: List current state
-      run: | 
-        ls
-        pwd
     - name: Setup Apptainer
       uses: eWaterCycle/setup-apptainer@v2
       with:
@@ -43,11 +39,7 @@ jobs:
         singularity registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
         singularity pull ${{ env.sif_file }} ${{ env.singularity_image }}
 
-    - name: List current state
-      run: | 
-        ls
-        pwd
-    # - name: Run Pylint
-    #   run: |
-    #     singularity exec ${{ env.sif_file }} \
-    #     pylint $(git diff --name-only origin/master...HEAD -- '*.py')
+    - name: Run Pylint
+      run: |
+        singularity exec ${{ env.sif_file }} \
+        pylint $(git diff --name-only origin/master...HEAD -- '*.py')
