@@ -41,5 +41,5 @@ jobs:
       run: git fetch --all
     - name: Run Pylint
       run: |
-        singularity exec ~/singularity_images/retinal-rl_singularity-image-latest.sif \
+        singularity exec ${{ env.sif_file }} \
         pylint $(git diff --name-only origin/master...HEAD -- '*.py')

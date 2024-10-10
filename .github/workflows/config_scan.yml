@@ -29,5 +29,5 @@ jobs:
     - name: Scan classification config
       run: |
         cp -r resources/config_templates/* config/
-        singularity exec ~/singularity_images/retinal-rl_singularity-image-latest.sif \
+        singularity exec ${{ env.sif_file }} \
         python main.py -m +experiment=cifar10-class-recon command=scan system.device=cpu
