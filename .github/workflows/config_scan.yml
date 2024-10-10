@@ -5,5 +5,3 @@ jobs:
     uses: ./.github/workflows/singularity_pull.yml
     with:
       singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest
-    secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
