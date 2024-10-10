@@ -15,7 +15,11 @@ jobs:
       run: apptainer build retinal-rl.sif resources/retinal-rl.def
 
     - name: Scan classification config / ensure minimal functionality
-      run: singularity exec retinal-rl.sif python main.py -m +experiment=cifar10-class-recon command=scan system.device=cpu
+      run: |
+        cp -r resources/config_templates/* config/
+        singularity exec retinal-rl.sif python main.py -m +experiment=cifar10-class-recon command=scan system.device=cpu
 
     - name: Push to ghcr.io
-      run: singularity registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io; singularity push retinal-rl.sif oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest
+      run: |
+        singularity registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
+        singularity push retinal-rl.sif oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest

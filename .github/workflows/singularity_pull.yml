@@ -1,0 +1,28 @@
+name: Reusable Pull and Scan
+
+on:
+  workflow_call:
+    inputs:
+      singularity_image:
+        required: true
+        type: string
+    secrets:
+      GITHUB_TOKEN:
+        required: true
+
+jobs:
+  reusable_job:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: eWaterCycle/setup-apptainer@v2
+        with:
+          apptainer-version: 1.3.0
+      - name: Login to ghcr
+        run: singularity registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
+      - name: Pull Image
+        run: singularity pull ${{ inputs.singularity_image }}
+      - name: Scan classification config
+        run: |
+          cp -r resources/config_templates/* config/
+          singularity exec $(basename ${{ inputs.singularity_image }}) python main.py -m +experiment=cifar10-class-recon command=scan system.device=cpu
