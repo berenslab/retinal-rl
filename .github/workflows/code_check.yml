@@ -2,8 +2,8 @@ name: Code Checking
 
 on: 
   push:
-    # paths:
-    #   - '**/*.py'
+    paths:
+      - '**/*.py'
   pull_request:
     branches:
       - main
