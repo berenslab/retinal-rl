@@ -9,6 +9,7 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v4
     - name: Setup Apptainer
       uses: eWaterCycle/setup-apptainer@v2
       with:
@@ -17,7 +18,7 @@ jobs:
       id: cache-singularity
       uses: actions/cache@v3
       with:
-        path: ~/${{ env.sif_file }}
+        path: ${{ env.sif_file }}
         key: ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
     - name: Pull Singularity container
       if: steps.cache-singularity.outputs.cache-hit != 'true'
@@ -25,7 +26,6 @@ jobs:
         singularity registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
         singularity pull ${{ env.sif_file }} ${{ env.singularity_image }}
 
-    - uses: actions/checkout@v4
     - name: Scan classification config
       run: |
         cp -r resources/config_templates/* config/
