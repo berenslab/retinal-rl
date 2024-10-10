@@ -6,13 +6,16 @@ env:
   sif_file: retinal-rl_singularity-image-latest.sif
 
 jobs:
-  scan:
+  init:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
     - uses: ./.github/workflows/setup.yml
       with:
         singularity_image: ${{ env.singularity_image }}
 
+  scan:
+    needs: init
+    runs-on: ubuntu-latest
+    steps:
     - name: Scan classification config
       run: singularity exec ${{ env.sif_file }} python main.py -m +experiment=cifar10-class-recon command=scan system.device=cpu

@@ -13,13 +13,16 @@ env:
   sif_file: retinal-rl_singularity-image-latest.sif
 
 jobs:
-  lint:
+  init:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
     - uses: ./.github/workflows/setup.yml
       with:
         singularity_image: ${{ env.singularity_image }}
 
+  lint:
+    needs: init
+    runs-on: ubuntu-latest
+    steps:
     - name: Run Pylint
       run: singularity exec ${{ env.sif_file }} pylint $(git diff --name-only origin/master HEAD -- '*.py')
