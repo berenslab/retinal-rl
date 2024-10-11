@@ -2,11 +2,15 @@ name: Code Checking
 
 on: 
   push:
+    branches-ignore:
+      - master
     paths:
       - '**/*.py'
   pull_request:
     branches:
       - master
+    paths:
+      - '**/*.py'
 
 env:
   singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest

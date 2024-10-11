@@ -4,6 +4,8 @@ on:
   schedule:
     - cron: '0 2 1 * *'
   push:
+    branches-ignore:
+      - master
     paths:
       - 'resources/retinal-rl.def'
   pull_request:
