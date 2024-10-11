@@ -1,0 +1,35 @@
+name: Build Singularity Container
+
+on: 
+  schedule:
+    - cron: '0 2 1 * *'
+  push:
+    paths:
+      - 'resources/retinal-rl.def'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'resources/retinal-rl.def'
+
+jobs:
+  singularity-build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: eWaterCycle/setup-apptainer@v2
+      with:
+        apptainer-version: 1.3.0
+
+    - name: Build Singularity container
+      run: apptainer build retinal-rl.sif resources/retinal-rl.def
+
+    - name: Scan classification config / ensure minimal functionality
+      run: |
+        cp -r resources/config_templates/* config/
+        singularity exec retinal-rl.sif python main.py -m +experiment=cifar10-class-recon command=scan system.device=cpu
+
+    - name: Push to ghcr.io
+      run: |
+        singularity registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
+        singularity push retinal-rl.sif oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest

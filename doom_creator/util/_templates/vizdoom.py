@@ -1,5 +1,13 @@
-def config(scenario_name):
-    return """\
+"""
+This module contains a dummy for a vizdoom config.
+"""
+
+
+def config(scenario_name: str):
+    """Returns a config for a vizdoom game,
+    referencing {scenario_name}.zip as the scenario."""
+
+    return f"""\
 doom_scenario_path = {scenario_name}.zip
 
 living_reward = 0.0
@@ -32,6 +40,4 @@ available_buttons =
 available_game_variables = {{ HEALTH }}
 
 mode = PLAYER
-""".format(
-        scenario_name=scenario_name
-    )
+"""
