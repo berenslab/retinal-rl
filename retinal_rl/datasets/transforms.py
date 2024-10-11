@@ -4,13 +4,60 @@ It includes various image transformations:
 - ScaleShiftTransform
 - ShotNoiseTransform
 - ContrastTransform
+- IlluminationTransform
+- BlurTransform
 """
 
 from typing import List, Tuple
 
 import numpy as np
 import torch.nn as nn
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageFilter
+
+
+class IlluminationTransform(nn.Module):
+    def __init__(self, brightness_range: Tuple[float, float]) -> None:
+        super().__init__()
+        self.brightness_range = brightness_range
+
+    def forward(self, img: Image.Image) -> Image.Image:
+        """Apply random illumination (brightness) adjustment to the input image.
+
+        Args:
+        ----
+            img (Image.Image): The input PIL Image to transform.
+
+        Returns:
+        -------
+            Image.Image: The transformed PIL Image with adjusted illumination.
+
+        """
+        brightness_factor = np.random.uniform(
+            self.brightness_range[0], self.brightness_range[1]
+        )
+        enhancer = ImageEnhance.Brightness(img)
+        return enhancer.enhance(brightness_factor)
+
+
+class BlurTransform(nn.Module):
+    def __init__(self, blur_range: Tuple[float, float]) -> None:
+        super().__init__()
+        self.blur_range = blur_range
+
+    def forward(self, img: Image.Image) -> Image.Image:
+        """Apply random Gaussian blur to the input image.
+
+        Args:
+        ----
+            img (Image.Image): The input PIL Image to transform.
+
+        Returns:
+        -------
+            Image.Image: The transformed PIL Image with applied blur.
+
+        """
+        blur_radius = np.random.uniform(self.blur_range[0], self.blur_range[1])
+        return img.filter(ImageFilter.GaussianBlur(radius=blur_radius))
 
 
 class ScaleShiftTransform(nn.Module):
