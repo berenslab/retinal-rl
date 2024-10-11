@@ -1,6 +1,5 @@
 Bootstrap: docker
-From: nvidia/cuda:11.7.1-runtime-ubuntu22.04
-#From: ubuntu:22.04
+From: nvidia/cuda:12.6.1-cudnn-runtime-ubuntu22.04
 
 %post
 
@@ -58,7 +57,25 @@ From: nvidia/cuda:11.7.1-runtime-ubuntu22.04
 
   # retinal-rl Extra
 
-  pip3 install --no-cache-dir gymnasium==0.28.1 torch==1.13.1 vizdoom==1.2.0 torchvision==0.14.1 matplotlib opentsne pygame pycairo==1.26.1 git+https://github.com/pytorch/captum.git torchscan num2words hiyapyco omgifol git+https://github.com/alex404/sample-factory.git@fix-vtrace dpcpp-cpp-rt seaborn hydra-core networkx pylint
+  pip3 install --no-cache-dir gymnasium  # ==0.28.1 
+  pip3 install --no-cache-dir torch  # ==2.4.0
+  pip3 install --no-cache-dir torchvision  # ==0.14.1 
+  pip3 install --no-cache-dir vizdoom  # ==1.2.0 
+  pip3 install --no-cache-dir matplotlib 
+  pip3 install --no-cache-dir opentsne 
+  pip3 install --no-cache-dir pygame 
+  pip3 install --no-cache-dir pycairo==1.26.1 
+  pip3 install --no-cache-dir git+https://github.com/pytorch/captum.git 
+  pip3 install --no-cache-dir torchscan  # ensure higher versio
+  pip3 install --no-cache-dir num2words 
+  pip3 install --no-cache-dir hiyapyco 
+  pip3 install --no-cache-dir omgifol 
+  pip3 install --no-cache-dir git+https://github.com/alex404/sample-factory.git@fix-vtrace 
+  pip3 install --no-cache-dir dpcpp-cpp-rt 
+  pip3 install --no-cache-dir seaborn 
+  pip3 install --no-cache-dir hydra-core 
+  pip3 install --no-cache-dir networkx 
+  pip3 install --no-cache-dir pylint
   
   # Clean up for smaller container size
   rm acc159linux-x64.zip
