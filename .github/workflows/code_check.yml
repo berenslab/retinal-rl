@@ -2,6 +2,8 @@ name: Code Checking
 
 on: 
   push:
+    branches-ignore:
+      - master
     paths:
       - '**/*.py'
   pull_request:
