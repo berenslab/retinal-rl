@@ -6,6 +6,11 @@ on:
   push:
     paths:
       - 'resources/retinal-rl.def'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'resources/retinal-rl.def'
 
 jobs:
   singularity-build:
