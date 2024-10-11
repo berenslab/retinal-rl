@@ -1,0 +1,31 @@
+# Configuration for the CIFAR10 dataset in classification experiments.
+
+name: cifar10  # Name of the dataset
+
+imageset:
+  _target_: retinal_rl.dataset.Imageset
+  source_transforms:
+    - _target_: retinal_rl.datasets.transforms.ScaleShiftTransform
+      vision_width: 160
+      vision_height: 160
+      image_rescale_range: [1, 5]
+  noise_transforms:
+    - _target_: retinal_rl.datasets.transforms.ShotNoiseTransform
+      lambda_range:
+        - ${eval:"0.5 if ${shot_noise_transform} else 1"}
+        - ${eval:"1.5 if ${shot_noise_transform} else 1"}
+    - _target_: retinal_rl.datasets.transforms.ContrastTransform
+      contrast_range:
+        - ${eval:"0.01 if ${contrast_noise_transform} else 1"}
+        - ${eval:"1.2 if ${contrast_noise_transform} else 1"}
+    - _target_: retinal_rl.datasets.transforms.IlluminationTransform
+      brightness_range:
+        - ${eval:"0.1 if ${brightness_noise_transform} else 1"}
+        - ${eval:"1.5 if ${brightness_noise_transform} else 1"}
+    - _target_: retinal_rl.datasets.transforms.BlurTransform
+      blur_range:
+        - ${eval:"0 if ${blur_noise_transform} else 1"}
+        - ${eval:"2 if ${blur_noise_transform} else 1"}
+  apply_normalization: true
+  fixed_transformation: false
+  multiplier: 1

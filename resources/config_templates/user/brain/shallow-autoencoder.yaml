@@ -1,0 +1,73 @@
+# Configuration for a retinal classifier neural network
+
+# Define the input sensor
+sensors:
+  vision: # Vision is a list of 3 elements
+    - 3  # Number of color channels
+    - 160  # Height of the input image
+    - 160  # Width of the input image
+
+# Define how the various NeuralCircuits are connected to each other
+connections:
+  - ["vision", "retina"]  # Input to retina
+  - ["retina","thalamus"]  # Retina to thalamus
+  - ["thalamus","visual_cortex"]  # Thalamus to visual cortex
+  - ["visual_cortex", "pfc"]  # Visual cortex to prefrontal cortex
+  - ["pfc", "classifier"]  # Prefrontal cortex to classifier
+  - ["thalamus", "decoder"]  # Thalamus to decoder (for reconstruction)
+
+# Define the individual nodes (neural circuits) of the network. Many circuit
+# parameters are interpolated from the experiment config.
+circuits:
+  # Retina: initial processing of visual input
+  retina:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 2
+    num_channels: [16,32]  # Two layers with 16 and 32 channels
+    kernel_size: 8
+    stride: 2
+    act_name: ${activation}
+    layer_names: ["bipolar", "retinal_ganglion"]  # Names inspired by retinal cell types
+
+  # Thalamus: relay and processing station
+  thalamus:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 1
+    num_channels: 64
+    kernel_size: 5
+    stride: 1
+    act_name: ${activation}
+    layer_names: ["lgn"]  # Lateral Geniculate Nucleus
+
+  # Visual Cortex: higher-level visual processing
+  visual_cortex:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 1
+    num_channels: 64
+    kernel_size: 8
+    stride: 2
+    act_name: ${activation}
+    layer_names: ["v1"]  # Primary Visual Cortex
+
+  # Prefrontal Cortex: high-level cognitive processing
+  pfc:
+    _target_: retinal_rl.models.circuits.fully_connected.FullyConnectedEncoder
+    output_shape:
+      - 128  # Size of the latent representation
+    hidden_units: 
+      - 64  # Number of hidden units
+    act_name: ${activation}
+
+  # Decoder: for reconstructing the input from the latent representation
+  decoder:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
+    num_layers: 3
+    num_channels: [32,16,3]  # For a symmetric encoder, this should be the reverse of the num_channels in the CNN layers up to the point of decoding (in this case, the thalamus)
+    kernel_size: [5,8,8]
+    stride: [1,2,2]
+    act_name: ${activation}
+
+  # Classifier: for categorizing the input into classes
+  classifier:
+    _target_: retinal_rl.models.circuits.task_head.linear_classifier.LinearClassifier
+    num_classes: 10  # Number of output classes
