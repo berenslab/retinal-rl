@@ -1,0 +1,27 @@
+# This is a standard template for a wandb sweep.
+# See: https://docs.wandb.ai/guides/sweeps/define-sweep-configuration
+#
+# Sweeps can be initialized with retinal-rl from the command line with:
+#
+# python +experiment=experiment_name command=sweep
+
+description: Evaluating the effect of different combinations of transform.
+program: main.py
+method: grid
+project: retinal-rl
+
+parameters:
+  activation:
+    value: "elu"
+  optimizer:
+    value: "recon-weight"
+  brain:
+    values: ["deep-autoencoder", "shallow-autoencoder"]
+  shot_noise_transform:
+    values: [False,True]
+  contrast_noise_transform:
+    values: [False,True]
+  brightness_noise_transform:
+    values: [False,True]
+  blur_noise_transform:
+    values: [False,True]

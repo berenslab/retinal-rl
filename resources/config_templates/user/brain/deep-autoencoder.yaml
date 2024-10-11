@@ -14,7 +14,8 @@ connections:
   - ["thalamus","visual_cortex"]  # Thalamus to visual cortex
   - ["visual_cortex", "pfc"]  # Visual cortex to prefrontal cortex
   - ["pfc", "classifier"]  # Prefrontal cortex to classifier
-  - ["thalamus", "decoder"]  # Thalamus to decoder (for reconstruction)
+  - ["pfc", "pfc_decoder"]  # pfc to FC decoder
+  - ["pfc_decoder", "decoder"]  # FC decoder to convoluational decoder
 
 # Define the individual nodes (neural circuits) of the network. Many circuit
 # parameters are interpolated from the experiment config.
@@ -24,8 +25,8 @@ circuits:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 2
     num_channels: [16,32]  # Two layers with 16 and 32 channels
-    kernel_size: ${kernel_size}
-    stride: ${stride}
+    kernel_size: 8
+    stride: 2
     act_name: ${activation}
     layer_names: ["bipolar", "retinal_ganglion"]  # Names inspired by retinal cell types
 
@@ -34,8 +35,8 @@ circuits:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 1
     num_channels: 64
-    kernel_size: ${kernel_size}
-    stride: ${stride}
+    kernel_size: 5
+    stride: 1
     act_name: ${activation}
     layer_names: ["lgn"]  # Lateral Geniculate Nucleus
 
@@ -44,8 +45,8 @@ circuits:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 1
     num_channels: 64
-    kernel_size: ${kernel_size}
-    stride: ${stride} 
+    kernel_size: 8
+    stride: 2
     act_name: ${activation}
     layer_names: ["v1"]  # Primary Visual Cortex
 
@@ -53,18 +54,25 @@ circuits:
   pfc:
     _target_: retinal_rl.models.circuits.fully_connected.FullyConnectedEncoder
     output_shape:
-      - ${latent_size}  # Size of the latent representation
+      - 128  # Size of the latent representation
     hidden_units: 
-      - ${hidden_units}  # Number of hidden units
+      - 64  # Number of hidden units
     act_name: ${activation}
 
+  # Prefrontal Cortex: high-level cognitive processing
+  pfc_decoder:
+    _target_: retinal_rl.models.circuits.fully_connected.FullyConnectedDecoder
+    output_shape: "pfc.input_shape"  # Size of the latent representation
+    hidden_units: 
+      - 64  # Number of hidden units
+    act_name: ${activation}
   # Decoder: for reconstructing the input from the latent representation
   decoder:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
-    num_layers: 3
-    num_channels: [32,16,3]  # For a symmetric encoder, this should be the reverse of the num_channels in the CNN layers up to the point of decoding (in this case, the thalamus)
-    kernel_size: ${kernel_size}
-    stride: ${stride}
+    num_layers: 4
+    num_channels: [64,32,16,3]  # For a symmetric encoder, this should be the reverse of the num_channels in the CNN layers up to the point of decoding (in this case, the thalamus)
+    kernel_size: [5,8,8,8]
+    stride: [1,2,2,2]
     act_name: ${activation}
 
   # Classifier: for categorizing the input into classes
