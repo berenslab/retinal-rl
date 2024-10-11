@@ -33,8 +33,6 @@ jobs:
       with:
         path: ${{ env.sif_file }}
         key: ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
-        restore-keys: |
-          ${{ runner.os }}-singularity-
     - name: Pull Singularity container
       if: steps.cache-singularity.outputs.cache-hit != 'true'
       run: |
