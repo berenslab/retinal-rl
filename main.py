@@ -21,7 +21,7 @@ from runner.sweep import launch_sweep
 from runner.train import train
 from runner.util import delete_results
 
-# Load the eval resolver for config files
+# Load the eval resolver for OmegaConf
 OmegaConf.register_new_resolver("eval", eval)
 
 

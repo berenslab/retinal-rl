@@ -16,7 +16,17 @@ from PIL import Image, ImageEnhance, ImageFilter
 
 
 class IlluminationTransform(nn.Module):
+    """Apply random illumination (brightness) adjustment to the input image."""
+
     def __init__(self, brightness_range: Tuple[float, float]) -> None:
+        """Initialize the IlluminationTransform.
+
+        Args:
+        ----
+            brightness_range (Tuple[float, float]): Range of brightness adjustment factors. For an identity transform, set the range to (1, 1).
+
+
+        """
         super().__init__()
         self.brightness_range = brightness_range
 
@@ -40,7 +50,16 @@ class IlluminationTransform(nn.Module):
 
 
 class BlurTransform(nn.Module):
+    """Apply random Gaussian blur to the input image."""
+
     def __init__(self, blur_range: Tuple[float, float]) -> None:
+        """Initialize the BlurTransform.
+
+        Args:
+        ----
+            blur_range (Tuple[float, float]): Range of blur radii. For an identity transform, set the range to (0, 0).
+
+        """
         super().__init__()
         self.blur_range = blur_range
 
@@ -61,12 +80,23 @@ class BlurTransform(nn.Module):
 
 
 class ScaleShiftTransform(nn.Module):
+    """Apply random scale and shift transformations to the input image."""
+
     def __init__(
         self,
         vision_width: int,
         vision_height: int,
         image_rescale_range: List[float],
     ) -> None:
+        """Initialize the ScaleShiftTransform.
+
+        Args:
+        ----
+            vision_width (int): The width of the visual field.
+            vision_height (int): The height of the visual field.
+            image_rescale_range (List[float]): Range of image rescaling factors. For an identity transform, set the range to [1, 1].
+
+        """
         super().__init__()
         self.vision_width = vision_width
         self.vision_height = vision_height
@@ -122,7 +152,16 @@ class ScaleShiftTransform(nn.Module):
 
 
 class ShotNoiseTransform(nn.Module):
+    """Apply random shot noise to the input image."""
+
     def __init__(self, lambda_range: Tuple[float, float]) -> None:
+        """Initialize the ShotNoiseTransform.
+
+        Args:
+        ----
+            lambda_range (Tuple[float, float]): Range of shot noise intensity factors. For an identity transform, set the range to (1, 1).
+
+        """
         super().__init__()
         self.lambda_range = lambda_range
 
@@ -151,7 +190,16 @@ class ShotNoiseTransform(nn.Module):
 
 
 class ContrastTransform(nn.Module):
+    """Apply random contrast adjustment to the input image."""
+
     def __init__(self, contrast_range: Tuple[float, float]) -> None:
+        """Initialize the ContrastTransform.
+
+        Args:
+        ----
+            contrast_range (Tuple[float, float]): Range of contrast adjustment factors. For an identity transform, set the range to (1, 1).
+
+        """
         super().__init__()
         self.contrast_range = contrast_range
 
