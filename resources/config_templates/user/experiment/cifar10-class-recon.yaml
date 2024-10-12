@@ -1,7 +1,7 @@
 # @package _global_
 defaults:
   - _self_
-  - override /dataset: cifar10-decontrast
+  - override /dataset: cifar10
   - override /brain: shallow-autoencoder
   - override /optimizer: recon-weight
 
@@ -15,8 +15,11 @@ framework: classification
 # in sweep, dataset, brain, and optimizer. A major use for this is interpolating
 # values in the subconfigs, and then looping over them in a sweep.
 activation: "elu"
-activation_sparsity: 0.0001
-weight_decay: 0.0001
-sparse_objective: retinal_rl.models.objective.L1Sparsity
+
 recon_weight_retina: 1
 recon_weight_thalamus: 0.99
+
+shot_noise_transform: True
+contrast_noise_transform: True
+brightness_noise_transform: True
+blur_noise_transform: True
