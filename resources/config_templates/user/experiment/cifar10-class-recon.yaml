@@ -1,0 +1,22 @@
+# @package _global_
+defaults:
+  - _self_
+  - override /dataset: cifar10-decontrast
+  - override /brain: shallow-autoencoder
+  - override /optimizer: recon-weight
+
+# This is the main entry point for control of a retinal-rl experiment. Variables
+# created here will be top-level, and defaults can be set for the various parts
+# of an experiment (NB: do not add comments above the defaults list or it will
+# break the config system.)
+framework: classification
+
+# This is a free list of parameters that can be interpolated by the subconfigs
+# in sweep, dataset, brain, and optimizer. A major use for this is interpolating
+# values in the subconfigs, and then looping over them in a sweep.
+activation: "elu"
+activation_sparsity: 0.0001
+weight_decay: 0.0001
+sparse_objective: retinal_rl.models.objective.L1Sparsity
+recon_weight_retina: 1
+recon_weight_thalamus: 0.99
