@@ -12,8 +12,8 @@ connections:
   - ["vision", "retina"]  # Input to retina
   - ["retina","thalamus"]  # Retina to thalamus
   - ["thalamus","visual_cortex"]  # Thalamus to visual cortex
-  - ["visual_cortex", "pfc"]  # Visual cortex to prefrontal cortex
-  - ["pfc", "classifier"]  # Prefrontal cortex to classifier
+  - ["visual_cortex", "prefrontal"]  # Visual cortex to prefrontal cortex
+  - ["prefrontal", "classifier"]  # Prefrontal cortex to classifier
   - ["thalamus", "decoder"]  # Thalamus to decoder (for reconstruction)
 
 # Define the individual nodes (neural circuits) of the network. Many circuit
@@ -50,7 +50,7 @@ circuits:
     layer_names: ["v1"]  # Primary Visual Cortex
 
   # Prefrontal Cortex: high-level cognitive processing
-  pfc:
+  prefrontal:
     _target_: retinal_rl.models.circuits.fully_connected.FullyConnectedEncoder
     output_shape:
       - 128  # Size of the latent representation
