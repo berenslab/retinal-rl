@@ -21,6 +21,7 @@ goal:
         weight: 1
     target_circuits: # Circuit parameters to optimize with this optimizer.  We train the retina and the decoder exclusively to maximize reconstruction
       - decoder
+      - inferotemporal_decoder
   mixed:
     min_epoch: 0
     max_epoch: 100
@@ -31,6 +32,17 @@ goal:
         weight: ${eval:'1-${recon_weight_thalamus}'}
     target_circuits: # The thalamus is somewhat sensitive to task losses
       - thalamus
+  cortex:
+    min_epoch: 0
+    max_epoch: 100
+    losses:
+      - _target_: retinal_rl.models.loss.ReconstructionLoss
+        weight: ${recon_weight_cortex}
+      - _target_: retinal_rl.classification.loss.ClassificationLoss
+        weight: ${eval:'1-${recon_weight_cortex}'}
+    target_circuits: # Visual cortex and downstream layers are driven by the task
+      - visual_cortex
+      - inferotemporal
   class:
     min_epoch: 0
     max_epoch: 100
@@ -40,6 +52,5 @@ goal:
       - _target_: retinal_rl.classification.loss.PercentCorrect
         weight: 0
     target_circuits: # Visual cortex and downstream layers are driven by the task
-      - visual_cortex
-      - pfc
+      - prefrontal
       - classifier

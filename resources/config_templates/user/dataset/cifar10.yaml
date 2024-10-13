@@ -24,8 +24,8 @@ imageset:
         - ${eval:"1.5 if ${brightness_noise_transform} else 1"}
     - _target_: retinal_rl.datasets.transforms.BlurTransform
       blur_range:
-        - ${eval:"0 if ${blur_noise_transform} else 1"}
-        - ${eval:"2 if ${blur_noise_transform} else 1"}
+        - ${eval:"0 if ${blur_noise_transform} else 0"}
+        - ${eval:"2 if ${blur_noise_transform} else 0"}
   apply_normalization: true
   fixed_transformation: false
   multiplier: 1
