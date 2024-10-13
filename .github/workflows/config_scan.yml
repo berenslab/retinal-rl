@@ -42,5 +42,5 @@ jobs:
       run: |
         while IFS= read -r experiment; do
           singularity exec ${{ env.sif_file }} \
-          python main.py -m +experiment="$experiment" command=scan system.device=cpu
+          python main.py +experiment="$experiment" command=scan system.device=cpu
         done < experiment_list/experiments.txt
