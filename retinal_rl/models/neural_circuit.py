@@ -64,7 +64,6 @@ class NeuralCircuit(nn.Module, ABC):
     @abstractmethod
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the neural circuit."""
-        x = x
         raise NotImplementedError("Each subclass must implement its own forward method.")
 
     @property

@@ -8,14 +8,55 @@ It includes various image transformations:
 - BlurTransform
 """
 
-from typing import List, Tuple
+from abc import ABC, abstractmethod
+from typing import Tuple
 
 import numpy as np
 import torch.nn as nn
 from PIL import Image, ImageEnhance, ImageFilter
 
 
-class IlluminationTransform(nn.Module):
+class ContinuousTransform(nn.Module, ABC):
+    """Base class for continuous image transformations."""
+
+    def __init__(self, range: Tuple[float, float]) -> None:
+        """Initialize the ContinuousTransform."""
+        super().__init__()
+        self.range = range
+
+    @abstractmethod
+    def transform(self, img: Image.Image, trans_factor: float) -> Image.Image:
+        """Apply the transformation to the input image.
+
+        Args:
+        ----
+            img (Image.Image): The input PIL Image to transform.
+            trans_factor (float): The transformation factor to apply.
+
+        Returns:
+        -------
+            Image.Image: The transformed PIL Image.
+
+        """
+        raise NotImplementedError
+
+    def forward(self, img: Image.Image) -> Image.Image:
+        """Randomly apply the transformation to the input image.
+
+        Args:
+        ----
+            img (Image.Image): The input PIL Image to transform.
+
+        Returns:
+        -------
+            Image.Image: The transformed PIL Image.
+
+        """
+        trans_factor = np.random.uniform(self.range[0], self.range[1])
+        return self.transform(img, trans_factor)
+
+
+class IlluminationTransform(ContinuousTransform):
     """Apply random illumination (brightness) adjustment to the input image."""
 
     def __init__(self, brightness_range: Tuple[float, float]) -> None:
@@ -27,29 +68,26 @@ class IlluminationTransform(nn.Module):
 
 
         """
-        super().__init__()
-        self.brightness_range = brightness_range
+        super().__init__(brightness_range)
 
-    def forward(self, img: Image.Image) -> Image.Image:
+    def transform(self, img: Image.Image, trans_factor: float) -> Image.Image:
         """Apply random illumination (brightness) adjustment to the input image.
 
         Args:
         ----
             img (Image.Image): The input PIL Image to transform.
+            trans_factor (float): The transformation factor to apply.
 
         Returns:
         -------
             Image.Image: The transformed PIL Image with adjusted illumination.
 
         """
-        brightness_factor = np.random.uniform(
-            self.brightness_range[0], self.brightness_range[1]
-        )
         enhancer = ImageEnhance.Brightness(img)
-        return enhancer.enhance(brightness_factor)
+        return enhancer.enhance(trans_factor)
 
 
-class BlurTransform(nn.Module):
+class BlurTransform(ContinuousTransform):
     """Apply random Gaussian blur to the input image."""
 
     def __init__(self, blur_range: Tuple[float, float]) -> None:
@@ -60,33 +98,32 @@ class BlurTransform(nn.Module):
             blur_range (Tuple[float, float]): Range of blur radii. For an identity transform, set the range to (0, 0).
 
         """
-        super().__init__()
-        self.blur_range = blur_range
+        super().__init__(blur_range)
 
-    def forward(self, img: Image.Image) -> Image.Image:
+    def transform(self, img: Image.Image, trans_factor: float) -> Image.Image:
         """Apply random Gaussian blur to the input image.
 
         Args:
         ----
             img (Image.Image): The input PIL Image to transform.
+            trans_factor (float): The transformation factor to apply.
 
         Returns:
         -------
             Image.Image: The transformed PIL Image with applied blur.
 
         """
-        blur_radius = np.random.uniform(self.blur_range[0], self.blur_range[1])
-        return img.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+        return img.filter(ImageFilter.GaussianBlur(radius=trans_factor))
 
 
-class ScaleShiftTransform(nn.Module):
+class ScaleShiftTransform(ContinuousTransform):
     """Apply random scale and shift transformations to the input image."""
 
     def __init__(
         self,
         vision_width: int,
         vision_height: int,
-        image_rescale_range: List[float],
+        image_rescale_range: Tuple[float, float],
     ) -> None:
         """Initialize the ScaleShiftTransform.
 
@@ -97,17 +134,17 @@ class ScaleShiftTransform(nn.Module):
             image_rescale_range (List[float]): Range of image rescaling factors. For an identity transform, set the range to [1, 1].
 
         """
-        super().__init__()
+        super().__init__(image_rescale_range)
         self.vision_width = vision_width
         self.vision_height = vision_height
-        self.image_rescale_range = image_rescale_range
 
-    def forward(self, img: Image.Image) -> Image.Image:
+    def transform(self, img: Image.Image, trans_factor: float) -> Image.Image:
         """Apply the scale and shift transformation to an input image.
 
         Args:
         ----
             img (Image.Image): The input PIL Image to transform.
+            trans_factor (float): The transformation factor to apply.
 
         Returns:
         -------
@@ -116,10 +153,8 @@ class ScaleShiftTransform(nn.Module):
         """
         # Scale the image
         visual_field = (self.vision_width, self.vision_height)
-        scale_range = tuple(self.image_rescale_range)
 
-        scale_factor = np.random.uniform(scale_range[0], scale_range[1])
-        scaled_size = (int(img.size[0] * scale_factor), int(img.size[1] * scale_factor))
+        scaled_size = (int(img.size[0] * trans_factor), int(img.size[1] * trans_factor))
         img = img.resize(scaled_size, Image.LANCZOS)  # type: ignore
 
         # Create a black background
@@ -151,7 +186,7 @@ class ScaleShiftTransform(nn.Module):
         return background
 
 
-class ShotNoiseTransform(nn.Module):
+class ShotNoiseTransform(ContinuousTransform):
     """Apply random shot noise to the input image."""
 
     def __init__(self, lambda_range: Tuple[float, float]) -> None:
@@ -162,15 +197,15 @@ class ShotNoiseTransform(nn.Module):
             lambda_range (Tuple[float, float]): Range of shot noise intensity factors. For an identity transform, set the range to (1, 1).
 
         """
-        super().__init__()
-        self.lambda_range = lambda_range
+        super().__init__(lambda_range)
 
-    def forward(self, img: Image.Image) -> Image.Image:
+    def transform(self, img: Image.Image, trans_factor: float) -> Image.Image:
         """Apply shot noise to the input image.
 
         Args:
         ----
             img (Image.Image): The input PIL Image to transform.
+            trans_factor (float): The transformation factor to apply.
 
         Returns:
         -------
@@ -181,15 +216,14 @@ class ShotNoiseTransform(nn.Module):
         img_array = np.array(img)
 
         # Apply shot noise
-        lambda_value = np.random.uniform(self.lambda_range[0], self.lambda_range[1])
-        noise = np.random.poisson(img_array * lambda_value) / lambda_value
+        noise = np.random.poisson(img_array * trans_factor) / trans_factor
         noisy_img_array = np.clip(noise, 0, 255).astype(np.uint8)
 
         # Convert back to PIL Image
         return Image.fromarray(noisy_img_array)
 
 
-class ContrastTransform(nn.Module):
+class ContrastTransform(ContinuousTransform):
     """Apply random contrast adjustment to the input image."""
 
     def __init__(self, contrast_range: Tuple[float, float]) -> None:
@@ -200,23 +234,20 @@ class ContrastTransform(nn.Module):
             contrast_range (Tuple[float, float]): Range of contrast adjustment factors. For an identity transform, set the range to (1, 1).
 
         """
-        super().__init__()
-        self.contrast_range = contrast_range
+        super().__init__(contrast_range)
 
-    def forward(self, img: Image.Image) -> Image.Image:
+    def transform(self, img: Image.Image, trans_factor: float) -> Image.Image:
         """Apply random contrast adjustment to the input image.
 
         Args:
         ----
             img (Image.Image): The input PIL Image to transform.
+            trans_factor (float): The transformation factor to apply.
 
         Returns:
         -------
             Image.Image: The transformed PIL Image with adjusted contrast.
 
         """
-        contrast_factor = np.random.uniform(
-            self.contrast_range[0], self.contrast_range[1]
-        )
         enhancer = ImageEnhance.Contrast(img)
-        return enhancer.enhance(contrast_factor)
+        return enhancer.enhance(trans_factor)

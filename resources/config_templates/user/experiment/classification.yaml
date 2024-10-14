@@ -16,6 +16,11 @@ framework: classification
 # values in the subconfigs, and then looping over them in a sweep.
 activation: "elu"
 
+bp_kernel_size: 14
+rgc_kernel_size: 10
+lgn_kernel_size: 5
+v1_kernel_size: 8
+
 recon_weight_retina: 1
 recon_weight_thalamus: 0.99
 recon_weight_cortex: 0.9

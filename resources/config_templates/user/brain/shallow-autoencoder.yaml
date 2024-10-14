@@ -14,7 +14,7 @@ connections:
   - ["thalamus","visual_cortex"]  # Thalamus to visual cortex
   - ["visual_cortex", "prefrontal"]  # Visual cortex to prefrontal cortex
   - ["prefrontal", "classifier"]  # Prefrontal cortex to classifier
-  - ["thalamus", "decoder"]  # Thalamus to decoder (for reconstruction)
+  - ["visual_cortex", "decoder"]  # Thalamus to decoder (for reconstruction)
 
 # Define the individual nodes (neural circuits) of the network. Many circuit
 # parameters are interpolated from the experiment config.
@@ -24,7 +24,9 @@ circuits:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 2
     num_channels: [16,32]  # Two layers with 16 and 32 channels
-    kernel_size: 8
+    kernel_size: 
+      - ${bp_kernel_size}
+      - ${rgc_kernel_size}
     stride: 2
     act_name: ${activation}
     layer_names: ["bipolar", "retinal_ganglion"]  # Names inspired by retinal cell types
@@ -34,7 +36,7 @@ circuits:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 1
     num_channels: 64
-    kernel_size: 5
+    kernel_size: ${lgn_kernel_size}
     stride: 1
     act_name: ${activation}
     layer_names: ["lgn"]  # Lateral Geniculate Nucleus
@@ -44,7 +46,7 @@ circuits:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 1
     num_channels: 64
-    kernel_size: 8
+    kernel_size: ${v1_kernel_size}
     stride: 2
     act_name: ${activation}
     layer_names: ["v1"]  # Primary Visual Cortex
@@ -61,10 +63,14 @@ circuits:
   # Decoder: for reconstructing the input from the latent representation
   decoder:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
-    num_layers: 3
-    num_channels: [32,16,3]  # For a symmetric encoder, this should be the reverse of the num_channels in the CNN layers up to the point of decoding (in this case, the thalamus)
-    kernel_size: [5,8,8]
-    stride: [1,2,2]
+    num_layers: 4
+    num_channels: [64,32,16,3]  # For a symmetric encoder, this should be the reverse of the num_channels in the CNN layers up to the point of decoding (in this case, the thalamus)
+    kernel_size: 
+      - ${v1_kernel_size}
+      - ${lgn_kernel_size}
+      - ${rgc_kernel_size}
+      - ${bp_kernel_size}
+    stride: [2,1,2,2]
     act_name: ${activation}
 
   # Classifier: for categorizing the input into classes
