@@ -53,9 +53,9 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
         self.normalization_stats = (normalization_mean, normalization_std)
         self.fixed_transformation = fixed_transformation
         self.multiplier = multiplier if fixed_transformation else 1
-        self._base_len = 0
+        self.base_len = 0
         for _ in self.base_dataset:
-            self._base_len += 1
+            self.base_len += 1
 
         if fixed_transformation:
             self.transformed_dataset = self._create_fixed_dataset()
@@ -68,13 +68,14 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
                 source_img = self.source_transforms(img)
                 noisy_img = self.noise_transforms(source_img)
                 transformed_data.append(
-                    (self._to_tensor(source_img), self._to_tensor(noisy_img), label)
+                    (self.to_tensor(source_img), self.to_tensor(noisy_img), label)
                 )
             idx += 1
         return transformed_data
 
-    def _to_tensor(self, img: Image.Image) -> Tensor:
-        tensor = tf.to_tensor(img)
+    def to_tensor(self, img: Image.Image) -> Tensor:
+        """Convert a PIL image to a PyTorch tensor and apply normalization if needed."""
+        tensor: Tensor = tf.to_tensor(img)
         if self.apply_normalization:
             mean, std = self.normalization_stats
             tensor = tf.normalize(tensor, mean, std)
@@ -82,9 +83,9 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
 
     def __len__(self) -> int:
         if self.fixed_transformation:
-            return self._base_len * self.multiplier
+            return self.base_len * self.multiplier
         logger.warning("Length of on-the-fly transformed dataset is not really fixed.")
-        return self._base_len
+        return self.base_len
 
     def __getitem__(self, idx: int) -> Tuple[Tensor, Tensor, int]:
         if self.fixed_transformation:
@@ -98,8 +99,8 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
         noisy_img = self.noise_transforms(source_img)
 
         # Convert to tensor and normalize
-        source_tensor = self._to_tensor(source_img)
-        noisy_tensor = self._to_tensor(noisy_img)
+        source_tensor = self.to_tensor(source_img)
+        noisy_tensor = self.to_tensor(noisy_img)
 
         return source_tensor, noisy_tensor, label
 

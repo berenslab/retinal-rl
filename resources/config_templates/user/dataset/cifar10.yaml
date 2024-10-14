@@ -12,8 +12,8 @@ imageset:
   noise_transforms:
     - _target_: retinal_rl.datasets.transforms.ShotNoiseTransform
       lambda_range:
-        - ${eval:"0.5 if ${shot_noise_transform} else 1"}
-        - ${eval:"1.5 if ${shot_noise_transform} else 1"}
+        - ${eval:"0.5 if ${shot_noise_transform} else 0"}
+        - ${eval:"1.5 if ${shot_noise_transform} else 0"}
     - _target_: retinal_rl.datasets.transforms.ContrastTransform
       contrast_range:
         - ${eval:"0.01 if ${contrast_noise_transform} else 1"}

@@ -5,10 +5,10 @@ from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import torch
-import wandb
 from matplotlib.figure import Figure
 from omegaconf import DictConfig
 
+import wandb
 from retinal_rl.analysis.plot import (
     layer_receptive_field_plots,
     plot_brain_and_optimizers,
@@ -16,8 +16,13 @@ from retinal_rl.analysis.plot import (
     plot_histories,
     plot_receptive_field_sizes,
     plot_reconstructions,
+    plot_transforms,
 )
-from retinal_rl.analysis.statistics import cnn_statistics, reconstruct_images
+from retinal_rl.analysis.statistics import (
+    cnn_statistics,
+    reconstruct_images,
+    transform_base_images,
+)
 from retinal_rl.dataset import Imageset
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.goal import ContextT, Goal
@@ -101,11 +106,16 @@ def analyze(
 
     # CNN analysis
     cnn_analysis = cnn_statistics(device, test_set, brain, 1000)
+
+    # Initialization analysis
     if epoch == 0:
         rf_sizes_fig = plot_receptive_field_sizes(cnn_analysis)
         _process_figure(cfg, False, rf_sizes_fig, init_dir, "receptive_field_sizes", 0)
         graph_fig = plot_brain_and_optimizers(brain, goal)
         _process_figure(cfg, False, graph_fig, init_dir, "brain_graph", 0)
+        transforms = transform_base_images(train_set, num_steps=5, num_images=2)
+        transforms_fig = plot_transforms(**transforms)
+        _process_figure(cfg, False, transforms_fig, init_dir, "transforms", 0)
 
     for layer_name, layer_data in cnn_analysis.items():
         if layer_name == "input":

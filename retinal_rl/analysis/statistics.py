@@ -7,10 +7,12 @@ import numpy as np
 import torch
 import torch.fft as fft
 import torch.nn as nn
+from PIL import Image
 from torch import Tensor
 from torch.utils.data import DataLoader
 
 from retinal_rl.dataset import Imageset, ImageSubset
+from retinal_rl.datasets.transforms import ContinuousTransform
 from retinal_rl.models.brain import Brain, get_cnn_circuit
 from retinal_rl.util import (
     FloatArray,
@@ -19,6 +21,59 @@ from retinal_rl.util import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def transform_base_images(
+    imageset: Imageset, num_steps: int, num_images: int
+) -> Dict[str, Dict[str, Dict[float, List[Tensor]]]]:
+    """Apply transformations to a set of images from an Imageset.
+
+    Args:
+    ----
+        imageset (Imageset): The dataset to transform.
+        num_images (int): The number of images to sample.
+        num_steps (int): The number of steps across the transformation range, and to apply each transformation.
+
+    Returns:
+    -------
+        Dict[str, Dict[str, Dict[float, List[Tensor]]]]: A dictionary containing the results.
+
+    """
+    images: List[Image.Image] = []
+
+    base_dataset = imageset.base_dataset
+    base_len = imageset.base_len
+
+    for _ in range(num_images):
+        src, _ = base_dataset[np.random.randint(base_len)]
+        images.append(src)
+
+    results: Dict[str, Dict[str, Dict[float, List[Tensor]]]] = {
+        "source_transforms": {},
+        "noise_transforms": {},
+    }
+
+    transforms: List[Tuple[str, nn.Module]] = []
+    transforms += [
+        ("source_transforms", transform) for transform in imageset.source_transforms
+    ]
+    transforms += [
+        ("noise_transforms", transform) for transform in imageset.noise_transforms
+    ]
+
+    for category, transform in transforms:
+        if isinstance(transform, ContinuousTransform):
+            results[category][transform.name] = {}
+            trans_range: Tuple[float, float] = transform.trans_range
+            transform_steps = np.linspace(*trans_range, num_steps)
+            for step in transform_steps:
+                results[category][transform.name][step] = []
+                for img in images:
+                    results[category][transform.name][step].append(
+                        imageset.to_tensor(transform.transform(img, step))
+                    )
+
+    return results
 
 
 def reconstruct_images(

@@ -19,10 +19,19 @@ from PIL import Image, ImageEnhance, ImageFilter
 class ContinuousTransform(nn.Module, ABC):
     """Base class for continuous image transformations."""
 
-    def __init__(self, range: Tuple[float, float]) -> None:
+    def __init__(self, trans_range: Tuple[float, float]) -> None:
         """Initialize the ContinuousTransform."""
         super().__init__()
-        self.range = range
+        self.trans_range: Tuple[float, float] = trans_range
+
+    @property
+    def name(self) -> str:
+        """Return  a pretty name of the transformation."""
+        name = self.__class__.__name__
+        # Remove the "Transform" suffix
+        name = name.replace("Transform", "")
+        # decamelcase
+        return name.replace("([a-z])([A-Z])", r"\1 \2").lower()
 
     @abstractmethod
     def transform(self, img: Image.Image, trans_factor: float) -> Image.Image:
@@ -52,7 +61,7 @@ class ContinuousTransform(nn.Module, ABC):
             Image.Image: The transformed PIL Image.
 
         """
-        trans_factor = np.random.uniform(self.range[0], self.range[1])
+        trans_factor = np.random.uniform(self.trans_range[0], self.trans_range[1])
         return self.transform(img, trans_factor)
 
 
@@ -194,7 +203,7 @@ class ShotNoiseTransform(ContinuousTransform):
 
         Args:
         ----
-            lambda_range (Tuple[float, float]): Range of shot noise intensity factors. For an identity transform, set the range to (1, 1).
+            lambda_range (Tuple[float, float]): Range of shot noise intensity factors. For an identity transform, set the range to (0, 0) to disable the shot noise.
 
         """
         super().__init__(lambda_range)
@@ -212,6 +221,9 @@ class ShotNoiseTransform(ContinuousTransform):
             Image.Image: The transformed PIL Image with added shot noise.
 
         """
+        if trans_factor <= 0:
+            return img
+
         # Convert PIL Image to numpy array
         img_array = np.array(img)
 
