@@ -6,7 +6,7 @@ from typing import Any, List, Type, get_type_hints
 
 import torch
 import torch.nn as nn
-import torchscan
+from torchinfo import summary
 
 from retinal_rl.util import Activation
 
@@ -59,7 +59,7 @@ class NeuralCircuit(nn.Module, ABC):
 
     def scan(self) -> None:
         """Run torchscan on the model."""
-        torchscan.summary(self, tuple(self.input_shape), receptive_field=True)
+        summary(self, (1, *tuple(self.input_shape)))
 
     @abstractmethod
     def forward(self, x: torch.Tensor) -> torch.Tensor:
