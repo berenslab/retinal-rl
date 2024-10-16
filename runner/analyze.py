@@ -5,10 +5,10 @@ from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import torch
+import wandb
 from matplotlib.figure import Figure
 from omegaconf import DictConfig
 
-import wandb
 from retinal_rl.analysis.plot import (
     layer_receptive_field_plots,
     plot_brain_and_optimizers,
@@ -25,7 +25,7 @@ from retinal_rl.analysis.statistics import (
 )
 from retinal_rl.dataset import Imageset
 from retinal_rl.models.brain import Brain
-from retinal_rl.models.goal import ContextT, Goal
+from retinal_rl.models.objective import ContextT, Objective
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ def analyze(
     cfg: DictConfig,
     device: torch.device,
     brain: Brain,
-    goal: Goal[ContextT],
+    objective: Objective[ContextT],
     histories: Dict[str, List[float]],
     train_set: Imageset,
     test_set: Imageset,
@@ -111,7 +111,7 @@ def analyze(
     if epoch == 0:
         rf_sizes_fig = plot_receptive_field_sizes(cnn_analysis)
         _process_figure(cfg, False, rf_sizes_fig, init_dir, "receptive_field_sizes", 0)
-        graph_fig = plot_brain_and_optimizers(brain, goal)
+        graph_fig = plot_brain_and_optimizers(brain, objective)
         _process_figure(cfg, False, graph_fig, init_dir, "brain_graph", 0)
         transforms = transform_base_images(train_set, num_steps=5, num_images=2)
         transforms_fig = plot_transforms(**transforms)

@@ -5,16 +5,16 @@ import time
 from typing import Dict, List
 
 import torch
+import wandb
 from omegaconf import DictConfig
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 
-import wandb
 from retinal_rl.classification.loss import ClassificationContext
 from retinal_rl.classification.training import process_dataset, run_epoch
 from retinal_rl.dataset import Imageset
 from retinal_rl.models.brain import Brain
-from retinal_rl.models.goal import Goal
+from retinal_rl.models.objective import Objective
 from runner.analyze import analyze
 from runner.util import save_checkpoint
 
@@ -26,7 +26,7 @@ def train(
     cfg: DictConfig,
     device: torch.device,
     brain: Brain,
-    goal: Goal[ClassificationContext],
+    objective: Objective[ClassificationContext],
     optimizer: Optimizer,
     train_set: Imageset,
     test_set: Imageset,
@@ -40,7 +40,7 @@ def train(
         cfg (DictConfig): The configuration for the experiment.
         device (torch.device): The device to run the computations on.
         brain (Brain): The Brain model to train and evaluate.
-        goal (Goal): The optimizer for updating the model parameters.
+        objective (Objective): The optimizer for updating the model parameters.
         train_set (Imageset): The training dataset.
         test_set (Imageset): The test dataset.
         initial_epoch (int): The epoch to start training from.
@@ -56,11 +56,23 @@ def train(
     if initial_epoch == 0:
         brain.train()
         train_losses = process_dataset(
-            device, brain, goal, optimizer, initial_epoch, trainloader, is_training=False
+            device,
+            brain,
+            objective,
+            optimizer,
+            initial_epoch,
+            trainloader,
+            is_training=False,
         )
         brain.eval()
         test_losses = process_dataset(
-            device, brain, goal, optimizer, initial_epoch, testloader, is_training=False
+            device,
+            brain,
+            objective,
+            optimizer,
+            initial_epoch,
+            testloader,
+            is_training=False,
         )
 
         # Initialize the history
@@ -75,7 +87,7 @@ def train(
             cfg,
             device,
             brain,
-            goal,
+            objective,
             history,
             train_set,
             test_set,
@@ -88,11 +100,11 @@ def train(
 
     logger.info("Initialization complete.")
 
-    for epoch in range(initial_epoch + 1, goal.num_epochs() + 1):
+    for epoch in range(initial_epoch + 1, objective.num_epochs() + 1):
         brain, history = run_epoch(
             device,
             brain,
-            goal,
+            objective,
             optimizer,
             history,
             epoch,
@@ -122,7 +134,7 @@ def train(
                 cfg,
                 device,
                 brain,
-                goal,
+                objective,
                 history,
                 train_set,
                 test_set,

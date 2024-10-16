@@ -18,7 +18,7 @@ from torch import Tensor
 from torchvision.utils import make_grid
 
 from retinal_rl.models.brain import Brain
-from retinal_rl.models.goal import ContextT, Goal
+from retinal_rl.models.objective import ContextT, Objective
 from retinal_rl.util import FloatArray
 
 
@@ -107,7 +107,7 @@ def plot_transforms(
     return fig
 
 
-def plot_brain_and_optimizers(brain: Brain, goal: Goal[ContextT]) -> Figure:
+def plot_brain_and_optimizers(brain: Brain, objective: Objective[ContextT]) -> Figure:
     """Visualize the Brain's connectome organized by depth and highlight optimizer targets using border colors.
 
     Args:
@@ -147,7 +147,7 @@ def plot_brain_and_optimizers(brain: Brain, goal: Goal[ContextT]) -> Figure:
     color_map = {"sensor": "lightblue", "circuit": "lightgreen"}
 
     # Generate colors for optimizers
-    optimizer_colors = sns.color_palette("husl", len(goal.losses))
+    optimizer_colors = sns.color_palette("husl", len(objective.losses))
 
     # Prepare node colors and edge colors
     node_colors: List[str] = []
@@ -160,8 +160,8 @@ def plot_brain_and_optimizers(brain: Brain, goal: Goal[ContextT]) -> Figure:
 
         # Determine if the node is targeted by an optimizer
         edge_color = "none"
-        for i, optimizer_name in enumerate(goal.losses.keys()):
-            if node in goal.target_circuits[optimizer_name]:
+        for i, optimizer_name in enumerate(objective.losses.keys()):
+            if node in objective.target_circuits[optimizer_name]:
                 edge_color = optimizer_colors[i]
                 break
         edge_colors.append(edge_color)
@@ -192,7 +192,7 @@ def plot_brain_and_optimizers(brain: Brain, goal: Goal[ContextT]) -> Figure:
             markersize=15,
             markeredgewidth=3,
         )
-        for name, color in zip(goal.losses.keys(), optimizer_colors)
+        for name, color in zip(objective.losses.keys(), optimizer_colors)
     ]
 
     # Add legend elements for sensor and circuit
