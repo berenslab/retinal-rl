@@ -38,7 +38,7 @@ jobs:
     - name: Determine trigger type and set input
       id: setup
       run: |
-        if [[ "${{ github.event_name }}" == "workflow_call" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+        if [[ "${{ github.event.inputs.deploy }}" != "" ]]; then
           echo "deploy=${{ github.event.inputs.deploy }}" >> $GITHUB_OUTPUT
         else
           echo "deploy=false" >> $GITHUB_OUTPUT
