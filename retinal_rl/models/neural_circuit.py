@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Any, List, Type, get_type_hints
 
 import torch
-import torch.nn as nn
+from torch import nn
 from torchinfo import summary
 
 from retinal_rl.util import Activation
@@ -64,7 +64,6 @@ class NeuralCircuit(nn.Module, ABC):
     @abstractmethod
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the neural circuit."""
-        x = x
         raise NotImplementedError("Each subclass must implement its own forward method.")
 
     @property
