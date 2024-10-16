@@ -1,11 +1,6 @@
 name: Code Checking
 
-on: 
-  push:
-    branches-ignore:
-      - master
-    paths:
-      - '**/*.py'
+on:
   pull_request:
     branches:
       - master
