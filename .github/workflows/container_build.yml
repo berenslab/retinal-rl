@@ -38,24 +38,29 @@ jobs:
     - name: Determine trigger type and set input
       id: setup
       run: |
-        if [[ "${{ github.event.inputs.deploy }}" != "" ]]; then
-          echo "deploy=${{ github.event.inputs.deploy }}" >> $GITHUB_OUTPUT
+        if [[ "${{ inputs.deploy }}" != "" ]]; then
+          echo "deploy=${{ inputs.deploy }}" >> $GITHUB_OUTPUT
         else
           echo "deploy=false" >> $GITHUB_OUTPUT
         fi
     
     - name: Test input
       run: |
-        if ${{ steps.setup.outputs.deploy }}"; then
+        if ${{ steps.setup.outputs.deploy }}; then
           echo "yes"
         else
           echo "no"
         fi
 
-    - name: Test input again
+    - name: Test input TRUE
       if: steps.setup.outputs.deploy
       run:
         echo "yes"
+    
+    - name: Test input FALSE
+      if: ! steps.setup.outputs.deploy
+      run:
+        echo "no"
 
     # - name: Build Singularity container
     #   run: apptainer build retinal-rl.sif resources/retinal-rl.def
