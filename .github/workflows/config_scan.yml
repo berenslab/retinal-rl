@@ -29,8 +29,17 @@ jobs:
         singularity registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
         singularity pull ${{ env.sif_file }} ${{ env.singularity_image }}
 
-    - name: Scan classification config
+    - name: Prepare experiment files
       run: |
         cp -r resources/config_templates/* config/
-        singularity exec ${{ env.sif_file }} \
-        python main.py -m +experiment=cifar10-class-recon command=scan system.device=cpu
+        for file in config/user/experiment/*.yaml; do
+          filename=$(basename "$file" .yaml)
+          echo "$filename" >> experiments.txt
+        done
+
+    - name: Scan classification configs
+      run: |
+        while IFS= read -r experiment; do
+          singularity exec ${{ env.sif_file }} \
+          python main.py +experiment="$experiment" command=scan system.device=cpu
+        done < experiments.txt

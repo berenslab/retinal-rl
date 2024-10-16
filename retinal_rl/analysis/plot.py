@@ -9,15 +9,102 @@ import networkx as nx
 import numpy as np
 import numpy.fft as fft
 import seaborn as sns
+import torch
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.ticker import MaxNLocator
 from torch import Tensor
+from torchvision.utils import make_grid
 
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.goal import ContextT, Goal
 from retinal_rl.util import FloatArray
+
+
+def plot_transforms(
+    source_transforms: Dict[str, Dict[float, List[torch.Tensor]]],
+    noise_transforms: Dict[str, Dict[float, List[torch.Tensor]]],
+) -> Figure:
+    """Use the result of the transform_base_images function to plot the effects of source and noise transforms on images.
+
+    Args:
+    ----
+    source_transforms: A dictionary of source transforms and their effects on images.
+    noise_transforms: A dictionary of noise transforms and their effects on images.
+
+    Returns:
+    -------
+    Figure: A matplotlib Figure containing the plotted transforms.
+
+    """
+    # Determine the number of transforms and images
+    num_source_transforms = len(source_transforms)
+    num_noise_transforms = len(noise_transforms)
+    num_transforms = num_source_transforms + num_noise_transforms
+    num_images = len(
+        next(iter(source_transforms.values()))[
+            next(iter(next(iter(source_transforms.values())).keys()))
+        ]
+    )
+
+    # Create a figure with subplots for each transform
+    fig, axs = plt.subplots(num_transforms, 1, figsize=(20, 5 * num_transforms))
+    if num_transforms == 1:
+        axs = [axs]
+
+    transform_index = 0
+
+    # Plot source transforms
+    for transform_name, transform_data in source_transforms.items():
+        ax = axs[transform_index]
+        steps = sorted(transform_data.keys())
+
+        # Create a grid of images for each step
+        images = [
+            make_grid(
+                torch.stack([img * 0.5 + 0.5 for img in transform_data[step]]),
+                nrow=num_images,
+            )
+            for step in steps
+        ]
+        grid = make_grid(images, nrow=len(steps))
+
+        # Display the grid
+        ax.imshow(grid.permute(1, 2, 0))
+        ax.set_title(f"Source Transform: {transform_name}")
+        ax.set_xticks([(i + 0.5) * grid.shape[2] / len(steps) for i in range(len(steps))])
+        ax.set_xticklabels([f"{step:.2f}" for step in steps])
+        ax.set_yticks([])
+
+        transform_index += 1
+
+    # Plot noise transforms
+    for transform_name, transform_data in noise_transforms.items():
+        ax = axs[transform_index]
+        steps = sorted(transform_data.keys())
+
+        # Create a grid of images for each step
+        images = [
+            make_grid(
+                torch.stack([img * 0.5 + 0.5 for img in transform_data[step]]),
+                nrow=num_images,
+            )
+            for step in steps
+        ]
+        grid = make_grid(images, nrow=len(steps))
+
+        # Display the grid
+        ax.imshow(grid.permute(1, 2, 0))
+        ax.set_title(f"Noise Transform: {transform_name}")
+        ax.set_xticks([(i + 0.5) * grid.shape[2] / len(steps) for i in range(len(steps))])
+        ax.set_xticklabels([f"{step:.2f}" for step in steps])
+        ax.set_yticks([])
+
+        transform_index += 1
+
+    plt.tight_layout()
+    return fig
 
 
 def plot_brain_and_optimizers(brain: Brain, goal: Goal[ContextT]) -> Figure:
@@ -384,11 +471,11 @@ def plot_reconstructions(
 
     Args:
     ----
-        train_source (List[Tuple[Tensor, int]]): List of original source images and their classes.
-        train_input (List[Tuple[Tensor, int]]): List of original training images and their classes.
+        train_sources (List[Tuple[Tensor, int]]): List of original source images and their classes.
+        train_inputs (List[Tuple[Tensor, int]]): List of original training images and their classes.
         train_estimates (List[Tuple[Tensor, int]]): List of reconstructed training images and their predicted classes.
-        test_source (List[Tuple[Tensor, int]]): List of original source images and their classes.
-        test_input (List[Tuple[Tensor, int]]): List of original test images and their classes.
+        test_sources (List[Tuple[Tensor, int]]): List of original source images and their classes.
+        test_inputs (List[Tuple[Tensor, int]]): List of original test images and their classes.
         test_estimates (List[Tuple[Tensor, int]]): List of reconstructed test images and their predicted classes.
         num_samples (int): The number of samples to plot.
 

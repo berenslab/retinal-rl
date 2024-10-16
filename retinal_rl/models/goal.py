@@ -75,7 +75,7 @@ class Goal(Generic[ContextT]):
                 instantiate(obj_config) for obj_config in config.losses
             ]
             logger.info(
-                f"Initalized objective: {objective}, with losses: {[obj.key_name for obj in self.losses[objective]]}, and target circuits: {[circuit_name for circuit_name in self.target_circuits]}"
+                f"Initialized objective: {objective}, with losses: {[obj.key_name for obj in self.losses[objective]]}, and target circuits: {[circuit_name for circuit_name in self.target_circuits[objective]]}"
             )
 
     def evaluate_objective(
