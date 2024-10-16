@@ -32,10 +32,9 @@ jobs:
     - name: Prepare experiment files
       run: |
         cp -r resources/config_templates/* config/
-        mkdir -p experiment_list
-        for file in resources/config_templates/experiments/*.yaml; do
+        for file in config/user/experiment/*.yaml; do
           filename=$(basename "$file" .yaml)
-          echo "$filename" >> experiment_list/experiments.txt
+          echo "$filename" >> experiments.txt
         done
 
     - name: Scan classification configs
@@ -43,4 +42,4 @@ jobs:
         while IFS= read -r experiment; do
           singularity exec ${{ env.sif_file }} \
           python main.py +experiment="$experiment" command=scan system.device=cpu
-        done < experiment_list/experiments.txt
+        done < experiments.txt
