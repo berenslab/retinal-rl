@@ -53,12 +53,12 @@ jobs:
         fi
 
     - name: Test input TRUE
-      if: steps.setup.outputs.deploy
+      if: steps.setup.outputs.deploy == 'true'
       run:
         echo "yes"
     
     - name: Test input FALSE
-      if: steps.setup.outputs.deploy==false
+      if: steps.setup.outputs.deploy == 'false'
       run:
         echo "no"
 
