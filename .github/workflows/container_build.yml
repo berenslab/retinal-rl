@@ -1,8 +1,6 @@
 name: Build Singularity Container
 
 on: 
-  schedule:
-    - cron: '0 2 1 * *'
   push:
     branches-ignore:
       - master
@@ -26,6 +24,10 @@ on:
         required: false
         default: true
 
+env:
+  singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image
+  sif_file: retinal-rl_singularity-image.sif
+
 jobs:
   singularity-build:
     runs-on: ubuntu-latest
@@ -45,15 +47,15 @@ jobs:
         fi
 
     - name: Build Singularity container
-      run: apptainer build retinal-rl.sif resources/retinal-rl.def
+      run: apptainer build ${{ env.sif_file }} resources/retinal-rl.def
 
     - name: Scan classification config / ensure minimal functionality
       run: |
         cp -r resources/config_templates/* config/
-        apptainer exec retinal-rl.sif python main.py -m +experiment=classification command=scan system.device=cpu
+        apptainer exec ${{ env.sif_file }} python main.py -m +experiment=classification command=scan system.device=cpu
 
     - name: Deployment / Push to ghcr.io
       if: steps.setup.outputs.deploy == 'true'
       run: |
         apptainer registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
-        apptainer push retinal-rl.sif oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest
+        apptainer push ${{ env.sif_file }} oras://ghcr.io/berenslab/retinal-rl:singularity-image

@@ -1,25 +1,22 @@
 name: Update Master Cache
 
 on: 
+  schedule:
+    - cron: '0 2 * * 0' # As cache is emptied if not accessed for 7 days, check after 7 days whether container has changed
   workflow_dispatch:
   push:
     branches:
       - master
     paths:
       - 'resources/retinal-rl.def'
+  workflow_call:
 
 env:
-  singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest
-  sif_file: retinal-rl_singularity-image-latest.sif
+  singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image
+  sif_file: retinal-rl_singularity-image.sif
   
 jobs:
-  container-build:
-    uses: ./.github/workflows/container_build.yml
-    with:
-      deploy: true
-
   update-cache:
-    needs: container-build
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -35,7 +32,10 @@ jobs:
         key: ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
         restore-keys: |
           ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
-          ${{ runner.os }}-singularity-
+    - uses: ./.github/workflows/container_build.yml
+      if: github.event_name != 'schedule' && steps.cache-singularity.outputs.cache-hit != 'true'
+      with:
+        deploy: true
     - name: Pull Singularity container
       if: steps.cache-singularity.outputs.cache-hit != 'true'
       run: apptainer pull ${{ env.sif_file }} ${{ env.singularity_image }}
