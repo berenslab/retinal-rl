@@ -34,7 +34,7 @@ class ConvolutionalEncoder(NeuralCircuit):
         num_channels (List[int]): The number of channels for each layer. Default is 16.
         kernel_size (Union[int, List[int]]): The size of the convolutional kernels. Default is 3.
         stride (Union[int, List[int]]): The stride for the convolutional layers. Default is 1.
-        act_name (str): The name of the activation function to use. Default is "relu".
+        activation (str): The name of the activation function to use. Default is "relu".
 
     """
 
@@ -45,7 +45,7 @@ class ConvolutionalEncoder(NeuralCircuit):
         num_channels: List[int],
         kernel_size: Union[int, List[int]],
         stride: Union[int, List[int]],
-        act_name: str,
+        activation: str,
         layer_names: Optional[List[str]] = None,
     ):
         # add parameters to model and apply changes for internal use
@@ -55,7 +55,7 @@ class ConvolutionalEncoder(NeuralCircuit):
         self.num_channels = assert_list(num_channels, self.num_layers)
         self.kernel_size = assert_list(kernel_size, self.num_layers)
         self.stride = assert_list(stride, self.num_layers)
-        self.act_name = act_name
+        self.activation = activation
         self.padding: List[int] = []
         for i in range(num_layers):
             self.padding.append(_calculate_padding(self.kernel_size[i], self.stride[i]))
@@ -69,7 +69,7 @@ class ConvolutionalEncoder(NeuralCircuit):
             actnm = (
                 f"{layer_names[i]}_activation"
                 if layer_names is not None
-                else self.act_name + str(i)
+                else self.activation + str(i)
             )
             conv_layers.append(
                 (
@@ -83,7 +83,7 @@ class ConvolutionalEncoder(NeuralCircuit):
                     ),
                 )
             )
-            conv_layers.append((actnm, self.str_to_activation(self.act_name)))
+            conv_layers.append((actnm, self.str_to_activation(self.activation)))
         self.conv_head = nn.Sequential(OrderedDict(conv_layers))
 
     def forward(self, x: Tensor):
@@ -100,7 +100,7 @@ class ConvolutionalDecoder(NeuralCircuit):
         num_channels: List[int],
         kernel_size: Union[int, List[int]],
         stride: Union[int, List[int]],
-        act_name: str,
+        activation: str,
         layer_names: Optional[List[str]] = None,
     ):
         # add parameters to model and apply changes for internal use
@@ -110,7 +110,7 @@ class ConvolutionalDecoder(NeuralCircuit):
         self.num_channels = assert_list(num_channels, self.num_layers)
         self.kernel_size = assert_list(kernel_size, self.num_layers)
         self.stride = assert_list(stride, self.num_layers)
-        self.act_name = act_name
+        self.activation = activation
 
         self.padding: List[int] = []
         for i in range(num_layers):
@@ -131,7 +131,7 @@ class ConvolutionalDecoder(NeuralCircuit):
             actnm = (
                 f"{layer_names[i]}_activation"
                 if layer_names is not None
-                else self.act_name + str(i)
+                else self.activation + str(i)
             )
 
             deconv_layers.append(
@@ -147,7 +147,7 @@ class ConvolutionalDecoder(NeuralCircuit):
                 )
             )
             if i < num_layers - 1:
-                deconv_layers.append((actnm, self.str_to_activation(self.act_name)))
+                deconv_layers.append((actnm, self.str_to_activation(self.activation)))
         deconv_layers.append(("output_activation", nn.Tanh()))
         self.deconv_head = nn.Sequential(OrderedDict(deconv_layers))
 

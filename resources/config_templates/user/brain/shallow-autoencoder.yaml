@@ -28,7 +28,7 @@ circuits:
       - ${bp_kernel_size}
       - ${rgc_kernel_size}
     stride: 2
-    act_name: ${activation}
+    activation: ${activation}
     layer_names: ["bipolar", "retinal_ganglion"]  # Names inspired by retinal cell types
 
   # Thalamus: relay and processing station
@@ -38,7 +38,7 @@ circuits:
     num_channels: 64
     kernel_size: ${lgn_kernel_size}
     stride: 1
-    act_name: ${activation}
+    activation: ${activation}
     layer_names: ["lgn"]  # Lateral Geniculate Nucleus
 
   # Visual Cortex: higher-level visual processing
@@ -48,7 +48,7 @@ circuits:
     num_channels: 64
     kernel_size: ${v1_kernel_size}
     stride: 2
-    act_name: ${activation}
+    activation: ${activation}
     layer_names: ["v1"]  # Primary Visual Cortex
 
   # Prefrontal Cortex: high-level cognitive processing
@@ -58,7 +58,7 @@ circuits:
       - 128  # Size of the latent representation
     hidden_units: 
       - 64  # Number of hidden units
-    act_name: ${activation}
+    activation: ${activation}
 
   # Decoder: for reconstructing the input from the latent representation
   decoder:
@@ -71,7 +71,7 @@ circuits:
       - ${rgc_kernel_size}
       - ${bp_kernel_size}
     stride: [2,1,2,2]
-    act_name: ${activation}
+    activation: ${activation}
 
   # Classifier: for categorizing the input into classes
   classifier:
