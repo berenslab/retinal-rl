@@ -41,7 +41,7 @@ class ClassificationLoss(Loss[ClassificationContext]):
     def __init__(
         self,
         min_epoch: int = 0,
-        max_epoch: int = 1,
+        max_epoch: int = -1,
         target_circuits: List[str] = [],
         weights: List[float] = [],
     ):
@@ -68,7 +68,7 @@ class PercentCorrect(Loss[ClassificationContext]):
     def __init__(
         self,
         min_epoch: int = 0,
-        max_epoch: int = 1,
+        max_epoch: int = -1,
         target_circuits: List[str] = [],
         weights: List[float] = [],
     ):

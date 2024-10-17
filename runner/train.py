@@ -5,11 +5,11 @@ import time
 from typing import Dict, List
 
 import torch
-import wandb
 from omegaconf import DictConfig
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 
+import wandb
 from retinal_rl.classification.loss import ClassificationContext
 from retinal_rl.classification.training import process_dataset, run_epoch
 from retinal_rl.dataset import Imageset
@@ -51,7 +51,6 @@ def train(
     testloader = DataLoader(test_set, batch_size=64, shuffle=False)
 
     wall_time = time.time()
-    epoch_wall_time = 0
 
     if initial_epoch == 0:
         brain.train()
@@ -95,12 +94,18 @@ def train(
             True,
         )
 
+        new_wall_time = time.time()
+        epoch_wall_time = new_wall_time - wall_time
+        wall_time = new_wall_time
+        logger.info("Initialization complete. Wall Time: {epoch_wall_time:.2f}s.")
+
         if cfg.use_wandb:
             _wandb_log_statistics(initial_epoch, epoch_wall_time, history)
 
-    logger.info("Initialization complete.")
+    else:
+        logger.info(f"Reloading complete. Resuming training from epoch {initial_epoch}.")
 
-    for epoch in range(initial_epoch + 1, objective.num_epochs() + 1):
+    for epoch in range(initial_epoch + 1, cfg.optimizer.num_epochs + 1):
         brain, history = run_epoch(
             device,
             brain,

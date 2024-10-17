@@ -39,12 +39,21 @@ class BaseContext:
 
 
 class Loss(Generic[ContextT]):
-    """Base class for losses that can be used to define a multiobjective optimization problem."""
+    """Base class for losses that can be used to define a multiobjective optimization problem.
+
+    Attributes
+    ----------
+        min_epoch (int): The minimum epoch to start training the loss.
+        max_epoch (int): The maximum epoch to train the loss. Unbounded if < 0.
+        target_circuits (List[str]): The target circuits for the loss.
+        weights (List[float]): The weights for the loss.
+
+    """
 
     def __init__(
         self,
         min_epoch: int = 0,
-        max_epoch: int = 1,
+        max_epoch: int = -1,
         target_circuits: List[str] = [],
         weights: List[float] = [],
     ):
@@ -55,17 +64,6 @@ class Loss(Generic[ContextT]):
         self.weights = weights
 
     def __call__(self, context: ContextT) -> Tensor:
-        """Compute the weighted loss for this loss.
-
-        Args:
-        ----
-            context (ContextT): Context information for computing losses.
-
-        Returns:
-        -------
-            Tensor: A tuple containing the weighted loss and the raw loss value.
-
-        """
         return self.compute_value(context)
 
     def is_training_epoch(self, epoch: int) -> bool:
@@ -103,7 +101,7 @@ class ReconstructionLoss(Loss[ContextT]):
     def __init__(
         self,
         min_epoch: int = 0,
-        max_epoch: int = 1,
+        max_epoch: int = -1,
         target_circuits: List[str] = [],
         weights: List[float] = [],
     ):
@@ -131,7 +129,7 @@ class L1Sparsity(Loss[ContextT]):
         self,
         target_responses: List[str],
         min_epoch: int = 0,
-        max_epoch: int = 1,
+        max_epoch: int = -1,
         target_circuits: List[str] = [],
         weights: List[float] = [],
     ):
@@ -160,7 +158,7 @@ class KLDivergenceSparsity(Loss[ContextT]):
         target_responses: List[str],
         target_sparsity: float = 0.05,
         min_epoch: int = 0,
-        max_epoch: int = 1,
+        max_epoch: int = -1,
         target_circuits: List[str] = [],
         weights: List[float] = [],
     ):

@@ -108,14 +108,6 @@ def plot_transforms(
 
 
 def plot_brain_and_optimizers(brain: Brain, objective: Objective[ContextT]) -> Figure:
-    """Visualize the Brain's connectome organized by depth and highlight optimizer targets using border colors.
-
-    Args:
-    ----
-    - brain: The Brain instance
-    - brain_optimizer: The BrainOptimizer instance
-
-    """
     graph = brain.connectome
 
     # Compute the depth of each node
@@ -146,7 +138,7 @@ def plot_brain_and_optimizers(brain: Brain, objective: Objective[ContextT]) -> F
     # Color scheme for different node types
     color_map = {"sensor": "lightblue", "circuit": "lightgreen"}
 
-    # Generate colors for optimizers
+    # Generate colors for losses
     optimizer_colors = sns.color_palette("husl", len(objective.losses))
 
     # Prepare node colors and edge colors
@@ -229,13 +221,7 @@ def plot_brain_and_optimizers(brain: Brain, objective: Objective[ContextT]) -> F
 
 
 def plot_receptive_field_sizes(results: Dict[str, Dict[str, FloatArray]]) -> Figure:
-    """Plot the receptive field sizes for each layer of the convolutional part of the network.
-
-    Args:
-    ----
-    - results: Dictionary containing the results from cnn_statistics function
-
-    """
+    """Plot the receptive field sizes for each layer of the convolutional part of the network."""
     # Get visual field size from the input shape
     input_shape = results["input"]["shape"]
     [_, height, width] = list(input_shape)
@@ -300,17 +286,7 @@ def plot_receptive_field_sizes(results: Dict[str, Dict[str, FloatArray]]) -> Fig
 
 
 def plot_histories(histories: Dict[str, List[float]]) -> Figure:
-    """Plot training and test losses over epochs.
-
-    Args:
-    ----
-        histories (Dict[str, List[float]]): Dictionary containing training and test loss histories.
-
-    Returns:
-    -------
-        Figure: Matplotlib figure containing the plotted histories.
-
-    """
+    """Plot training and test losses over epochs."""
     train_metrics = [
         key.split("_", 1)[1] for key in histories.keys() if key.startswith("train_")
     ]
@@ -467,23 +443,7 @@ def plot_reconstructions(
     test_estimates: List[Tuple[Tensor, int]],
     num_samples: int,
 ) -> Figure:
-    """Plot original and reconstructed images for both training and test sets, including the classes.
-
-    Args:
-    ----
-        train_sources (List[Tuple[Tensor, int]]): List of original source images and their classes.
-        train_inputs (List[Tuple[Tensor, int]]): List of original training images and their classes.
-        train_estimates (List[Tuple[Tensor, int]]): List of reconstructed training images and their predicted classes.
-        test_sources (List[Tuple[Tensor, int]]): List of original source images and their classes.
-        test_inputs (List[Tuple[Tensor, int]]): List of original test images and their classes.
-        test_estimates (List[Tuple[Tensor, int]]): List of reconstructed test images and their predicted classes.
-        num_samples (int): The number of samples to plot.
-
-    Returns:
-    -------
-        Figure: The matplotlib Figure object with the plotted images.
-
-    """
+    """Plot original and reconstructed images for both training and test sets, including the classes."""
     fig, axes = plt.subplots(6, num_samples, figsize=(15, 10))
 
     for i in range(num_samples):
