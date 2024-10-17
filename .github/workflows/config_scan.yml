@@ -25,7 +25,7 @@ jobs:
           ${{ runner.os }}-singularity-
     - name: Pull Singularity container
       if: steps.cache-singularity.outputs.cache-hit != 'true'
-      run: singularity pull ${{ env.sif_file }} ${{ env.singularity_image }}
+      run: apptainer pull ${{ env.sif_file }} ${{ env.singularity_image }}
 
     - name: Prepare experiment files
       run: |
@@ -38,6 +38,6 @@ jobs:
     - name: Scan classification configs
       run: |
         while IFS= read -r experiment; do
-          singularity exec ${{ env.sif_file }} \
+          apptainer exec ${{ env.sif_file }} \
           python main.py +experiment="$experiment" command=scan system.device=cpu
         done < experiments.txt

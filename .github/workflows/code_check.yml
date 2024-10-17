@@ -37,11 +37,9 @@ jobs:
           ${{ runner.os }}-singularity-
     - name: Pull Singularity container
       if: steps.cache-singularity.outputs.cache-hit != 'true'
-      run: |
-        singularity registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
-        singularity pull ${{ env.sif_file }} ${{ env.singularity_image }}
+      run: apptainer pull ${{ env.sif_file }} ${{ env.singularity_image }}
 
     - name: Run Pylint
       run: |
-        singularity exec ${{ env.sif_file }} \
+        apptainer exec ${{ env.sif_file }} \
         pylint $(git diff --name-only origin/master...HEAD -- '*.py')

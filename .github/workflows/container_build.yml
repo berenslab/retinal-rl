@@ -50,10 +50,10 @@ jobs:
     - name: Scan classification config / ensure minimal functionality
       run: |
         cp -r resources/config_templates/* config/
-        singularity exec retinal-rl.sif python main.py -m +experiment=classification command=scan system.device=cpu
+        apptainer exec retinal-rl.sif python main.py -m +experiment=classification command=scan system.device=cpu
 
     - name: Deployment / Push to ghcr.io
       if: steps.setup.outputs.deploy == 'true'
       run: |
-        singularity registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
-        singularity push retinal-rl.sif oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest
+        apptainer registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
+        apptainer push retinal-rl.sif oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest

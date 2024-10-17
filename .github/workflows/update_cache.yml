@@ -38,4 +38,4 @@ jobs:
           ${{ runner.os }}-singularity-
     - name: Pull Singularity container
       if: steps.cache-singularity.outputs.cache-hit != 'true'
-      run: singularity pull ${{ env.sif_file }} ${{ env.singularity_image }}
+      run: apptainer pull ${{ env.sif_file }} ${{ env.singularity_image }}
