@@ -19,7 +19,7 @@ jobs:
   conditional-build:
     uses: ./.github/workflows/container_build.yml
     with:
-      deploy: ${{ github.event_name != 'schedule' }}
+      deploy: ${{ github.event_name == 'push' }}
   update-cache:
     needs: conditional-build
     runs-on: ubuntu-latest
