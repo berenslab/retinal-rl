@@ -1,6 +1,8 @@
 name: Scan Configs
 on: 
   pull_request:
+    paths-ignore: 
+      - 'resources/retinal-rl.def'
   workflow_dispatch:
 
 env:
@@ -26,9 +28,7 @@ jobs:
           ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
 
     - name: Prepare experiment files
-      if: steps.cache-singularity.outputs.cache-hit == 'true'
       run: bash tests/ci/copy_configs.sh ${{ env.sif_file }}
 
     - name: Scan configs
-      if: steps.cache-singularity.outputs.cache-hit == 'true'
       run: bash tests/ci/scan_configs.sh ${{ env.sif_file }}

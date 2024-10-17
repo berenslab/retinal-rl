@@ -5,6 +5,7 @@ on:
     branches:
       - master
     paths:
+      - ! 'resources/retinal-rl.def'
       - '**/*.py'
   workflow_dispatch:
 
@@ -38,5 +39,4 @@ jobs:
           ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
 
     - name: Run Pylint
-      if: steps.cache-singularity.outputs.cache-hit == 'true'
       run: bash tests/ci/pylint.sh ${{ env.sif_file }}
