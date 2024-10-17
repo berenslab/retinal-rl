@@ -223,6 +223,7 @@ def plot_brain_and_optimizers(brain: Brain, objective: Objective[ContextT]) -> F
 
     plt.title("Brain Connectome and Loss Targets")
     plt.tight_layout()
+    plt.axis("equal")
     plt.axis("off")
 
     return fig
