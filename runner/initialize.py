@@ -48,7 +48,8 @@ def _initialize_create(
     # create the directories
     os.makedirs(cfg.system.data_dir)
     os.makedirs(cfg.system.checkpoint_dir)
-    os.makedirs(cfg.system.plot_dir)
+    if not cfg.use_wandb:
+        os.makedirs(cfg.system.plot_dir)
 
     # initialize the training histories
     histories: Dict[str, List[float]] = {}
