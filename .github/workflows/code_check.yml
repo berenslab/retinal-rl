@@ -6,6 +6,7 @@ on:
       - master
     paths:
       - '**/*.py'
+  workflow_dispatch:
 
 env:
   singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image

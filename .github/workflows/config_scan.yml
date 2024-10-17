@@ -1,7 +1,7 @@
 name: Scan Configs
 on: 
   pull_request:
-  push:
+  workflow_dispatch:
 
 env:
   singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image
