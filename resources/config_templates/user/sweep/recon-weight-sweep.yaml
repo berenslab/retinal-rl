@@ -12,8 +12,12 @@ project: retinal-rl
 
 parameters:
   recon_weight_retina: 
-    values: [0,0.9,0.99,0.999,0.9999,1]
+    values: [0,0.9,0.999,1]
   recon_weight_thalamus: 
-    values: [0,0.9,0.99,0.999,0.9999,1]
+    values: [0,0.9,0.999,1]
+  recon_weight_cortex: 
+    values: [0,0.9,0.999,1]
   optimizer:
-    value: "recon-weight"
+    value: "class-recon"
+  activation:
+    value: "gelu"

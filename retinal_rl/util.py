@@ -122,6 +122,7 @@ class Activation(Enum):
     softplus = nn.Softplus
     leaky = nn.LeakyReLU
     identity = nn.Identity
+    gelu = nn.GELU
 
     def __call__(self) -> nn.Module:
         act_module = self.value()
