@@ -4,5 +4,10 @@
 if [ "$2" = "--all" ]; then
     apptainer exec "$1" pylint .
 else
-    apptainer exec "$1" pylint $(git diff --name-only origin/master...HEAD -- '*.py')
+    changed_files=$(git diff --name-only origin/master...HEAD -- '*.py')
+    if [ -n "$changed_files" ]; then
+        apptainer exec "$1" pylint $(git diff --name-only origin/master...HEAD -- '*.py')
+    else
+        echo "No .py files changed"
+    fi
 fi
