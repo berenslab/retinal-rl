@@ -97,7 +97,7 @@ def train(
         new_wall_time = time.time()
         epoch_wall_time = new_wall_time - wall_time
         wall_time = new_wall_time
-        logger.info("Initialization complete. Wall Time: {epoch_wall_time:.2f}s.")
+        logger.info(f"Initialization complete. Wall Time: {epoch_wall_time:.2f}s.")
 
         if cfg.use_wandb:
             _wandb_log_statistics(initial_epoch, epoch_wall_time, history)

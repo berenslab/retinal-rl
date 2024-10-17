@@ -13,6 +13,7 @@ import torch
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
+from matplotlib.patches import Circle, Wedge
 from matplotlib.ticker import MaxNLocator
 from torch import Tensor
 from torchvision.utils import make_grid
@@ -130,44 +131,101 @@ def plot_brain_and_optimizers(brain: Brain, objective: Objective[ContextT]) -> F
             pos[node] = ((i - width / 2) / (width + 1), -(max_depth - depth) / max_depth)
 
     # Set up the plot
-    fig = plt.figure(figsize=(12, 10))
+    fig, ax = plt.subplots(figsize=(12, 10))
 
     # Draw edges
-    nx.draw_networkx_edges(graph, pos, edge_color="gray", arrows=True)
+    nx.draw_networkx_edges(graph, pos, edge_color="gray", arrows=True, ax=ax)
 
     # Color scheme for different node types
     color_map = {"sensor": "lightblue", "circuit": "lightgreen"}
 
     # Generate colors for losses
-    optimizer_colors = sns.color_palette("husl", len(objective.losses))
+    loss_colors = sns.color_palette("husl", len(objective.losses))
 
-    # Prepare node colors and edge colors
-    node_colors: List[str] = []
-    edge_colors: List[Tuple[float, float, float]] = []
+    # Draw nodes
     for node in graph.nodes():
+        x, y = pos[node]
+
+        # Determine node type and base color
         if node in brain.sensors:
-            node_colors.append(color_map["sensor"])
+            base_color = color_map["sensor"]
         else:
-            node_colors.append(color_map["circuit"])
+            base_color = color_map["circuit"]
 
-        # Determine if the node is targeted by an optimizer
-        edge_color = "none"
-        for i, optimizer_name in enumerate(objective.losses.keys()):
-            if node in objective.target_circuits[optimizer_name]:
-                edge_color = optimizer_colors[i]
-                break
-        edge_colors.append(edge_color)
+        # Draw base circle
+        circle = Circle((x, y), 0.05, facecolor=base_color, edgecolor="black")
+        ax.add_patch(circle)
 
-    # Draw nodes with a single call
-    nx.draw_networkx_nodes(
-        graph,
-        pos,
-        node_color=node_colors,
-        edgecolors=edge_colors,
-        node_size=4000,
-        linewidths=5,
+        # Determine which losses target this node
+        targeting_losses = [
+            loss for loss in objective.losses if node in loss.target_circuits
+        ]
+
+        if targeting_losses:
+            # Calculate angle for each loss
+            angle_per_loss = 360 / len(targeting_losses)
+
+            # Draw a wedge for each targeting loss
+            for i, loss in enumerate(targeting_losses):
+                start_angle = i * angle_per_loss
+                wedge = Wedge(
+                    (x, y),
+                    0.07,
+                    start_angle,
+                    start_angle + angle_per_loss,
+                    width=0.02,
+                    facecolor=loss_colors[objective.losses.index(loss)],
+                )
+                ax.add_patch(wedge)
+
+    # Draw labels
+    nx.draw_networkx_labels(graph, pos, font_size=8, font_weight="bold", ax=ax)
+
+    # Add a legend for losses
+    legend_elements = [
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            label=f"Loss: {loss.__class__.__name__}",
+            markerfacecolor=color,
+            markersize=15,
+        )
+        for loss, color in zip(objective.losses, loss_colors)
+    ]
+
+    # Add legend elements for sensor and circuit
+    legend_elements.extend(
+        [
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
+                label="Sensor",
+                markerfacecolor=color_map["sensor"],
+                markersize=15,
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
+                label="Circuit",
+                markerfacecolor=color_map["circuit"],
+                markersize=15,
+            ),
+        ]
     )
 
+    plt.legend(handles=legend_elements, loc="center left", bbox_to_anchor=(1, 0.5))
+
+    plt.title("Brain Connectome and Loss Targets")
+    plt.tight_layout()
+    plt.axis("off")
+
+    return fig
     # Draw labels
     nx.draw_networkx_labels(graph, pos, font_size=8, font_weight="bold")
 

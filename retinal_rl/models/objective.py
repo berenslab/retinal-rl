@@ -1,7 +1,7 @@
 """Module for managing optimization of complex neural network models with multiple circuits."""
 
 import logging
-from typing import Dict, Generic, List
+from typing import Dict, Generic, List, Tuple
 
 import torch
 from torch.nn.parameter import Parameter
@@ -16,25 +16,20 @@ class Objective(Generic[ContextT]):
     def __init__(self, brain: Brain, losses: List[Loss[ContextT]]):
         self.device = next(brain.parameters()).device
         self.losses: List[Loss[ContextT]] = losses
-        self.paramss: List[List[Parameter]] = []
+        self.brain: Brain = brain
 
-        for loss in self.losses:
-            # Collect parameters from target circuits
-            params: List[Parameter] = []
-            for circuit_name in loss.target_circuits:
-                if circuit_name in brain.circuits:
-                    params.extend(brain.circuits[circuit_name].parameters())
-            self.paramss.append(params)
+        # Build a dictionary of weighted parameters for each loss
+        # TODO: If the parameters() list of a neural circuit changes dynamically, this will break
 
     def backward(self, context: ContextT) -> Dict[str, float]:
         loss_dict: Dict[str, float] = {}
 
         retain_graph = True
 
-        for i, (loss, params) in enumerate(zip(self.losses, self.paramss)):
+        for i, loss in enumerate(self.losses):
             # Compute losses
+            weights, params = self._weighted_params(loss)
             name = loss.key_name
-            weights = loss.weights
             value = loss(context)
             loss_dict[name] = value.item()
             if not loss.is_training_epoch(context.epoch) or not params:
@@ -58,3 +53,16 @@ class Objective(Generic[ContextT]):
 
         # Perform optimization step
         return loss_dict
+
+    def _weighted_params(
+        self, loss: Loss[ContextT]
+    ) -> Tuple[List[float], List[Parameter]]:
+        weights: List[float] = []
+        params: List[Parameter] = []
+        for weight, circuit_name in zip(loss.weights, loss.target_circuits):
+            if circuit_name in self.brain.circuits:
+                params0 = list(self.brain.circuits[circuit_name].parameters())
+                weights += [weight] * len(params0)
+                params += params0
+
+        return weights, params
