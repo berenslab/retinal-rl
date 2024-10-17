@@ -9,10 +9,8 @@ import torch
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
-from retinal_rl.classification.loss import ClassificationContext
 from retinal_rl.framework_interface import TrainingFramework
 from retinal_rl.models.brain import Brain
-from retinal_rl.models.goal import Goal
 from retinal_rl.rl.sample_factory.sf_framework import SFFramework
 from runner.analyze import analyze
 from runner.dataset import get_datasets
@@ -40,8 +38,8 @@ def _program(cfg: DictConfig):
 
     brain = Brain(**cfg.brain).to(device)
     if hasattr(cfg, "optimizer"):
-        goal = Goal[ClassificationContext](brain, dict(cfg.optimizer.goal))
         optimizer = instantiate(cfg.optimizer.optimizer, brain.parameters())
+        objective = instantiate(cfg.optimizer.objective, brain=brain)
     else:
         warnings.warn("No optimizer config specified, is that wanted?")
 
@@ -68,7 +66,7 @@ def _program(cfg: DictConfig):
                 cfg,
                 device,
                 brain,
-                goal,
+                objective,
                 optimizer,
                 train_set,
                 test_set,
@@ -82,7 +80,7 @@ def _program(cfg: DictConfig):
                 cfg,
                 device,
                 brain,
-                goal,
+                objective,
                 histories,
                 train_set,
                 test_set,

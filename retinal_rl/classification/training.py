@@ -18,7 +18,7 @@ from retinal_rl.classification.loss import (
     get_classification_context,
 )
 from retinal_rl.models.brain import Brain
-from retinal_rl.models.goal import Goal
+from retinal_rl.models.objective import Objective
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 def run_epoch(
     device: torch.device,
     brain: Brain,
-    goal: Goal[ClassificationContext],
+    objective: Objective[ClassificationContext],
     optimizer: Optimizer,
     history: Dict[str, List[float]],
     epoch: int,
@@ -43,7 +43,7 @@ def run_epoch(
     ----
         device (torch.device): The device to run the computations on.
         brain (Brain): The Brain model to train and evaluate.
-        goal (Goal): The goal object specifying the training objectives.
+        objective (Objective): The objective object specifying the training objectives.
         optimizer (Optimizer): The optimizer for updating the model parameters.
         history (Dict[str, List[float]]): A dictionary to store the training history.
         epoch (int): The current epoch number.
@@ -56,10 +56,10 @@ def run_epoch(
 
     """
     train_losses = process_dataset(
-        device, brain, goal, optimizer, epoch, trainloader, is_training=True
+        device, brain, objective, optimizer, epoch, trainloader, is_training=True
     )
     test_losses = process_dataset(
-        device, brain, goal, optimizer, epoch, testloader, is_training=False
+        device, brain, objective, optimizer, epoch, testloader, is_training=False
     )
 
     # Update history
@@ -76,7 +76,7 @@ def run_epoch(
 def process_dataset(
     device: torch.device,
     brain: Brain,
-    goal: Goal[ClassificationContext],
+    objective: Objective[ClassificationContext],
     optimizer: Optimizer,
     epoch: int,
     dataloader: DataLoader[Tuple[Tensor, Tensor, int]],
@@ -109,19 +109,19 @@ def process_dataset(
 
         if is_training:
             brain.train()
-            losses, obj_dict = goal.backward(context)
+            losses = objective.backward(context)
             optimizer.step()
             optimizer.zero_grad(set_to_none=True)
 
         else:
             with torch.no_grad():
                 brain.eval()
-                losses, obj_dict = goal.evaluate_objectives(context)
+                losses: Dict[str, float] = {}
+                for loss in objective.losses:
+                    losses[loss.key_name] = loss(context).item()
 
         # Accumulate losses and objectives
         for key, value in losses.items():
-            total_losses[key] = total_losses.get(key, 0.0) + value
-        for key, value in obj_dict.items():
             total_losses[key] = total_losses.get(key, 0.0) + value
 
         steps += 1

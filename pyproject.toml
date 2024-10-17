@@ -20,7 +20,10 @@ select = [
     "I",  # Import conventions
 ]
 
-ignore = ["E501"]  # Example: Ignore line length warnings
+ignore = [
+    "E501",  # Example: Ignore line length warnings
+    "D",     # Ignore all docstring-related warnings
+]
 
 [tool.ruff.format]
 docstring-code-format = true

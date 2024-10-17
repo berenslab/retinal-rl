@@ -13,12 +13,13 @@ import torch
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
+from matplotlib.patches import Circle, Wedge
 from matplotlib.ticker import MaxNLocator
 from torch import Tensor
 from torchvision.utils import make_grid
 
 from retinal_rl.models.brain import Brain
-from retinal_rl.models.goal import ContextT, Goal
+from retinal_rl.models.objective import ContextT, Objective
 from retinal_rl.util import FloatArray
 
 
@@ -107,15 +108,7 @@ def plot_transforms(
     return fig
 
 
-def plot_brain_and_optimizers(brain: Brain, goal: Goal[ContextT]) -> Figure:
-    """Visualize the Brain's connectome organized by depth and highlight optimizer targets using border colors.
-
-    Args:
-    ----
-    - brain: The Brain instance
-    - brain_optimizer: The BrainOptimizer instance
-
-    """
+def plot_brain_and_optimizers(brain: Brain, objective: Objective[ContextT]) -> Figure:
     graph = brain.connectome
 
     # Compute the depth of each node
@@ -138,44 +131,102 @@ def plot_brain_and_optimizers(brain: Brain, goal: Goal[ContextT]) -> Figure:
             pos[node] = ((i - width / 2) / (width + 1), -(max_depth - depth) / max_depth)
 
     # Set up the plot
-    fig = plt.figure(figsize=(12, 10))
+    fig, ax = plt.subplots(figsize=(12, 10))
 
     # Draw edges
-    nx.draw_networkx_edges(graph, pos, edge_color="gray", arrows=True)
+    nx.draw_networkx_edges(graph, pos, edge_color="gray", arrows=True, ax=ax)
 
     # Color scheme for different node types
     color_map = {"sensor": "lightblue", "circuit": "lightgreen"}
 
-    # Generate colors for optimizers
-    optimizer_colors = sns.color_palette("husl", len(goal.losses))
+    # Generate colors for losses
+    loss_colors = sns.color_palette("husl", len(objective.losses))
 
-    # Prepare node colors and edge colors
-    node_colors: List[str] = []
-    edge_colors: List[Tuple[float, float, float]] = []
+    # Draw nodes
     for node in graph.nodes():
+        x, y = pos[node]
+
+        # Determine node type and base color
         if node in brain.sensors:
-            node_colors.append(color_map["sensor"])
+            base_color = color_map["sensor"]
         else:
-            node_colors.append(color_map["circuit"])
+            base_color = color_map["circuit"]
 
-        # Determine if the node is targeted by an optimizer
-        edge_color = "none"
-        for i, optimizer_name in enumerate(goal.losses.keys()):
-            if node in goal.target_circuits[optimizer_name]:
-                edge_color = optimizer_colors[i]
-                break
-        edge_colors.append(edge_color)
+        # Draw base circle
+        circle = Circle((x, y), 0.05, facecolor=base_color, edgecolor="black")
+        ax.add_patch(circle)
 
-    # Draw nodes with a single call
-    nx.draw_networkx_nodes(
-        graph,
-        pos,
-        node_color=node_colors,
-        edgecolors=edge_colors,
-        node_size=4000,
-        linewidths=5,
+        # Determine which losses target this node
+        targeting_losses = [
+            loss for loss in objective.losses if node in loss.target_circuits
+        ]
+
+        if targeting_losses:
+            # Calculate angle for each loss
+            angle_per_loss = 360 / len(targeting_losses)
+
+            # Draw a wedge for each targeting loss
+            for i, loss in enumerate(targeting_losses):
+                start_angle = i * angle_per_loss
+                wedge = Wedge(
+                    (x, y),
+                    0.07,
+                    start_angle,
+                    start_angle + angle_per_loss,
+                    width=0.02,
+                    facecolor=loss_colors[objective.losses.index(loss)],
+                )
+                ax.add_patch(wedge)
+
+    # Draw labels
+    nx.draw_networkx_labels(graph, pos, font_size=8, font_weight="bold", ax=ax)
+
+    # Add a legend for losses
+    legend_elements = [
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            label=f"Loss: {loss.__class__.__name__}",
+            markerfacecolor=color,
+            markersize=15,
+        )
+        for loss, color in zip(objective.losses, loss_colors)
+    ]
+
+    # Add legend elements for sensor and circuit
+    legend_elements.extend(
+        [
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
+                label="Sensor",
+                markerfacecolor=color_map["sensor"],
+                markersize=15,
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
+                label="Circuit",
+                markerfacecolor=color_map["circuit"],
+                markersize=15,
+            ),
+        ]
     )
 
+    plt.legend(handles=legend_elements, loc="center left", bbox_to_anchor=(1, 0.5))
+
+    plt.title("Brain Connectome and Loss Targets")
+    plt.tight_layout()
+    plt.axis("equal")
+    plt.axis("off")
+
+    return fig
     # Draw labels
     nx.draw_networkx_labels(graph, pos, font_size=8, font_weight="bold")
 
@@ -192,7 +243,7 @@ def plot_brain_and_optimizers(brain: Brain, goal: Goal[ContextT]) -> Figure:
             markersize=15,
             markeredgewidth=3,
         )
-        for name, color in zip(goal.losses.keys(), optimizer_colors)
+        for name, color in zip(objective.losses.keys(), optimizer_colors)
     ]
 
     # Add legend elements for sensor and circuit
@@ -229,13 +280,7 @@ def plot_brain_and_optimizers(brain: Brain, goal: Goal[ContextT]) -> Figure:
 
 
 def plot_receptive_field_sizes(results: Dict[str, Dict[str, FloatArray]]) -> Figure:
-    """Plot the receptive field sizes for each layer of the convolutional part of the network.
-
-    Args:
-    ----
-    - results: Dictionary containing the results from cnn_statistics function
-
-    """
+    """Plot the receptive field sizes for each layer of the convolutional part of the network."""
     # Get visual field size from the input shape
     input_shape = results["input"]["shape"]
     [_, height, width] = list(input_shape)
@@ -300,17 +345,7 @@ def plot_receptive_field_sizes(results: Dict[str, Dict[str, FloatArray]]) -> Fig
 
 
 def plot_histories(histories: Dict[str, List[float]]) -> Figure:
-    """Plot training and test losses over epochs.
-
-    Args:
-    ----
-        histories (Dict[str, List[float]]): Dictionary containing training and test loss histories.
-
-    Returns:
-    -------
-        Figure: Matplotlib figure containing the plotted histories.
-
-    """
+    """Plot training and test losses over epochs."""
     train_metrics = [
         key.split("_", 1)[1] for key in histories.keys() if key.startswith("train_")
     ]
@@ -467,23 +502,7 @@ def plot_reconstructions(
     test_estimates: List[Tuple[Tensor, int]],
     num_samples: int,
 ) -> Figure:
-    """Plot original and reconstructed images for both training and test sets, including the classes.
-
-    Args:
-    ----
-        train_sources (List[Tuple[Tensor, int]]): List of original source images and their classes.
-        train_inputs (List[Tuple[Tensor, int]]): List of original training images and their classes.
-        train_estimates (List[Tuple[Tensor, int]]): List of reconstructed training images and their predicted classes.
-        test_sources (List[Tuple[Tensor, int]]): List of original source images and their classes.
-        test_inputs (List[Tuple[Tensor, int]]): List of original test images and their classes.
-        test_estimates (List[Tuple[Tensor, int]]): List of reconstructed test images and their predicted classes.
-        num_samples (int): The number of samples to plot.
-
-    Returns:
-    -------
-        Figure: The matplotlib Figure object with the plotted images.
-
-    """
+    """Plot original and reconstructed images for both training and test sets, including the classes."""
     fig, axes = plt.subplots(6, num_samples, figsize=(15, 10))
 
     for i in range(num_samples):
