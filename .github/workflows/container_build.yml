@@ -1,11 +1,6 @@
 name: Build Singularity Container
 
 on: 
-  push:
-    branches-ignore:
-      - master
-    paths:
-      - 'resources/retinal-rl.def'
   pull_request:
     branches:
       - master
@@ -46,13 +41,26 @@ jobs:
           echo "deploy=false" >> $GITHUB_OUTPUT
         fi
 
+    - name: Cache Singularity Image
+      id: cache-singularity
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.sif_file }}
+        key: ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
+        restore-keys: |
+          ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
+
     - name: Build Singularity container
+      if: steps.cache-singularity.outputs.cache-hit != 'true'
       run: apptainer build ${{ env.sif_file }} resources/retinal-rl.def
 
-    - name: Scan classification config / ensure minimal functionality
+    - name: Scan configs
       run: |
-        cp -r resources/config_templates/* config/
-        apptainer exec ${{ env.sif_file }} python main.py -m +experiment=classification command=scan system.device=cpu
+        bash tests/ci/copy_configs.sh ${{ env.sif_file }}
+        bash tests/ci/scan_configs.sh ${{ env.sif_file }}
+
+    - name: Run code check
+      run: bash tests/ci/pylint.sh ${{ env.sif_file }}
 
     - name: Deployment / Push to ghcr.io
       if: steps.setup.outputs.deploy == 'true'
