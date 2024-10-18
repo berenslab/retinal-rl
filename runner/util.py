@@ -17,6 +17,8 @@ from torch.optim.optimizer import Optimizer
 
 from retinal_rl.models.neural_circuit import NeuralCircuit
 
+nx.DiGraph.__class_getitem__ = classmethod(lambda a, b: "nx.DiGraph")  # type: ignore
+
 # Initialize the logger
 log = logging.getLogger(__name__)
 
@@ -78,11 +80,11 @@ def delete_results(cfg: DictConfig) -> None:
         print("Deletion cancelled.")
 
 
-def assemble_neural_circuits(  # type: ignore
+def assemble_neural_circuits(
     circuits: DictConfig,
     sensors: Dict[str, List[int]],
     connections: List[List[str]],
-) -> Tuple[DiGraph, Dict[str, NeuralCircuit]]:  # type: ignore
+) -> Tuple[DiGraph[str], Dict[str, NeuralCircuit]]:
     """
     Assemble a dictionary of neural circuits based on the provided configurations.
 
@@ -160,7 +162,7 @@ def assemble_neural_circuits(  # type: ignore
 
 def _assemble_inputs(
     node: str,
-    connectome: DiGraph,  # type: ignore
+    connectome: DiGraph[str],
     responses: Dict[str, torch.Tensor],
 ) -> torch.Tensor:
     """Assemble the inputs to a given node by concatenating the responses of its predecessors."""
