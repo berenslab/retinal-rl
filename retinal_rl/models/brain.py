@@ -1,13 +1,12 @@
 """Provides the Brain class, which combines multiple NeuralCircuit instances into a single model by specifying a graph of connections between them."""
 
 import logging
-from typing import Any, Dict, List, OrderedDict, Tuple, cast
+from typing import Dict, List, OrderedDict, Tuple
 
 import networkx as nx
 import torch
 import torch.nn as nn
-from hydra.utils import instantiate
-from omegaconf import DictConfig, OmegaConf
+from networkx.classes.digraph import DiGraph
 from torch import Tensor
 
 from retinal_rl.models.circuits.convolutional import ConvolutionalEncoder
@@ -21,9 +20,9 @@ class Brain(nn.Module):
 
     def __init__(
         self,
-        circuits: Dict[str, DictConfig],
+        circuits: Dict[str, NeuralCircuit],
         sensors: Dict[str, List[int]],
-        connections: List[List[str]],
+        connectome: DiGraph,  # type: ignore
     ) -> None:
         """Initialize the brain with a set of circuits, sensors, and connections.
 
@@ -37,72 +36,12 @@ class Brain(nn.Module):
         super().__init__()
 
         # Initialize attributes
-        self.circuits: Dict[str, NeuralCircuit] = {}
-        self._module_dict: nn.ModuleDict = nn.ModuleDict()
-        self.connectome: nx.DiGraph[str] = nx.DiGraph()
+        self.circuits: Dict[str, NeuralCircuit] = circuits
+        self._module_dict: nn.ModuleDict = nn.ModuleDict(circuits)
+        self.connectome: DiGraph[str] = connectome
         self.sensors: Dict[str, Tuple[int, ...]] = {}
         for sensor in sensors:
             self.sensors[sensor] = tuple(sensors[sensor])
-
-        # Build the connectome
-        self.connectome.add_nodes_from(self.sensors.keys())
-        self.connectome.add_nodes_from(circuits.keys())
-        for connection in connections:
-            if connection[0] not in self.connectome.nodes:
-                raise ValueError(f"Node {connection[0]} not found in the connectome.")
-            if connection[1] not in self.connectome.nodes:
-                raise ValueError(f"Node {connection[1]} not found in the connectome.")
-            self.connectome.add_edge(connection[0], connection[1])
-
-        # Ensure that the connectome is a directed acyclic graph
-        if not nx.is_directed_acyclic_graph(self.connectome):
-            raise ValueError("The connectome should be a directed acyclic graph.")
-
-        # Create dummy responses to help calculate the input shape for each neural circuit
-        dummy_responses = {
-            sensor: torch.rand((1, *self.sensors[sensor])) for sensor in self.sensors
-        }
-
-        # Instantiate the neural circuits
-        for node in nx.topological_sort(self.connectome):
-            if node in self.sensors:
-                continue
-
-            input_tensor = self._assemble_inputs(node, dummy_responses)
-            input_shape = list(input_tensor.shape[1:])
-            circuit_config = OmegaConf.to_container(circuits[node], resolve=True)
-            circuit_config = cast(Dict[str, Any], circuit_config)
-
-            # Check for an explicit output_shape key
-            if "output_shape" in circuit_config:
-                output_shape = circuit_config["output_shape"]
-                if isinstance(output_shape, str):
-                    output_shape = self._resolve_output_shape(output_shape)
-                circuit = instantiate(
-                    circuit_config,
-                    input_shape=input_shape,
-                    output_shape=output_shape,
-                )
-            else:
-                circuit = instantiate(
-                    circuit_config,
-                    input_shape=input_shape,
-                )
-
-            # Set attribute to register the module with pytorch
-            dummy_responses[node] = circuit(input_tensor)
-
-            self.circuits[node] = circuit
-            self._module_dict[node] = circuit
-
-    def _resolve_output_shape(self, output_shape: str) -> Tuple[int, ...]:
-        parts = output_shape.split(".")
-        if len(parts) == 2 and parts[0] in self.circuits:
-            circuit_name, property_name = parts
-            return getattr(self.circuits[circuit_name], property_name)
-        raise ValueError(
-            f"Invalid format for output_shape: {output_shape}. Must be of the form 'circuit_name.property_name'"
-        )
 
     def forward(self, stimuli: Dict[str, Tensor]) -> Dict[str, Tensor]:
         """Forward pass of the brain. Computed by following the connectome from sensors through the circuits."""

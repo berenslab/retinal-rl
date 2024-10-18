@@ -71,7 +71,11 @@ circuits:
       - ${rgc_kernel_size}
       - ${bp_kernel_size}
     stride: [2,1,2,2]
-    activation: ${activation}
+    activation:
+      - ${activation}
+      - ${activation}
+      - ${activation}
+      - "tanh"
 
   # Classifier: for categorizing the input into classes
   classifier:

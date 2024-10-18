@@ -2,35 +2,36 @@ import logging
 import re
 from enum import Enum
 from math import ceil, floor
-from typing import List, Tuple, Union
+from typing import List, Tuple, TypeVar, Union, cast
 
 import numpy as np
 import torch.nn as nn
 from numpy.typing import NDArray
 
+logger = logging.getLogger(__name__)
+
+### Types
+
 FloatArray = NDArray[np.float64]
 
+T = TypeVar("T")
 
-logger = logging.getLogger(__name__)
+### Functions
 
 
 def assert_list(
-    list_candidate: Union[int, List[int]],
+    list_candidate: Union[T, List[T]],
     len_list: int,
-) -> List[int]:
+) -> List[T]:
     """Assert that the list has the expected length, or create a list of the same value repeated."""
-    if isinstance(list_candidate, int):
-        _list = [list_candidate] * len_list
-    else:
+    if isinstance(list_candidate, List):
+        list_candidate = cast(List[T], list_candidate)
         if len(list_candidate) != len_list:
             raise AssertionError(
-                "The length of the list does not match the expected length: "
-                + str(len(list_candidate))
-                + " != "
-                + str(len_list)
+                f"The length of the list does not match the expected length: {len(list_candidate)} != {len_list}"
             )
-        _list = list_candidate
-    return _list
+        return list_candidate
+    return [list_candidate] * len_list
 
 
 def camel_to_snake(name: str) -> str:
