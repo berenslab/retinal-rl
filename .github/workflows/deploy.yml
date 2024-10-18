@@ -1,0 +1,25 @@
+name: Deploy Singularity Container
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'resources/retinal-rl.def'
+
+env:
+    singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image
+    sif_file: retinal-rl_singularity-image.sif
+    
+jobs:
+    build:
+        uses: ./.github/workflows/container_build.yml
+
+    deploy:
+        needs: build
+        runs-on: ubuntu-latest
+        steps:
+        - name: Deployment / Push to ghcr.io
+          run: |
+            apptainer registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
+            apptainer push ${{ env.sif_file }} oras://ghcr.io/berenslab/retinal-rl:singularity-image

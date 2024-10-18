@@ -1,0 +1,43 @@
+name: Check Container Definition file changed
+
+on:
+  pull_request:
+    branches: 
+      - master
+  workflow_dispatch:
+
+jobs:
+  check_def_changed: # evaluate whether build needs to be run / cache updated
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.check_file.outputs.changed }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if file changed
+        id: check_file
+        shell: bash
+        run: |
+          if [[ $(git diff --name-only origin/master...HEAD -- 'resources/retinal-rl.def') ]]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+  ensure_container: # main cache should provide the container if def file not changed
+    name: Conditionally Build and update cache of branch
+    needs: check_def_changed
+    if: needs.check_def_changed.outputs.changed == 'true'
+    uses: ./.github/workflows/update_cache.yml
+    with:
+      build: true
+
+  checks:
+    name: Run linter and simple functionality test 
+    needs: ensure_container
+    if: needs.ensure_container.result == 'skipped' || needs.ensure_container.result == 'success'
+    uses: ./.github/workflows/code_check.yml

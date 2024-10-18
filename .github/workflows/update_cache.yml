@@ -4,24 +4,41 @@ on:
   schedule:
     - cron: '0 2 * * 0' # As cache is emptied if not accessed for 7 days, check after 7 days whether container has changed
   workflow_dispatch:
-  push:
-    branches:
-      - master
-    paths:
-      - 'resources/retinal-rl.def'
+    inputs:
+      build:
+        type: boolean
+        required: true
   workflow_call:
+    inputs:
+      build:
+        type: boolean
+        required: true
 
 env:
   singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image
   sif_file: retinal-rl_singularity-image.sif
   
 jobs:
-  conditional-build:
+  evaluate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check inputs
+        id: check
+        run: |
+          if [[ "${{ inputs.build }}" != "" ]]; then
+            echo "build=${{ inputs.build }}" >> $GITHUB_OUTPUT
+          else
+            echo "build=${{ github.event_name == 'push' }}" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    needs: evaluate
+    if: needs.evaluate.outputs.build == 'true'
     uses: ./.github/workflows/container_build.yml
-    with:
-      deploy: ${{ github.event_name == 'push' }}
+  
   update-cache:
-    needs: conditional-build
+    needs: evaluate
+    if: needs.evaluate.outputs.build == 'false'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
