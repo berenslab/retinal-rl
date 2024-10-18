@@ -39,5 +39,5 @@ jobs:
   checks:
     name: Run linter and simple functionality test 
     needs: ensure_container
-    if: needs.ensure_container.result == 'skipped' || needs.ensure_container.result == 'success'
+    if: always()
     uses: ./.github/workflows/code_check.yml
