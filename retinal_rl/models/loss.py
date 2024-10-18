@@ -1,7 +1,7 @@
 """Losses for training models, and the context required to evaluate them."""
 
 from abc import abstractmethod
-from typing import Dict, Generic, List, TypeVar
+from typing import Dict, Generic, List, Optional, TypeVar
 
 import torch
 import torch.nn as nn
@@ -43,25 +43,25 @@ class Loss(Generic[ContextT]):
 
     Attributes
     ----------
-        min_epoch (int): The minimum epoch to start training the loss.
-        max_epoch (int): The maximum epoch to train the loss. Unbounded if < 0.
         target_circuits (List[str]): The target circuits for the loss.
         weights (List[float]): The weights for the loss.
+        min_epoch (int): The minimum epoch to start training the loss.
+        max_epoch (int): The maximum epoch to train the loss. Unbounded if < 0.
 
     """
 
     def __init__(
         self,
-        min_epoch: int = 0,
-        max_epoch: int = -1,
         target_circuits: List[str] = [],
         weights: List[float] = [],
+        min_epoch: Optional[int] = None,
+        max_epoch: Optional[int] = None,
     ):
         """Initialize the loss with a weight."""
-        self.min_epoch = min_epoch
-        self.max_epoch = max_epoch
         self.target_circuits = target_circuits
         self.weights = weights
+        self.min_epoch = min_epoch
+        self.max_epoch = max_epoch
 
     def __call__(self, context: ContextT) -> Tensor:
         return self.compute_value(context)
@@ -78,11 +78,11 @@ class Loss(Generic[ContextT]):
             bool: True if the objective should continue training, False otherwise.
 
         """
-        if epoch < self.min_epoch:
+        if self.min_epoch is not None and epoch < self.min_epoch:
             return False
-        if self.max_epoch < 0:
-            return True
-        return epoch < self.max_epoch
+        if self.max_epoch is not None and epoch > self.max_epoch:
+            return False
+        return True
 
     @abstractmethod
     def compute_value(self, context: ContextT) -> Tensor:
@@ -100,19 +100,21 @@ class ReconstructionLoss(Loss[ContextT]):
 
     def __init__(
         self,
-        min_epoch: int = 0,
-        max_epoch: int = -1,
+        target_decoder: str,
         target_circuits: List[str] = [],
         weights: List[float] = [],
+        min_epoch: Optional[int] = None,
+        max_epoch: Optional[int] = None,
     ):
         """Initialize the reconstruction loss loss."""
-        super().__init__(min_epoch, max_epoch, target_circuits, weights)
+        super().__init__(target_circuits, weights, min_epoch, max_epoch)
         self.loss_fn = nn.MSELoss(reduction="mean")
+        self.target_decoder = target_decoder
 
     def compute_value(self, context: ContextT) -> Tensor:
         """Compute the mean squared error between inputs and reconstructions."""
         sources = context.sources
-        reconstructions = context.responses["decoder"]
+        reconstructions = context.responses[self.target_decoder]
 
         if sources.shape != reconstructions.shape:
             raise ValueError(
@@ -121,6 +123,11 @@ class ReconstructionLoss(Loss[ContextT]):
 
         return self.loss_fn(reconstructions, sources)
 
+    @property
+    def key_name(self) -> str:
+        """Return a user-friendly name for the loss, including the target decoder."""
+        return f"reconstruction_loss_{self.target_decoder.lower()}"
+
 
 class L1Sparsity(Loss[ContextT]):
     """Loss for computing the L1 sparsity of activations."""
@@ -128,13 +135,13 @@ class L1Sparsity(Loss[ContextT]):
     def __init__(
         self,
         target_responses: List[str],
-        min_epoch: int = 0,
-        max_epoch: int = -1,
         target_circuits: List[str] = [],
         weights: List[float] = [],
+        min_epoch: Optional[int] = None,
+        max_epoch: Optional[int] = None,
     ):
         """Initialize the reconstruction loss loss."""
-        super().__init__(min_epoch, max_epoch, target_circuits, weights)
+        super().__init__(target_circuits, weights, min_epoch, max_epoch)
 
         """Initialize the L1 sparsity loss."""
         self.target_responses = target_responses
@@ -157,13 +164,13 @@ class KLDivergenceSparsity(Loss[ContextT]):
         self,
         target_responses: List[str],
         target_sparsity: float = 0.05,
-        min_epoch: int = 0,
-        max_epoch: int = -1,
         target_circuits: List[str] = [],
         weights: List[float] = [],
+        min_epoch: Optional[int] = None,
+        max_epoch: Optional[int] = None,
     ):
         """Initialize the KL divergence sparsity loss."""
-        super().__init__(min_epoch, max_epoch, target_circuits, weights)
+        super().__init__(target_circuits, weights, min_epoch, max_epoch)
         self.target_responses = target_responses
         self.target_sparsity = target_sparsity
 

@@ -28,7 +28,7 @@ circuits:
     num_channels: [16,32]  # Two layers with 16 and 32 channels
     kernel_size: 8
     stride: 2
-    act_name: ${activation}
+    activation: ${activation}
     layer_names: ["bipolar", "retinal_ganglion"]  # Names inspired by retinal cell types
 
   # Thalamus: relay and processing station
@@ -38,7 +38,7 @@ circuits:
     num_channels: 64
     kernel_size: 5
     stride: 1
-    act_name: ${activation}
+    activation: ${activation}
     layer_names: ["lgn"]  # Lateral Geniculate Nucleus
 
   # Visual Cortex: higher-level visual processing
@@ -48,7 +48,7 @@ circuits:
     num_channels: 64
     kernel_size: 8
     stride: 2
-    act_name: ${activation}
+    activation: ${activation}
     layer_names: ["v1"]  # Primary Visual Cortex
 
   # Inferotemporal Cortex: Associations
@@ -58,7 +58,7 @@ circuits:
       - 64  # Size of the latent representation
     hidden_units: 
       - 64  # Number of hidden units
-    act_name: ${activation}
+    activation: ${activation}
 
   # Prefrontal Cortex: high-level cognitive processing
   prefrontal:
@@ -67,7 +67,7 @@ circuits:
       - 32  # Size of the latent representation
     hidden_units: 
       - 32  # Number of hidden units
-    act_name: ${activation}
+    activation: ${activation}
 
   # Prefrontal Cortex: high-level cognitive processing
   inferotemporal_decoder:
@@ -75,7 +75,7 @@ circuits:
     output_shape: "inferotemporal.input_shape"  # Size of the latent representation
     hidden_units: 
       - 64  # Number of hidden units
-    act_name: ${activation}
+    activation: ${activation}
 
   # Decoder: for reconstructing the input from the latent representation
   decoder:
@@ -84,7 +84,7 @@ circuits:
     num_channels: [64,32,16,3]  # For a symmetric encoder, this should be the reverse of the num_channels in the CNN layers up to the point of decoding (in this case, the thalamus)
     kernel_size: [5,8,8,8]
     stride: [1,2,2,2]
-    act_name: ${activation}
+    activation: ${activation}
 
   # Classifier: for categorizing the input into classes
   classifier:

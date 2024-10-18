@@ -18,7 +18,7 @@ class FullyConnectedEncoder(NeuralCircuit):
         input_shape (List[int]): The shape of the input tensor (e.g., [channels, height, width]).
         output_shape (List[int]): The shape of the output tensor.
         hidden_units (Union[int, List[int]]): The number of hidden units for each layer. Default is 128.
-        act_name (str): The name of the activation function to use. Default is "relu".
+        activation (str): The name of the activation function to use. Default is "relu".
 
     """
 
@@ -27,13 +27,13 @@ class FullyConnectedEncoder(NeuralCircuit):
         input_shape: List[int],
         output_shape: List[int],
         hidden_units: List[int],
-        act_name: str,
+        activation: str,
     ):
         super().__init__(input_shape)
 
         self._output_shape = output_shape
         self.hidden_units = hidden_units
-        self.act_name = act_name
+        self.activation = activation
 
         num_layers = len(hidden_units) + 1
 
@@ -52,7 +52,7 @@ class FullyConnectedEncoder(NeuralCircuit):
                 )
             )
             fc_layers.append(
-                (self.act_name + str(i), self.str_to_activation(self.act_name))
+                (self.activation + str(i), self.str_to_activation(self.activation))
             )
             input_size = output_size
 
@@ -77,13 +77,13 @@ class FullyConnectedDecoder(NeuralCircuit):
         input_shape: List[int],
         output_shape: List[int],
         hidden_units: List[int],
-        act_name: str,
+        activation: str,
     ):
         super().__init__(input_shape)
 
         self._output_shape = output_shape
         self.hidden_units = hidden_units
-        self.act_name = act_name
+        self.activation = activation
         num_layers = len(hidden_units) + 1
 
         fc_layers: List[Tuple[str, nn.Module]] = []
@@ -101,7 +101,7 @@ class FullyConnectedDecoder(NeuralCircuit):
                 )
             )
             fc_layers.append(
-                (self.act_name + str(i), self.str_to_activation(self.act_name))
+                (self.activation + str(i), self.str_to_activation(self.activation))
             )
             input_size = output_size
 
