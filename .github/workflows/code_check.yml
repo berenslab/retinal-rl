@@ -38,5 +38,5 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
 
-    - name: Run Pylint
-      run: bash tests/ci/pylint.sh ${{ env.sif_file }}
+    - name: Run Linter / Code check
+      run: bash tests/ci/lint.sh ${{ env.sif_file }}
