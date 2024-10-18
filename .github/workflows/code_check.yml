@@ -5,7 +5,7 @@ on:
     branches:
       - master
     paths:
-      - ! 'resources/retinal-rl.def'
+      - '!resources/retinal-rl.def'
       - '**/*.py'
   workflow_dispatch:
 
