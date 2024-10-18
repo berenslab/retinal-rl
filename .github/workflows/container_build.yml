@@ -1,38 +1,74 @@
 name: Build Singularity Container
 
 on: 
-  schedule:
-    - cron: '0 2 1 * *'
-  push:
-    branches-ignore:
-      - master
-    paths:
-      - 'resources/retinal-rl.def'
   pull_request:
     branches:
       - master
     paths:
       - 'resources/retinal-rl.def'
   workflow_call:
+    inputs:
+      deploy:
+        type: boolean
+        required: false
+        default: true
+  workflow_dispatch:
+    inputs:
+      deploy:
+        type: boolean
+        required: false
+        default: true
+
+env:
+  singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image
+  sif_file: retinal-rl_singularity-image.sif
 
 jobs:
   singularity-build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Fetch all branches
+      run: git fetch --all
     - uses: eWaterCycle/setup-apptainer@v2
       with:
         apptainer-version: 1.3.0
+    
+    - name: Evaluate whether build should be deployed
+      id: setup
+      run: |
+        if [[ "${{ inputs.deploy }}" != "" ]]; then
+          echo "deploy=${{ inputs.deploy }}" >> $GITHUB_OUTPUT
+        else
+          echo "deploy=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Cache Singularity Image
+      id: cache-singularity
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.sif_file }}
+        key: ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
+        restore-keys: |
+          ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
 
     - name: Build Singularity container
-      run: apptainer build retinal-rl.sif resources/retinal-rl.def
+      if: steps.cache-singularity.outputs.cache-hit != 'true'
+      run: apptainer build ${{ env.sif_file }} resources/retinal-rl.def
 
-    - name: Scan classification config / ensure minimal functionality
+    - name: Scan configs
       run: |
-        cp -r resources/config_templates/* config/
-        singularity exec retinal-rl.sif python main.py -m +experiment=classification command=scan system.device=cpu
+        bash tests/ci/copy_configs.sh ${{ env.sif_file }}
+        bash tests/ci/scan_configs.sh ${{ env.sif_file }}
 
-    - name: Push to ghcr.io
+    - name: Run code check
+      run: bash tests/ci/pylint.sh ${{ env.sif_file }}
+
+    - name: Deployment / Push to ghcr.io
+      if: steps.setup.outputs.deploy == 'true'
       run: |
-        singularity registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
-        singularity push retinal-rl.sif oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest
+        apptainer registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
+        apptainer push ${{ env.sif_file }} oras://ghcr.io/berenslab/retinal-rl:singularity-image

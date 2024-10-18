@@ -1,9 +1,13 @@
 name: Scan Configs
-on: [pull_request,workflow_dispatch]
+on: 
+  pull_request:
+    paths-ignore: 
+      - 'resources/retinal-rl.def'
+  workflow_dispatch:
 
 env:
-  singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image-latest
-  sif_file: retinal-rl_singularity-image-latest.sif
+  singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image
+  sif_file: retinal-rl_singularity-image.sif
 
 jobs:
   scan:
@@ -16,30 +20,15 @@ jobs:
         apptainer-version: 1.3.0
     - name: Cache Singularity Image
       id: cache-singularity
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{ env.sif_file }}
         key: ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
         restore-keys: |
           ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
-          ${{ runner.os }}-singularity-
-    - name: Pull Singularity container
-      if: steps.cache-singularity.outputs.cache-hit != 'true'
-      run: |
-        singularity registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
-        singularity pull ${{ env.sif_file }} ${{ env.singularity_image }}
 
     - name: Prepare experiment files
-      run: |
-        cp -r resources/config_templates/* config/
-        for file in config/user/experiment/*.yaml; do
-          filename=$(basename "$file" .yaml)
-          echo "$filename" >> experiments.txt
-        done
+      run: bash tests/ci/copy_configs.sh ${{ env.sif_file }}
 
-    - name: Scan classification configs
-      run: |
-        while IFS= read -r experiment; do
-          singularity exec ${{ env.sif_file }} \
-          python main.py +experiment="$experiment" command=scan system.device=cpu
-        done < experiments.txt
+    - name: Scan configs
+      run: bash tests/ci/scan_configs.sh ${{ env.sif_file }}
