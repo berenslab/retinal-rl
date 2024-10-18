@@ -16,7 +16,7 @@ from retinal_rl.datasets.transforms import ContinuousTransform
 from retinal_rl.models.brain import Brain, get_cnn_circuit
 from retinal_rl.util import (
     FloatArray,
-    is_activation,
+    is_nonlinearity,
     rf_size_and_start,
 )
 
@@ -192,7 +192,6 @@ def cnn_statistics(
     # Analyze input statistics
     input_spectral = _layer_spectral_analysis(device, dataloader, nn.Identity())
     input_histograms = _layer_pixel_histograms(device, dataloader, nn.Identity())
-    # num channels as FloatArray
 
     # Load input statistics into results dictionary
     results["input"] = {
@@ -223,7 +222,7 @@ def cnn_statistics(
 
         x = head_model(obs)
 
-        if is_activation(layer):
+        if is_nonlinearity(layer):
             continue  # Skip layers without out_channels (e.g., activation functions)
 
         ochns: int

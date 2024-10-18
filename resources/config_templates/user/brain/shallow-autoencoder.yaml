@@ -30,6 +30,7 @@ circuits:
     stride: 2
     activation: ${activation}
     layer_names: ["bipolar", "retinal_ganglion"]  # Names inspired by retinal cell types
+    normalization: True
 
   # Thalamus: relay and processing station
   thalamus:
@@ -40,6 +41,7 @@ circuits:
     stride: 1
     activation: ${activation}
     layer_names: ["lgn"]  # Lateral Geniculate Nucleus
+    normalization: True
 
   # Visual Cortex: higher-level visual processing
   visual_cortex:
@@ -50,6 +52,7 @@ circuits:
     stride: 2
     activation: ${activation}
     layer_names: ["v1"]  # Primary Visual Cortex
+    normalization: True
 
   # Prefrontal Cortex: high-level cognitive processing
   prefrontal:
@@ -64,6 +67,7 @@ circuits:
   v1_decoder:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
     num_layers: 4
+    normalization: True
     num_channels: [64,32,16,3]  # For a symmetric encoder, this should be the reverse of the num_channels in the CNN layers up to the point of decoding (in this case, the thalamus)
     kernel_size: 
       - ${v1_kernel_size}

@@ -50,7 +50,7 @@ def encoder_out_size(mdls: List[nn.Module], hght0: int, wdth0: int) -> Tuple[int
 
     # iterate over modules that are not activations
     for mdl in mdls:
-        if is_activation(mdl):
+        if is_nonlinearity(mdl):
             continue
         if isinstance(mdl, nn.Conv2d):
             krnsz = _double_up(mdl.kernel_size)
@@ -90,7 +90,7 @@ def rf_size_and_start(
     wmn = widx
 
     for mdl in mdls:
-        if is_activation(mdl):
+        if is_nonlinearity(mdl):
             continue
         if not (is_convolutional_layer(mdl) or is_base_pooling_layer(mdl)):
             raise NotImplementedError(
@@ -132,9 +132,19 @@ class Activation(Enum):
         return act_module
 
 
-def is_activation(mdl: nn.Module) -> bool:
-    """Check if the module is an activation function."""
-    return mdl.__class__ in [act.value for act in Activation]
+def is_nonlinearity(mdl: nn.Module) -> bool:
+    """Check if the module is an activation function or a normalization layer."""
+    return mdl.__class__ in [act.value for act in Activation] or isinstance(
+        mdl,
+        (
+            nn.BatchNorm1d,
+            nn.BatchNorm2d,
+            nn.BatchNorm3d,
+            nn.InstanceNorm1d,
+            nn.InstanceNorm2d,
+            nn.InstanceNorm3d,
+        ),
+    )
 
 
 def is_convolutional_layer(mdl: nn.Module) -> bool:

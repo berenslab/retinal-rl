@@ -87,16 +87,6 @@ def assemble_neural_circuits(
 ) -> Tuple[DiGraph[str], Dict[str, NeuralCircuit]]:
     """
     Assemble a dictionary of neural circuits based on the provided configurations.
-
-    Args:
-    ----
-    circuits: A dictionary of circuit configurations.
-    sensors: A dictionary of sensor names and their dimensions.
-    connections: A list of connections between sensors and circuits.
-
-    Returns:
-    -------
-    Dict[str, NeuralCircuit]: A dictionary of instantiated neural circuits.
     """
     assembled_circuits: Dict[str, "NeuralCircuit"] = {}
     connectome: DiGraph[str] = nx.DiGraph()
@@ -130,6 +120,7 @@ def assemble_neural_circuits(
         if node in sensor_shapes:
             continue
 
+        print(f"Processing node {node}")
         circuit_config = OmegaConf.select(circuits, node)
         input_tensor = _assemble_inputs(node, connectome, dummy_responses)
         input_shape = list(input_tensor.shape[1:])
