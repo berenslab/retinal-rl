@@ -13,7 +13,7 @@
 #   (run from top level directory!)
 #
 # Dependencies:
-#   - Singularity/Apptainer
+#   - Singularity/Apptainer + container
 #   - Container must have pylint installed
 #===============================================================================
 
