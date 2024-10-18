@@ -65,7 +65,7 @@ jobs:
         bash tests/ci/scan_configs.sh ${{ env.sif_file }}
 
     - name: Run code check
-      run: bash tests/ci/pylint.sh ${{ env.sif_file }}
+      run: bash tests/ci/lint.sh ${{ env.sif_file }}
 
     - name: Deployment / Push to ghcr.io
       if: steps.setup.outputs.deploy == 'true'
