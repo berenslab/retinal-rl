@@ -34,9 +34,11 @@ jobs:
           ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
 
     - name: Run Linter / Code check
+      if: always() && steps.cache-singularity.outputs.cache-hit == 'true'
       run: bash tests/ci/lint.sh ${{ env.sif_file }}
 
     - name: Scan configs
+      if: always() && steps.cache-singularity.outputs.cache-hit == 'true'
       run: |
          bash tests/ci/copy_configs.sh ${{ env.sif_file }}
          bash tests/ci/scan_configs.sh ${{ env.sif_file }}
