@@ -26,19 +26,7 @@ logger = logging.getLogger(__name__)
 def transform_base_images(
     imageset: Imageset, num_steps: int, num_images: int
 ) -> Dict[str, Dict[str, Dict[float, List[Tensor]]]]:
-    """Apply transformations to a set of images from an Imageset.
-
-    Args:
-    ----
-        imageset (Imageset): The dataset to transform.
-        num_images (int): The number of images to sample.
-        num_steps (int): The number of steps across the transformation range, and to apply each transformation.
-
-    Returns:
-    -------
-        Dict[str, Dict[str, Dict[float, List[Tensor]]]]: A dictionary containing the results.
-
-    """
+    """Apply transformations to a set of images from an Imageset."""
     images: List[Image.Image] = []
 
     base_dataset = imageset.base_dataset
@@ -79,25 +67,12 @@ def transform_base_images(
 def reconstruct_images(
     device: torch.device,
     brain: Brain,
+    decoder: str,
     test_set: Imageset,
     train_set: Imageset,
     sample_size: int,
 ) -> Dict[str, List[Tuple[Tensor, int]]]:
-    """Compute reconstructions of a set of training and test images using a Brain model.
-
-    Args:
-    ----
-        device (torch.device): The device to run computations on.
-        brain (Brain): The trained Brain model.
-        test_set (Imageset): The test dataset.
-        train_set (Imageset): The training dataset.
-        sample_size (int): The number of samples to reconstruct
-
-    Returns:
-    -------
-    Dict[str, List[Tuple[Tensor, int]]]: A dictionary containing the following keys: "train_subset", "train_estimates", "test_subset", "test_estimates".
-
-    """
+    """Compute reconstructions of a set of training and test images using a Brain model."""
     brain.eval()  # Set the model to evaluation mode
 
     def collect_reconstructions(
@@ -118,7 +93,7 @@ def reconstruct_images(
                 img = img.to(device)
                 stimulus = {"vision": img.unsqueeze(0)}
                 response = brain(stimulus)
-                rec_img = response["decoder"].squeeze(0)
+                rec_img = response[decoder].squeeze(0)
                 pred_k = response["classifier"].argmax().item()
                 source_subset.append((src.cpu(), k))
                 input_subset.append((img.cpu(), k))

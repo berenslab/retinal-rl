@@ -100,6 +100,7 @@ class ReconstructionLoss(Loss[ContextT]):
 
     def __init__(
         self,
+        target_decoder: str,
         target_circuits: List[str] = [],
         weights: List[float] = [],
         min_epoch: Optional[int] = None,
@@ -108,11 +109,12 @@ class ReconstructionLoss(Loss[ContextT]):
         """Initialize the reconstruction loss loss."""
         super().__init__(target_circuits, weights, min_epoch, max_epoch)
         self.loss_fn = nn.MSELoss(reduction="mean")
+        self.target_decoder = target_decoder
 
     def compute_value(self, context: ContextT) -> Tensor:
         """Compute the mean squared error between inputs and reconstructions."""
         sources = context.sources
-        reconstructions = context.responses["decoder"]
+        reconstructions = context.responses[self.target_decoder]
 
         if sources.shape != reconstructions.shape:
             raise ValueError(
@@ -120,6 +122,11 @@ class ReconstructionLoss(Loss[ContextT]):
             )
 
         return self.loss_fn(reconstructions, sources)
+
+    @property
+    def key_name(self) -> str:
+        """Return a user-friendly name for the loss, including the target decoder."""
+        return f"reconstruction_loss_{self.target_decoder.lower()}"
 
 
 class L1Sparsity(Loss[ContextT]):

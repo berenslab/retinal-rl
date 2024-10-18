@@ -25,6 +25,7 @@ from retinal_rl.analysis.statistics import (
 )
 from retinal_rl.dataset import Imageset
 from retinal_rl.models.brain import Brain
+from retinal_rl.models.loss import ReconstructionLoss
 from retinal_rl.models.objective import ContextT, Objective
 
 logger = logging.getLogger(__name__)
@@ -158,8 +159,20 @@ def analyze(
                 f"channel_{channel}",
                 epoch,
             )
-    rec_dict = reconstruct_images(device, brain, train_set, test_set, 5)
-    recon_fig = plot_reconstructions(**rec_dict, num_samples=5)
-    _process_figure(
-        cfg, copy_checkpoint, recon_fig, "reconstruction", "reconstructions", epoch
-    )
+
+    reconstruction_decoders: List[str] = []
+    for loss in objective.losses:
+        if isinstance(loss, ReconstructionLoss):
+            reconstruction_decoders.append(loss.target_decoder)
+
+    for decoder in reconstruction_decoders:
+        rec_dict = reconstruct_images(device, brain, decoder, train_set, test_set, 5)
+        recon_fig = plot_reconstructions(**rec_dict, num_samples=5)
+        _process_figure(
+            cfg,
+            copy_checkpoint,
+            recon_fig,
+            "reconstruction",
+            f"{decoder}_reconstructions",
+            epoch,
+        )
