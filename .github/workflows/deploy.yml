@@ -10,7 +10,7 @@ on:
 env:
     singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image
     sif_file: retinal-rl_singularity-image.sif
-    
+
 jobs:
     build:
         uses: ./.github/workflows/container_build.yml
@@ -22,4 +22,4 @@ jobs:
         - name: Deployment / Push to ghcr.io
           run: |
             apptainer registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
-            apptainer push ${{ env.sif_file }} oras://ghcr.io/berenslab/retinal-rl:singularity-image
+            apptainer push ${{ env.sif_file }} ${{ env.singularity_image }}
