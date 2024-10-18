@@ -1,60 +1,54 @@
+# Retinal RL
+
 ## Setting up the development environment
 
-Unfortunately, putting together a unified build scheme has proven challenging, because our different compute resources rely on different containerization schemes (i.e. bespoke docker vs apptainer), and subtle bugs have emerged that only effect one build system or the other. We maintain a `Dockerfile` for building the docker image and the `retinal_rl.def` file to build the `apptainer` image, and we've also had success building with `conda` on bare metal.
+We provide a singularity / apptainer container which should always be up to date and allow to run the code immediately. You do not need to build it yourself (but can, of course), you can just pull it!
 
-### Apptainer
+### Install Singularity / Apptainer
 
-The `apptainer` image is self-contained, and building it should immediately allow running the relevant scripts in `retinal-rl`, by prefixing them with `apptainer exec [image]`. The versions of most pip packages are floating, but we have an `environment.yaml` file from a working `apptainer` build.
+First you need to install [apptainer](https://github.com/apptainer/apptainer/) (or singularity) in order to run code.
 
-### Conda
+### Get the container
 
-Here are the steps to get a `retinal-rl` environment setup in `conda`, which should work on bare metal. First [install anaconda or miniconda](https://docs.anaconda.com/anaconda/install/index.html), and then create the environment
-``` bash
-conda create --name retinal-rl pip
-conda activate retinal-rl
-```
-I'm using `miniconda`, so some of the following commands might be redundant if you're using `anaconda`.
+Once you have apptainer installed, you can simply pull the container
 
-Next, we install `pytorch`
 ```bash
-conda install pytorch torchvision torchaudio cudatoolkit=11.6 -c pytorch -c conda-forge
+apptainer pull retinal-rl.sif oras://ghcr.io/berenslab/retinal-rl:singularity-image
 ```
-and then install `sample-factory` and `vizdoom`
+
+or try to build it on your own (no advantages of doing that, except you want to change some dependency in the .def file):
+
 ```bash
-pip install sample-factory
-pip install vizdoom
+apptainer build retinal-rl.sif resources/retinal-rl.def
 ```
-Note, you may require `sample-factory=1.121.4` on a server. You may also want to downgrade the `gym` library with `pip install gym==0.25.2`
 
-For `vizdoom`, `pip install` can sometimes fail when run inside a `conda` environment. In this case the solution is to build `vizdoom` directly by running
+### Prepare config directory for experiments
+
+The repository comes with some example configuration files, which you find under 'resources/config_templates'. For running experiments however, they need to be in 'config'.
+You can either copy them there by hand or run the following script from the top-level directory:
+
 ```bash
-conda install -c conda-forge boost cmake gtk2 sdl2
-git clone https://github.com/mwydmuch/ViZDoom.git --recurse-submodules
-cd ViZDoom
-python setup.py build && python setup.py install
+bash tests/ci/copy_configs.sh
 ```
 
-We'll also need some other tools and libraries
+### Test basic functionality
+
+Now you are basically ready to run experiments!
+To test that everything is working fine, you can run:
+
 ```bash
-conda install -c conda-forge matplotlib pyglet imageio
-pip install pygifsicle
-pip install openTSNE
+bash tests/ci/scan_configs.sh
 ```
-IPython might also be necessary:
+
+The script loops over all experiments defined in config/experiment and runs a "scan" on them.
+If instead you want to run a single experiment file, run:
+
 ```bash
-conda install -c conda-forge ipython
+apptainer exec retinal-rl.sif python main.py +experiment="$experiment" command=scan system.device=cpu
 ```
 
-### Docker
+## Running retinal RL simulations [DEPRECATED]
 
-The `Dockerfile` is a thin wrapper around the berenslab `Dockerfile` for the berenslab cluster, but may still serve as a basis for developing a `docker` container for other systems. Regardless, after building the image we then create the `conda` environment as above.
-
-## Running retinal RL simulations
-
-Now that we have a (hopefully) working environment, we clone the repo
-```bash
-https://github.com/berenslab/retinal-rl.git
-```
 There are three main scripts for working with `retinal-rl`:
 
 - `train.py`: Train a model.
