@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 from networkx.classes.digraph import DiGraph
 from torch import Tensor
+from torchinfo import summary
 
 from retinal_rl.models.circuits.convolutional import ConvolutionalEncoder
 from retinal_rl.models.neural_circuit import NeuralCircuit
@@ -55,17 +56,26 @@ class Brain(nn.Module):
                 responses[node] = self.circuits[node](input)
         return responses
 
+    def scan(self):
+        print("\nWhole Brain Scan:\n")
+
+        dummy_stimulus: Dict[str, Tensor] = {}
+        device = next(self.parameters()).device
+        for sensor in self.sensors:
+            dummy_stimulus[sensor] = torch.rand((1, *self.sensors[sensor]), device=device)
+
+        summary(self, input_data=[dummy_stimulus])
+
     def scan_circuits(self):
         """Run torchscan on all circuits and concatenates the reports."""
         # Print connectome
-        print("\n\nConnectome:\n")
-        print("Nodes: ", self.connectome.nodes)
-        print("Edges: ", self.connectome.edges)
+        print("\nCircuit Scans:")
 
         # Run scans on all circuits
+        device = next(self.parameters()).device
         dummy_stimulus: Dict[str, Tensor] = {}
         for sensor in self.sensors:
-            dummy_stimulus[sensor] = torch.rand((1, *self.sensors[sensor]))
+            dummy_stimulus[sensor] = torch.rand((1, *self.sensors[sensor]), device=device)
 
         for crcnm, circuit in self.circuits.items():
             print(
