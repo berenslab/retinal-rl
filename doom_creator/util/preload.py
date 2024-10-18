@@ -8,8 +8,8 @@ from typing import Optional
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 
-from doom_creator.util.texture import TextureType
 from doom_creator.util.config import Config
+from doom_creator.util.texture import TextureType
 
 ### Util ###
 
@@ -115,7 +115,7 @@ def check_preload(cfg: Config, test: bool):
                 # assume second last part of path is the directory / texture type
                 try:
                     t = TextureType(t_type)
-                except:
+                except Exception:
                     continue
                 else:
                     needed_types.add(t)
