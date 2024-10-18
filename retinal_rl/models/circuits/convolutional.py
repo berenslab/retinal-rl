@@ -46,7 +46,7 @@ class ConvolutionalEncoder(NeuralCircuit):
         kernel_size: Union[int, List[int]],
         stride: Union[int, List[int]],
         activation: Union[str, List[str]],
-        normalization: bool = False,
+        layer_norm: bool = False,
         affine_norm: bool = True,
         layer_names: Optional[List[str]] = None,
     ):
@@ -84,7 +84,7 @@ class ConvolutionalEncoder(NeuralCircuit):
                     ),
                 )
             )
-            if normalization and i is num_layers - 1:
+            if layer_norm and i is num_layers - 1:
                 conv_layers.append(
                     (
                         f"{layer_names[i]}_instance_norm"
@@ -111,7 +111,7 @@ class ConvolutionalDecoder(NeuralCircuit):
         kernel_size: Union[int, List[int]],
         stride: Union[int, List[int]],
         activation: Union[str, List[str]],
-        normalization: bool = False,
+        layer_norm: bool = False,
         affine_norm: bool = True,
         layer_names: Optional[List[str]] = None,
     ):
@@ -158,7 +158,7 @@ class ConvolutionalDecoder(NeuralCircuit):
                     ),
                 )
             )
-            if normalization and i == 0:
+            if layer_norm and i == 0:
                 deconv_layers.append(
                     (
                         f"{layer_names[i]}_instance_norm"

@@ -29,3 +29,6 @@ shot_noise_transform: True
 contrast_noise_transform: True
 brightness_noise_transform: True
 blur_noise_transform: True
+
+layer_norm: True
+affine_norm: False
