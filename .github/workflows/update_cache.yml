@@ -21,6 +21,8 @@ env:
 jobs:
   evaluate:
     runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.check.outputs.build }}
     steps:
       - name: Check inputs
         id: check
