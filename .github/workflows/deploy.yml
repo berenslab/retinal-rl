@@ -1,0 +1,35 @@
+name: Deploy Singularity Container
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'resources/retinal-rl.def'
+
+env:
+    singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image
+    sif_file: retinal-rl_singularity-image.sif
+
+jobs:
+    build:
+        name: Build container
+        uses: ./.github/workflows/container_build.yml
+
+    deploy:
+        name: Deploy container
+        needs: build
+        runs-on: ubuntu-latest
+        steps:
+        - name: Retrieve cached sif file
+          id: cache-singularity
+          uses: actions/cache@v4
+          with:
+            path: ${{ env.sif_file }}
+            key: ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
+            restore-keys: |
+                ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
+        - name: Deployment / Push to ghcr.io
+          run: |
+            apptainer registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io
+            apptainer push ${{ env.sif_file }} ${{ env.singularity_image }}

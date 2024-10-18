@@ -1,12 +1,8 @@
-name: Code Checking
+name: Code Checking & Scan
 
 on:
-  pull_request:
-    branches:
-      - master
-    paths:
-      - '!resources/retinal-rl.def'
   workflow_dispatch:
+  workflow_call:
 
 env:
   singularity_image: oras://ghcr.io/berenslab/retinal-rl:singularity-image
@@ -39,3 +35,8 @@ jobs:
 
     - name: Run Linter / Code check
       run: bash tests/ci/lint.sh ${{ env.sif_file }}
+
+    - name: Scan configs
+      run: |
+         bash tests/ci/copy_configs.sh ${{ env.sif_file }}
+         bash tests/ci/scan_configs.sh ${{ env.sif_file }}
