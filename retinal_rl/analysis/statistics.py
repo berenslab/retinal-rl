@@ -192,6 +192,7 @@ def cnn_statistics(
     # Analyze input statistics
     input_spectral = _layer_spectral_analysis(device, dataloader, nn.Identity())
     input_histograms = _layer_pixel_histograms(device, dataloader, nn.Identity())
+    # num channels as FloatArray
 
     # Load input statistics into results dictionary
     results["input"] = {

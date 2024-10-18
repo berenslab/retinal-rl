@@ -47,6 +47,7 @@ class ConvolutionalEncoder(NeuralCircuit):
         stride: Union[int, List[int]],
         activation: Union[str, List[str]],
         normalization: bool = False,
+        affine_norm: bool = True,
         layer_names: Optional[List[str]] = None,
     ):
         super().__init__(input_shape)
@@ -85,7 +86,12 @@ class ConvolutionalEncoder(NeuralCircuit):
             )
             if normalization and i is num_layers - 1:
                 conv_layers.append(
-                    ("instance_norm", nn.InstanceNorm2d(self.num_channels[i]))
+                    (
+                        f"{layer_names[i]}_instance_norm"
+                        if layer_names is not None
+                        else "instance_norm" + str(i),
+                        nn.InstanceNorm2d(self.num_channels[i], affine=affine_norm),
+                    )
                 )
             conv_layers.append((actnm, self.str_to_activation(self.activation[i])))
         self.conv_head = nn.Sequential(OrderedDict(conv_layers))
@@ -106,6 +112,7 @@ class ConvolutionalDecoder(NeuralCircuit):
         stride: Union[int, List[int]],
         activation: Union[str, List[str]],
         normalization: bool = False,
+        affine_norm: bool = True,
         layer_names: Optional[List[str]] = None,
     ):
         # add parameters to model and apply changes for internal use
@@ -153,7 +160,12 @@ class ConvolutionalDecoder(NeuralCircuit):
             )
             if normalization and i == 0:
                 deconv_layers.append(
-                    ("instance_norm", nn.InstanceNorm2d(self.num_channels[i]))
+                    (
+                        f"{layer_names[i]}_instance_norm"
+                        if layer_names is not None
+                        else "instance_norm" + str(i),
+                        nn.InstanceNorm2d(self.num_channels[i], affine=affine_norm),
+                    )
                 )
 
             deconv_layers.append((actnm, self.str_to_activation(self.activation[i])))

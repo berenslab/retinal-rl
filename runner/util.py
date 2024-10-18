@@ -120,7 +120,6 @@ def assemble_neural_circuits(
         if node in sensor_shapes:
             continue
 
-        print(f"Processing node {node}")
         circuit_config = OmegaConf.select(circuits, node)
         input_tensor = _assemble_inputs(node, connectome, dummy_responses)
         input_shape = list(input_tensor.shape[1:])
