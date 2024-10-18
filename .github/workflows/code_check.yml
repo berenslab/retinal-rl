@@ -4,8 +4,6 @@ on:
   pull_request:
     branches:
       - master
-    paths:
-      - '!resources/retinal-rl.def'
   workflow_dispatch:
 
 env:
@@ -13,7 +11,12 @@ env:
   sif_file: retinal-rl_singularity-image.sif
 
 jobs:
+  check-container-changed:
+    name: Check if the def file changed
+    uses: ./.github/workflows/check_def_changed.yml
   check:
+    needs: check-container-changed
+    if: needs.check-container-changed.outputs.file_changed == 'false'
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code

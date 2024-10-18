@@ -1,0 +1,30 @@
+name: Check Container Definition file changed
+
+on:
+  workflow_call:
+    outputs:
+      file_changed:
+        description: 'True if the file changed, false otherwise'
+        value: ${{ jobs.check_changes.outputs.changed }}
+
+jobs:
+  check_changes:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.check_file.outputs.changed }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if file changed
+        id: check_file
+        shell: bash
+        run: |
+          if [[ $(git diff --name-only origin/master...HEAD -- 'resources/retinal-rl.def') ]]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
