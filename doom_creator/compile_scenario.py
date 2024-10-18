@@ -15,10 +15,10 @@ import os
 import sys
 import warnings
 
-from doom_creator.util.directories import Directories
 from doom_creator.util.config import load
+from doom_creator.util.directories import Directories
 from doom_creator.util.make import make_scenario
-from doom_creator.util.preload import preload, check_preload
+from doom_creator.util.preload import check_preload, preload
 from doom_creator.util.texture import TextureType as TType
 
 
@@ -93,7 +93,7 @@ def make_parser():
 def main():
     """
     Main function to parse arguments and execute scenario compilation tasks.
-    
+
     The function supports various modes of operation including preloading resources,
     listing available YAML files, and creating scenarios. It also handles error
     checking and warns the user if no actions are specified.
