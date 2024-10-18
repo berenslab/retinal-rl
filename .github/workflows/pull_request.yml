@@ -1,4 +1,4 @@
-name: Checks to be run before merge
+name: Checks
 
 on:
   pull_request:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   check_def_changed: # evaluate whether build needs to be run / cache updated
-    name: Check whether container needs to be rebuild
+    name: Container Changed
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.check_file.outputs.changed }}
@@ -30,7 +30,7 @@ jobs:
           fi
 
   ensure_container: # main cache should provide the container if def file not changed
-    name: Conditionally build and update cache of branch
+    name: Rebuild container
     needs: check_def_changed
     if: needs.check_def_changed.outputs.changed == 'true'
     uses: ./.github/workflows/update_cache.yml
@@ -38,7 +38,7 @@ jobs:
       build: true
 
   checks:
-    name: Run linter and simple functionality test 
+    name: Code Checks
     needs: ensure_container
     if: always()
     uses: ./.github/workflows/code_check.yml
