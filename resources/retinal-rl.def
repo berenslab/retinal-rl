@@ -19,7 +19,7 @@ From: ubuntu:22.04
   apt -y install python3 python3-all-dev pip
 
   # VizDoom Depends
- 
+
   apt install -y \
     cmake \
     libboost-all-dev \
