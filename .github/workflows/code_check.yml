@@ -6,7 +6,6 @@ on:
       - master
     paths:
       - '!resources/retinal-rl.def'
-      - '**/*.py'
   workflow_dispatch:
 
 env:
