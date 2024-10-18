@@ -7,11 +7,11 @@ from typing import Dict, List, Tuple
 
 import omegaconf
 import torch
+import wandb
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 from torch.optim.optimizer import Optimizer
 
-import wandb
 from retinal_rl.models.brain import Brain
 from runner.util import save_checkpoint
 
@@ -48,7 +48,8 @@ def _initialize_create(
     # create the directories
     os.makedirs(cfg.system.data_dir)
     os.makedirs(cfg.system.checkpoint_dir)
-    os.makedirs(cfg.system.plot_dir)
+    if not cfg.use_wandb:
+        os.makedirs(cfg.system.plot_dir)
 
     # initialize the training histories
     histories: Dict[str, List[float]] = {}

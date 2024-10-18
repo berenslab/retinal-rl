@@ -7,9 +7,10 @@ reportUnknownMemberType = "warning"
 reportUnknownArgumentType = "warning"
 
 [tool.ruff]
+output-format="concise"
 line-length = 90
 exclude = ["node_modules", "__pycache__"]
-select = [
+lint.select = [
     "F",  # Pyflakes
     "E",  # PEP8
     "W",  # PEP8
@@ -20,7 +21,7 @@ select = [
     "I",  # Import conventions
 ]
 
-ignore = [
+lint.ignore = [
     "E501",  # Example: Ignore line length warnings
     "D",     # Ignore all docstring-related warnings
 ]
