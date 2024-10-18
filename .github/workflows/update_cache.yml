@@ -33,12 +33,14 @@ jobs:
             echo "build=${{ github.event_name == 'push' }}" >> $GITHUB_OUTPUT
           fi
 
-  build:
+  cache-or-build:
+    name: Build or pull container
     needs: evaluate
     if: needs.evaluate.outputs.build == 'true'
     uses: ./.github/workflows/container_build.yml
   
-  update-cache:
+  cache-or-pull:
+    name: Cache or pull container
     needs: evaluate
     if: needs.evaluate.outputs.build == 'false'
     runs-on: ubuntu-latest
