@@ -2,7 +2,6 @@ import os
 import os.path as osp
 import shutil
 import struct
-from enum import Enum
 from glob import glob
 from typing import Optional
 
