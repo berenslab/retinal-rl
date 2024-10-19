@@ -30,5 +30,5 @@ contrast_noise_transform: True
 brightness_noise_transform: True
 blur_noise_transform: True
 
-layer_norm: True
+layer_norm: False
 affine_norm: False
