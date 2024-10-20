@@ -48,7 +48,7 @@ system:
   wandb_preempt: False  # Whether to enable Weights & Biases preemption
 
 # Whether to use Weights & Biases for logging
-use_wandb: True
+use_wandb: False
 
 # Sweep command setup 
 sweep:
