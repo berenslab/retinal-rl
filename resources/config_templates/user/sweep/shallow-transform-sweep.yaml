@@ -17,6 +17,8 @@ parameters:
     value: "recon-weight"
   brain:
     value: "shallow-autoencoder"
+  use_wandb:
+    value: True
   shot_noise_transform:
     values: [False,True]
   contrast_noise_transform:

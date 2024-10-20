@@ -11,6 +11,8 @@ method: grid
 project: retinal-rl
 
 parameters:
+  use_wandb:
+    value: True
   recon_weight_retina: 
     values: [0,0.9,0.999,1]
   recon_weight_thalamus: 
