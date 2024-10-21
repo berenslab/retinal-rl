@@ -5,10 +5,10 @@ from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import torch
-import wandb
 from matplotlib.figure import Figure
 from omegaconf import DictConfig
 
+import wandb
 from retinal_rl.analysis.plot import (
     layer_receptive_field_plots,
     plot_brain_and_optimizers,
@@ -27,6 +27,7 @@ from retinal_rl.dataset import Imageset
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.loss import ReconstructionLoss
 from retinal_rl.models.objective import ContextT, Objective
+from retinal_rl.util import FloatArray
 
 logger = logging.getLogger(__name__)
 
@@ -99,71 +100,111 @@ def analyze(
     epoch: int,
     copy_checkpoint: bool = False,
 ):
-    # Plot training histories (this never gets logged to wandb)
     if not cfg.use_wandb:
-        hist_fig = plot_histories(histories)
-        _save_figure(cfg, "", "histories", hist_fig)
-        plt.close(hist_fig)
+        _plot_and_save_histories(cfg, histories)
 
-    # CNN analysis
     cnn_analysis = cnn_statistics(device, test_set, brain, 1000)
 
-    # Initialization analysis
     if epoch == 0:
-        rf_sizes_fig = plot_receptive_field_sizes(cnn_analysis)
-        _process_figure(cfg, False, rf_sizes_fig, init_dir, "receptive_field_sizes", 0)
-        graph_fig = plot_brain_and_optimizers(brain, objective)
-        _process_figure(cfg, False, graph_fig, init_dir, "brain_graph", 0)
-        transforms = transform_base_images(train_set, num_steps=5, num_images=2)
-        transforms_fig = plot_transforms(**transforms)
-        _process_figure(cfg, False, transforms_fig, init_dir, "transforms", 0)
+        _perform_initialization_analysis(cfg, brain, objective, train_set, cnn_analysis)
 
+    _analyze_layers(cfg, cnn_analysis, epoch, copy_checkpoint)
+
+    _perform_reconstruction_analysis(
+        cfg, device, brain, objective, train_set, test_set, epoch, copy_checkpoint
+    )
+
+
+def _plot_and_save_histories(cfg: DictConfig, histories: Dict[str, List[float]]):
+    hist_fig = plot_histories(histories)
+    _save_figure(cfg, "", "histories", hist_fig)
+    plt.close(hist_fig)
+
+
+def _perform_initialization_analysis(
+    cfg: DictConfig,
+    brain: Brain,
+    objective: Objective[ContextT],
+    train_set: Imageset,
+    cnn_analysis: Dict[str, Dict[str, FloatArray]],
+):
+    rf_sizes_fig = plot_receptive_field_sizes(cnn_analysis)
+    _process_figure(cfg, False, rf_sizes_fig, init_dir, "receptive_field_sizes", 0)
+
+    graph_fig = plot_brain_and_optimizers(brain, objective)
+    _process_figure(cfg, False, graph_fig, init_dir, "brain_graph", 0)
+
+    transforms = transform_base_images(train_set, num_steps=5, num_images=2)
+    transforms_fig = plot_transforms(**transforms)
+    _process_figure(cfg, False, transforms_fig, init_dir, "transforms", 0)
+
+
+def _analyze_layers(
+    cfg: DictConfig,
+    cnn_analysis: Dict[str, Dict[str, FloatArray]],
+    epoch: int,
+    copy_checkpoint: bool,
+):
     for layer_name, layer_data in cnn_analysis.items():
         if layer_name == "input":
-            if epoch == 0:
-                layer_rfs = layer_receptive_field_plots(layer_data["receptive_fields"])
-                _process_figure(cfg, False, layer_rfs, init_dir, "input_rfs", 0)
+            _analyze_input_layer(cfg, layer_data, epoch)
+        else:
+            _analyze_regular_layer(cfg, layer_name, layer_data, epoch, copy_checkpoint)
 
-                num_channels = int(layer_data["num_channels"])
-                for channel in range(num_channels):
-                    channel_fig = plot_channel_statistics(layer_data, layer_name, channel)
-                    _process_figure(
-                        cfg,
-                        False,
-                        channel_fig,
-                        init_dir,
-                        f"input_channel_{channel}",
-                        0,
-                    )
 
-            continue
-
+def _analyze_input_layer(cfg: DictConfig, layer_data: Dict[str, FloatArray], epoch: int):
+    if epoch == 0:
         layer_rfs = layer_receptive_field_plots(layer_data["receptive_fields"])
-        _process_figure(
-            cfg,
-            copy_checkpoint,
-            layer_rfs,
-            "receptive_fields",
-            f"{layer_name}",
-            epoch,
-        )
+        _process_figure(cfg, False, layer_rfs, init_dir, "input_rfs", 0)
 
         num_channels = int(layer_data["num_channels"])
         for channel in range(num_channels):
-            channel_fig = plot_channel_statistics(layer_data, layer_name, channel)
+            channel_fig = plot_channel_statistics(layer_data, "input", channel)
             _process_figure(
-                cfg,
-                copy_checkpoint,
-                channel_fig,
-                f"{layer_name}_layer_channel_analysis",
-                f"channel_{channel}",
-                epoch,
+                cfg, False, channel_fig, init_dir, f"input_channel_{channel}", 0
             )
 
-    reconstruction_decoders: List[str] = []
-    for loss in objective.losses:
-        if isinstance(loss, ReconstructionLoss):
-            reconstruction_decoders.append(loss.target_decoder)
+
+def _analyze_regular_layer(
+    cfg: DictConfig,
+    layer_name: str,
+    layer_data: Dict[str, FloatArray],
+    epoch: int,
+    copy_checkpoint: bool,
+):
+    layer_rfs = layer_receptive_field_plots(layer_data["receptive_fields"])
+    _process_figure(
+        cfg, copy_checkpoint, layer_rfs, "receptive_fields", f"{layer_name}", epoch
+    )
+
+    num_channels = int(layer_data["num_channels"])
+    for channel in range(num_channels):
+        channel_fig = plot_channel_statistics(layer_data, layer_name, channel)
+        _process_figure(
+            cfg,
+            copy_checkpoint,
+            channel_fig,
+            f"{layer_name}_layer_channel_analysis",
+            f"channel_{channel}",
+            epoch,
+        )
+
+
+def _perform_reconstruction_analysis(
+    cfg: DictConfig,
+    device: torch.device,
+    brain: Brain,
+    objective: Objective[ContextT],
+    train_set: Imageset,
+    test_set: Imageset,
+    epoch: int,
+    copy_checkpoint: bool,
+):
+    reconstruction_decoders = [
+        loss.target_decoder
+        for loss in objective.losses
+        if isinstance(loss, ReconstructionLoss)
+    ]
 
     for decoder in reconstruction_decoders:
         rec_dict = reconstruct_images(device, brain, decoder, train_set, test_set, 5)

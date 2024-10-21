@@ -5,6 +5,7 @@ num_epochs: 100
 optimizer: # torch.optim Class and parameters
   _target_: torch.optim.Adam
   lr: 0.0003
+  weight_decay: ${weight_decay}
 
 # The objective function
 objective:

@@ -14,6 +14,8 @@ framework: classification
 # This is a free list of parameters that can be interpolated by the subconfigs
 # in sweep, dataset, brain, and optimizer. A major use for this is interpolating
 # values in the subconfigs, and then looping over them in a sweep.
+weight_decay: 0.00001
+
 activation: "elu"
 
 bp_kernel_size: 14
