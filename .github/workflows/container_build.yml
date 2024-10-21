@@ -27,3 +27,6 @@ jobs:
     - name: Build Singularity container
       if: steps.cache-singularity.outputs.cache-hit != 'true'
       run: apptainer build ${{ env.sif_file }} resources/retinal-rl.def
+
+    - name: Show Versions
+      run: apptainer exec retinal-rl_singularity-image.sif pip freeze
