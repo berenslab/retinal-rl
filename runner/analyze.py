@@ -5,10 +5,10 @@ from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import torch
+import wandb
 from matplotlib.figure import Figure
 from omegaconf import DictConfig
 
-import wandb
 from retinal_rl.analysis.plot import (
     layer_receptive_field_plots,
     plot_brain_and_optimizers,
