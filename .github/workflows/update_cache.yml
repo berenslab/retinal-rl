@@ -56,8 +56,6 @@ jobs:
       with:
         path: ${{ env.sif_file }}
         key: ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
-        restore-keys: |
-          ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
     - name: Pull Singularity container
       if: steps.cache-singularity.outputs.cache-hit != 'true'
       run: apptainer pull ${{ env.sif_file }} ${{ env.singularity_image }}
