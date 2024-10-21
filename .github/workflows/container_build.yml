@@ -20,12 +20,17 @@ jobs:
       with:
         apptainer-version: 1.3.0
 
+    - name: List hashkeys
+      run: |
+        echo ${{ hashFiles('~/resources/retinal-rl.def') }}
+        echo ${{ hashFiles('resources/retinal-rl.def') }}
+
     - name: Cache Singularity Image
       id: cache-singularity
       uses: actions/cache@v4
       with:
         path: ${{ env.sif_file }}
-        key: ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
+        key: ${{ runner.os }}-singularity-${{ hashFiles('resources/retinal-rl.def') }}
 
     - name: Build Singularity container
       if: steps.cache-singularity.outputs.cache-hit != 'true'
