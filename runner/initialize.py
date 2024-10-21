@@ -3,7 +3,7 @@
 
 import logging
 import os
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, cast
 
 import omegaconf
 import torch
@@ -61,6 +61,7 @@ def _initialize_create(
         dict_conf = omegaconf.OmegaConf.to_container(
             cfg, resolve=True, throw_on_missing=True
         )
+        dict_conf = cast(Dict[str, Any], dict_conf)
         wandb.init(
             project="retinal-rl",
             group=HydraConfig.get().runtime.choices.experiment,
