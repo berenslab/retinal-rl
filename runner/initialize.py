@@ -50,6 +50,8 @@ def _initialize_create(
     os.makedirs(cfg.system.checkpoint_dir)
     if not cfg.use_wandb:
         os.makedirs(cfg.system.plot_dir)
+    else:
+        os.makedirs(cfg.system.wandb_dir)
 
     # initialize the training histories
     histories: Dict[str, List[float]] = {}
@@ -66,6 +68,7 @@ def _initialize_create(
             config=dict_conf,
             name=cfg.run_name,
             id=cfg.run_name,
+            dir=cfg.system.wandb_dir,
         )
 
         if cfg.system.wandb_preempt:

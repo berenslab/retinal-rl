@@ -33,7 +33,7 @@ hydra:
           - command
   sweep:
     dir: experiments/multirun  # Directory for sweep runs
-    subdir: ${hydra:runtime.choices.experiment}/sweep/${oc.env:WANDB_SWEEP_ID,local}${run_name}  # Individual sweep run subdirectory
+    subdir: ${hydra:runtime.choices.experiment}/sweep/${oc.env:WANDB_SWEEP_ID,local}/${run_name}  # Individual sweep run subdirectory
 
 # System configuration
 system:
@@ -46,6 +46,7 @@ system:
   plot_dir: ${system.data_dir}/plots  # Directory for plots
   checkpoint_plot_dir: ${system.plot_dir}/checkpoints  # Directory for checkpoint plots
   wandb_preempt: False  # Whether to enable Weights & Biases preemption
+  wandb_dir: ${system.run_dir}/wandb
 
 # Whether to use Weights & Biases for logging
 use_wandb: False
