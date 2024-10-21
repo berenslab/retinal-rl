@@ -15,15 +15,21 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Setup Apptainer
+      uses: eWaterCycle/setup-apptainer@v2
+      with:
+        apptainer-version: 1.3.0
+
     - name: Cache Singularity Image
       id: cache-singularity
       uses: actions/cache@v4
       with:
         path: ${{ env.sif_file }}
-        key: ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
-        restore-keys: |
-          ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
+        key: ${{ runner.os }}-singularity-${{ hashFiles('resources/retinal-rl.def') }}
 
     - name: Build Singularity container
       if: steps.cache-singularity.outputs.cache-hit != 'true'
       run: apptainer build ${{ env.sif_file }} resources/retinal-rl.def
+
+    - name: Show Versions
+      run: apptainer exec retinal-rl_singularity-image.sif pip freeze

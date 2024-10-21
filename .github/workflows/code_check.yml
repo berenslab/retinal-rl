@@ -26,12 +26,10 @@ jobs:
 
     - name: Cache Singularity Image
       id: cache-singularity
-      uses: actions/cache@v4
+      uses: actions/cache/restore@v4
       with:
         path: ${{ env.sif_file }}
-        key: ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
-        restore-keys: |
-          ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
+        key: ${{ runner.os }}-singularity-${{ hashFiles('resources/retinal-rl.def') }}
 
     - name: Run Linter / Code check
       if: always() && steps.cache-singularity.outputs.cache-hit == 'true'
