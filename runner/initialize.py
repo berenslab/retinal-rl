@@ -45,18 +45,18 @@ def _initialize_create(
     logger.info(
         f"Experiment path {cfg.system.run_dir} does not exist. Initializing {cfg.run_name}."
     )
+
+    # initialize the training histories
+    histories: Dict[str, List[float]] = {}
+
     # create the directories
     os.makedirs(cfg.system.data_dir)
     os.makedirs(cfg.system.checkpoint_dir)
     if not cfg.use_wandb:
         os.makedirs(cfg.system.plot_dir)
+
     else:
         os.makedirs(cfg.system.wandb_dir)
-
-    # initialize the training histories
-    histories: Dict[str, List[float]] = {}
-
-    if cfg.use_wandb:
         # convert DictConfig to dict
         dict_conf = omegaconf.OmegaConf.to_container(
             cfg, resolve=True, throw_on_missing=True
@@ -119,6 +119,7 @@ def _initialize_reload(
             name=cfg.run_name,
             id=cfg.run_name,
             resume="must",
+            dir=cfg.system.wandb_dir,
         )
         if cfg.system.wandb_preempt:
             wandb.mark_preempting()
