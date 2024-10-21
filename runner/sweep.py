@@ -2,8 +2,9 @@
 
 from typing import Any, Dict, cast
 
-import wandb
 from omegaconf import DictConfig, OmegaConf
+
+import wandb
 
 
 def launch_sweep(cfg: DictConfig):
