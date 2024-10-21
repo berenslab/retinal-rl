@@ -8,7 +8,6 @@ reportUnknownArgumentType = "warning"
 
 [tool.ruff]
 output-format="concise"
-line-length = 90
 exclude = ["node_modules", "__pycache__"]
 lint.select = [
     "F",  # Pyflakes
@@ -19,11 +18,19 @@ lint.select = [
     "R",  # Ruff-specific
     "N",  # Naming
     "I",  # Import conventions
+    "SIM",  # flake8-simplify
+    "UP",  # pyupgrade
+    "RUF",  # ruff-specific rules
+    "ARG",  # flake8-unused-arguments
+    "TRY",  # tryceratops
+    "PLR0402", # import a.b as b -> from a import b
 ]
 
 lint.ignore = [
     "E501",  # Example: Ignore line length warnings
     "D",     # Ignore all docstring-related warnings
+    "ARG002",# Ignore unused-argument in method > problematic eg when required by parent class / interface
+    "TRY003",# Allow to write exception messages in place instead of subclassing
 ]
 
 [tool.ruff.format]
