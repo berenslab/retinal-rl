@@ -1,6 +1,6 @@
 """Objectives for training models."""
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -40,13 +40,13 @@ class ClassificationLoss(Loss[ClassificationContext]):
 
     def __init__(
         self,
-        min_epoch: int = 0,
-        max_epoch: int = -1,
         target_circuits: List[str] = [],
         weights: List[float] = [],
+        min_epoch: Optional[int] = None,
+        max_epoch: Optional[int] = None,
     ):
         """Initialize the classification loss."""
-        super().__init__(min_epoch, max_epoch, target_circuits, weights)
+        super().__init__(target_circuits, weights, min_epoch, max_epoch)
         self.loss_fn = nn.CrossEntropyLoss()
 
     def compute_value(self, context: ClassificationContext) -> Tensor:
@@ -67,12 +67,12 @@ class PercentCorrect(Loss[ClassificationContext]):
 
     def __init__(
         self,
-        min_epoch: int = 0,
-        max_epoch: int = -1,
         target_circuits: List[str] = [],
         weights: List[float] = [],
+        min_epoch: Optional[int] = None,
+        max_epoch: Optional[int] = None,
     ):
-        super().__init__(min_epoch, max_epoch, target_circuits, weights)
+        super().__init__(target_circuits, weights, min_epoch, max_epoch)
 
     def compute_value(self, context: ClassificationContext) -> Tensor:
         """Compute the percent correct classification."""

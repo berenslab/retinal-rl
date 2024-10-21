@@ -14,7 +14,7 @@ connections:
   - ["thalamus","visual_cortex"]  # Thalamus to visual cortex
   - ["visual_cortex", "prefrontal"]  # Visual cortex to prefrontal cortex
   - ["prefrontal", "classifier"]  # Prefrontal cortex to classifier
-  - ["visual_cortex", "decoder"]  # Thalamus to decoder (for reconstruction)
+  - ["visual_cortex", "v1_decoder"]  # v1 to decoder (for reconstruction)
 
 # Define the individual nodes (neural circuits) of the network. Many circuit
 # parameters are interpolated from the experiment config.
@@ -28,8 +28,10 @@ circuits:
       - ${bp_kernel_size}
       - ${rgc_kernel_size}
     stride: 2
-    act_name: ${activation}
+    activation: ${activation}
     layer_names: ["bipolar", "retinal_ganglion"]  # Names inspired by retinal cell types
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
 
   # Thalamus: relay and processing station
   thalamus:
@@ -38,8 +40,10 @@ circuits:
     num_channels: 64
     kernel_size: ${lgn_kernel_size}
     stride: 1
-    act_name: ${activation}
+    activation: ${activation}
     layer_names: ["lgn"]  # Lateral Geniculate Nucleus
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
 
   # Visual Cortex: higher-level visual processing
   visual_cortex:
@@ -48,8 +52,10 @@ circuits:
     num_channels: 64
     kernel_size: ${v1_kernel_size}
     stride: 2
-    act_name: ${activation}
+    activation: ${activation}
     layer_names: ["v1"]  # Primary Visual Cortex
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
 
   # Prefrontal Cortex: high-level cognitive processing
   prefrontal:
@@ -58,12 +64,14 @@ circuits:
       - 128  # Size of the latent representation
     hidden_units: 
       - 64  # Number of hidden units
-    act_name: ${activation}
+    activation: ${activation}
 
   # Decoder: for reconstructing the input from the latent representation
-  decoder:
+  v1_decoder:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
     num_layers: 4
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
     num_channels: [64,32,16,3]  # For a symmetric encoder, this should be the reverse of the num_channels in the CNN layers up to the point of decoding (in this case, the thalamus)
     kernel_size: 
       - ${v1_kernel_size}
@@ -71,7 +79,11 @@ circuits:
       - ${rgc_kernel_size}
       - ${bp_kernel_size}
     stride: [2,1,2,2]
-    act_name: ${activation}
+    activation:
+      - ${activation}
+      - ${activation}
+      - ${activation}
+      - "tanh"
 
   # Classifier: for categorizing the input into classes
   classifier:

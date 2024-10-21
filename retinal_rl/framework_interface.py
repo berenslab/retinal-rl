@@ -1,13 +1,11 @@
-from typing import Protocol
-from retinal_rl.models.neural_circuit import NeuralCircuit
-from retinal_rl.models.brain import Brain
+from typing import Dict, List, Protocol, Tuple
 
-from torch import optim
-from torch.utils.data import Dataset
-from torch import Tensor
-from typing import Dict, List, Tuple
-from omegaconf import DictConfig
 import torch
+from omegaconf import DictConfig
+from torch import Tensor
+from torch.utils.data import Dataset
+
+from retinal_rl.models.brain import Brain
 
 
 class TrainingFramework(Protocol):

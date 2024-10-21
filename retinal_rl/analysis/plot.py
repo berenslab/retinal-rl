@@ -227,56 +227,6 @@ def plot_brain_and_optimizers(brain: Brain, objective: Objective[ContextT]) -> F
     plt.axis("off")
 
     return fig
-    # Draw labels
-    nx.draw_networkx_labels(graph, pos, font_size=8, font_weight="bold")
-
-    # Add a legend for optimizers
-    legend_elements = [
-        Line2D(
-            [0],
-            [0],
-            marker="o",
-            color="w",
-            label=f"Optimizer: {name}",
-            markerfacecolor="none",
-            markeredgecolor=color,
-            markersize=15,
-            markeredgewidth=3,
-        )
-        for name, color in zip(objective.losses.keys(), optimizer_colors)
-    ]
-
-    # Add legend elements for sensor and circuit
-    legend_elements.extend(
-        [
-            Line2D(
-                [0],
-                [0],
-                marker="o",
-                color="w",
-                label="Sensor",
-                markerfacecolor=color_map["sensor"],
-                markersize=15,
-            ),
-            Line2D(
-                [0],
-                [0],
-                marker="o",
-                color="w",
-                label="Circuit",
-                markerfacecolor=color_map["circuit"],
-                markersize=15,
-            ),
-        ]
-    )
-
-    plt.legend(handles=legend_elements, loc="center left", bbox_to_anchor=(1, 0.5))
-
-    plt.title("Brain Connectome and Optimizer Targets")
-    plt.tight_layout()
-    plt.axis("off")
-
-    return fig
 
 
 def plot_receptive_field_sizes(results: Dict[str, Dict[str, FloatArray]]) -> Figure:

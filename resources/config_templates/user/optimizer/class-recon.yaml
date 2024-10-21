@@ -5,6 +5,7 @@ num_epochs: 100
 optimizer: # torch.optim Class and parameters
   _target_: torch.optim.Adam
   lr: 0.0003
+  weight_decay: ${weight_decay}
 
 # The objective function
 objective:
@@ -27,11 +28,12 @@ objective:
         - 1
         - 1
     - _target_: retinal_rl.models.loss.ReconstructionLoss
+      target_decoder: "v1_decoder"
       target_circuits: # Circuit parameters to optimize with this optimizer.  We train the retina and the decoder exclusively to maximize reconstruction
         - retina
         - thalamus
         - visual_cortex
-        - decoder
+        - v1_decoder
         - inferotemporal_decoder
       weights:
         - ${recon_weight_retina}
