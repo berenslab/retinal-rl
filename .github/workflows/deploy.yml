@@ -32,8 +32,6 @@ jobs:
           with:
             path: ${{ env.sif_file }}
             key: ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
-            restore-keys: |
-                ${{ runner.os }}-singularity-${{ hashFiles('~/resources/retinal-rl.def') }}
         - name: Deployment / Push to ghcr.io
           run: |
             apptainer registry login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} oras://ghcr.io

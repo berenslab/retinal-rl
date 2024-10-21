@@ -28,6 +28,7 @@ jobs:
           else
             echo "changed=false" >> $GITHUB_OUTPUT
           fi
+          echo "$GITHUB_OUTPUT"
 
   ensure_container: # main cache should provide the container if def file not changed
     name: Rebuild container
