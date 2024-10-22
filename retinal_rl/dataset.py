@@ -8,10 +8,9 @@ It includes:
 import logging
 from typing import List, Sequence, Tuple
 
-import torch.nn as nn
 import torchvision.transforms.functional as tf
 from PIL import Image
-from torch import Tensor
+from torch import Tensor, nn
 from torch.utils.data import Dataset, Subset
 
 logger = logging.getLogger(__name__)
@@ -81,10 +80,9 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
             tensor = tf.normalize(tensor, mean, std)
         return tensor
 
-    def __len__(self) -> int:
+    def epoch_len(self) -> int:
         if self.fixed_transformation:
             return self.base_len * self.multiplier
-        logger.warning("Length of on-the-fly transformed dataset is not really fixed.")
         return self.base_len
 
     def __getitem__(self, idx: int) -> Tuple[Tensor, Tensor, int]:

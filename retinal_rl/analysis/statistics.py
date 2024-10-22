@@ -5,10 +5,8 @@ from typing import Dict, List, Tuple, cast
 
 import numpy as np
 import torch
-import torch.fft as fft
-import torch.nn as nn
 from PIL import Image
-from torch import Tensor
+from torch import Tensor, fft, nn
 from torch.utils.data import DataLoader
 
 from retinal_rl.dataset import Imageset, ImageSubset
@@ -76,7 +74,7 @@ def reconstruct_images(
     brain.eval()  # Set the model to evaluation mode
 
     def collect_reconstructions(
-        dataset: Imageset, sample_size: int
+        imageset: Imageset, sample_size: int
     ) -> Tuple[
         List[Tuple[Tensor, int]], List[Tuple[Tensor, int]], List[Tuple[Tensor, int]]
     ]:
@@ -84,11 +82,11 @@ def reconstruct_images(
         source_subset: List[Tuple[Tensor, int]] = []
         input_subset: List[Tuple[Tensor, int]] = []
         estimates: List[Tuple[Tensor, int]] = []
-        indices = torch.randperm(len(dataset))[:sample_size]
+        indices = torch.randperm(imageset.epoch_len())[:sample_size]
 
         with torch.no_grad():  # Disable gradient computation
             for index in indices:
-                src, img, k = dataset[int(index)]
+                src, img, k = imageset[int(index)]
                 src = src.to(device)
                 img = img.to(device)
                 stimulus = {"vision": img.unsqueeze(0)}
@@ -120,7 +118,7 @@ def reconstruct_images(
 
 def cnn_statistics(
     device: torch.device,
-    dataset: Imageset,
+    imageset: Imageset,
     brain: Brain,
     max_sample_size: int = 0,
 ) -> Dict[str, Dict[str, FloatArray]]:
@@ -132,7 +130,7 @@ def cnn_statistics(
     Args:
     ----
         device (torch.device): The device to run computations on.
-        dataset (Imageset): The dataset to analyze.
+        imageset (Imageset): The dataset to analyze.
         brain (Brain): The trained Brain model.
         max_sample_size (int, optional): Maximum number of samples to use. If 0, use all samples. Defaults to 0.
 
@@ -172,16 +170,16 @@ def cnn_statistics(
     nclrs, hght, wdth = input_shape
 
     # Prepare subsample
-    original_size = len(dataset)
-    logger.info(f"Original dataset size: {original_size}")
+    epoch_len = imageset.epoch_len()
+    logger.info(f"Original dataset size: {epoch_len}")
 
-    if max_sample_size > 0 and original_size > max_sample_size:
-        indices: List[int] = torch.randperm(original_size)[:max_sample_size].tolist()
-        subset = ImageSubset(dataset, indices=indices)
+    if max_sample_size > 0 and epoch_len > max_sample_size:
+        indices: List[int] = torch.randperm(epoch_len)[:max_sample_size].tolist()
+        subset = ImageSubset(imageset, indices=indices)
         logger.info(f"Reducing dataset size for cnn_statistics to {max_sample_size}")
     else:
-        indices = list(range(original_size))
-        subset = ImageSubset(dataset, indices=indices)
+        indices = list(range(epoch_len))
+        subset = ImageSubset(imageset, indices=indices)
         logger.info("Using full dataset for cnn_statistics")
 
     dataloader = DataLoader(subset, batch_size=64, shuffle=False)
@@ -273,7 +271,7 @@ def _layer_pixel_histograms(
     model: nn.Module,
     num_bins: int = 20,
 ) -> Dict[str, FloatArray]:
-    """Compute histograms of pixel/activation values for each channel across all data in a dataset."""
+    """Compute histograms of pixel/activation values for each channel across all data in an imageset."""
     _, first_batch, _ = next(iter(dataloader))
     with torch.no_grad():
         first_batch = model(first_batch.to(device))
@@ -328,7 +326,7 @@ def _layer_spectral_analysis(
     dataloader: DataLoader[Tuple[Tensor, Tensor, int]],
     model: nn.Module,
 ) -> Dict[str, FloatArray]:
-    """Compute spectral analysis statistics for each channel across all data in a dataset."""
+    """Compute spectral analysis statistics for each channel across all data in an imageset."""
     _, first_batch, _ = next(iter(dataloader))
     with torch.no_grad():
         first_batch = model(first_batch.to(device))
@@ -358,7 +356,9 @@ def _layer_spectral_analysis(
 
             # Compute normalized autocorrelation
             autocorr = cast(Tensor, fft.ifft2(power_spectrum)).real
-            max_abs_autocorr = torch.amax(torch.abs(autocorr), dim=(-2, -1), keepdim=True)
+            max_abs_autocorr = torch.amax(
+                torch.abs(autocorr), dim=(-2, -1), keepdim=True
+            )
             autocorr = autocorr / (max_abs_autocorr + 1e-8)
 
             # Compute autocorrelation statistics
