@@ -57,7 +57,7 @@ def analyze(
         f.write(summary)
 
     if cfg.use_wandb:
-        wandb.save(filepath)
+        wandb.save(filepath, base_path=cfg.system.run_dir, policy="now")
 
     if epoch == 0:
         _perform_initialization_analysis(cfg, brain, objective, train_set, cnn_analysis)
