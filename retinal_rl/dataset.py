@@ -81,6 +81,7 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
         return tensor
 
     def epoch_len(self) -> int:
+        """Get the length of the dataset for one epoch. For fixed transformations, this is the base length times the multiplier. For on-the-fly transformations, this is the length of the base dataset."""
         if self.fixed_transformation:
             return self.base_len * self.multiplier
         return self.base_len

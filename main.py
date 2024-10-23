@@ -56,8 +56,7 @@ def _program(cfg: DictConfig):
         warnings.warn("No optimizer config specified, is that wanted?")
 
     if cfg.command == "scan":
-        brain.scan()
-        brain.scan_circuits()
+        print(brain.scan())
         sys.exit(0)
 
     framework: TrainingFramework

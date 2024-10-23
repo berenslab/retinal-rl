@@ -1,13 +1,13 @@
 """Provides the Brain class, which combines multiple NeuralCircuit instances into a single model by specifying a graph of connections between them."""
 
 import logging
+from io import StringIO
 from typing import Dict, List, OrderedDict, Tuple
 
 import networkx as nx
 import torch
-import torch.nn as nn
 from networkx.classes.digraph import DiGraph
-from torch import Tensor
+from torch import Tensor, nn
 from torchinfo import summary
 
 from retinal_rl.models.circuits.convolutional import ConvolutionalEncoder
@@ -56,32 +56,48 @@ class Brain(nn.Module):
                 responses[node] = self.circuits[node](input)
         return responses
 
-    def scan(self):
-        print("\nWhole Brain Scan:\n")
+    def scan(self) -> str:
+        """
+        Performs a comprehensive scan of the model and its circuits, returning the results as a string.
 
-        dummy_stimulus: Dict[str, Tensor] = {}
+        Returns:
+            str: A formatted string containing the complete scan results
+        """
+        output = StringIO()
         device = next(self.parameters()).device
-        for sensor in self.sensors:
-            dummy_stimulus[sensor] = torch.rand((1, *self.sensors[sensor]), device=device)
 
-        summary(self, input_data=[dummy_stimulus])
+        # Create dummy stimulus
+        dummy_stimulus: Dict[str, Tensor] = {
+            sensor: torch.rand((1, *self.sensors[sensor]), device=device)
+            for sensor in self.sensors
+        }
 
-    def scan_circuits(self):
-        """Run torchscan on all circuits and concatenates the reports."""
-        # Print connectome
-        print("\nCircuit Scans:")
+        # Whole brain scan
+        output.write("\nWhole Brain Scan:\n\n")
+        model_stats = summary(self, input_data=[dummy_stimulus], verbose=0)
+        output.write(str(model_stats))
 
-        # Run scans on all circuits
-        device = next(self.parameters()).device
-        dummy_stimulus: Dict[str, Tensor] = {}
-        for sensor in self.sensors:
-            dummy_stimulus[sensor] = torch.rand((1, *self.sensors[sensor]), device=device)
+        # Circuit scans
+        output.write("\n\n\nCircuit Scans:\n")
 
-        for crcnm, circuit in self.circuits.items():
-            print(
-                f"\n\nCircuit Name: {crcnm}, Class: {circuit.__class__.__name__}, Input Shape: {circuit.input_shape}, Output Shape: {circuit.output_shape}"
+        for circuit_name, circuit in self.circuits.items():
+            output.write(
+                f"\n\nCircuit Name: {circuit_name}"
+                f"\nClass: {circuit.__class__.__name__}"
+                f"\nInput Shape: {circuit.input_shape}"
+                f"\nOutput Shape: {circuit.output_shape}\n"
             )
-            circuit.scan()
+
+            circuit_stats = summary(
+                circuit, (1, *tuple(circuit.input_shape)), verbose=0
+            )
+            output.write(str(circuit_stats))
+
+        # Get the complete output as a string
+        result = output.getvalue()
+        output.close()
+
+        return result
 
     def _assemble_inputs(self, node: str, responses: Dict[str, Tensor]) -> Tensor:
         """Assemble the inputs to a given node by concatenating the responses of its predecessors."""
@@ -91,7 +107,9 @@ class Brain(nn.Module):
             if pred in responses:
                 inputs.append(responses[pred])
             else:
-                raise ValueError(f"Input node {pred} to node {node} does not (yet) exist")
+                raise ValueError(
+                    f"Input node {pred} to node {node} does not (yet) exist"
+                )
         if len(inputs) == 0:
             raise ValueError(f"No inputs to node {node}")
         if len(inputs) == 1:
@@ -102,7 +120,9 @@ class Brain(nn.Module):
         return input
 
 
-def get_cnn_circuit(brain: Brain) -> Tuple[Tuple[int, ...], OrderedDict[str, nn.Module]]:
+def get_cnn_circuit(
+    brain: Brain,
+) -> Tuple[Tuple[int, ...], OrderedDict[str, nn.Module]]:
     """Find the longest path starting from a sensor, along a path of ConvolutionalEncoders. This likely won't work very well for particularly complex graphs."""
     cnn_paths: List[List[str]] = []
 

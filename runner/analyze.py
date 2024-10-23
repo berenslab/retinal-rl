@@ -34,61 +34,6 @@ logger = logging.getLogger(__name__)
 init_dir = "initialization_analysis"
 
 
-def _save_figure(cfg: DictConfig, sub_dir: str, file_name: str, fig: Figure) -> None:
-    dir = os.path.join(cfg.system.plot_dir, sub_dir)
-    os.makedirs(dir, exist_ok=True)
-    file_name = os.path.join(dir, f"{file_name}.png")
-    fig.savefig(file_name)
-
-
-def _checkpoint_copy(cfg: DictConfig, sub_dir: str, file_name: str, epoch: int) -> None:
-    src_path = os.path.join(cfg.system.plot_dir, sub_dir, f"{file_name}.png")
-
-    dest_dir = os.path.join(
-        cfg.system.checkpoint_plot_dir, "checkpoints", f"epoch_{epoch}", sub_dir
-    )
-    os.makedirs(dest_dir, exist_ok=True)
-    dest_path = os.path.join(dest_dir, f"{file_name}.png")
-
-    shutil.copy2(src_path, dest_path)
-
-
-def _wandb_title(title: str) -> str:
-    # Split the title by slashes
-    parts = title.split("/")
-
-    def capitalize_part(part: str) -> str:
-        # Split the part by dashes
-        words = part.split("_")
-        # Capitalize each word
-        capitalized_words = [word.capitalize() for word in words]
-        # Join the words with spaces
-        return " ".join(capitalized_words)
-
-    # Capitalize each part, then join with slashes
-    capitalized_parts = [capitalize_part(part) for part in parts]
-    return "/".join(capitalized_parts)
-
-
-def _process_figure(
-    cfg: DictConfig,
-    copy_checkpoint: bool,
-    fig: Figure,
-    sub_dir: str,
-    file_name: str,
-    epoch: int,
-) -> None:
-    if cfg.use_wandb:
-        title = f"{_wandb_title(sub_dir)}/{_wandb_title(file_name)}"
-        img = wandb.Image(fig)
-        wandb.log({title: img}, commit=False)
-    else:
-        _save_figure(cfg, sub_dir, file_name, fig)
-        if copy_checkpoint:
-            _checkpoint_copy(cfg, sub_dir, file_name, epoch)
-    plt.close(fig)
-
-
 def analyze(
     cfg: DictConfig,
     device: torch.device,
@@ -104,6 +49,15 @@ def analyze(
         _plot_and_save_histories(cfg, histories)
 
     cnn_analysis = cnn_statistics(device, test_set, brain, 1000)
+
+    summary = brain.scan()
+    filepath = os.path.join(cfg.system.run_dir, "brain_summary.txt")
+
+    with open(filepath, "w") as f:
+        f.write(summary)
+
+    if cfg.use_wandb:
+        wandb.save(filepath)
 
     if epoch == 0:
         _perform_initialization_analysis(cfg, brain, objective, train_set, cnn_analysis)
@@ -152,7 +106,9 @@ def _analyze_layers(
             _analyze_regular_layer(cfg, layer_name, layer_data, epoch, copy_checkpoint)
 
 
-def _analyze_input_layer(cfg: DictConfig, layer_data: Dict[str, FloatArray], epoch: int):
+def _analyze_input_layer(
+    cfg: DictConfig, layer_data: Dict[str, FloatArray], epoch: int
+):
     if epoch == 0:
         layer_rfs = layer_receptive_field_plots(layer_data["receptive_fields"])
         _process_figure(cfg, False, layer_rfs, init_dir, "input_rfs", 0)
@@ -217,3 +173,58 @@ def _perform_reconstruction_analysis(
             f"{decoder}_reconstructions",
             epoch,
         )
+
+
+def _save_figure(cfg: DictConfig, sub_dir: str, file_name: str, fig: Figure) -> None:
+    dir = os.path.join(cfg.system.plot_dir, sub_dir)
+    os.makedirs(dir, exist_ok=True)
+    file_name = os.path.join(dir, f"{file_name}.png")
+    fig.savefig(file_name)
+
+
+def _checkpoint_copy(cfg: DictConfig, sub_dir: str, file_name: str, epoch: int) -> None:
+    src_path = os.path.join(cfg.system.plot_dir, sub_dir, f"{file_name}.png")
+
+    dest_dir = os.path.join(
+        cfg.system.checkpoint_plot_dir, "checkpoints", f"epoch_{epoch}", sub_dir
+    )
+    os.makedirs(dest_dir, exist_ok=True)
+    dest_path = os.path.join(dest_dir, f"{file_name}.png")
+
+    shutil.copy2(src_path, dest_path)
+
+
+def _wandb_title(title: str) -> str:
+    # Split the title by slashes
+    parts = title.split("/")
+
+    def capitalize_part(part: str) -> str:
+        # Split the part by dashes
+        words = part.split("_")
+        # Capitalize each word
+        capitalized_words = [word.capitalize() for word in words]
+        # Join the words with spaces
+        return " ".join(capitalized_words)
+
+    # Capitalize each part, then join with slashes
+    capitalized_parts = [capitalize_part(part) for part in parts]
+    return "/".join(capitalized_parts)
+
+
+def _process_figure(
+    cfg: DictConfig,
+    copy_checkpoint: bool,
+    fig: Figure,
+    sub_dir: str,
+    file_name: str,
+    epoch: int,
+) -> None:
+    if cfg.use_wandb:
+        title = f"{_wandb_title(sub_dir)}/{_wandb_title(file_name)}"
+        img = wandb.Image(fig)
+        wandb.log({title: img}, commit=False)
+    else:
+        _save_figure(cfg, sub_dir, file_name, fig)
+        if copy_checkpoint:
+            _checkpoint_copy(cfg, sub_dir, file_name, epoch)
+    plt.close(fig)

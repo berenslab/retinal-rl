@@ -6,7 +6,6 @@ from typing import Any, List, Type, get_type_hints
 
 import torch
 from torch import nn
-from torchinfo import summary
 
 from retinal_rl.util import Activation
 
@@ -42,7 +41,9 @@ class NeuralCircuit(nn.Module, ABC):
         # Ensure that the __init__ method includes input_shape
         init = cls.__init__
         if not inspect.isfunction(init):
-            raise TypeError(f"Class {cls.__name__} does not have a valid __init__ method")
+            raise TypeError(
+                f"Class {cls.__name__} does not have a valid __init__ method"
+            )
 
         params = inspect.signature(init).parameters
         if "input_shape" not in params:
@@ -57,14 +58,12 @@ class NeuralCircuit(nn.Module, ABC):
                 f"Parameter 'input_shape' in class {cls.__name__} must have type 'List[int]'"
             )
 
-    def scan(self) -> None:
-        """Run torchscan on the model."""
-        summary(self, (1, *tuple(self.input_shape)))
-
     @abstractmethod
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the neural circuit."""
-        raise NotImplementedError("Each subclass must implement its own forward method.")
+        raise NotImplementedError(
+            "Each subclass must implement its own forward method."
+        )
 
     @property
     def input_shape(self) -> List[int]:
