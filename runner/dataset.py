@@ -11,17 +11,7 @@ from retinal_rl.dataset import Imageset
 
 
 def get_datasets(cfg: DictConfig) -> Tuple[Imageset, Imageset]:
-    """Get the train and test datasets based on the configuration.
-
-    Args:
-    ----
-        cfg (DictConfig): The experiment configuration.
-
-    Returns:
-    -------
-        Tuple[Dataset, Dataset]: The train and test datasets.
-
-    """
+    """Get the train and test datasets based on the configuration."""
     cache_dir = os.path.join(hydra.utils.get_original_cwd(), "cache")
     os.makedirs(cache_dir, exist_ok=True)
 

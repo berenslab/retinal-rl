@@ -61,7 +61,6 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
 
     def _create_fixed_dataset(self) -> List[Tuple[Tensor, Tensor, int]]:
         transformed_data: List[Tuple[Tensor, Tensor, int]] = []
-        idx = 0
         for img, label in self.base_dataset:
             for _ in range(self.multiplier):
                 source_img = self.source_transforms(img)
@@ -69,7 +68,6 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
                 transformed_data.append(
                     (self.to_tensor(source_img), self.to_tensor(noisy_img), label)
                 )
-            idx += 1
         return transformed_data
 
     def to_tensor(self, img: Image.Image) -> Tensor:
@@ -85,6 +83,9 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
         if self.fixed_transformation:
             return self.base_len * self.multiplier
         return self.base_len
+
+    def __len__(self) -> int:
+        return self.epoch_len()
 
     def __getitem__(self, idx: int) -> Tuple[Tensor, Tensor, int]:
         if self.fixed_transformation:
