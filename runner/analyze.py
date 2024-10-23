@@ -163,8 +163,12 @@ def _perform_reconstruction_analysis(
     ]
 
     for decoder in reconstruction_decoders:
-        rec_dict = reconstruct_images(device, brain, decoder, train_set, test_set, 5)
-        recon_fig = plot_reconstructions(**rec_dict, num_samples=5)
+        (norm_means, norm_stds), rec_dict = reconstruct_images(
+            device, brain, decoder, train_set, test_set, 5
+        )
+        recon_fig = plot_reconstructions(
+            norm_means, norm_stds, **rec_dict, num_samples=5
+        )
         _process_figure(
             cfg,
             copy_checkpoint,
