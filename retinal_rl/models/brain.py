@@ -133,7 +133,7 @@ def get_cnn_circuit(
             cnn_dict[node] = circuit
 
     cnn_nodes = list(cnn_dict.keys())
-    sensor_nodes = [node for node in brain.sensors.keys()]
+    sensor_nodes = [node for node in brain.sensors]
     subgraph: nx.DiGraph[str] = nx.DiGraph(
         nx.subgraph(brain.connectome, cnn_nodes + sensor_nodes)
     )
