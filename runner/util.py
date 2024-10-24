@@ -9,15 +9,15 @@ from typing import Any, Dict, List, Tuple
 
 import networkx as nx
 import torch
-import torch.nn as nn
 from hydra.utils import instantiate
 from networkx.classes import DiGraph
 from omegaconf import DictConfig, OmegaConf
+from torch import nn
 from torch.optim.optimizer import Optimizer
 
 from retinal_rl.models.neural_circuit import NeuralCircuit
 
-nx.DiGraph.__class_getitem__ = classmethod(lambda a, b: "nx.DiGraph")  # type: ignore
+nx.DiGraph.__class_getitem__ = classmethod(lambda _, __: "nx.DiGraph")  # type: ignore
 
 # Initialize the logger
 log = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ def save_checkpoint(
 
 def delete_results(cfg: DictConfig) -> None:
     """Delete the results directory."""
-    run_dir: str = cfg.system.run_dir
+    run_dir: str = cfg.path.run_dir
 
     if not os.path.exists(run_dir):
         print(f"Directory {run_dir} does not exist.")
@@ -88,7 +88,7 @@ def assemble_neural_circuits(
     """
     Assemble a dictionary of neural circuits based on the provided configurations.
     """
-    assembled_circuits: Dict[str, "NeuralCircuit"] = {}
+    assembled_circuits: Dict[str, NeuralCircuit] = {}
     connectome: DiGraph[str] = nx.DiGraph()
     sensor_shapes: Dict[str, Tuple[int, ...]] = {
         sensor: tuple(sensors[sensor]) for sensor in sensors

@@ -8,10 +8,9 @@ It includes:
 import logging
 from typing import List, Sequence, Tuple
 
-import torch.nn as nn
 import torchvision.transforms.functional as tf
 from PIL import Image
-from torch import Tensor
+from torch import Tensor, nn
 from torch.utils.data import Dataset, Subset
 
 logger = logging.getLogger(__name__)
@@ -62,7 +61,6 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
 
     def _create_fixed_dataset(self) -> List[Tuple[Tensor, Tensor, int]]:
         transformed_data: List[Tuple[Tensor, Tensor, int]] = []
-        idx = 0
         for img, label in self.base_dataset:
             for _ in range(self.multiplier):
                 source_img = self.source_transforms(img)
@@ -70,7 +68,6 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
                 transformed_data.append(
                     (self.to_tensor(source_img), self.to_tensor(noisy_img), label)
                 )
-            idx += 1
         return transformed_data
 
     def to_tensor(self, img: Image.Image) -> Tensor:
@@ -81,11 +78,14 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
             tensor = tf.normalize(tensor, mean, std)
         return tensor
 
-    def __len__(self) -> int:
+    def epoch_len(self) -> int:
+        """Get the length of the dataset for one epoch. For fixed transformations, this is the base length times the multiplier. For on-the-fly transformations, this is the length of the base dataset."""
         if self.fixed_transformation:
             return self.base_len * self.multiplier
-        logger.warning("Length of on-the-fly transformed dataset is not really fixed.")
         return self.base_len
+
+    def __len__(self) -> int:
+        return self.epoch_len()
 
     def __getitem__(self, idx: int) -> Tuple[Tensor, Tensor, int]:
         if self.fixed_transformation:

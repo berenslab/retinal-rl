@@ -8,14 +8,29 @@ defaults:
   - optimizer: ???
   - override hydra/job_logging: custom  # Override logging config
 
-# Defaults for the various subconfigs. Can be overriden from the commandline
-# with e.g. experiment/brain=new_brain, where new_brain.yaml lives in the brain
-# subdirectory
+### Core Parameters ###
+
 # We run scan by default
 command: scan
 
 # Default run name format, using current date and time
 run_name: 'run_${now:%Y-%m-%d-%H-%M-%S}'
+
+# General simulation settings
+system:
+  device: cuda  # We use cuda by default
+
+logging:
+  use_wandb: False # Whether to use Weights & Biases for logging
+  checkpoint_step: 5  # Save checkpoints every 5 steps
+  max_checkpoints: 5  # Maximum number of checkpoints to keep
+  channel_analysis: False # Whether to do in depth channel analysis
+  plot_sample_size: 1000
+  wandb_preempt: False  # Whether to enable Weights & Biases preemption
+
+### "Immutable" Parameters ###
+
+# These parameters are not intendend to be changed by the user.
 
 # Hydra configuration
 hydra:
@@ -33,22 +48,16 @@ hydra:
           - command
   sweep:
     dir: experiments/multirun  # Directory for sweep runs
-    subdir: ${hydra:runtime.choices.experiment}/sweep/${oc.env:WANDB_SWEEP_ID,local}${run_name}  # Individual sweep run subdirectory
+    subdir: ${hydra:runtime.choices.experiment}/sweep/${oc.env:WANDB_SWEEP_ID,local}/${run_name}  # Individual sweep run subdirectory
 
-# System configuration
-system:
-  device: cuda  # We use cuda by default
+# Path configuration
+path:
   run_dir: ${hydra:runtime.output_dir}  # Access run directory at runtime
   data_dir: data  # Root directory in run_dir where all run data is saved
-  checkpoint_step: 5  # Save checkpoints every 5 steps
-  max_checkpoints: 5  # Maximum number of checkpoints to keep
-  checkpoint_dir: ${system.data_dir}/checkpoints  # Directory for checkpoints
-  plot_dir: ${system.data_dir}/plots  # Directory for plots
-  checkpoint_plot_dir: ${system.plot_dir}/checkpoints  # Directory for checkpoint plots
-  wandb_preempt: False  # Whether to enable Weights & Biases preemption
-
-# Whether to use Weights & Biases for logging
-use_wandb: False
+  checkpoint_dir: ${path.data_dir}/checkpoints  # Directory for checkpoints
+  plot_dir: ${path.data_dir}/plots  # Directory for plots
+  checkpoint_plot_dir: ${path.plot_dir}/checkpoints  # Directory for checkpoint plots
+  wandb_dir: ${path.run_dir}/wandb
 
 # Sweep command setup 
 sweep:

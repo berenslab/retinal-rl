@@ -2,19 +2,18 @@
 
 from typing import Dict, List, Tuple
 
-import matplotlib.gridspec as gridspec
-import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import numpy.fft as fft
 import seaborn as sns
 import torch
+from matplotlib import gridspec, patches
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.patches import Circle, Wedge
 from matplotlib.ticker import MaxNLocator
+from numpy import fft
 from torch import Tensor
 from torchvision.utils import make_grid
 
@@ -74,7 +73,9 @@ def plot_transforms(
         # Display the grid
         ax.imshow(grid.permute(1, 2, 0))
         ax.set_title(f"Source Transform: {transform_name}")
-        ax.set_xticks([(i + 0.5) * grid.shape[2] / len(steps) for i in range(len(steps))])
+        ax.set_xticks(
+            [(i + 0.5) * grid.shape[2] / len(steps) for i in range(len(steps))]
+        )
         ax.set_xticklabels([f"{step:.2f}" for step in steps])
         ax.set_yticks([])
 
@@ -98,7 +99,9 @@ def plot_transforms(
         # Display the grid
         ax.imshow(grid.permute(1, 2, 0))
         ax.set_title(f"Noise Transform: {transform_name}")
-        ax.set_xticks([(i + 0.5) * grid.shape[2] / len(steps) for i in range(len(steps))])
+        ax.set_xticks(
+            [(i + 0.5) * grid.shape[2] / len(steps) for i in range(len(steps))]
+        )
         ax.set_xticklabels([f"{step:.2f}" for step in steps])
         ax.set_yticks([])
 
@@ -114,7 +117,9 @@ def plot_brain_and_optimizers(brain: Brain, objective: Objective[ContextT]) -> F
     # Compute the depth of each node
     depths: Dict[str, int] = {}
     for node in nx.topological_sort(graph):
-        depths[node] = max([depths[pred] for pred in graph.predecessors(node)] + [-1]) + 1
+        depths[node] = (
+            max([depths[pred] for pred in graph.predecessors(node)] + [-1]) + 1
+        )
 
     # Create a position dictionary based on depth
     pos: Dict[str, Tuple[float, float]] = {}
@@ -128,7 +133,10 @@ def plot_brain_and_optimizers(brain: Brain, objective: Objective[ContextT]) -> F
     for depth, nodes in nodes_at_depth.items():
         width = len(nodes)
         for i, node in enumerate(nodes):
-            pos[node] = ((i - width / 2) / (width + 1), -(max_depth - depth) / max_depth)
+            pos[node] = (
+                (i - width / 2) / (width + 1),
+                -(max_depth - depth) / max_depth,
+            )
 
     # Set up the plot
     fig, ax = plt.subplots(figsize=(12, 10))
@@ -297,10 +305,10 @@ def plot_receptive_field_sizes(results: Dict[str, Dict[str, FloatArray]]) -> Fig
 def plot_histories(histories: Dict[str, List[float]]) -> Figure:
     """Plot training and test losses over epochs."""
     train_metrics = [
-        key.split("_", 1)[1] for key in histories.keys() if key.startswith("train_")
+        key.split("_", 1)[1] for key in histories if key.startswith("train_")
     ]
     test_metrics = [
-        key.split("_", 1)[1] for key in histories.keys() if key.startswith("test_")
+        key.split("_", 1)[1] for key in histories if key.startswith("test_")
     ]
 
     # Use the intersection of train and test metrics to ensure we have both for each metric
@@ -444,6 +452,8 @@ def _set_integer_ticks(ax: Axes):
 
 # Function to plot the original and reconstructed images
 def plot_reconstructions(
+    normalization_mean: List[float],
+    normalization_std: List[float],
     train_sources: List[Tuple[Tensor, int]],
     train_inputs: List[Tuple[Tensor, int]],
     train_estimates: List[Tuple[Tensor, int]],
@@ -463,13 +473,29 @@ def plot_reconstructions(
         test_input, test_class = test_inputs[i]
         test_recon, test_pred = test_estimates[i]
 
-        # Unnormalize the original images
-        train_source = train_source.permute(1, 2, 0).numpy() * 0.5 + 0.5
-        train_input = train_input.permute(1, 2, 0).numpy() * 0.5 + 0.5
-        train_recon = train_recon.permute(1, 2, 0).numpy() * 0.5 + 0.5
-        test_source = test_source.permute(1, 2, 0).numpy() * 0.5 + 0.5
-        test_input = test_input.permute(1, 2, 0).numpy() * 0.5 + 0.5
-        test_recon = test_recon.permute(1, 2, 0).numpy() * 0.5 + 0.5
+        # Unnormalize the original images using the normalization lists
+        train_source = (
+            train_source.permute(1, 2, 0).numpy() * normalization_std
+            + normalization_mean
+        )
+        train_input = (
+            train_input.permute(1, 2, 0).numpy() * normalization_std
+            + normalization_mean
+        )
+        train_recon = (
+            train_recon.permute(1, 2, 0).numpy() * normalization_std
+            + normalization_mean
+        )
+        test_source = (
+            test_source.permute(1, 2, 0).numpy() * normalization_std
+            + normalization_mean
+        )
+        test_input = (
+            test_input.permute(1, 2, 0).numpy() * normalization_std + normalization_mean
+        )
+        test_recon = (
+            test_recon.permute(1, 2, 0).numpy() * normalization_std + normalization_mean
+        )
 
         axes[0, i].imshow(np.clip(train_source, 0, 1))
         axes[0, i].axis("off")
