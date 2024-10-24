@@ -40,8 +40,6 @@ system:
   device: cuda  # We use cuda by default
   run_dir: ${hydra:runtime.output_dir}  # Access run directory at runtime
   data_dir: data  # Root directory in run_dir where all run data is saved
-  checkpoint_step: 5  # Save checkpoints every 5 steps
-  max_checkpoints: 5  # Maximum number of checkpoints to keep
   checkpoint_dir: ${system.data_dir}/checkpoints  # Directory for checkpoints
   plot_dir: ${system.data_dir}/plots  # Directory for plots
   checkpoint_plot_dir: ${system.plot_dir}/checkpoints  # Directory for checkpoint plots
@@ -50,6 +48,11 @@ system:
 
 # Whether to use Weights & Biases for logging
 use_wandb: False
+
+# General simulation settings
+simulation:
+  checkpoint_step: 5  # Save checkpoints every 5 steps
+  max_checkpoints: 5  # Maximum number of checkpoints to keep
 
 # Sweep command setup 
 sweep:

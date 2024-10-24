@@ -122,61 +122,66 @@ def cnn_statistics(
     device: torch.device,
     imageset: Imageset,
     brain: Brain,
+    channel_analysis: bool,
     max_sample_size: int = 0,
 ) -> Dict[str, Dict[str, FloatArray]]:
     """Compute statistics for a convolutional encoder model.
 
-    This function analyzes the input data and each layer of the convolutional encoder,
-    computing various statistical measures and properties.
-
     Args:
-    ----
-        device (torch.device): The device to run computations on.
-        imageset (Imageset): The dataset to analyze.
-        brain (Brain): The trained Brain model.
-        max_sample_size (int, optional): Maximum number of samples to use. If 0, use all samples. Defaults to 0.
+        device: The device to run computations on.
+        imageset: The dataset to analyze.
+        brain: The trained Brain model.
+        channel_analysis: Whether to compute channel-wise statistics (histograms, spectra).
+        max_sample_size: Maximum number of samples to use. If 0, use all samples.
 
     Returns:
-    -------
-        Dict[str, Dict[str, FloatArray]]: A nested dictionary containing statistics for the input and each layer.
-        The outer dictionary is keyed by layer names (with "input" for the input data), and each inner dictionary
-        contains the following keys:
-
-        - "receptive_fields": FloatArray of shape (out_channels, in_channels, height, width)
-            Receptive fields for the layer (identity matrix for input).
-        - "pixel_histograms": FloatArray of shape (num_channels, num_bins)
-            Histograms of pixel values for each channel.
-        - "histogram_bin_edges": FloatArray of shape (num_bins + 1,)
-            Bin edges for the pixel histograms.
-        - "mean_power_spectrum": FloatArray of shape (height, width)
-            Mean power spectrum across all channels.
-        - "var_power_spectrum": FloatArray of shape (height, width)
-            Variance of the power spectrum across all channels.
-        - "mean_autocorr": FloatArray of shape (height, width)
-            Mean autocorrelation across all channels.
-        - "var_autocorr": FloatArray of shape (height, width)
-            Variance of the autocorrelation across all channels.
-        - "num_channels": FloatArray of shape (1,)
-            Number of channels in the layer.
-
-    Note:
-    ----
-        The function only analyzes the longest sequence of convolutional layers it can find.
-        If max_sample_size is specified and smaller than the dataset size, a random subset of the data is used.
-
+        A nested dictionary containing statistics for the input and each layer.
+        When channel_analysis is False, only receptive_fields and num_channels are computed.
     """
-    # Get the input shape and the CNN layers
     brain.eval()
     brain.to(device)
     input_shape, cnn_layers = get_cnn_circuit(brain)
-    nclrs, hght, wdth = input_shape
 
-    # Prepare subsample
+    # Prepare dataset
+    dataloader = _prepare_dataset(imageset, max_sample_size)
+
+    # Initialize results
+    results: Dict[str, Dict[str, FloatArray]] = {
+        "input": _analyze_input(device, dataloader, input_shape, channel_analysis)
+    }
+
+    # Analyze each layer
+    head_layers: List[nn.Module] = []
+
+    for layer_name, layer in cnn_layers.items():
+        head_layers.append(layer)
+
+        if is_nonlinearity(layer):
+            continue
+
+        if isinstance(layer, nn.Conv2d):
+            out_channels = layer.out_channels
+        else:
+            raise NotImplementedError(
+                "Can only compute receptive fields for 2d convolutional layers"
+            )
+
+        results[layer_name] = _analyze_layer(
+            device, dataloader, head_layers, input_shape, out_channels, channel_analysis
+        )
+
+    return results
+
+
+def _prepare_dataset(
+    imageset: Imageset, max_sample_size: int = 0
+) -> DataLoader[Tuple[Tensor, Tensor, int]]:
+    """Prepare dataset and dataloader for analysis."""
     epoch_len = imageset.epoch_len()
     logger.info(f"Original dataset size: {epoch_len}")
 
     if max_sample_size > 0 and epoch_len > max_sample_size:
-        indices: List[int] = torch.randperm(epoch_len)[:max_sample_size].tolist()
+        indices = torch.randperm(epoch_len)[:max_sample_size].tolist()
         subset = ImageSubset(imageset, indices=indices)
         logger.info(f"Reducing dataset size for cnn_statistics to {max_sample_size}")
     else:
@@ -184,85 +189,101 @@ def cnn_statistics(
         subset = ImageSubset(imageset, indices=indices)
         logger.info("Using full dataset for cnn_statistics")
 
-    dataloader = DataLoader(subset, batch_size=64, shuffle=False)
+    return DataLoader(subset, batch_size=64, shuffle=False)
 
-    # Initialize results dictionary
-    results: Dict[str, Dict[str, FloatArray]] = {}
 
-    # Analyze input statistics
-    input_spectral = _layer_spectral_analysis(device, dataloader, nn.Identity())
-    input_histograms = _layer_pixel_histograms(device, dataloader, nn.Identity())
-    # num channels as FloatArray
-
-    # Load input statistics into results dictionary
-    results["input"] = {
-        "receptive_fields": np.eye(nclrs)[
-            :, :, np.newaxis, np.newaxis
-        ],  # Identity for input
-        "shape": np.array(input_shape, dtype=np.float64),
-        "pixel_histograms": input_histograms["channel_histograms"],
-        "histogram_bin_edges": input_histograms["bin_edges"],
-        "mean_power_spectrum": input_spectral["mean_power_spectrum"],
-        "var_power_spectrum": input_spectral["var_power_spectrum"],
-        "mean_autocorr": input_spectral["mean_autocorr"],
-        "var_autocorr": input_spectral["var_autocorr"],
-        "num_channels": np.array(nclrs, dtype=np.float64),
-    }
-
-    # Initialize loop variables
+def _compute_receptive_fields(
+    device: torch.device,
+    head_layers: List[nn.Module],
+    input_shape: Tuple[int, ...],
+    out_channels: int,
+) -> FloatArray:
+    """Compute receptive fields for a sequence of layers."""
+    nclrs, hght, wdth = input_shape
     imgsz = [1, nclrs, hght, wdth]
     obs = torch.zeros(size=imgsz, device=device, requires_grad=True)
-    hmn: int = 0
-    head_layers: List[nn.Module] = []
 
-    # Analyze each layer
-    for layer_name, layer in cnn_layers.items():
-        head_layers.append(layer)
-        # Sequential model up to the current layer
-        head_model = nn.Sequential(*head_layers)
+    head_model = nn.Sequential(*head_layers)
+    x = head_model(obs)
 
-        x = head_model(obs)
+    hsz, wsz = x.shape[2:]
+    hidx = (hsz - 1) // 2
+    widx = (wsz - 1) // 2
 
-        if is_nonlinearity(layer):
-            continue  # Skip layers without out_channels (e.g., activation functions)
+    hrf_size, wrf_size, hmn, wmn = rf_size_and_start(head_layers, hidx, widx)
+    grads: List[Tensor] = []
 
-        ochns: int
+    for j in range(out_channels):
+        grad = torch.autograd.grad(x[0, j, hidx, widx], obs, retain_graph=True)[0]
+        grads.append(grad[0, :, hmn : hmn + hrf_size, wmn : wmn + wrf_size])
 
-        if isinstance(layer, nn.Conv2d):
-            ochns: int = layer.out_channels
-        else:
-            raise NotImplementedError(
-                "Can only compute receptive fields for 2d convolutional layers"
-            )
+    return torch.stack(grads).cpu().numpy()
 
-        # Compute receptive fields
-        hsz, wsz = x.shape[2:]  # Get the current height and width
 
-        hidx = (hsz - 1) // 2
-        widx = (wsz - 1) // 2
+def _analyze_layer(
+    device: torch.device,
+    dataloader: DataLoader[Tuple[Tensor, Tensor, int]],
+    head_layers: List[nn.Module],
+    input_shape: Tuple[int, ...],
+    out_channels: int,
+    channel_analysis: bool = True,
+) -> Dict[str, FloatArray]:
+    """Analyze statistics for a single layer."""
+    head_model = nn.Sequential(*head_layers)
+    results: Dict[str, FloatArray] = {}
 
-        hrf_size, wrf_size, hmn, wmn = rf_size_and_start(head_layers, hidx, widx)
-        grads: List[Tensor] = []
+    # Always compute receptive fields
+    results["receptive_fields"] = _compute_receptive_fields(
+        device, head_layers, input_shape, out_channels
+    )
+    results["num_channels"] = np.array(out_channels, dtype=np.float64)
 
-        for j in range(ochns):
-            grad = torch.autograd.grad(x[0, j, hidx, widx], obs, retain_graph=True)[0]
-            grads.append(grad[0, :, hmn : hmn + hrf_size, wmn : wmn + wrf_size])
-        lrfs = torch.stack(grads).cpu().numpy()
-
-        # Perform spectral analysis and histogram computation on the transformed data
+    # Compute channel-wise statistics only if requested
+    if channel_analysis:
         layer_spectral = _layer_spectral_analysis(device, dataloader, head_model)
         layer_histograms = _layer_pixel_histograms(device, dataloader, head_model)
 
-        results[layer_name] = {
-            "receptive_fields": lrfs,
-            "pixel_histograms": layer_histograms["channel_histograms"],
-            "histogram_bin_edges": layer_histograms["bin_edges"],
-            "mean_power_spectrum": layer_spectral["mean_power_spectrum"],
-            "var_power_spectrum": layer_spectral["var_power_spectrum"],
-            "mean_autocorr": layer_spectral["mean_autocorr"],
-            "var_autocorr": layer_spectral["var_autocorr"],
-            "num_channels": np.array(ochns, dtype=np.float64),
-        }
+        results.update(
+            {
+                "pixel_histograms": layer_histograms["channel_histograms"],
+                "histogram_bin_edges": layer_histograms["bin_edges"],
+                "mean_power_spectrum": layer_spectral["mean_power_spectrum"],
+                "var_power_spectrum": layer_spectral["var_power_spectrum"],
+                "mean_autocorr": layer_spectral["mean_autocorr"],
+                "var_autocorr": layer_spectral["var_autocorr"],
+            }
+        )
+
+    return results
+
+
+def _analyze_input(
+    device: torch.device,
+    dataloader: DataLoader[Tuple[Tensor, Tensor, int]],
+    input_shape: Tuple[int, ...],
+    channel_analysis: bool,
+) -> Dict[str, FloatArray]:
+    """Analyze statistics for the input layer."""
+    nclrs = input_shape[0]
+    results: Dict[str, FloatArray] = {
+        "receptive_fields": np.eye(nclrs)[:, :, np.newaxis, np.newaxis],
+        "num_channels": np.array(nclrs, dtype=np.float64),
+    }
+
+    if channel_analysis:
+        input_spectral = _layer_spectral_analysis(device, dataloader, nn.Identity())
+        input_histograms = _layer_pixel_histograms(device, dataloader, nn.Identity())
+
+        results.update(
+            {
+                "pixel_histograms": input_histograms["channel_histograms"],
+                "histogram_bin_edges": input_histograms["bin_edges"],
+                "mean_power_spectrum": input_spectral["mean_power_spectrum"],
+                "var_power_spectrum": input_spectral["var_power_spectrum"],
+                "mean_autocorr": input_spectral["mean_autocorr"],
+                "var_autocorr": input_spectral["var_autocorr"],
+            }
+        )
 
     return results
 

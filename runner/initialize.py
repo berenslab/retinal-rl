@@ -82,7 +82,7 @@ def _initialize_create(
     save_checkpoint(
         cfg.system.data_dir,
         cfg.system.checkpoint_dir,
-        cfg.system.max_checkpoints,
+        cfg.simulation.max_checkpoints,
         brain,
         optimizer,
         histories,

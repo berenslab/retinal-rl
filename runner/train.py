@@ -124,13 +124,13 @@ def train(
         wall_time = new_wall_time
         logger.info(f"Epoch {epoch} complete. Wall Time: {epoch_wall_time:.2f}s.")
 
-        if epoch % cfg.system.checkpoint_step == 0:
+        if epoch % cfg.simulation.checkpoint_step == 0:
             logger.info("Saving checkpoint and plots.")
 
             save_checkpoint(
                 cfg.system.data_dir,
                 cfg.system.checkpoint_dir,
-                cfg.system.max_checkpoints,
+                cfg.simulation.max_checkpoints,
                 brain,
                 optimizer,
                 history,
