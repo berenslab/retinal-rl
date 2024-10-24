@@ -45,19 +45,16 @@ def analyze(
     epoch: int,
     copy_checkpoint: bool = False,
 ):
-    if not cfg.use_wandb:
+    if not cfg.simulation.use_wandb:
         _plot_and_save_histories(cfg, histories)
 
-    cnn_analysis = cnn_statistics(device, test_set, brain, 1000)
-
-    summary = brain.scan()
-    filepath = os.path.join(cfg.system.run_dir, "brain_summary.txt")
-
-    with open(filepath, "w") as f:
-        f.write(summary)
-
-    if cfg.use_wandb:
-        wandb.save(filepath, base_path=cfg.system.run_dir, policy="now")
+    cnn_analysis = cnn_statistics(
+        device,
+        test_set,
+        brain,
+        cfg.simulation.channel_analysis,
+        cfg.simulation.plot_sample_size,
+    )
 
     if epoch == 0:
         _perform_initialization_analysis(cfg, brain, objective, train_set, cnn_analysis)
@@ -82,6 +79,15 @@ def _perform_initialization_analysis(
     train_set: Imageset,
     cnn_analysis: Dict[str, Dict[str, FloatArray]],
 ):
+    summary = brain.scan()
+    filepath = os.path.join(cfg.system.run_dir, "brain_summary.txt")
+
+    with open(filepath, "w") as f:
+        f.write(summary)
+
+    if cfg.simulation.use_wandb:
+        wandb.save(filepath, base_path=cfg.system.run_dir, policy="now")
+
     rf_sizes_fig = plot_receptive_field_sizes(cnn_analysis)
     _process_figure(cfg, False, rf_sizes_fig, init_dir, "receptive_field_sizes", 0)
 
@@ -92,6 +98,8 @@ def _perform_initialization_analysis(
     transforms_fig = plot_transforms(**transforms)
     _process_figure(cfg, False, transforms_fig, init_dir, "transforms", 0)
 
+    _analyze_input_layer(cfg, cnn_analysis["input"], cfg.simulation.channel_analysis)
+
 
 def _analyze_layers(
     cfg: DictConfig,
@@ -100,19 +108,26 @@ def _analyze_layers(
     copy_checkpoint: bool,
 ):
     for layer_name, layer_data in cnn_analysis.items():
-        if layer_name == "input":
-            _analyze_input_layer(cfg, layer_data, epoch)
-        else:
-            _analyze_regular_layer(cfg, layer_name, layer_data, epoch, copy_checkpoint)
+        if layer_name != "input":
+            _analyze_regular_layer(
+                cfg,
+                layer_name,
+                layer_data,
+                epoch,
+                copy_checkpoint,
+                cfg.simulation.channel_analysis,
+            )
 
 
 def _analyze_input_layer(
-    cfg: DictConfig, layer_data: Dict[str, FloatArray], epoch: int
+    cfg: DictConfig,
+    layer_data: Dict[str, FloatArray],
+    channel_analysis: bool,
 ):
-    if epoch == 0:
-        layer_rfs = layer_receptive_field_plots(layer_data["receptive_fields"])
-        _process_figure(cfg, False, layer_rfs, init_dir, "input_rfs", 0)
+    layer_rfs = layer_receptive_field_plots(layer_data["receptive_fields"])
+    _process_figure(cfg, False, layer_rfs, init_dir, "input_rfs", 0)
 
+    if channel_analysis:
         num_channels = int(layer_data["num_channels"])
         for channel in range(num_channels):
             channel_fig = plot_channel_statistics(layer_data, "input", channel)
@@ -127,23 +142,25 @@ def _analyze_regular_layer(
     layer_data: Dict[str, FloatArray],
     epoch: int,
     copy_checkpoint: bool,
+    channel_analysis: bool,
 ):
     layer_rfs = layer_receptive_field_plots(layer_data["receptive_fields"])
     _process_figure(
         cfg, copy_checkpoint, layer_rfs, "receptive_fields", f"{layer_name}", epoch
     )
 
-    num_channels = int(layer_data["num_channels"])
-    for channel in range(num_channels):
-        channel_fig = plot_channel_statistics(layer_data, layer_name, channel)
-        _process_figure(
-            cfg,
-            copy_checkpoint,
-            channel_fig,
-            f"{layer_name}_layer_channel_analysis",
-            f"channel_{channel}",
-            epoch,
-        )
+    if channel_analysis:
+        num_channels = int(layer_data["num_channels"])
+        for channel in range(num_channels):
+            channel_fig = plot_channel_statistics(layer_data, layer_name, channel)
+            _process_figure(
+                cfg,
+                copy_checkpoint,
+                channel_fig,
+                f"{layer_name}_layer_channel_analysis",
+                f"channel_{channel}",
+                epoch,
+            )
 
 
 def _perform_reconstruction_analysis(
@@ -223,7 +240,7 @@ def _process_figure(
     file_name: str,
     epoch: int,
 ) -> None:
-    if cfg.use_wandb:
+    if cfg.simulation.use_wandb:
         title = f"{_wandb_title(sub_dir)}/{_wandb_title(file_name)}"
         img = wandb.Image(fig)
         wandb.log({title: img}, commit=False)

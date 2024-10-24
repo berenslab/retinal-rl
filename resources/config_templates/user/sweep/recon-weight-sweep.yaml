@@ -11,7 +11,9 @@ method: grid
 project: retinal-rl
 
 parameters:
-  use_wandb:
+  simulation.use_wandb:
+    value: True
+  simulation.channel_analysis:
     value: True
   recon_weight_retina: 
     values: [0,0.9,0.999,1]

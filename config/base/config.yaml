@@ -46,14 +46,6 @@ system:
   wandb_preempt: False  # Whether to enable Weights & Biases preemption
   wandb_dir: ${system.run_dir}/wandb
 
-# Whether to use Weights & Biases for logging
-use_wandb: False
-
-# General simulation settings
-simulation:
-  checkpoint_step: 5  # Save checkpoints every 5 steps
-  max_checkpoints: 5  # Maximum number of checkpoints to keep
-
 # Sweep command setup 
 sweep:
   command:

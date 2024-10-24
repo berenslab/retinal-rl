@@ -267,6 +267,7 @@ def _analyze_input(
     nclrs = input_shape[0]
     results: Dict[str, FloatArray] = {
         "receptive_fields": np.eye(nclrs)[:, :, np.newaxis, np.newaxis],
+        "shape": np.array(input_shape, dtype=np.float64),
         "num_channels": np.array(nclrs, dtype=np.float64),
     }
 

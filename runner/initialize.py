@@ -52,7 +52,7 @@ def _initialize_create(
     # create the directories
     os.makedirs(cfg.system.data_dir)
     os.makedirs(cfg.system.checkpoint_dir)
-    if not cfg.use_wandb:
+    if not cfg.simulation.use_wandb:
         os.makedirs(cfg.system.plot_dir)
 
     else:
@@ -112,7 +112,7 @@ def _initialize_reload(
     completed_epochs = checkpoint["completed_epochs"]
     history = checkpoint["histories"]
 
-    if cfg.use_wandb:
+    if cfg.simulation.use_wandb:
         wandb.init(
             project="retinal-rl",
             group=HydraConfig.get().runtime.choices.experiment,

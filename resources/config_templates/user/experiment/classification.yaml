@@ -2,14 +2,28 @@
 defaults:
   - _self_
   - override /dataset: cifar10
-  - override /brain: shallow-autoencoder
+  - override /brain: classifying-autoencoder
   - override /optimizer: class-recon
+
 
 # This is the main entry point for control of a retinal-rl experiment. Variables
 # created here will be top-level, and defaults can be set for the various parts
 # of an experiment (NB: do not add comments above the defaults list or it will
 # break the config system.)
+
+### Core Parameters ###
+
+# General simulation settings
+simulation:
+  use_wandb: False # Whether to use Weights & Biases for logging
+  checkpoint_step: 5  # Save checkpoints every 5 steps
+  max_checkpoints: 5  # Maximum number of checkpoints to keep
+  channel_analysis: False # Whether to do in depth channel analysis
+  plot_sample_size: 1000
+
 framework: classification
+
+### Interpolation Parameters ###
 
 # This is a free list of parameters that can be interpolated by the subconfigs
 # in sweep, dataset, brain, and optimizer. A major use for this is interpolating
