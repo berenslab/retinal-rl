@@ -7,7 +7,7 @@ import hydra
 from omegaconf import DictConfig
 from torchvision import datasets
 
-from retinal_rl.dataset import Imageset
+from retinal_rl.classification.imageset import Imageset
 
 
 def get_datasets(cfg: DictConfig) -> Tuple[Imageset, Imageset]:

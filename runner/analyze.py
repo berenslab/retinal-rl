@@ -23,7 +23,7 @@ from retinal_rl.analysis.statistics import (
     reconstruct_images,
     transform_base_images,
 )
-from retinal_rl.dataset import Imageset
+from retinal_rl.classification.imageset import Imageset
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.loss import ReconstructionLoss
 from retinal_rl.models.objective import ContextT, Objective
