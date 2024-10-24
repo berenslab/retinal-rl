@@ -45,15 +45,15 @@ def analyze(
     epoch: int,
     copy_checkpoint: bool = False,
 ):
-    if not cfg.simulation.use_wandb:
+    if not cfg.logging.use_wandb:
         _plot_and_save_histories(cfg, histories)
 
     cnn_analysis = cnn_statistics(
         device,
         test_set,
         brain,
-        cfg.simulation.channel_analysis,
-        cfg.simulation.plot_sample_size,
+        cfg.logging.channel_analysis,
+        cfg.logging.plot_sample_size,
     )
 
     if epoch == 0:
@@ -80,13 +80,13 @@ def _perform_initialization_analysis(
     cnn_analysis: Dict[str, Dict[str, FloatArray]],
 ):
     summary = brain.scan()
-    filepath = os.path.join(cfg.system.run_dir, "brain_summary.txt")
+    filepath = os.path.join(cfg.path.run_dir, "brain_summary.txt")
 
     with open(filepath, "w") as f:
         f.write(summary)
 
-    if cfg.simulation.use_wandb:
-        wandb.save(filepath, base_path=cfg.system.run_dir, policy="now")
+    if cfg.logging.use_wandb:
+        wandb.save(filepath, base_path=cfg.path.run_dir, policy="now")
 
     rf_sizes_fig = plot_receptive_field_sizes(cnn_analysis)
     _process_figure(cfg, False, rf_sizes_fig, init_dir, "receptive_field_sizes", 0)
@@ -98,7 +98,7 @@ def _perform_initialization_analysis(
     transforms_fig = plot_transforms(**transforms)
     _process_figure(cfg, False, transforms_fig, init_dir, "transforms", 0)
 
-    _analyze_input_layer(cfg, cnn_analysis["input"], cfg.simulation.channel_analysis)
+    _analyze_input_layer(cfg, cnn_analysis["input"], cfg.logging.channel_analysis)
 
 
 def _analyze_layers(
@@ -115,7 +115,7 @@ def _analyze_layers(
                 layer_data,
                 epoch,
                 copy_checkpoint,
-                cfg.simulation.channel_analysis,
+                cfg.logging.channel_analysis,
             )
 
 
@@ -180,9 +180,8 @@ def _perform_reconstruction_analysis(
     ]
 
     for decoder in reconstruction_decoders:
-        (norm_means, norm_stds), rec_dict = reconstruct_images(
-            device, brain, decoder, train_set, test_set, 5
-        )
+        norm_means, norm_stds = train_set.normalization_stats
+        rec_dict = reconstruct_images(device, brain, decoder, train_set, test_set, 5)
         recon_fig = plot_reconstructions(
             norm_means, norm_stds, **rec_dict, num_samples=5
         )
@@ -197,17 +196,17 @@ def _perform_reconstruction_analysis(
 
 
 def _save_figure(cfg: DictConfig, sub_dir: str, file_name: str, fig: Figure) -> None:
-    dir = os.path.join(cfg.system.plot_dir, sub_dir)
+    dir = os.path.join(cfg.path.plot_dir, sub_dir)
     os.makedirs(dir, exist_ok=True)
     file_name = os.path.join(dir, f"{file_name}.png")
     fig.savefig(file_name)
 
 
 def _checkpoint_copy(cfg: DictConfig, sub_dir: str, file_name: str, epoch: int) -> None:
-    src_path = os.path.join(cfg.system.plot_dir, sub_dir, f"{file_name}.png")
+    src_path = os.path.join(cfg.path.plot_dir, sub_dir, f"{file_name}.png")
 
     dest_dir = os.path.join(
-        cfg.system.checkpoint_plot_dir, "checkpoints", f"epoch_{epoch}", sub_dir
+        cfg.path.checkpoint_plot_dir, "checkpoints", f"epoch_{epoch}", sub_dir
     )
     os.makedirs(dest_dir, exist_ok=True)
     dest_path = os.path.join(dest_dir, f"{file_name}.png")
@@ -240,7 +239,7 @@ def _process_figure(
     file_name: str,
     epoch: int,
 ) -> None:
-    if cfg.simulation.use_wandb:
+    if cfg.logging.use_wandb:
         title = f"{_wandb_title(sub_dir)}/{_wandb_title(file_name)}"
         img = wandb.Image(fig)
         wandb.log({title: img}, commit=False)

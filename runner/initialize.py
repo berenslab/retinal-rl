@@ -30,7 +30,7 @@ def initialize(
     logger.info(f"(WANDB) Sweep ID: {wandb_sweep_id}")
 
     # If continuing from a previous run, load the model and history
-    if os.path.exists(cfg.system.data_dir):
+    if os.path.exists(cfg.path.data_dir):
         return _initialize_reload(cfg, brain, optimizer)
     # else, initialize a new model and history
     return _initialize_create(cfg, brain, optimizer)
@@ -43,20 +43,20 @@ def _initialize_create(
 ) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
     epoch = 0
     logger.info(
-        f"Experiment path {cfg.system.run_dir} does not exist. Initializing {cfg.run_name}."
+        f"Experiment path {cfg.path.run_dir} does not exist. Initializing {cfg.run_name}."
     )
 
     # initialize the training histories
     histories: Dict[str, List[float]] = {}
 
     # create the directories
-    os.makedirs(cfg.system.data_dir)
-    os.makedirs(cfg.system.checkpoint_dir)
-    if not cfg.simulation.use_wandb:
-        os.makedirs(cfg.system.plot_dir)
+    os.makedirs(cfg.path.data_dir)
+    os.makedirs(cfg.path.checkpoint_dir)
+    if not cfg.logging.use_wandb:
+        os.makedirs(cfg.path.plot_dir)
 
     else:
-        os.makedirs(cfg.system.wandb_dir)
+        os.makedirs(cfg.path.wandb_dir)
         # convert DictConfig to dict
         dict_conf = omegaconf.OmegaConf.to_container(
             cfg, resolve=True, throw_on_missing=True
@@ -69,10 +69,10 @@ def _initialize_create(
             config=dict_conf,
             name=cfg.run_name,
             id=cfg.run_name,
-            dir=cfg.system.wandb_dir,
+            dir=cfg.path.wandb_dir,
         )
 
-        if cfg.system.wandb_preempt:
+        if cfg.logging.wandb_preempt:
             wandb.mark_preempting()
 
         wandb.define_metric("Epoch")
@@ -80,9 +80,9 @@ def _initialize_create(
         wandb.define_metric("Test/*", step_metric="Epoch")
 
     save_checkpoint(
-        cfg.system.data_dir,
-        cfg.system.checkpoint_dir,
-        cfg.simulation.max_checkpoints,
+        cfg.path.data_dir,
+        cfg.path.checkpoint_dir,
+        cfg.logging.max_checkpoints,
         brain,
         optimizer,
         histories,
@@ -96,9 +96,9 @@ def _initialize_reload(
     cfg: DictConfig, brain: Brain, optimizer: Optimizer
 ) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
     logger.info(
-        f"Experiment dir {cfg.system.run_dir} exists. Loading existing model and history."
+        f"Experiment dir {cfg.path.run_dir} exists. Loading existing model and history."
     )
-    checkpoint_file = os.path.join(cfg.system.data_dir, "current_checkpoint.pt")
+    checkpoint_file = os.path.join(cfg.path.data_dir, "current_checkpoint.pt")
 
     # check if files don't exist
     if not os.path.exists(checkpoint_file):
@@ -112,7 +112,7 @@ def _initialize_reload(
     completed_epochs = checkpoint["completed_epochs"]
     history = checkpoint["histories"]
 
-    if cfg.simulation.use_wandb:
+    if cfg.logging.use_wandb:
         wandb.init(
             project="retinal-rl",
             group=HydraConfig.get().runtime.choices.experiment,
@@ -120,9 +120,9 @@ def _initialize_reload(
             name=cfg.run_name,
             id=cfg.run_name,
             resume="must",
-            dir=cfg.system.wandb_dir,
+            dir=cfg.path.wandb_dir,
         )
-        if cfg.system.wandb_preempt:
+        if cfg.logging.wandb_preempt:
             wandb.mark_preempting()
 
     return brain, optimizer, history, completed_epochs

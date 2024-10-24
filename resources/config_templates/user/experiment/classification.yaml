@@ -11,16 +11,6 @@ defaults:
 # of an experiment (NB: do not add comments above the defaults list or it will
 # break the config system.)
 
-### Core Parameters ###
-
-# General simulation settings
-simulation:
-  use_wandb: False # Whether to use Weights & Biases for logging
-  checkpoint_step: 5  # Save checkpoints every 5 steps
-  max_checkpoints: 5  # Maximum number of checkpoints to keep
-  channel_analysis: False # Whether to do in depth channel analysis
-  plot_sample_size: 1000
-
 framework: classification
 
 ### Interpolation Parameters ###

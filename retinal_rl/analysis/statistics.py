@@ -69,11 +69,9 @@ def reconstruct_images(
     test_set: Imageset,
     train_set: Imageset,
     sample_size: int,
-) -> Tuple[(Tuple[List[float], List[float]]), Dict[str, List[Tuple[Tensor, int]]]]:
+) -> Dict[str, List[Tuple[Tensor, int]]]:
     """Compute reconstructions of a set of training and test images using a Brain model."""
     brain.eval()  # Set the model to evaluation mode
-
-    normalization_stats = train_set.normalization_stats
 
     def collect_reconstructions(
         imageset: Imageset, sample_size: int
@@ -108,7 +106,7 @@ def reconstruct_images(
         test_set, sample_size
     )
 
-    return normalization_stats, {
+    return {
         "train_sources": train_source,
         "train_inputs": train_input,
         "train_estimates": train_estimates,
