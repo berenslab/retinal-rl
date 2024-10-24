@@ -9,8 +9,8 @@ from PIL import Image
 from torch import Tensor, fft, nn
 from torch.utils.data import DataLoader
 
-from retinal_rl.dataset import Imageset, ImageSubset
-from retinal_rl.datasets.transforms import ContinuousTransform
+from retinal_rl.classification.imageset import ImageSet
+from retinal_rl.classification.transforms import ContinuousTransform
 from retinal_rl.models.brain import Brain, get_cnn_circuit
 from retinal_rl.util import (
     FloatArray,
@@ -22,9 +22,9 @@ logger = logging.getLogger(__name__)
 
 
 def transform_base_images(
-    imageset: Imageset, num_steps: int, num_images: int
+    imageset: ImageSet, num_steps: int, num_images: int
 ) -> Dict[str, Dict[str, Dict[float, List[Tensor]]]]:
-    """Apply transformations to a set of images from an Imageset."""
+    """Apply transformations to a set of images from an ImageSet."""
     images: List[Image.Image] = []
 
     base_dataset = imageset.base_dataset
@@ -66,15 +66,15 @@ def reconstruct_images(
     device: torch.device,
     brain: Brain,
     decoder: str,
-    test_set: Imageset,
-    train_set: Imageset,
+    test_set: ImageSet,
+    train_set: ImageSet,
     sample_size: int,
 ) -> Dict[str, List[Tuple[Tensor, int]]]:
     """Compute reconstructions of a set of training and test images using a Brain model."""
     brain.eval()  # Set the model to evaluation mode
 
     def collect_reconstructions(
-        imageset: Imageset, sample_size: int
+        imageset: ImageSet, sample_size: int
     ) -> Tuple[
         List[Tuple[Tensor, int]], List[Tuple[Tensor, int]], List[Tuple[Tensor, int]]
     ]:
@@ -118,7 +118,7 @@ def reconstruct_images(
 
 def cnn_statistics(
     device: torch.device,
-    imageset: Imageset,
+    imageset: ImageSet,
     brain: Brain,
     channel_analysis: bool,
     max_sample_size: int = 0,
@@ -172,7 +172,7 @@ def cnn_statistics(
 
 
 def _prepare_dataset(
-    imageset: Imageset, max_sample_size: int = 0
+    imageset: ImageSet, max_sample_size: int = 0
 ) -> DataLoader[Tuple[Tensor, Tensor, int]]:
     """Prepare dataset and dataloader for analysis."""
     epoch_len = imageset.epoch_len()

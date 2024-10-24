@@ -23,7 +23,7 @@ from retinal_rl.analysis.statistics import (
     reconstruct_images,
     transform_base_images,
 )
-from retinal_rl.dataset import Imageset
+from retinal_rl.classification.imageset import ImageSet
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.loss import ReconstructionLoss
 from retinal_rl.models.objective import ContextT, Objective
@@ -40,8 +40,8 @@ def analyze(
     brain: Brain,
     objective: Objective[ContextT],
     histories: Dict[str, List[float]],
-    train_set: Imageset,
-    test_set: Imageset,
+    train_set: ImageSet,
+    test_set: ImageSet,
     epoch: int,
     copy_checkpoint: bool = False,
 ):
@@ -76,7 +76,7 @@ def _perform_initialization_analysis(
     cfg: DictConfig,
     brain: Brain,
     objective: Objective[ContextT],
-    train_set: Imageset,
+    train_set: ImageSet,
     cnn_analysis: Dict[str, Dict[str, FloatArray]],
 ):
     summary = brain.scan()
@@ -168,8 +168,8 @@ def _perform_reconstruction_analysis(
     device: torch.device,
     brain: Brain,
     objective: Objective[ContextT],
-    train_set: Imageset,
-    test_set: Imageset,
+    train_set: ImageSet,
+    test_set: ImageSet,
     epoch: int,
     copy_checkpoint: bool,
 ):

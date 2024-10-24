@@ -452,8 +452,6 @@ def _set_integer_ticks(ax: Axes):
 
 # Function to plot the original and reconstructed images
 def plot_reconstructions(
-    normalization_mean: List[float],
-    normalization_std: List[float],
     train_sources: List[Tuple[Tensor, int]],
     train_inputs: List[Tuple[Tensor, int]],
     train_estimates: List[Tuple[Tensor, int]],
@@ -474,28 +472,12 @@ def plot_reconstructions(
         test_recon, test_pred = test_estimates[i]
 
         # Unnormalize the original images using the normalization lists
-        train_source = (
-            train_source.permute(1, 2, 0).numpy() * normalization_std
-            + normalization_mean
-        )
-        train_input = (
-            train_input.permute(1, 2, 0).numpy() * normalization_std
-            + normalization_mean
-        )
-        train_recon = (
-            train_recon.permute(1, 2, 0).numpy() * normalization_std
-            + normalization_mean
-        )
-        test_source = (
-            test_source.permute(1, 2, 0).numpy() * normalization_std
-            + normalization_mean
-        )
-        test_input = (
-            test_input.permute(1, 2, 0).numpy() * normalization_std + normalization_mean
-        )
-        test_recon = (
-            test_recon.permute(1, 2, 0).numpy() * normalization_std + normalization_mean
-        )
+        train_source = train_source.permute(1, 2, 0).numpy()
+        train_input = train_input.permute(1, 2, 0).numpy()
+        train_recon = train_recon.permute(1, 2, 0).numpy()
+        test_source = test_source.permute(1, 2, 0).numpy()
+        test_input = test_input.permute(1, 2, 0).numpy()
+        test_recon = test_recon.permute(1, 2, 0).numpy()
 
         axes[0, i].imshow(np.clip(train_source, 0, 1))
         axes[0, i].axis("off")
