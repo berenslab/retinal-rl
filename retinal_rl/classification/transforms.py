@@ -12,8 +12,8 @@ from abc import ABC, abstractmethod
 from typing import Tuple
 
 import numpy as np
-import torch.nn as nn
 from PIL import Image, ImageEnhance, ImageFilter
+from torch import nn
 
 
 class ContinuousTransform(nn.Module, ABC):

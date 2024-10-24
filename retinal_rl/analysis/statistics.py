@@ -9,8 +9,8 @@ from PIL import Image
 from torch import Tensor, fft, nn
 from torch.utils.data import DataLoader
 
-from retinal_rl.dataset import Imageset, ImageSubset
-from retinal_rl.datasets.transforms import ContinuousTransform
+from retinal_rl.classification.imageset import Imageset, ImageSubset
+from retinal_rl.classification.transforms import ContinuousTransform
 from retinal_rl.models.brain import Brain, get_cnn_circuit
 from retinal_rl.util import (
     FloatArray,
