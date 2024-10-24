@@ -17,6 +17,8 @@ from torch.optim.optimizer import Optimizer
 
 from retinal_rl.models.neural_circuit import NeuralCircuit
 
+nx.DiGraph.__class_getitem__ = classmethod(lambda _, __: "nx.DiGraph")  # type: ignore
+
 # Initialize the logger
 log = logging.getLogger(__name__)
 
