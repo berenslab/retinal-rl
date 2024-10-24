@@ -47,8 +47,12 @@ def train(
         history (Dict[str, List[float]]): The training history.
 
     """
-    trainloader = DataLoader(train_set, batch_size=64, shuffle=True)
-    testloader = DataLoader(test_set, batch_size=64, shuffle=False)
+    trainloader = DataLoader(
+        train_set, batch_size=64, shuffle=True, num_workers=cfg.system.num_workers
+    )
+    testloader = DataLoader(
+        test_set, batch_size=64, shuffle=False, num_workers=cfg.system.num_workers
+    )
 
     wall_time = time.time()
 
