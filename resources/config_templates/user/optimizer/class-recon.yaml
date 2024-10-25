@@ -34,10 +34,20 @@ objective:
         - thalamus
         - visual_cortex
         - v1_decoder
-        - inferotemporal_decoder
       weights:
         - ${recon_weight_retina}
         - ${recon_weight_thalamus}
         - ${recon_weight_cortex}
         - 1
         - 1
+    - _target_: retinal_rl.models.loss.L1Sparsity
+      target_responses:
+        - "visual_cortex"
+      target_circuits:
+        - retina
+        - thalamus
+        - visual_cortex
+      weights:
+        - ${sparsity}
+        - ${sparsity}
+        - ${sparsity}
