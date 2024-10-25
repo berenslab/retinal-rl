@@ -12,11 +12,11 @@ Retinal-Rl is designed to run in a containerized environment using [Apptainer](h
 
 2. Get the container:
 
-    - Either pull the pre-built container:
+- Either pull the pre-built container:
 ```bash
 apptainer pull retinal-rl.sif oras://ghcr.io/berenslab/retinal-rl:singularity-image
 ```
-    - or build from source:
+- or build from source:
 ```bash
 apptainer build retinal-rl.sif resources/retinal-rl.def
 ```
