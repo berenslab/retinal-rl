@@ -5,8 +5,8 @@ from math import ceil, floor
 from typing import List, Tuple, TypeVar, Union, cast
 
 import numpy as np
-import torch.nn as nn
 from numpy.typing import NDArray
+from torch import nn
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +124,7 @@ class Activation(Enum):
     leaky = nn.LeakyReLU
     identity = nn.Identity
     gelu = nn.GELU
+    sigmoid = nn.Sigmoid
 
     def __call__(self) -> nn.Module:
         act_module = self.value()
