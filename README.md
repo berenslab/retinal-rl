@@ -4,16 +4,18 @@ A deep learning framework for vision research using deep reinforcement learning.
 
 ## Apptainer Environment
 
+Retinal-Rl is designed to run in a containerized environment using [Apptainer](https://apptainer.org/docs/user/latest/).
+
 ### Installation
 
-1. Install [Apptainer](https://apptainer.org/docs/user/latest/) to run the containerized environment.
+1. [Install] Apptainer(https://apptainer.org/docs/admin/main/installation.html) to run the containerized environment.
 
-2. Pull the pre-built container:
+2a. Pull the pre-built container:
 ```bash
 apptainer pull retinal-rl.sif oras://ghcr.io/berenslab/retinal-rl:singularity-image
 ```
 
-Alternatively, build from source:
+2b. Alternatively, build from source:
 ```bash
 apptainer build retinal-rl.sif resources/retinal-rl.def
 ```
