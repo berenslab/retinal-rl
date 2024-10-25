@@ -23,7 +23,7 @@ apptainer build retinal-rl.sif resources/retinal-rl.def
 
 ### Running Experiments
 
-The scan command prints info about the proposed neural network architecture:
+The `scan` command prints info about the proposed neural network architecture:
 ```bash
 apptainer exec retinal-rl.sif python main.py +experiment="{experiment}" command=scan
 ```
@@ -82,9 +82,9 @@ apptainer exec retinal-rl.sif python main.py +experiment="{experiment}" logging.
 
 ### Parameter Sweeps
 
-[Wandb sweeps](https://docs.wandb.ai/guides/sweeps) can be added to `user/sweeps/{sweep}.yaml` and launched from the command line:
+Wandb [sweeps](https://docs.wandb.ai/guides/sweeps) can be added to `user/sweeps/{sweep}.yaml` and launched from the command line:
 ```bash
 apptainer exec retinal-rl.sif python main.py +experiment="{experiment}" +sweep="{sweep}" command=sweep
 ```
 
-Typically the only command line arguments that need a `+` prefix will be `+experiment` and `+sweep`. Also note that the `.yaml` extension may typically be dropped.
+Typically the only command line arguments that need a `+` prefix will be `+experiment` and `+sweep`. Also note that `.yaml` extensions are dropped at the command line.
