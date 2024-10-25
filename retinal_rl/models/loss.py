@@ -79,9 +79,7 @@ class Loss(Generic[ContextT]):
         """
         if self.min_epoch is not None and epoch < self.min_epoch:
             return False
-        if self.max_epoch is not None and epoch > self.max_epoch:
-            return False
-        return True
+        return self.max_epoch is None or epoch <= self.max_epoch
 
     @abstractmethod
     def compute_value(self, context: ContextT) -> Tensor:
