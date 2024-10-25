@@ -3,26 +3,26 @@
 name: cifar10  # Name of the dataset
 
 imageset:
-  _target_: retinal_rl.dataset.Imageset
+  _target_: retinal_rl.classification.imageset.Imageset
   source_transforms:
-    - _target_: retinal_rl.datasets.transforms.ScaleShiftTransform
+    - _target_: retinal_rl.classification.transforms.ScaleShiftTransform
       vision_width: 160
       vision_height: 160
       image_rescale_range: [1, 5]
   noise_transforms:
-    - _target_: retinal_rl.datasets.transforms.ShotNoiseTransform
+    - _target_: retinal_rl.classification.transforms.ShotNoiseTransform
       lambda_range:
         - ${eval:"0.5 if ${shot_noise_transform} else 0"}
         - ${eval:"1.5 if ${shot_noise_transform} else 0"}
-    - _target_: retinal_rl.datasets.transforms.ContrastTransform
+    - _target_: retinal_rl.classification.transforms.ContrastTransform
       contrast_range:
         - ${eval:"0.6 if ${contrast_noise_transform} else 1"}
         - ${eval:"1.4 if ${contrast_noise_transform} else 1"}
-    - _target_: retinal_rl.datasets.transforms.IlluminationTransform
+    - _target_: retinal_rl.classification.transforms.IlluminationTransform
       brightness_range:
         - ${eval:"0.6 if ${brightness_noise_transform} else 1"}
         - ${eval:"1.4 if ${brightness_noise_transform} else 1"}
-    - _target_: retinal_rl.datasets.transforms.BlurTransform
+    - _target_: retinal_rl.classification.transforms.BlurTransform
       blur_range:
         - ${eval:"0 if ${blur_noise_transform} else 0"}
         - ${eval:"2 if ${blur_noise_transform} else 0"}
