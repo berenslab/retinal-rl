@@ -4,8 +4,7 @@ from abc import abstractmethod
 from typing import Dict, Generic, List, Optional, TypeVar
 
 import torch
-import torch.nn as nn
-from torch import Tensor
+from torch import Tensor, nn
 
 from retinal_rl.util import camel_to_snake
 
@@ -134,7 +133,7 @@ class L1Sparsity(Loss[ContextT]):
 
     def __init__(
         self,
-        target_responses: List[str],
+        target_response: str,
         target_circuits: List[str] = [],
         weights: List[float] = [],
         min_epoch: Optional[int] = None,
@@ -143,18 +142,20 @@ class L1Sparsity(Loss[ContextT]):
         """Initialize the reconstruction loss loss."""
         super().__init__(target_circuits, weights, min_epoch, max_epoch)
 
-        """Initialize the L1 sparsity loss."""
-        self.target_responses = target_responses
+        self.target_response = target_response
 
     def compute_value(self, context: ContextT) -> Tensor:
         """Compute the L1 sparsity of activations."""
-        activations: List[Tensor] = []
         responses = context.responses
-        for target in self.target_responses:
-            if target not in responses:
-                raise ValueError(f"Target {target} not found in responses")
-            activations.append(responses[target])
-        return torch.mean(torch.stack([act.abs().mean() for act in activations]))
+        if self.target_response not in responses:
+            raise ValueError(f"Target {self.target_response} not found in responses")
+        activation = responses[self.target_response]
+        return torch.mean(activation.abs().mean())
+
+    @property
+    def key_name(self) -> str:
+        """Return a user-friendly name for the loss, including the target response."""
+        return f"l1_sparsity_{self.target_response.lower()}"
 
 
 class KLDivergenceSparsity(Loss[ContextT]):
