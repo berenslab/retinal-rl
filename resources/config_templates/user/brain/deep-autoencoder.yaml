@@ -12,9 +12,11 @@ connections:
   - ["vision", "retina"]  # Input to retina
   - ["retina","thalamus"]  # Retina to thalamus
   - ["thalamus","visual_cortex"]  # Thalamus to visual cortex
-  - ["visual_cortex", "prefrontal"]  # Visual cortex to prefrontal cortex
+  - ["visual_cortex", "inferotemporal" ]
+  - [ "inferotemporal", "prefrontal"]  # Visual cortex to it
   - ["prefrontal", "classifier"]  # Prefrontal cortex to classifier
-  - ["visual_cortex", "v1_decoder"]  # v1 to decoder (for reconstruction)
+  - ["inferotemporal", "it_decoder"] # It decoder
+  - ["it_decoder", "v1_decoder"]  # it decoder to v1_decoder (for reconstruction)
 
 # Define the individual nodes (neural circuits) of the network. Many circuit
 # parameters are interpolated from the experiment config.
@@ -58,13 +60,33 @@ circuits:
     affine_norm: ${affine_norm}
 
   # Prefrontal Cortex: high-level cognitive processing
-  prefrontal:
+  inferotemporal:
     _target_: retinal_rl.models.circuits.fully_connected.FullyConnected
     output_shape:
-      - 128  # Size of the latent representation
+      - 64  # Size of the latent representation
     hidden_units: 
       - 64  # Number of hidden units
     activation: ${activation}
+
+  # Prefrontal Cortex: high-level cognitive processing
+  prefrontal:
+    _target_: retinal_rl.models.circuits.fully_connected.FullyConnected
+    output_shape:
+      - 64  # Size of the latent representation
+    activation: ${activation}
+
+  # Prefrontal Cortex: high-level cognitive processing
+  it_decoder:
+    _target_: retinal_rl.models.circuits.fully_connected.FullyConnected
+    output_shape: "inferotemporal.input_shape"
+    hidden_units: 
+      - 64  # Number of hidden units
+    activation: ${activation}
+
+  # Classifier: for categorizing the input into classes
+  classifier:
+    _target_: retinal_rl.models.circuits.task_head.linear_classifier.LinearClassifier
+    num_classes: 10  # Number of output classes
 
   # Decoder: for reconstructing the input from the latent representation
   v1_decoder:
@@ -84,8 +106,3 @@ circuits:
       - ${activation}
       - ${activation}
       - "tanh"
-
-  # Classifier: for categorizing the input into classes
-  classifier:
-    _target_: retinal_rl.models.circuits.task_head.linear_classifier.LinearClassifier
-    num_classes: 10  # Number of output classes
