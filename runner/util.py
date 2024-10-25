@@ -6,6 +6,7 @@ import logging
 import os
 import shutil
 from typing import Any, Dict, List, Tuple
+from typing import Dict, List, cast
 
 import networkx as nx
 import torch
@@ -16,6 +17,7 @@ from torch import nn
 from torch.optim.optimizer import Optimizer
 
 from retinal_rl.models.neural_circuit import NeuralCircuit
+from retinal_rl.models.brain import Brain
 
 nx.DiGraph.__class_getitem__ = classmethod(lambda _, __: "nx.DiGraph")  # type: ignore
 
@@ -79,6 +81,19 @@ def delete_results(cfg: DictConfig) -> None:
     else:
         print("Deletion cancelled.")
 
+
+def create_brain(brain_cfg: DictConfig) -> Brain:
+    sensors = OmegaConf.to_container(brain_cfg.sensors, resolve=True)
+    sensors = cast(Dict[str, List[int]], sensors)
+
+    connections = OmegaConf.to_container(brain_cfg.connections, resolve=True)
+    connections = cast(List[List[str]], connections)
+
+    connectome, circuits = assemble_neural_circuits(
+        brain_cfg.circuits, sensors, connections
+    )
+
+    return  Brain(circuits, sensors, connectome)
 
 def assemble_neural_circuits(
     circuits: DictConfig,

@@ -1,21 +1,22 @@
-from typing import Dict, Optional, Tuple
-from sample_factory.model.actor_critic import ActorCritic
-from sample_factory.model.encoder import Encoder
-from sample_factory.model.decoder import Decoder
-from sample_factory.model.core import ModelCore
-from sample_factory.utils.typing import ActionSpace, Config, ObsSpace
-from sample_factory.algo.utils.context import global_model_factory
-from sample_factory.model.model_utils import model_device
-from sample_factory.algo.utils.tensor_dict import TensorDict
-from torch import Tensor
-import torch
-import numpy as np
-import networkx as nx
-from retinal_rl.models.brain import Brain
-from retinal_rl.rl.sample_factory.sf_interfaces import ActorCriticProtocol
 import warnings
 from enum import Enum
-from torch import nn
+from typing import Dict, Optional, Tuple
+
+import networkx as nx
+import numpy as np
+import torch
+from sample_factory.algo.utils.context import global_model_factory
+from sample_factory.algo.utils.tensor_dict import TensorDict
+from sample_factory.model.actor_critic import ActorCritic
+from sample_factory.model.core import ModelCore
+from sample_factory.model.decoder import Decoder
+from sample_factory.model.encoder import Encoder
+from sample_factory.model.model_utils import model_device
+from sample_factory.utils.typing import ActionSpace, Config, ObsSpace
+from torch import Tensor, nn
+
+from retinal_rl.rl.sample_factory.sf_interfaces import ActorCriticProtocol
+from runner.util import create_brain  #TODO: Remove runner reference!
 
 
 class CoreMode(Enum):
@@ -30,7 +31,7 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         super().__init__(obs_space, action_space, cfg)
 
         self.set_brain(
-            Brain(**cfg.brain)
+            create_brain(cfg.brain)
         )  # TODO: Find way to instantiate brain outside
 
         dec_out_shape = self.brain.circuits[self.decoder_name].output_shape

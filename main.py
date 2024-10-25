@@ -3,7 +3,6 @@
 import os
 import sys
 import warnings
-from typing import Dict, List, cast
 
 import hydra
 import torch
@@ -11,14 +10,13 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
 from retinal_rl.framework_interface import TrainingFramework
-from retinal_rl.models.brain import Brain
 from retinal_rl.rl.sample_factory.sf_framework import SFFramework
 from runner.analyze import analyze
 from runner.dataset import get_datasets
 from runner.initialize import initialize
 from runner.sweep import launch_sweep
 from runner.train import train
-from runner.util import assemble_neural_circuits, delete_results
+from runner.util import create_brain, delete_results
 
 # Load the eval resolver for OmegaConf
 OmegaConf.register_new_resolver("eval", eval)
@@ -37,17 +35,7 @@ def _program(cfg: DictConfig):
 
     device = torch.device(cfg.system.device)
 
-    sensors = OmegaConf.to_container(cfg.brain.sensors, resolve=True)
-    sensors = cast(Dict[str, List[int]], sensors)
-
-    connections = OmegaConf.to_container(cfg.brain.connections, resolve=True)
-    connections = cast(List[List[str]], connections)
-
-    connectome, circuits = assemble_neural_circuits(
-        cfg.brain.circuits, sensors, connections
-    )
-
-    brain = Brain(circuits, sensors, connectome).to(device)
+    brain = create_brain(cfg.brain).to(device)
 
     if hasattr(cfg, "optimizer"):
         optimizer = instantiate(cfg.optimizer.optimizer, brain.parameters())
