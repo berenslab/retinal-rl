@@ -51,7 +51,10 @@ def _program(cfg: DictConfig):
 
     if hasattr(cfg, "optimizer"):
         optimizer = instantiate(cfg.optimizer.optimizer, brain.parameters())
-        objective = instantiate(cfg.optimizer.objective, brain=brain)
+        if hasattr(cfg.optimizer, "objective"):
+            objective = instantiate(cfg.optimizer.objective, brain=brain)
+        else:
+            warnings.warn("No objective specified, is that wanted?")
     else:
         warnings.warn("No optimizer config specified, is that wanted?")
 

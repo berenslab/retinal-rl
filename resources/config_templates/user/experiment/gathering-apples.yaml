@@ -1,0 +1,17 @@
+# @package _global_
+defaults:
+  - _self_
+  - override /dataset: rl-apples
+  - override /brain: feedforward
+  - override /optimizer: rl-base
+
+framework: rl
+
+### Interpolation Parameters ###
+
+# This is a free list of parameters that can be interpolated by the subconfigs
+# in sweep, dataset, brain, and optimizer. A major use for this is interpolating
+# values in the subconfigs, and then looping over them in a sweep.
+activation: "elu"
+latent_dimension: [2048,1024]
+action_decoder_out: [512]

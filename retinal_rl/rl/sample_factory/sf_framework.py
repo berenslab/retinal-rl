@@ -88,7 +88,7 @@ class SFFramework(TrainingFramework):
         checkpoint_dict = torch.load(weights_path)
         model_dict = checkpoint_dict["model"]
         brain_dict = {}
-        for key in model_dict.keys():
+        for key in model_dict:
             if "brain" in key:
                 brain_dict[key[6:]] = model_dict[key]
         brain = Brain(**config.brain)
@@ -97,17 +97,17 @@ class SFFramework(TrainingFramework):
         return brain
 
     def to_sf_cfg(self, cfg: DictConfig) -> Config:
-        sf_cfg = self._get_default_cfg(cfg.rl.env_name)  # Load Defaults
+        sf_cfg = self._get_default_cfg(cfg.dataset.env_name)  # Load Defaults
 
         # overwrite default values with those set in cfg
         # TODO: which other parameters need to be set_
         self._set_cfg_cli_argument(sf_cfg, "learning_rate", cfg.training.learning_rate)
         # Using this function is necessary to make sure that the parameters are not overwritten when sample_factory loads a checkpoint
 
-        self._set_cfg_cli_argument(sf_cfg, "res_h", cfg.rl.viewport_height)
-        self._set_cfg_cli_argument(sf_cfg, "res_w", cfg.rl.viewport_width)
-        self._set_cfg_cli_argument(sf_cfg, "env", cfg.rl.env_name)
-        self._set_cfg_cli_argument(sf_cfg, "input_satiety", cfg.rl.input_satiety)
+        self._set_cfg_cli_argument(sf_cfg, "res_h", cfg.dataset.vision_width)
+        self._set_cfg_cli_argument(sf_cfg, "res_w", cfg.dataset.vision_height)
+        self._set_cfg_cli_argument(sf_cfg, "env", cfg.dataset.env_name)
+        self._set_cfg_cli_argument(sf_cfg, "input_satiety", cfg.dataset.input_satiety)
         self._set_cfg_cli_argument(sf_cfg, "device", cfg.system.device)
         self._set_cfg_cli_argument(sf_cfg, "optimizer", cfg.training.optimizer)
 
