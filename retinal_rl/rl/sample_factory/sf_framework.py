@@ -24,6 +24,7 @@ from retinal_rl.rl.sample_factory.arguments import (
     add_retinal_env_eval_args,
     retinal_override_defaults,
 )
+from runner.util import create_brain
 import json
 from retinal_rl.rl.sample_factory.environment import register_retinal_env
 # from retinal_rl.rl.sample_factory.observer import RetinalAlgoObserver
@@ -73,7 +74,7 @@ class SFFramework(TrainingFramework):
         for key in model_dict.keys():
             if "brain" in key:
                 brain_dict[key[6:]] = model_dict[key]
-        brain = Brain(**config.brain)
+        brain = create_brain(config.brain)
         if load_weights:
             brain.load_state_dict(brain_dict)
         brain.to(device)
@@ -91,7 +92,7 @@ class SFFramework(TrainingFramework):
         for key in model_dict:
             if "brain" in key:
                 brain_dict[key[6:]] = model_dict[key]
-        brain = Brain(**config.brain)
+        brain = create_brain(config.brain)
         brain.load_state_dict(brain_dict)
         brain.to(device)
         return brain

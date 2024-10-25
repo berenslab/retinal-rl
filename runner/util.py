@@ -86,11 +86,11 @@ def create_brain(brain_cfg: DictConfig) -> Brain:
     sensors = OmegaConf.to_container(brain_cfg.sensors, resolve=True)
     sensors = cast(Dict[str, List[int]], sensors)
 
-    connections = OmegaConf.to_container(brain_cfg.connections, resolve=True)
+    connections = OmegaConf.to_container(brain_cfg.sensors, resolve=True)
     connections = cast(List[List[str]], connections)
 
     connectome, circuits = assemble_neural_circuits(
-        brain_cfg.circuits, sensors, connections
+        brain_cfg['circuits'], sensors, connections
     )
 
     return  Brain(circuits, sensors, connectome)

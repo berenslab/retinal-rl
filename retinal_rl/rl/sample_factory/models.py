@@ -4,6 +4,7 @@ from typing import Dict, Optional, Tuple
 
 import networkx as nx
 import numpy as np
+from omegaconf import DictConfig
 import torch
 from sample_factory.algo.utils.context import global_model_factory
 from sample_factory.algo.utils.tensor_dict import TensorDict
@@ -16,7 +17,8 @@ from sample_factory.utils.typing import ActionSpace, Config, ObsSpace
 from torch import Tensor, nn
 
 from retinal_rl.rl.sample_factory.sf_interfaces import ActorCriticProtocol
-from runner.util import create_brain  #TODO: Remove runner reference!
+from runner.util import create_brain  # TODO: Remove runner reference!
+from retinal_rl.models.brain import Brain
 
 
 class CoreMode(Enum):
@@ -25,21 +27,21 @@ class CoreMode(Enum):
     RNN = (2,)
     MULTI_MODULES = (3,)
 
+
 class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
     def __init__(self, cfg: Config, obs_space: ObsSpace, action_space: ActionSpace):
         # Attention: make_actor_critic passes [cfg, obs_space, action_space], but ActorCritic takes the reversed order of arguments [obs_space, action_space, cfg]
         super().__init__(obs_space, action_space, cfg)
 
-        self.set_brain(
-            create_brain(cfg.brain)
-        )  # TODO: Find way to instantiate brain outside
+        self.set_brain(create_brain(DictConfig(cfg.brain)))
+        # TODO: Find way to instantiate brain outside
 
         dec_out_shape = self.brain.circuits[self.decoder_name].output_shape
         decoder_out_size = np.prod(dec_out_shape)
         self.critic_linear = nn.Linear(decoder_out_size, 1)
         self.action_parameterization = self.get_action_parameterization(
             decoder_out_size
-        ) # boils down to a linear layer mapping to num_action_outputs
+        )  # boils down to a linear layer mapping to num_action_outputs
 
     def set_brain(self, brain: Brain):
         """
@@ -153,7 +155,6 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
 
     def get_brain(self) -> Brain:
         return self.brain
-
 
     # Methods need to be overwritten 'cause the use .encoders
     def device_for_input_tensor(self, input_tensor_name: str) -> torch.device:
