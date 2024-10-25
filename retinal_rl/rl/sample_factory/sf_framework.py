@@ -101,7 +101,7 @@ class SFFramework(TrainingFramework):
 
         # overwrite default values with those set in cfg
         # TODO: which other parameters need to be set_
-        self._set_cfg_cli_argument(sf_cfg, "learning_rate", cfg.training.learning_rate)
+        self._set_cfg_cli_argument(sf_cfg, "learning_rate", cfg.optimizer.optimizer.lr)
         # Using this function is necessary to make sure that the parameters are not overwritten when sample_factory loads a checkpoint
 
         self._set_cfg_cli_argument(sf_cfg, "res_h", cfg.dataset.vision_width)
@@ -109,7 +109,8 @@ class SFFramework(TrainingFramework):
         self._set_cfg_cli_argument(sf_cfg, "env", cfg.dataset.env_name)
         self._set_cfg_cli_argument(sf_cfg, "input_satiety", cfg.dataset.input_satiety)
         self._set_cfg_cli_argument(sf_cfg, "device", cfg.system.device)
-        self._set_cfg_cli_argument(sf_cfg, "optimizer", cfg.training.optimizer)
+        optimizer_name = str.split(cfg.optimizer.optimizer._target_, sep='.')[-1]
+        self._set_cfg_cli_argument(sf_cfg, "optimizer", optimizer_name)
 
         self._set_cfg_cli_argument(sf_cfg, "brain", OmegaConf.to_object(cfg.brain))
         return sf_cfg
