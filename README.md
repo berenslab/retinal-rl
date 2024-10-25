@@ -8,18 +8,18 @@ Retinal-Rl is designed to run in a containerized environment using [Apptainer](h
 
 ### Installation
 
-1. [Install] Apptainer(https://apptainer.org/docs/admin/main/installation.html) to run the containerized environment.
+1. [Install](https://apptainer.org/docs/admin/main/installation.html) Apptainer to run the containerized environment.
 
 2. Get the container:
 
-  - Either pull the pre-built container:
-  ```bash
-  apptainer pull retinal-rl.sif oras://ghcr.io/berenslab/retinal-rl:singularity-image
-  ```
-  - or build from source:
-  ```bash
-  apptainer build retinal-rl.sif resources/retinal-rl.def
-    ```
+- Either pull the pre-built container:
+```bash
+apptainer pull retinal-rl.sif oras://ghcr.io/berenslab/retinal-rl:singularity-image
+```
+- or build from source:
+```bash
+apptainer build retinal-rl.sif resources/retinal-rl.def
+```
 
 ### Running Experiments
 
@@ -37,7 +37,7 @@ apptainer exec retinal-rl.sif python main.py +experiment="$experiment" command=t
 
 ## Hydra Configuration
 
-The project uses Hydra for configuration management.
+The project uses [Hydra](https://hydra.cc/) for configuration management.
 
 ### Directory Structure
 
@@ -52,9 +52,11 @@ user/
 └── experiment/      # Experiment configurations
 ```
 
+### Default Configuration
+
 Template configs are available under `./resources/config_templates/user/...`, which also provide documentation of the configuration variables themselves. Consult the hydra documentation for more information on [configuring your project](https://hydra.cc/docs/intro/).
 
-### Default Configuration
+### Configuration Management
 
 1. Configuration templates may be copied to the user directory by running:
 ```bash
@@ -69,6 +71,8 @@ which runs the `scan` command for all experiments.
 
 ## Weights & Biases Integration
 
+Retinal-RL supports logging to [Weights & Biases](https://wandb.ai/site) for experiment tracking.
+
 ### Basic Configuration
 
 By default plots and analyses are saved locally. To enable Weights & Biases logging, add the `logging.use_wandb: True` flag to the command line:
@@ -78,10 +82,9 @@ apptainer exec retinal-rl.sif python main.py +experiment="$experiment" logging.u
 
 ### Parameter Sweeps
 
-[Wandb sweeps](https://docs.wandb.ai/guides/sweeps) can be added to
-`user/sweeps/{sweep_name}.yaml` and launched from the command line:
+[Wandb sweeps](https://docs.wandb.ai/guides/sweeps) can be added to `user/sweeps/{sweep_name}.yaml` and launched from the command line:
 ```bash
 apptainer exec retinal-rl.sif python main.py +experiment="$experiment" +sweep="$sweep" command=sweep
 ```
 
-Typically the only command line arguments that need a `+` prefix will be `experiment` and `sweep`.
+Typically the only command line arguments that need a `+` prefix will be `+experiment` and `+sweep`.
