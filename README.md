@@ -25,12 +25,12 @@ apptainer build retinal-rl.sif resources/retinal-rl.def
 
 The scan command prints info about the proposed neural network architecture:
 ```bash
-apptainer exec retinal-rl.sif python main.py +experiment="$experiment" command=scan
+apptainer exec retinal-rl.sif python main.py +experiment="{experiment}" command=scan
 ```
 The experiment must always be specified with the `+experiment` flag. To train a
 model, use the `train` command:
 ```bash
-apptainer exec retinal-rl.sif python main.py +experiment="$experiment" command=train
+apptainer exec retinal-rl.sif python main.py +experiment="{experiment}" command=train
 ```
 
 `apptainer` commands can typically be replaced with `singularity` if the latter is rather used.
@@ -77,14 +77,14 @@ Retinal-RL supports logging to [Weights & Biases](https://wandb.ai/site) for exp
 
 By default plots and analyses are saved locally. To enable Weights & Biases logging, add the `logging.use_wandb: True` flag to the command line:
 ```bash
-apptainer exec retinal-rl.sif python main.py +experiment="$experiment" logging.use_wandb=True command=train
+apptainer exec retinal-rl.sif python main.py +experiment="{experiment}" logging.use_wandb=True command=train
 ```
 
 ### Parameter Sweeps
 
-[Wandb sweeps](https://docs.wandb.ai/guides/sweeps) can be added to `user/sweeps/{sweep_name}.yaml` and launched from the command line:
+[Wandb sweeps](https://docs.wandb.ai/guides/sweeps) can be added to `user/sweeps/{sweep}.yaml` and launched from the command line:
 ```bash
-apptainer exec retinal-rl.sif python main.py +experiment="$experiment" +sweep="$sweep" command=sweep
+apptainer exec retinal-rl.sif python main.py +experiment="{experiment}" +sweep="{sweep}" command=sweep
 ```
 
-Typically the only command line arguments that need a `+` prefix will be `+experiment` and `+sweep`.
+Typically the only command line arguments that need a `+` prefix will be `+experiment` and `+sweep`. Also note that the `.yaml` extension may typically be dropped.
