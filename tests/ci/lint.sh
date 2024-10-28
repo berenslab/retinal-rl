@@ -30,11 +30,6 @@ if [ "$1" = "--all" ]; then
     # Run ruff on all files with any remaining arguments
     apptainer exec "$CONTAINER" ruff check . "$@"
 else
-    # If first arg isn't --all, put it back in the argument list
-    if [ -n "$1" ]; then
-        set -- "$1" "$@"
-    fi
-    
     # Get changed Python files
     changed_files=$(git diff --name-only origin/master...HEAD -- '*.py')
     if [ -n "$changed_files" ]; then
