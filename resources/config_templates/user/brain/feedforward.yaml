@@ -16,7 +16,7 @@ circuits:
     stride: 2
     activation: ${activation}
   action_decoder:
-    _target_: retinal_rl.models.circuits.fully_connected.FullyConnectedDecoder
+    _target_: retinal_rl.models.circuits.fully_connected.FullyConnected
     output_shape: ${action_decoder_out}
     hidden_units: ${latent_dimension}
     activation: ${activation}
