@@ -110,7 +110,7 @@ class SFFramework(TrainingFramework):
         self._set_cfg_cli_argument(sf_cfg, "env", cfg.dataset.env_name)
         self._set_cfg_cli_argument(sf_cfg, "input_satiety", cfg.dataset.input_satiety)
         self._set_cfg_cli_argument(sf_cfg, "device", cfg.system.device)
-        optimizer_name = str.split(cfg.optimizer.optimizer._target_, sep='.')[-1]
+        optimizer_name = str.lower(str.split(cfg.optimizer.optimizer._target_, sep='.')[-1])
         self._set_cfg_cli_argument(sf_cfg, "optimizer", optimizer_name)
 
         self._set_cfg_cli_argument(sf_cfg, "brain", OmegaConf.to_object(cfg.brain))
