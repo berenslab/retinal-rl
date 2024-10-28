@@ -58,7 +58,7 @@ class SFFramework(TrainingFramework):
             status = runner.init()
             if status == ExperimentStatus.SUCCESS:
                 status = runner.run()
-            return status
+            print(status)
 
     @staticmethod
     def load_brain_from_checkpoint(
@@ -126,9 +126,7 @@ class SFFramework(TrainingFramework):
         epoch: int,
         copy_checkpoint: bool = False,
     ):
-
-        status = enjoy(self.sf_cfg)
-        return status
+        return enjoy(self.sf_cfg)
 
     @staticmethod
     def _set_cfg_cli_argument(cfg: Namespace, name: str, value: Any):
@@ -154,8 +152,7 @@ class SFFramework(TrainingFramework):
         # Actually, discuss that. Would avoid having a unified interface
         retinal_override_defaults(parser)
 
-        sf_cfg = parse_full_cfg(parser, mock_argv)
-        return sf_cfg
+        return parse_full_cfg(parser, mock_argv)
 
     @staticmethod
     def get_checkpoint(cfg: Config) -> tuple[Dict[str, Any], AttrDict]:

@@ -141,7 +141,7 @@ def get_input_output_shape(model: nn.Sequential):
             in_channels = layer.in_channels
             in_size = layer.in_channels * ((layer.kernel_size[0]-1)*layer.dilation[0]+1) ** 2
             break
-        if isinstance(layer, nn.MaxPool2d) or isinstance(layer, nn.AvgPool2d):
+        if isinstance(layer, (nn.MaxPool2d, nn.AvgPool2d)):
             for prev_layer in reversed(model[:-i-1]):
                 if isinstance(prev_layer, nn.Conv2d):
                     in_channels = prev_layer.out_channels
@@ -149,7 +149,7 @@ def get_input_output_shape(model: nn.Sequential):
                 if isinstance(prev_layer, nn.Linear):
                     in_channels=1
                 else:
-                    raise Exception("layer before pooling needs to be conv or linear")
+                    raise TypeError("layer before pooling needs to be conv or linear")
             _kernel_size = layer.kernel_size if isinstance(layer.kernel_size, int) else layer.kernel_size[0]
             in_size = _kernel_size**2 * in_channels
             break
@@ -173,7 +173,7 @@ def get_input_output_shape(model: nn.Sequential):
                 + ((layer.kernel_size[0]-1)*layer.dilation[0]+1)
             )
             in_size = in_size**2 * in_channels
-        elif isinstance(layer, nn.MaxPool2d) or isinstance(layer, nn.AvgPool2d):
+        elif isinstance(layer, (nn.MaxPool2d, nn.AvgPool2d)):
             for prev_layer in reversed(model[:-i-_first-1]):
                 if isinstance(prev_layer, nn.Conv2d):
                     in_channels = prev_layer.out_channels

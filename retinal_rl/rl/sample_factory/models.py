@@ -53,7 +53,7 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
 
     @staticmethod
     def get_encoder_decoder(brain: Brain) -> Tuple[str, CoreMode, str]:
-        assert "vision" in brain.sensors.keys()  # needed as input
+        assert "vision" in brain.sensors  # needed as input
         # potential TODO: add other input sources if needed?
 
         vision_paths = []
@@ -62,7 +62,7 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
                 vision_paths.append(nx.shortest_path(brain.connectome, "vision", node))
 
         decoder = "action_decoder"  # default assumption
-        if decoder in brain.circuits.keys():  # needed to produce output = decoder
+        if decoder in brain.circuits:  # needed to produce output = decoder
             vision_path = nx.shortest_path(brain.connectome, "vision", "action_decoder")
         else:
             selected_path = 0
