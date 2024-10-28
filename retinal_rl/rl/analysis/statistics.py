@@ -1,6 +1,6 @@
 import math
 import warnings
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -117,17 +117,11 @@ def sum_collapse_output(out_tensor):
     return out_tensor
 
 
-def get_input_output_shape(model: nn.Sequential):
-    """
-    Calculates the 'minimal' input and output of a sequential model.
-    If last layer is a convolutional layer, output is assumed to be the number of channels (so 1x1 in space).
-    Takes into account if last layer is a pooling layer.
-    For linear layer obviously the number of out_features.
-    TODO: assert kernel sizes etc are quadratic / implement adaptation to non quadratic kernels
-    """
+def _find_last_layer_shape(model: nn.Sequential) -> Tuple[int, Optional[int], Optional[int], Optional[int], bool]:
     _first = 0
     down_stream_linear = False
     num_outputs = None
+    in_size, in_channels = None, None
     for i, layer in enumerate(reversed(model)):
         _first += 1
         if isinstance(layer, nn.Linear):
@@ -153,7 +147,19 @@ def get_input_output_shape(model: nn.Sequential):
             _kernel_size = layer.kernel_size if isinstance(layer.kernel_size, int) else layer.kernel_size[0]
             in_size = _kernel_size**2 * in_channels
             break
+    return _first, num_outputs, in_size, in_channels, down_stream_linear
 
+def get_input_output_shape(model: nn.Sequential):
+    """
+    Calculates the 'minimal' input and output of a sequential model.
+    If last layer is a convolutional layer, output is assumed to be the number of channels (so 1x1 in space).
+    Takes into account if last layer is a pooling layer.
+    For linear layer obviously the number of out_features.
+    TODO: assert kernel sizes etc are quadratic / implement adaptation to non quadratic kernels
+    TODO: Check if still needed, function near duplicate of some of Sachas code
+    """
+
+    _first, num_outputs, in_size, in_channels, down_stream_linear = _find_last_layer_shape(model)
 
     for i, layer in enumerate(reversed(model[:-_first])):
         if isinstance(layer, nn.Linear):
