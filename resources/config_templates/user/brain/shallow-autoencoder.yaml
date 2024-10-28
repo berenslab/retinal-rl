@@ -59,7 +59,7 @@ circuits:
 
   # Prefrontal Cortex: high-level cognitive processing
   prefrontal:
-    _target_: retinal_rl.models.circuits.fully_connected.FullyConnectedEncoder
+    _target_: retinal_rl.models.circuits.fully_connected.FullyConnected
     output_shape:
       - 128  # Size of the latent representation
     hidden_units: 

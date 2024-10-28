@@ -2,7 +2,7 @@
 defaults:
   - _self_
   - override /dataset: cifar10
-  - override /brain: classifying-autoencoder
+  - override /brain: shallow-autoencoder
   - override /optimizer: class-recon
 
 
@@ -19,8 +19,9 @@ framework: classification
 # in sweep, dataset, brain, and optimizer. A major use for this is interpolating
 # values in the subconfigs, and then looping over them in a sweep.
 weight_decay: 0.00001
+sparsity_weight: 0.00001
 
-activation: "elu"
+activation: "relu"
 
 bp_kernel_size: 14
 rgc_kernel_size: 10
@@ -28,7 +29,7 @@ lgn_kernel_size: 5
 v1_kernel_size: 8
 
 recon_weight_retina: 1
-recon_weight_thalamus: 0.99
+recon_weight_thalamus: 0.999
 recon_weight_cortex: 0.9
 
 shot_noise_transform: True
@@ -36,5 +37,5 @@ contrast_noise_transform: True
 brightness_noise_transform: True
 blur_noise_transform: True
 
-layer_norm: False
-affine_norm: False
+layer_norm: True
+affine_norm: True

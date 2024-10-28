@@ -4,8 +4,7 @@ from abc import abstractmethod
 from typing import Dict, Generic, List, Optional, TypeVar
 
 import torch
-import torch.nn as nn
-from torch import Tensor
+from torch import Tensor, nn
 
 from retinal_rl.util import camel_to_snake
 
@@ -80,9 +79,7 @@ class Loss(Generic[ContextT]):
         """
         if self.min_epoch is not None and epoch < self.min_epoch:
             return False
-        if self.max_epoch is not None and epoch > self.max_epoch:
-            return False
-        return True
+        return self.max_epoch is None or epoch <= self.max_epoch
 
     @abstractmethod
     def compute_value(self, context: ContextT) -> Tensor:
@@ -134,7 +131,7 @@ class L1Sparsity(Loss[ContextT]):
 
     def __init__(
         self,
-        target_responses: List[str],
+        target_response: str,
         target_circuits: List[str] = [],
         weights: List[float] = [],
         min_epoch: Optional[int] = None,
@@ -143,18 +140,20 @@ class L1Sparsity(Loss[ContextT]):
         """Initialize the reconstruction loss loss."""
         super().__init__(target_circuits, weights, min_epoch, max_epoch)
 
-        """Initialize the L1 sparsity loss."""
-        self.target_responses = target_responses
+        self.target_response = target_response
 
     def compute_value(self, context: ContextT) -> Tensor:
         """Compute the L1 sparsity of activations."""
-        activations: List[Tensor] = []
         responses = context.responses
-        for target in self.target_responses:
-            if target not in responses:
-                raise ValueError(f"Target {target} not found in responses")
-            activations.append(responses[target])
-        return torch.mean(torch.stack([act.abs().mean() for act in activations]))
+        if self.target_response not in responses:
+            raise ValueError(f"Target {self.target_response} not found in responses")
+        activation = responses[self.target_response]
+        return torch.mean(activation.abs().mean())
+
+    @property
+    def key_name(self) -> str:
+        """Return a user-friendly name for the loss, including the target response."""
+        return f"l1_sparsity_{self.target_response.lower()}"
 
 
 class KLDivergenceSparsity(Loss[ContextT]):
@@ -162,7 +161,7 @@ class KLDivergenceSparsity(Loss[ContextT]):
 
     def __init__(
         self,
-        target_responses: List[str],
+        target_response: str,
         target_sparsity: float = 0.05,
         target_circuits: List[str] = [],
         weights: List[float] = [],
@@ -171,26 +170,20 @@ class KLDivergenceSparsity(Loss[ContextT]):
     ):
         """Initialize the KL divergence sparsity loss."""
         super().__init__(target_circuits, weights, min_epoch, max_epoch)
-        self.target_responses = target_responses
+        self.target_response = target_response
         self.target_sparsity = target_sparsity
 
     def compute_value(self, context: ContextT) -> torch.Tensor:
         """Compute the KL divergence sparsity of activations."""
         responses = context.responses
-        activations: List[Tensor] = []
-        for target in self.target_responses:
-            if target not in responses:
-                raise ValueError(f"Target {target} not found in responses")
-            activations.append(responses[target])
+        if self.target_response not in responses:
+            raise ValueError(f"Target {self.target_response} not found in responses")
+        activation = responses[self.target_response]
 
-        kl_divs: List[Tensor] = []
-        for act in activations:
-            avg_activation = torch.mean(act, dim=0)
-            kl_div = self.target_sparsity * torch.log(
-                self.target_sparsity / (avg_activation + 1e-8)
-            ) + (1 - self.target_sparsity) * torch.log(
-                (1 - self.target_sparsity) / (1 - avg_activation + 1e-8)
-            )
-            kl_divs.append(torch.mean(kl_div))
-
-        return torch.mean(torch.stack(kl_divs))
+        avg_activation = torch.mean(activation, dim=0)
+        kl_div = self.target_sparsity * torch.log(
+            self.target_sparsity / (avg_activation + 1e-8)
+        ) + (1 - self.target_sparsity) * torch.log(
+            (1 - self.target_sparsity) / (1 - avg_activation + 1e-8)
+        )
+        return torch.mean(kl_div)
