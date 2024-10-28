@@ -1,39 +1,38 @@
+import argparse
+import json
+import os
+from argparse import Namespace
 from typing import Any, Dict, List, Optional, Tuple
 
+# from retinal_rl.rl.sample_factory.observer import RetinalAlgoObserver
+import torch
 from omegaconf import DictConfig
+from omegaconf.omegaconf import OmegaConf
+from sample_factory.algo.learning.learner import Learner
 from sample_factory.algo.utils.context import global_model_factory
 from sample_factory.algo.utils.misc import ExperimentStatus
 from sample_factory.cfg.arguments import (
+    load_from_checkpoint,
     parse_full_cfg,
     parse_sf_args,
 )
+from sample_factory.enjoy import enjoy
 from sample_factory.train import make_runner
-from sample_factory.utils.typing import Config
-from sample_factory.cfg.arguments import load_from_checkpoint
-from sample_factory.algo.learning.learner import Learner
 from sample_factory.utils.attr_dict import AttrDict
+from sample_factory.utils.typing import Config
 from torch import Tensor
-import argparse
 from torch.utils.data import Dataset
 
-from retinal_rl.models.brain import Brain
 from retinal_rl.framework_interface import TrainingFramework
-from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
+from retinal_rl.models.brain import Brain
 from retinal_rl.rl.sample_factory.arguments import (
     add_retinal_env_args,
     add_retinal_env_eval_args,
     retinal_override_defaults,
 )
-from runner.util import create_brain
-import json
 from retinal_rl.rl.sample_factory.environment import register_retinal_env
-# from retinal_rl.rl.sample_factory.observer import RetinalAlgoObserver
-import torch
-from sample_factory.enjoy import enjoy
-
-import os
-from argparse import Namespace
-from omegaconf.omegaconf import OmegaConf
+from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
+from runner.util import create_brain
 
 
 class SFFramework(TrainingFramework):
@@ -71,7 +70,7 @@ class SFFramework(TrainingFramework):
         config = DictConfig(config)
         model_dict: Dict[str, Any] = checkpoint_dict["model"]
         brain_dict: Dict[str, Any] = {}
-        for key in model_dict.keys():
+        for key in model_dict:
             if "brain" in key:
                 brain_dict[key[6:]] = model_dict[key]
         brain = create_brain(config.brain)
@@ -157,7 +156,7 @@ class SFFramework(TrainingFramework):
 
         sf_cfg = parse_full_cfg(parser, mock_argv)
         return sf_cfg
-    
+
     @staticmethod
     def get_checkpoint(cfg: Config) -> tuple[Dict[str, Any], AttrDict]:
         """

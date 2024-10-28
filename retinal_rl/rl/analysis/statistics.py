@@ -1,19 +1,18 @@
-from typing import Dict, List, Tuple
+import math
 import warnings
+from typing import Dict, List, Tuple
 
 import numpy as np
 import torch
-import torch.nn as nn
 from captum.attr import NeuronGradient
 from numpy.typing import NDArray
-from torch import Tensor
+from torch import Tensor, nn
 from torch.utils.data import Dataset
+from tqdm import tqdm
 
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.circuits.convolutional import ConvolutionalEncoder
 from retinal_rl.util import encoder_out_size, rf_size_and_start
-from tqdm import tqdm
-import math
 
 
 def gradient_receptive_fields(
@@ -137,17 +136,17 @@ def get_input_output_shape(model: nn.Sequential):
             in_size = layer.in_features
             down_stream_linear = True
             break
-        elif isinstance(layer, nn.Conv2d):
+        if isinstance(layer, nn.Conv2d):
             num_outputs = layer.out_channels
             in_channels = layer.in_channels
             in_size = layer.in_channels * ((layer.kernel_size[0]-1)*layer.dilation[0]+1) ** 2
             break
-        elif isinstance(layer, nn.MaxPool2d) or isinstance(layer, nn.AvgPool2d):
+        if isinstance(layer, nn.MaxPool2d) or isinstance(layer, nn.AvgPool2d):
             for prev_layer in reversed(model[:-i-1]):
                 if isinstance(prev_layer, nn.Conv2d):
                     in_channels = prev_layer.out_channels
                     break
-                elif isinstance(prev_layer, nn.Linear):
+                if isinstance(prev_layer, nn.Linear):
                     in_channels=1
                 else:
                     raise Exception("layer before pooling needs to be conv or linear")
@@ -171,7 +170,7 @@ def get_input_output_shape(model: nn.Sequential):
             in_size = (
                 (in_size - 1) * layer.stride[0]
                 - 2 * layer.padding[0] * down_stream_linear
-                + ((layer.kernel_size[0]-1)*layer.dilation[0]+1) 
+                + ((layer.kernel_size[0]-1)*layer.dilation[0]+1)
             )
             in_size = in_size**2 * in_channels
         elif isinstance(layer, nn.MaxPool2d) or isinstance(layer, nn.AvgPool2d):

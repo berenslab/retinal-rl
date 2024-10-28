@@ -1,24 +1,20 @@
 import warnings
 from enum import Enum
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 import networkx as nx
 import numpy as np
-from omegaconf import DictConfig
 import torch
-from sample_factory.algo.utils.context import global_model_factory
+from omegaconf import DictConfig
 from sample_factory.algo.utils.tensor_dict import TensorDict
 from sample_factory.model.actor_critic import ActorCritic
-from sample_factory.model.core import ModelCore
-from sample_factory.model.decoder import Decoder
-from sample_factory.model.encoder import Encoder
 from sample_factory.model.model_utils import model_device
 from sample_factory.utils.typing import ActionSpace, Config, ObsSpace
 from torch import Tensor, nn
 
+from retinal_rl.models.brain import Brain
 from retinal_rl.rl.sample_factory.sf_interfaces import ActorCriticProtocol
 from runner.util import create_brain  # TODO: Remove runner reference!
-from retinal_rl.models.brain import Brain
 
 
 class CoreMode(Enum):

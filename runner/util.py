@@ -5,8 +5,7 @@
 import logging
 import os
 import shutil
-from typing import Any, Dict, List, Tuple
-from typing import Dict, List, cast
+from typing import Any, Dict, List, Tuple, cast
 
 import networkx as nx
 import torch
@@ -16,8 +15,8 @@ from omegaconf import DictConfig, OmegaConf
 from torch import nn
 from torch.optim.optimizer import Optimizer
 
-from retinal_rl.models.neural_circuit import NeuralCircuit
 from retinal_rl.models.brain import Brain
+from retinal_rl.models.neural_circuit import NeuralCircuit
 
 nx.DiGraph.__class_getitem__ = classmethod(lambda _, __: "nx.DiGraph")  # type: ignore
 
