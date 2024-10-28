@@ -25,6 +25,9 @@ OmegaConf.register_new_resolver("eval", eval)
 # Hydra entry point
 @hydra.main(config_path="config/base", config_name="config", version_base=None)
 def _program(cfg: DictConfig):
+    #TODO: Instead of doing checks of the config here, we should implement
+    # sth like the configstore which ensures config parameters are present
+
     if cfg.command == "clean":
         delete_results(cfg)
         sys.exit(0)
@@ -37,14 +40,12 @@ def _program(cfg: DictConfig):
 
     brain = create_brain(cfg.brain).to(device)
 
-    if hasattr(cfg, "optimizer"):
-        optimizer = instantiate(cfg.optimizer.optimizer, brain.parameters())
-        if hasattr(cfg.optimizer, "objective"):
-            objective = instantiate(cfg.optimizer.objective, brain=brain)
-        else:
-            warnings.warn("No objective specified, is that wanted?")
+    optimizer = instantiate(cfg.optimizer.optimizer, brain.parameters())
+    if hasattr(cfg.optimizer, "objective"):
+        objective = instantiate(cfg.optimizer.objective, brain=brain)
+        # TODO: RL framework currently can't use objective
     else:
-        warnings.warn("No optimizer config specified, is that wanted?")
+        warnings.warn("No objective specified, is that wanted?")
 
     if cfg.command == "scan":
         print(brain.scan())

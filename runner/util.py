@@ -92,7 +92,8 @@ def create_brain(brain_cfg: DictConfig) -> Brain:
         brain_cfg.circuits, sensors, connections
     )
 
-    return  Brain(circuits, sensors, connectome)
+    return Brain(circuits, sensors, connectome)
+
 
 def assemble_neural_circuits(
     circuits: DictConfig,
