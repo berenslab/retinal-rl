@@ -11,12 +11,11 @@ from omegaconf import DictConfig, OmegaConf
 
 from retinal_rl.framework_interface import TrainingFramework
 from retinal_rl.rl.sample_factory.sf_framework import SFFramework
-from runner.analyze import analyze
-from runner.dataset import get_datasets
-from runner.initialize import initialize
+from runner.classification.classification_framework import ClassificationFramework
 from runner.sweep import launch_sweep
 from runner.train import train
 from runner.util import create_brain, delete_results
+from runner.util import assemble_neural_circuits, delete_results
 
 # Load the eval resolver for OmegaConf
 OmegaConf.register_new_resolver("eval", eval)
@@ -56,43 +55,10 @@ def _program(cfg: DictConfig):
     cache_path = os.path.join(hydra.utils.get_original_cwd(), "cache")
     if cfg.framework == "rl":
         framework = SFFramework(cfg, data_root=cache_path)
+    elif cfg.framework == "classification":
+        framework = ClassificationFramework(cfg, brain, optimizer)
     else:
-        # TODO: Make ClassifierEngine
-        train_set, test_set = get_datasets(cfg)
-
-        brain, optimizer, histories, completed_epochs = initialize(
-            cfg,
-            brain,
-            optimizer,
-        )
-        if cfg.command == "train":
-            train(
-                cfg,
-                device,
-                brain,
-                objective,
-                optimizer,
-                train_set,
-                test_set,
-                completed_epochs,
-                histories,
-            )
-            sys.exit(0)
-
-        if cfg.command == "analyze":
-            analyze(
-                cfg,
-                device,
-                brain,
-                objective,
-                histories,
-                train_set,
-                test_set,
-                completed_epochs,
-            )
-            sys.exit(0)
-
-        raise ValueError("Invalid run_mode")
+        raise NotImplementedError("only 'rl' or 'classification' framework implemented currently")
 
     if cfg.command == "train":
         framework.train()
