@@ -4,8 +4,8 @@
 sensors:
   vision: # Vision is a list of 3 elements
     - 3  # Number of color channels
-    - 160  # Height of the input image
-    - 160  # Width of the input image
+    - ${vision_height}  # Height of the input image
+    - ${vision_width}  # Width of the input image
 
 # Define how the various NeuralCircuits are connected to each other
 connections:
@@ -27,7 +27,7 @@ circuits:
     kernel_size: 
       - ${bp_kernel_size}
       - ${rgc_kernel_size}
-    stride: 2
+    stride: 3
     activation: ${activation}
     layer_names: ["bipolar", "retinal_ganglion"]  # Names inspired by retinal cell types
     layer_norm: ${layer_norm}
@@ -37,7 +37,7 @@ circuits:
   thalamus:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 1
-    num_channels: 64
+    num_channels: ${bottleneck_chans}
     kernel_size: ${lgn_kernel_size}
     stride: 1
     activation: ${activation}
@@ -51,7 +51,7 @@ circuits:
     num_layers: 1
     num_channels: 64
     kernel_size: ${v1_kernel_size}
-    stride: 2
+    stride: 3
     activation: ${activation}
     layer_names: ["v1"]  # Primary Visual Cortex
     layer_norm: ${layer_norm}
@@ -72,13 +72,17 @@ circuits:
     num_layers: 4
     layer_norm: ${layer_norm}
     affine_norm: ${affine_norm}
-    num_channels: [64,32,16,3]  # For a symmetric encoder, this should be the reverse of the num_channels in the CNN layers up to the point of decoding (in this case, the thalamus)
+    num_channels: 
+      - ${bottleneck_chans}
+      - 32
+      - 16
+      - 3  # For a symmetric encoder, this should be the reverse of the num_channels in the CNN layers up to the point of decoding (in this case, the thalamus)
     kernel_size: 
       - ${v1_kernel_size}
       - ${lgn_kernel_size}
       - ${rgc_kernel_size}
       - ${bp_kernel_size}
-    stride: [2,1,2,2]
+    stride: [3,1,3,3]
     activation:
       - ${activation}
       - ${activation}
