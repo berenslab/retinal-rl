@@ -29,6 +29,7 @@ logging:
   plot_sample_size: 1000
   wandb_preempt: False  # Whether to enable Weights & Biases preemption
   wandb_project: miscellaneous # wandb project
+  wandb_entity: default # wandb project
 
 ### "Immutable" Parameters ###
 
