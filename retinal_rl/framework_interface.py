@@ -1,13 +1,10 @@
-from typing import Dict, List, Optional, Protocol, Tuple
+from typing import Optional, Protocol, Tuple
 
 import torch
-from omegaconf import DictConfig
-from torch import Tensor
-from torch.utils.data import Dataset
 
 from retinal_rl.models.brain import Brain
-from retinal_rl.models.objective import Objective
 from retinal_rl.models.loss import ContextT
+from retinal_rl.models.objective import Objective
 
 
 class TrainingFramework(Protocol):
