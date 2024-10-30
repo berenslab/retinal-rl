@@ -1,8 +1,9 @@
 import argparse
 import json
 import os
+import warnings
 from argparse import Namespace
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 
 # from retinal_rl.rl.sample_factory.observer import RetinalAlgoObserver
 import torch
@@ -20,11 +21,11 @@ from sample_factory.enjoy import enjoy
 from sample_factory.train import make_runner
 from sample_factory.utils.attr_dict import AttrDict
 from sample_factory.utils.typing import Config
-from torch import Tensor
-from torch.utils.data import Dataset
 
 from retinal_rl.framework_interface import TrainingFramework
 from retinal_rl.models.brain import Brain
+from retinal_rl.models.loss import ContextT
+from retinal_rl.models.objective import Objective
 from retinal_rl.rl.sample_factory.arguments import (
     add_retinal_env_args,
     add_retinal_env_eval_args,
@@ -36,7 +37,6 @@ from runner.util import create_brain
 
 
 class SFFramework(TrainingFramework):
-
     def __init__(self, cfg: DictConfig, data_root: str):
         self.data_root = data_root
 
@@ -48,7 +48,24 @@ class SFFramework(TrainingFramework):
         register_retinal_env(self.sf_cfg.env, self.data_root, self.sf_cfg.input_satiety)
         global_model_factory().register_actor_critic_factory(SampleFactoryBrain)
 
-    def train(self):
+    def initialize(self, brain: Brain, optimizer: torch.optim.Optimizer):
+        # brain = SFFramework.load_brain_from_checkpoint(...)
+        # TODO: Implement load brain and optimizer state
+        return brain, optimizer
+
+    def train(
+        self,
+        device: torch.device,
+        brain: Brain,
+        optimizer: torch.optim.Optimizer,
+        objective: Optional[Objective[ContextT]] = None,
+    ):
+        warnings.warn(
+            "device, brain, optimizer are initialized differently in sample_factory and thus there current state will be ignored"
+        )
+        warnings.warn(
+            "objective is currently not supported for sample factory simulations"
+        )
         # Run simulation
         if not (self.sf_cfg.dry_run):
             cfg, runner = make_runner(self.sf_cfg)
@@ -109,7 +126,9 @@ class SFFramework(TrainingFramework):
         self._set_cfg_cli_argument(sf_cfg, "env", cfg.dataset.env_name)
         self._set_cfg_cli_argument(sf_cfg, "input_satiety", cfg.dataset.input_satiety)
         self._set_cfg_cli_argument(sf_cfg, "device", cfg.system.device)
-        optimizer_name = str.lower(str.split(cfg.optimizer.optimizer._target_, sep='.')[-1])
+        optimizer_name = str.lower(
+            str.split(cfg.optimizer.optimizer._target_, sep=".")[-1]
+        )
         self._set_cfg_cli_argument(sf_cfg, "optimizer", optimizer_name)
 
         self._set_cfg_cli_argument(sf_cfg, "brain", OmegaConf.to_object(cfg.brain))
@@ -117,16 +136,15 @@ class SFFramework(TrainingFramework):
 
     def analyze(
         self,
-        cfg: DictConfig,
         device: torch.device,
         brain: Brain,
-        histories: Dict[str, List[float]],
-        train_set: Dataset[Tuple[Tensor | int]],
-        test_set: Dataset[Tuple[Tensor | int]],
-        epoch: int,
-        copy_checkpoint: bool = False,
+        objective: Optional[Objective[ContextT]] = None,
     ):
-        return enjoy(self.sf_cfg)
+        warnings.warn(
+            "device, brain, optimizer are initialized differently in sample_factory and thus there current state will be ignored"
+        )
+        enjoy(self.sf_cfg)
+        # TODO: Implement analyze function for sf framework
 
     @staticmethod
     def _set_cfg_cli_argument(cfg: Namespace, name: str, value: Any):
@@ -159,7 +177,7 @@ class SFFramework(TrainingFramework):
         """
         Load the model from checkpoint, initialize the environment, and return both.
         """
-        #verbose = False
+        # verbose = False
 
         cfg = load_from_checkpoint(cfg)
 
@@ -167,10 +185,12 @@ class SFFramework(TrainingFramework):
 
         policy_id = cfg.policy_index
         name_prefix = dict(latest="checkpoint", best="best")[cfg.load_checkpoint_kind]
-        checkpoints = Learner.get_checkpoints(Learner.checkpoint_dir(cfg, policy_id), f"{name_prefix}_*")
-        checkpoint_dict:Dict[str, Any] = Learner.load_checkpoint(checkpoints, device)
+        checkpoints = Learner.get_checkpoints(
+            Learner.checkpoint_dir(cfg, policy_id), f"{name_prefix}_*"
+        )
+        checkpoint_dict: Dict[str, Any] = Learner.load_checkpoint(checkpoints, device)
 
-        return checkpoint_dict,cfg
+        return checkpoint_dict, cfg
 
 
 def brain_from_actor_critic(actor_critic: SampleFactoryBrain) -> Brain:

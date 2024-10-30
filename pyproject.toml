@@ -1,5 +1,5 @@
 [tool.pyright]
-include = ["retinal_rl"]
+# include = ["retinal_rl*"]
 typeCheckingMode = "strict"
 reportMissingTypeStubs = "warning"
 reportUnknownVariableType = "warning"
