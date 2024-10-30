@@ -27,7 +27,7 @@ circuits:
     kernel_size: 
       - ${bp_kernel_size}
       - ${rgc_kernel_size}
-    stride: 3
+    stride: ${generic_stride}
     activation: ${activation}
     layer_names: ["bipolar", "retinal_ganglion"]  # Names inspired by retinal cell types
     layer_norm: ${layer_norm}
@@ -39,7 +39,7 @@ circuits:
     num_layers: 1
     num_channels: ${bottleneck_chans}
     kernel_size: ${lgn_kernel_size}
-    stride: 1
+    stride: ${bottleneck_stride}
     activation: ${activation}
     layer_names: ["lgn"]  # Lateral Geniculate Nucleus
     layer_norm: ${layer_norm}
@@ -51,7 +51,7 @@ circuits:
     num_layers: 1
     num_channels: 64
     kernel_size: ${v1_kernel_size}
-    stride: 3
+    stride: ${generic_stride}
     activation: ${activation}
     layer_names: ["v1"]  # Primary Visual Cortex
     layer_norm: ${layer_norm}
@@ -82,7 +82,11 @@ circuits:
       - ${lgn_kernel_size}
       - ${rgc_kernel_size}
       - ${bp_kernel_size}
-    stride: [3,1,3,3]
+    stride:
+      - ${generic_stride}
+      - ${bottleneck_stride}
+      - ${generic_stride}
+      - ${generic_stride}
     activation:
       - ${activation}
       - ${activation}

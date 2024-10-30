@@ -26,11 +26,15 @@ sparsity_weight: 0.00001
 
 activation: "gelu"
 
-bottleneck_chans: 4
+bottleneck_chans: 8
+bottleneck_stride: 1
+
+generic_stride: 3
+
 
 bp_kernel_size: 15
 rgc_kernel_size: 11
-lgn_kernel_size: 1
+lgn_kernel_size: 3
 v1_kernel_size: 9
 
 recon_weight_retina: 1
