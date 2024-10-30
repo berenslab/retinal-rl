@@ -3,7 +3,6 @@
 import os
 import sys
 import warnings
-from typing import Dict, List, cast
 
 import hydra
 import torch
@@ -11,14 +10,13 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
 from retinal_rl.framework_interface import TrainingFramework
-from retinal_rl.models.brain import Brain
 from retinal_rl.rl.sample_factory.sf_framework import SFFramework
 from runner.analyze import analyze
 from runner.dataset import get_datasets
 from runner.initialize import initialize
 from runner.sweep import launch_sweep
 from runner.train import train
-from runner.util import assemble_neural_circuits, delete_results
+from runner.util import create_brain, delete_results
 
 # Load the eval resolver for OmegaConf
 OmegaConf.register_new_resolver("eval", eval)
@@ -27,6 +25,9 @@ OmegaConf.register_new_resolver("eval", eval)
 # Hydra entry point
 @hydra.main(config_path="config/base", config_name="config", version_base=None)
 def _program(cfg: DictConfig):
+    #TODO: Instead of doing checks of the config here, we should implement
+    # sth like the configstore which ensures config parameters are present
+
     if cfg.command == "clean":
         delete_results(cfg)
         sys.exit(0)
@@ -37,23 +38,14 @@ def _program(cfg: DictConfig):
 
     device = torch.device(cfg.system.device)
 
-    sensors = OmegaConf.to_container(cfg.brain.sensors, resolve=True)
-    sensors = cast(Dict[str, List[int]], sensors)
+    brain = create_brain(cfg.brain).to(device)
 
-    connections = OmegaConf.to_container(cfg.brain.connections, resolve=True)
-    connections = cast(List[List[str]], connections)
-
-    connectome, circuits = assemble_neural_circuits(
-        cfg.brain.circuits, sensors, connections
-    )
-
-    brain = Brain(circuits, sensors, connectome).to(device)
-
-    if hasattr(cfg, "optimizer"):
-        optimizer = instantiate(cfg.optimizer.optimizer, brain.parameters())
+    optimizer = instantiate(cfg.optimizer.optimizer, brain.parameters())
+    if hasattr(cfg.optimizer, "objective"):
         objective = instantiate(cfg.optimizer.objective, brain=brain)
+        # TODO: RL framework currently can't use objective
     else:
-        warnings.warn("No optimizer config specified, is that wanted?")
+        warnings.warn("No objective specified, is that wanted?")
 
     if cfg.command == "scan":
         print(brain.scan())
