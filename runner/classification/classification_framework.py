@@ -14,7 +14,6 @@ from runner.classification.train import train
 
 
 class ClassificationFramework(TrainingFramework):
-
     def __init__(self, cfg: DictConfig):
         self.cfg = cfg
         self.train_set, self.test_set = get_datasets(self.cfg)
@@ -27,28 +26,39 @@ class ClassificationFramework(TrainingFramework):
         )
         return brain, optimizer
 
-    def train(self, device: torch.device, brain: Brain, optimizer: torch.optim.Optimizer, objective: Optional[Objective[ContextT]] = None):
-        #TODO: check objective type
+    def train(
+        self,
+        device: torch.device,
+        brain: Brain,
+        optimizer: torch.optim.Optimizer,
+        objective: Optional[Objective[ContextT]] = None,
+    ):
+        # TODO: check objective type
         train(
-                self.cfg,
-                device,
-                brain,
-                objective,
-                optimizer,
-                self.train_set,
-                self.test_set,
-                self.completed_epochs,
-                self.histories,
-            )
+            self.cfg,
+            device,
+            brain,
+            objective,
+            optimizer,
+            self.train_set,
+            self.test_set,
+            self.completed_epochs,
+            self.histories,
+        )
 
-    def analyze(self, device: torch.device, brain: Brain, objective: Optional[Objective[ContextT]] = None):
+    def analyze(
+        self,
+        device: torch.device,
+        brain: Brain,
+        objective: Optional[Objective[ContextT]] = None,
+    ):
         analyze(
-                self.cfg,
-                device,
-                brain,
-                objective,
-                self.histories,
-                self.train_set,
-                self.test_set,
-                self.completed_epochs,
-            )
+            self.cfg,
+            device,
+            brain,
+            objective,
+            self.histories,
+            self.train_set,
+            self.test_set,
+            self.completed_epochs,
+        )
