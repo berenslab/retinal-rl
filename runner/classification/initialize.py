@@ -62,8 +62,12 @@ def _initialize_create(
             cfg, resolve=True, throw_on_missing=True
         )
         dict_conf = cast(Dict[str, Any], dict_conf)
+        entity = cfg.logging.wandb_entity
+        if entity == "default":
+            entity = None
         wandb.init(
-            project="retinal-rl",
+            project=cfg.logging.wandb_project,
+            entity=entity,
             group=HydraConfig.get().runtime.choices.experiment,
             job_type=HydraConfig.get().runtime.choices.brain,
             config=dict_conf,
@@ -111,10 +115,14 @@ def _initialize_reload(
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     completed_epochs = checkpoint["completed_epochs"]
     history = checkpoint["histories"]
+    entity = cfg.logging.wandb_entity
+    if entity == "default":
+        entity = None
 
     if cfg.logging.use_wandb:
         wandb.init(
-            project="retinal-rl",
+            project=cfg.logging.wandb_project,
+            entity=entity,
             group=HydraConfig.get().runtime.choices.experiment,
             job_type=HydraConfig.get().runtime.choices.brain,
             name=cfg.run_name,

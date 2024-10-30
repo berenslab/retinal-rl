@@ -6,9 +6,9 @@ imageset:
   _target_: retinal_rl.classification.imageset.Imageset
   source_transforms:
     - _target_: retinal_rl.classification.transforms.ScaleShiftTransform
-      vision_width: 160
-      vision_height: 160
-      image_rescale_range: [1, 5]
+      vision_width: ${vision_width}
+      vision_height: ${vision_height}
+      image_rescale_range: [1, 6]
   noise_transforms:
     - _target_: retinal_rl.classification.transforms.ShotNoiseTransform
       lambda_range:

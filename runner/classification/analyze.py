@@ -205,9 +205,7 @@ def _save_figure(cfg: DictConfig, sub_dir: str, file_name: str, fig: Figure) -> 
 def _checkpoint_copy(cfg: DictConfig, sub_dir: str, file_name: str, epoch: int) -> None:
     src_path = os.path.join(cfg.path.plot_dir, sub_dir, f"{file_name}.png")
 
-    dest_dir = os.path.join(
-        cfg.path.checkpoint_plot_dir, "checkpoints", f"epoch_{epoch}", sub_dir
-    )
+    dest_dir = os.path.join(cfg.path.checkpoint_plot_dir, f"epoch_{epoch}", sub_dir)
     os.makedirs(dest_dir, exist_ok=True)
     dest_path = os.path.join(dest_dir, f"{file_name}.png")
 

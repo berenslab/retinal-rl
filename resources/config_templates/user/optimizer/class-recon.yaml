@@ -44,7 +44,7 @@ objective:
         - 1
         - 1
     - _target_: retinal_rl.models.loss.L1Sparsity
-      target_response: "inferotemporal"
+      target_response: "visual_cortex"
       target_circuits:
         - retina
         - thalamus
