@@ -1,11 +1,11 @@
-from typing import Dict, List, Tuple
-
+from typing import Optional
 import torch
 from omegaconf import DictConfig
-from torch.utils.data import Dataset
 
 from retinal_rl.framework_interface import TrainingFramework
 from retinal_rl.models.brain import Brain
+from retinal_rl.models.loss import ContextT
+from retinal_rl.models.objective import Objective
 from runner.classification.analyze import analyze
 from runner.classification.dataset import get_datasets
 from runner.classification.initialize import initialize
@@ -14,23 +14,24 @@ from runner.classification.train import train
 
 class ClassificationFramework(TrainingFramework):
 
-    def __init__(self, cfg: DictConfig, brain: Brain, optimizer: torch.optim.Optimizer):
+    def __init__(self, cfg: DictConfig):
         self.cfg = cfg
-        self.brain, self.optimizer, self.histories, self.completed_epochs = initialize(
-            cfg,
+        self.train_set, self.test_set = get_datasets(self.cfg)
+
+    def initialize(self, brain: Brain, optimizer: torch.optim.Optimizer):
+        brain, optimizer, self.histories, self.completed_epochs = initialize(
+            self.cfg,
             brain,
             optimizer,
         )
-        self.train_set, self.test_set = self.get_datasets(self.cfg)
+        return brain, optimizer
 
-    def get_datasets(self):
-        return get_datasets(self.cfg)
-
-    def train(self, device, objective, optimizer):
+    def train(self, device: torch.device, brain: Brain, optimizer: torch.optim.Optimizer, objective: Optional[Objective[ContextT]] = None):
+        #TODO: check objective type
         train(
                 self.cfg,
                 device,
-                self.brain,
+                brain,
                 objective,
                 optimizer,
                 self.train_set,
@@ -39,11 +40,11 @@ class ClassificationFramework(TrainingFramework):
                 self.histories,
             )
 
-    def analyze(self, device, objective):
+    def analyze(self, device: torch.device, brain: Brain, objective: Optional[Objective[ContextT]] = None):
         analyze(
                 self.cfg,
                 device,
-                self.brain,
+                brain,
                 objective,
                 self.histories,
                 self.train_set,

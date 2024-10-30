@@ -56,16 +56,18 @@ def _program(cfg: DictConfig):
     if cfg.framework == "rl":
         framework = SFFramework(cfg, data_root=cache_path)
     elif cfg.framework == "classification":
-        framework = ClassificationFramework(cfg, brain, optimizer)
+        framework = ClassificationFramework(cfg)
     else:
         raise NotImplementedError("only 'rl' or 'classification' framework implemented currently")
 
+    brain, optimizer = framework.initialize(brain, optimizer)
+
     if cfg.command == "train":
-        framework.train()
+        framework.train(device, brain, optimizer, objective)
         sys.exit(0)
 
     if cfg.command == "analyze":
-        framework.analyze(cfg, device, brain, histories, None, None, completed_epochs)
+        framework.analyze(device, brain, objective)
         sys.exit(0)
 
     raise ValueError("Invalid run_mode")

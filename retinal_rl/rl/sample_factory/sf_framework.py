@@ -3,6 +3,12 @@ import json
 import os
 from argparse import Namespace
 from typing import Any, Dict, List, Optional, Tuple
+import argparse
+import json
+import os
+import warnings
+from argparse import Namespace
+from typing import Any, Dict, Optional
 
 # from retinal_rl.rl.sample_factory.observer import RetinalAlgoObserver
 import torch
@@ -25,6 +31,9 @@ from torch.utils.data import Dataset
 
 from retinal_rl.framework_interface import TrainingFramework
 from retinal_rl.models.brain import Brain
+from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
+from retinal_rl.models.loss import ContextT
+from retinal_rl.models.objective import Objective
 from retinal_rl.rl.sample_factory.arguments import (
     add_retinal_env_args,
     add_retinal_env_eval_args,
@@ -48,7 +57,14 @@ class SFFramework(TrainingFramework):
         register_retinal_env(self.sf_cfg.env, self.data_root, self.sf_cfg.input_satiety)
         global_model_factory().register_actor_critic_factory(SampleFactoryBrain)
 
-    def train(self):
+    def initialize(self, brain: Brain, optimizer: torch.optim.Optimizer):
+        # brain = SFFramework.load_brain_from_checkpoint(...)
+        # TODO: Implement load brain and optimizer state
+        return brain, optimizer
+
+    def train(self, device: torch.device, brain: Brain, optimizer: torch.optim.Optimizer, objective: Optional[Objective[ContextT]] = None):
+        warnings.warn("device, brain, optimizer are initialized differently in sample_factory and thus there current state will be ignored")
+        warnings.warn("objective is currently not supported for sample factory simulations")
         # Run simulation
         if not (self.sf_cfg.dry_run):
             cfg, runner = make_runner(self.sf_cfg)
@@ -115,18 +131,10 @@ class SFFramework(TrainingFramework):
         self._set_cfg_cli_argument(sf_cfg, "brain", OmegaConf.to_object(cfg.brain))
         return sf_cfg
 
-    def analyze(
-        self,
-        cfg: DictConfig,
-        device: torch.device,
-        brain: Brain,
-        histories: Dict[str, List[float]],
-        train_set: Dataset[Tuple[Tensor | int]],
-        test_set: Dataset[Tuple[Tensor | int]],
-        epoch: int,
-        copy_checkpoint: bool = False,
-    ):
-        return enjoy(self.sf_cfg)
+    def analyze(self, device: torch.device, brain: Brain, objective: Optional[Objective[ContextT]] = None):
+        warnings.warn("device, brain, optimizer are initialized differently in sample_factory and thus there current state will be ignored")
+        enjoy(self.sf_cfg)
+        # TODO: Implement analyze function for sf framework
 
     @staticmethod
     def _set_cfg_cli_argument(cfg: Namespace, name: str, value: Any):

@@ -1,4 +1,4 @@
-from typing import Dict, List, Protocol, Tuple
+from typing import Dict, List, Optional, Protocol, Tuple
 
 import torch
 from omegaconf import DictConfig
@@ -6,22 +6,26 @@ from torch import Tensor
 from torch.utils.data import Dataset
 
 from retinal_rl.models.brain import Brain
+from retinal_rl.models.objective import Objective
+from retinal_rl.models.loss import ContextT
 
 
 class TrainingFramework(Protocol):
-    # TODO: Check if all parameters applicable and sort arguments
-    # Especially get rid of config were possible (train? initialize could store all relevant parameters...)
-    def train(self): ...
+    def initialize(self,
+        brain: Brain, optimizer: torch.optim.Optimizer
+    ) -> Tuple[Brain, torch.optim.Optimizer]: ...
 
-    # TODO: make static to be able to evaluate models from other stuff as well?
-    def analyze(
+    def train(
         self,
-        cfg: DictConfig,
         device: torch.device,
         brain: Brain,
-        histories: Dict[str, List[float]],
-        train_set: Dataset[Tuple[Tensor, int]],
-        test_set: Dataset[Tuple[Tensor, int]],
-        epoch: int,
-        copy_checkpoint: bool = False,
+        optimizer: torch.optim.Optimizer,
+        objective: Optional[Objective[ContextT]] = None,
+    ): ...
+
+    def analyze(
+        self,
+        device: torch.device,
+        brain: Brain,
+        objective: Optional[Objective[ContextT]] = None,
     ): ...
