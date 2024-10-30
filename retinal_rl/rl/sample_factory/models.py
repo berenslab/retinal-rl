@@ -1,21 +1,20 @@
-from typing import Dict, Optional, Tuple
-from sample_factory.model.actor_critic import ActorCritic
-from sample_factory.model.encoder import Encoder
-from sample_factory.model.decoder import Decoder
-from sample_factory.model.core import ModelCore
-from sample_factory.utils.typing import ActionSpace, Config, ObsSpace
-from sample_factory.algo.utils.context import global_model_factory
-from sample_factory.model.model_utils import model_device
-from sample_factory.algo.utils.tensor_dict import TensorDict
-from torch import Tensor
-import torch
-import numpy as np
-import networkx as nx
-from retinal_rl.models.brain import Brain
-from retinal_rl.rl.sample_factory.sf_interfaces import ActorCriticProtocol
 import warnings
 from enum import Enum
-from torch import nn
+from typing import Dict, Tuple
+
+import networkx as nx
+import numpy as np
+import torch
+from omegaconf import DictConfig
+from sample_factory.algo.utils.tensor_dict import TensorDict
+from sample_factory.model.actor_critic import ActorCritic
+from sample_factory.model.model_utils import model_device
+from sample_factory.utils.typing import ActionSpace, Config, ObsSpace
+from torch import Tensor, nn
+
+from retinal_rl.models.brain import Brain
+from retinal_rl.rl.sample_factory.sf_interfaces import ActorCriticProtocol
+from runner.util import create_brain  # TODO: Remove runner reference!
 
 
 class CoreMode(Enum):
@@ -24,21 +23,21 @@ class CoreMode(Enum):
     RNN = (2,)
     MULTI_MODULES = (3,)
 
+
 class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
     def __init__(self, cfg: Config, obs_space: ObsSpace, action_space: ActionSpace):
         # Attention: make_actor_critic passes [cfg, obs_space, action_space], but ActorCritic takes the reversed order of arguments [obs_space, action_space, cfg]
         super().__init__(obs_space, action_space, cfg)
 
-        self.set_brain(
-            Brain(**cfg.brain)
-        )  # TODO: Find way to instantiate brain outside
+        self.set_brain(create_brain(DictConfig(cfg.brain)))
+        # TODO: Find way to instantiate brain outside
 
         dec_out_shape = self.brain.circuits[self.decoder_name].output_shape
         decoder_out_size = np.prod(dec_out_shape)
         self.critic_linear = nn.Linear(decoder_out_size, 1)
         self.action_parameterization = self.get_action_parameterization(
             decoder_out_size
-        ) # boils down to a linear layer mapping to num_action_outputs
+        )  # boils down to a linear layer mapping to num_action_outputs
 
     def set_brain(self, brain: Brain):
         """
@@ -54,7 +53,7 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
 
     @staticmethod
     def get_encoder_decoder(brain: Brain) -> Tuple[str, CoreMode, str]:
-        assert "vision" in brain.sensors.keys()  # needed as input
+        assert "vision" in brain.sensors  # needed as input
         # potential TODO: add other input sources if needed?
 
         vision_paths = []
@@ -63,7 +62,7 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
                 vision_paths.append(nx.shortest_path(brain.connectome, "vision", node))
 
         decoder = "action_decoder"  # default assumption
-        if decoder in brain.circuits.keys():  # needed to produce output = decoder
+        if decoder in brain.circuits:  # needed to produce output = decoder
             vision_path = nx.shortest_path(brain.connectome, "vision", "action_decoder")
         else:
             selected_path = 0
@@ -152,7 +151,6 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
 
     def get_brain(self) -> Brain:
         return self.brain
-
 
     # Methods need to be overwritten 'cause the use .encoders
     def device_for_input_tensor(self, input_tensor_name: str) -> torch.device:

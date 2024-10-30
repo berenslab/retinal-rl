@@ -1,0 +1,7 @@
+# The optimizer to use
+optimizer: # torch.optim Class and parameters
+  _target_: torch.optim.Adam
+  lr: 0.0003
+
+# The objective function
+# TODO: Implement in RL and update config
