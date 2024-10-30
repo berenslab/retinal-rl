@@ -22,7 +22,6 @@ from sample_factory.train import make_runner
 from sample_factory.utils.attr_dict import AttrDict
 from sample_factory.utils.typing import Config
 
-from retinal_rl.framework_interface import TrainingFramework
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.loss import ContextT
 from retinal_rl.models.objective import Objective
@@ -33,6 +32,7 @@ from retinal_rl.rl.sample_factory.arguments import (
 )
 from retinal_rl.rl.sample_factory.environment import register_retinal_env
 from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
+from runner.frameworks.framework_interface import TrainingFramework
 from runner.util import create_brain
 
 

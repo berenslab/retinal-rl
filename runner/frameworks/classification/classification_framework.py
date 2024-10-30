@@ -3,14 +3,14 @@ from typing import Optional
 import torch
 from omegaconf import DictConfig
 
-from retinal_rl.framework_interface import TrainingFramework
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.loss import ContextT
 from retinal_rl.models.objective import Objective
-from runner.classification.analyze import analyze
-from runner.classification.dataset import get_datasets
-from runner.classification.initialize import initialize
-from runner.classification.train import train
+from runner.frameworks.classification.analyze import analyze
+from runner.frameworks.classification.dataset import get_datasets
+from runner.frameworks.classification.initialize import initialize
+from runner.frameworks.classification.train import train
+from runner.frameworks.framework_interface import TrainingFramework
 
 
 class ClassificationFramework(TrainingFramework):

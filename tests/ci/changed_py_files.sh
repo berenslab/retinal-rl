@@ -1,3 +1,3 @@
 #!/bin/bash
 
-echo $(git diff --name-only origin/master...HEAD -- '*.py')
+echo $(git diff --name-only --diff-filter=d origin/master...HEAD -- '*.py')

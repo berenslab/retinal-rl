@@ -15,7 +15,7 @@ from retinal_rl.classification.loss import ClassificationContext
 from retinal_rl.classification.training import process_dataset, run_epoch
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.objective import Objective
-from runner.classification.analyze import analyze
+from runner.frameworks.classification.analyze import analyze
 from runner.util import save_checkpoint
 
 # Initialize the logger
