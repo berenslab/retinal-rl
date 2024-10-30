@@ -27,6 +27,16 @@ shift
 if [ "$1" = "--all" ]; then
     # Remove --all from arguments
     shift
+
+    # Check or fix
+    check="--check"
+    if [[ "$@" == *"--fix"* ]]; then
+        check=""
+    fi
+
+    # Format
+    apptainer exec "$CONTAINER" ruff format "$check" .
+
     # Run ruff on all files with any remaining arguments
     apptainer exec "$CONTAINER" ruff check . "$@"
 else
@@ -36,10 +46,13 @@ else
     fi
     
     # Get changed Python files
-    changed_files=$(git diff --name-only origin/master...HEAD -- '*.py')
+    changed_files=$(tests/ci/changed_py_files.sh)
     if [ -n "$changed_files" ]; then
+        # Format
+        apptainer exec "$CONTAINER" ruff format "$check" $changed_files
+
         # Run ruff on changed files with any remaining arguments
-        apptainer exec "$CONTAINER" ruff check $(git diff --name-only origin/master...HEAD -- '*.py') "$@"
+        apptainer exec "$CONTAINER" ruff check $changed_files "$@"
     else
         echo "No .py files changed"
     fi
