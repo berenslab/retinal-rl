@@ -9,9 +9,11 @@ import torch
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
-from runner.classification.classification_framework import ClassificationFramework
+from runner.frameworks.classification.classification_framework import (
+    ClassificationFramework,
+)
 from runner.frameworks.framework_interface import TrainingFramework
-from runner.frameworks.sf_framework import SFFramework
+from runner.frameworks.rl.sf_framework import SFFramework
 from runner.sweep import launch_sweep
 from runner.util import create_brain, delete_results
 
