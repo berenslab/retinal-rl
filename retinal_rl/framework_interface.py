@@ -8,8 +8,8 @@ from retinal_rl.models.objective import Objective
 
 
 class TrainingFramework(Protocol):
-    def initialize(self,
-        brain: Brain, optimizer: torch.optim.Optimizer
+    def initialize(
+        self, brain: Brain, optimizer: torch.optim.Optimizer
     ) -> Tuple[Brain, torch.optim.Optimizer]: ...
 
     def train(

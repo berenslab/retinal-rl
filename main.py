@@ -13,9 +13,7 @@ from retinal_rl.framework_interface import TrainingFramework
 from retinal_rl.rl.sample_factory.sf_framework import SFFramework
 from runner.classification.classification_framework import ClassificationFramework
 from runner.sweep import launch_sweep
-from runner.train import train
 from runner.util import create_brain, delete_results
-from runner.util import assemble_neural_circuits, delete_results
 
 # Load the eval resolver for OmegaConf
 OmegaConf.register_new_resolver("eval", eval)
@@ -24,7 +22,7 @@ OmegaConf.register_new_resolver("eval", eval)
 # Hydra entry point
 @hydra.main(config_path="config/base", config_name="config", version_base=None)
 def _program(cfg: DictConfig):
-    #TODO: Instead of doing checks of the config here, we should implement
+    # TODO: Instead of doing checks of the config here, we should implement
     # sth like the configstore which ensures config parameters are present
 
     if cfg.command == "clean":
@@ -58,7 +56,9 @@ def _program(cfg: DictConfig):
     elif cfg.framework == "classification":
         framework = ClassificationFramework(cfg)
     else:
-        raise NotImplementedError("only 'rl' or 'classification' framework implemented currently")
+        raise NotImplementedError(
+            "only 'rl' or 'classification' framework implemented currently"
+        )
 
     brain, optimizer = framework.initialize(brain, optimizer)
 
