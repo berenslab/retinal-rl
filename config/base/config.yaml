@@ -28,6 +28,7 @@ logging:
   channel_analysis: False # Whether to do in depth channel analysis
   plot_sample_size: 1000
   wandb_preempt: False  # Whether to enable Weights & Biases preemption
+  wandb_project: miscellaneous # wandb project
 
 ### "Immutable" Parameters ###
 

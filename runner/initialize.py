@@ -63,7 +63,7 @@ def _initialize_create(
         )
         dict_conf = cast(Dict[str, Any], dict_conf)
         wandb.init(
-            project="retinal-rl",
+            project=cfg.logging.wandb_project,
             group=HydraConfig.get().runtime.choices.experiment,
             job_type=HydraConfig.get().runtime.choices.brain,
             config=dict_conf,
@@ -114,7 +114,7 @@ def _initialize_reload(
 
     if cfg.logging.use_wandb:
         wandb.init(
-            project="retinal-rl",
+            project=cfg.logging.wandb_project,
             group=HydraConfig.get().runtime.choices.experiment,
             job_type=HydraConfig.get().runtime.choices.brain,
             name=cfg.run_name,
