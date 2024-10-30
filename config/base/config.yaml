@@ -19,7 +19,7 @@ run_name: 'run_${now:%Y-%m-%d-%H-%M-%S}'
 # General simulation settings
 system:
   device: cuda  # We use cuda by default
-  num_workers: 8 # Number of CPU workers
+  num_workers: 12 # Number of CPU workers
 
 logging:
   use_wandb: False # Whether to use Weights & Biases for logging
