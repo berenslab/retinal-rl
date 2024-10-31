@@ -29,17 +29,17 @@ logger = logging.getLogger(__name__)
 class TransformStatistics:
     """Results of applying transformations to images."""
 
-    source_transforms: Dict[str, Dict[float, List[Tensor]]]
-    noise_transforms: Dict[str, Dict[float, List[Tensor]]]
+    source_transforms: Dict[str, Dict[float, List[FloatArray]]]
+    noise_transforms: Dict[str, Dict[float, List[FloatArray]]]
 
 
 @dataclass
 class Reconstructions:
     """Set of source images, inputs, and their reconstructions."""
 
-    sources: List[Tuple[Tensor, int]]
-    inputs: List[Tuple[Tensor, int]]
-    estimates: List[Tuple[Tensor, int]]
+    sources: List[Tuple[FloatArray, int]]
+    inputs: List[Tuple[FloatArray, int]]
+    estimates: List[Tuple[FloatArray, int]]
 
 
 @dataclass
@@ -102,7 +102,7 @@ def transform_base_images(
         src, _ = base_dataset[np.random.randint(base_len)]
         images.append(src)
 
-    results: Dict[str, Dict[str, Dict[float, List[Tensor]]]] = {
+    results: Dict[str, Dict[str, Dict[float, List[FloatArray]]]] = {
         "source_transforms": {},
         "noise_transforms": {},
     }
@@ -124,7 +124,7 @@ def transform_base_images(
                 results[category][transform.name][step] = []
                 for img in images:
                     results[category][transform.name][step].append(
-                        imageset.to_tensor(transform.transform(img, step))
+                        imageset.to_tensor(transform.transform(img, step)).cpu().numpy()
                     )
 
     return TransformStatistics(**results)
@@ -145,9 +145,9 @@ def reconstruct_images(
         imageset: Imageset, sample_size: int
     ) -> Reconstructions:
         """Collect reconstructions for a subset of a dataset."""
-        source_subset: List[Tuple[Tensor, int]] = []
-        input_subset: List[Tuple[Tensor, int]] = []
-        estimates: List[Tuple[Tensor, int]] = []
+        source_subset: List[Tuple[FloatArray, int]] = []
+        input_subset: List[Tuple[FloatArray, int]] = []
+        estimates: List[Tuple[FloatArray, int]] = []
         indices = torch.randperm(imageset.epoch_len())[:sample_size]
 
         with torch.no_grad():  # Disable gradient computation
@@ -159,9 +159,9 @@ def reconstruct_images(
                 response = brain(stimulus)
                 rec_img = response[decoder].squeeze(0)
                 pred_k = response["classifier"].argmax().item()
-                source_subset.append((src.cpu(), k))
-                input_subset.append((img.cpu(), k))
-                estimates.append((rec_img.cpu(), pred_k))
+                source_subset.append((src.cpu().numpy(), k))
+                input_subset.append((img.cpu().numpy(), k))
+                estimates.append((rec_img.cpu().numpy(), pred_k))
 
         return Reconstructions(source_subset, input_subset, estimates)
 
