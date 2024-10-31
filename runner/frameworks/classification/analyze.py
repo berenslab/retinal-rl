@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import shutil
 from dataclasses import asdict
 from pathlib import Path
@@ -65,76 +64,168 @@ def analyze(
     epoch: int,
     copy_checkpoint: bool = False,
 ):
-    results_dir = Path(cfg.path.data_dir) / "analyses"
-    results_dir.mkdir(exist_ok=True)
+    ## DictConfig
 
-    if not cfg.logging.use_wandb:
-        _plot_and_save_histories(cfg, histories)
+    # Path creation
+    run_dir = Path(cfg.path.run_dir)
+    run_dir.mkdir(exist_ok=True)
+
+    plot_dir = Path(cfg.path.plot_dir)
+    plot_dir.mkdir(exist_ok=True)
+
+    checkpoint_plot_dir = Path(cfg.path.checkpoint_plot_dir)
+    checkpoint_plot_dir.mkdir(exist_ok=True)
+
+    analyses_dir = Path(cfg.path.data_dir) / "analyses"
+    analyses_dir.mkdir(exist_ok=True)
+
+    # Variables
+    use_wandb = cfg.logging.use_wandb
+    channel_analysis = cfg.logging.channel_analysis
+    plot_sample_size = cfg.logging.plot_sample_size
+
+    ## Analysis
+
+    if not use_wandb:
+        _plot_and_save_histories(plot_dir, histories)
 
     # Get CNN statistics and save them
     cnn_stats = cnn_statistics(
         device,
         test_set,
         brain,
-        cfg.logging.channel_analysis,
-        cfg.logging.plot_sample_size,
+        channel_analysis,
+        plot_sample_size,
     )
 
     # Save CNN statistics
-    with open(results_dir / f"cnn_stats_epoch_{epoch}.json", "w") as f:
+    with open(analyses_dir / f"cnn_stats_epoch_{epoch}.json", "w") as f:
         json.dump(asdict(cnn_stats), f, cls=NumpyEncoder)
 
     if epoch == 0:
-        _perform_initialization_analysis(cfg, brain, objective, train_set, cnn_stats)
+        _perform_initialization_analysis(
+            channel_analysis,
+            analyses_dir,
+            use_wandb,
+            plot_dir,
+            checkpoint_plot_dir,
+            run_dir,
+            brain,
+            objective,
+            train_set,
+            cnn_stats,
+        )
 
-    _analyze_layers(cfg, cnn_stats, epoch, copy_checkpoint)
-
-    _perform_reconstruction_analysis(
-        cfg, device, brain, objective, train_set, test_set, epoch, copy_checkpoint
+    _analyze_layers(
+        channel_analysis,
+        use_wandb,
+        plot_dir,
+        checkpoint_plot_dir,
+        cnn_stats,
+        epoch,
+        copy_checkpoint,
     )
 
+    _perform_reconstruction_analysis(
+        use_wandb,
+        plot_dir,
+        checkpoint_plot_dir,
+        device,
+        brain,
+        objective,
+        train_set,
+        test_set,
+        epoch,
+        copy_checkpoint,
+    )
 
-def _plot_and_save_histories(cfg: DictConfig, histories: Dict[str, List[float]]):
     hist_fig = plot_histories(histories)
-    _save_figure(cfg, "", "histories", hist_fig)
+    _save_figure(plot_dir, "", "histories", hist_fig)
+    plt.close(hist_fig)
+
+
+def _plot_and_save_histories(plot_dir: Path, histories: Dict[str, List[float]]):
+    hist_fig = plot_histories(histories)
+    _save_figure(plot_dir, "", "histories", hist_fig)
     plt.close(hist_fig)
 
 
 def _perform_initialization_analysis(
-    cfg: DictConfig,
+    channel_analysis: bool,
+    analyses_dir: Path,
+    use_wandb: bool,
+    plot_dir: Path,
+    checkpoint_plot_dir: Path,
+    run_dir: Path,
     brain: Brain,
     objective: Objective[ContextT],
     train_set: Imageset,
     cnn_stats: CNNStatistics,
 ):
     summary = brain.scan()
-    filepath = Path(cfg.path.run_dir) / "brain_summary.txt"
+    filepath = run_dir / "brain_summary.txt"
     filepath.write_text(summary)
 
-    if cfg.logging.use_wandb:
-        wandb.save(str(filepath), base_path=cfg.path.run_dir, policy="now")
+    if use_wandb:
+        wandb.save(str(filepath), base_path=run_dir, policy="now")
 
     # TODO: This is a bit of a hack, we should refactor this to get the relevant information out of  cnn_stats
     rf_sizes_fig = plot_receptive_field_sizes(**asdict(cnn_stats))
-    _process_figure(cfg, False, rf_sizes_fig, init_dir, "receptive_field_sizes", 0)
+    _process_figure(
+        use_wandb,
+        plot_dir,
+        checkpoint_plot_dir,
+        False,
+        rf_sizes_fig,
+        init_dir,
+        "receptive_field_sizes",
+        0,
+    )
 
     graph_fig = plot_brain_and_optimizers(brain, objective)
-    _process_figure(cfg, False, graph_fig, init_dir, "brain_graph", 0)
+    _process_figure(
+        use_wandb,
+        plot_dir,
+        checkpoint_plot_dir,
+        False,
+        graph_fig,
+        init_dir,
+        "brain_graph",
+        0,
+    )
 
     transforms = transform_base_images(train_set, num_steps=5, num_images=2)
     # Save transform statistics
-    transform_path = Path(cfg.path.run_dir) / "results" / "transforms.json"
+    transform_path = analyses_dir / "transforms.json"
     with open(transform_path, "w") as f:
         json.dump(asdict(transforms), f, cls=NumpyEncoder)
 
     transforms_fig = plot_transforms(**asdict(transforms))
-    _process_figure(cfg, False, transforms_fig, init_dir, "transforms", 0)
+    _process_figure(
+        use_wandb,
+        plot_dir,
+        checkpoint_plot_dir,
+        False,
+        transforms_fig,
+        init_dir,
+        "transforms",
+        0,
+    )
 
-    _analyze_input_layer(cfg, cnn_stats.layers["input"], cfg.logging.channel_analysis)
+    _analyze_input_layer(
+        use_wandb,
+        plot_dir,
+        checkpoint_plot_dir,
+        cnn_stats.layers["input"],
+        channel_analysis,
+    )
 
 
 def _analyze_layers(
-    cfg: DictConfig,
+    channel_analysis: bool,
+    use_wandb: bool,
+    plot_dir: Path,
+    checkpoint_plot_dir: Path,
     cnn_stats: CNNStatistics,
     epoch: int,
     copy_checkpoint: bool,
@@ -142,22 +233,35 @@ def _analyze_layers(
     for layer_name, layer_data in cnn_stats.layers.items():
         if layer_name != "input":
             _analyze_regular_layer(
-                cfg,
+                use_wandb,
+                plot_dir,
+                checkpoint_plot_dir,
                 layer_name,
                 layer_data,
                 epoch,
                 copy_checkpoint,
-                cfg.logging.channel_analysis,
+                channel_analysis,
             )
 
 
 def _analyze_input_layer(
-    cfg: DictConfig,
+    use_wandb: bool,
+    plot_dir: Path,
+    checkpoint_plot_dir: Path,
     layer_statistics: LayerStatistics,
     channel_analysis: bool,
 ):
     layer_rfs = layer_receptive_field_plots(layer_statistics.receptive_fields)
-    _process_figure(cfg, False, layer_rfs, init_dir, "input_rfs", 0)
+    _process_figure(
+        use_wandb,
+        plot_dir,
+        checkpoint_plot_dir,
+        False,
+        layer_rfs,
+        init_dir,
+        "input_rfs",
+        0,
+    )
 
     if channel_analysis:
         layer_dict = asdict(layer_statistics)
@@ -167,12 +271,21 @@ def _analyze_input_layer(
                 **layer_dict, layer_name="input", channel=channel
             )
             _process_figure(
-                cfg, False, channel_fig, init_dir, f"input_channel_{channel}", 0
+                use_wandb,
+                plot_dir,
+                checkpoint_plot_dir,
+                False,
+                channel_fig,
+                init_dir,
+                f"input_channel_{channel}",
+                0,
             )
 
 
 def _analyze_regular_layer(
-    cfg: DictConfig,
+    use_wandb: bool,
+    plot_dir: Path,
+    checkpoint_plot_dir: Path,
     layer_name: str,
     layer_statistics: LayerStatistics,
     epoch: int,
@@ -181,7 +294,14 @@ def _analyze_regular_layer(
 ):
     layer_rfs = layer_receptive_field_plots(layer_statistics.receptive_fields)
     _process_figure(
-        cfg, copy_checkpoint, layer_rfs, "receptive_fields", f"{layer_name}", epoch
+        use_wandb,
+        plot_dir,
+        checkpoint_plot_dir,
+        copy_checkpoint,
+        layer_rfs,
+        "receptive_fields",
+        f"{layer_name}",
+        epoch,
     )
 
     if channel_analysis:
@@ -193,7 +313,9 @@ def _analyze_regular_layer(
             )
 
             _process_figure(
-                cfg,
+                use_wandb,
+                plot_dir,
+                checkpoint_plot_dir,
                 copy_checkpoint,
                 channel_fig,
                 f"{layer_name}_layer_channel_analysis",
@@ -203,7 +325,9 @@ def _analyze_regular_layer(
 
 
 def _perform_reconstruction_analysis(
-    cfg: DictConfig,
+    use_wandb: bool,
+    plot_dir: Path,
+    checkpoint_plot_dir: Path,
     device: torch.device,
     brain: Brain,
     objective: Objective[ContextT],
@@ -231,7 +355,9 @@ def _perform_reconstruction_analysis(
             num_samples=5,
         )
         _process_figure(
-            cfg,
+            use_wandb,
+            plot_dir,
+            checkpoint_plot_dir,
             copy_checkpoint,
             recon_fig,
             "reconstruction",
@@ -243,19 +369,21 @@ def _perform_reconstruction_analysis(
 ### Helper Functions ###
 
 
-def _save_figure(cfg: DictConfig, sub_dir: str, file_name: str, fig: Figure) -> None:
-    dir = os.path.join(cfg.path.plot_dir, sub_dir)
-    os.makedirs(dir, exist_ok=True)
-    file_name = os.path.join(dir, f"{file_name}.png")
-    fig.savefig(file_name)
+def _save_figure(plot_dir: Path, sub_dir: str, file_name: str, fig: Figure) -> None:
+    dir = plot_dir / sub_dir
+    dir.mkdir(exist_ok=True)
+    file_path = dir / f"{file_name}.png"
+    fig.savefig(file_path)
 
 
-def _checkpoint_copy(cfg: DictConfig, sub_dir: str, file_name: str, epoch: int) -> None:
-    src_path = os.path.join(cfg.path.plot_dir, sub_dir, f"{file_name}.png")
+def _checkpoint_copy(
+    plot_dir: Path, checkpoint_plot_dir: Path, sub_dir: str, file_name: str, epoch: int
+) -> None:
+    src_path = plot_dir / sub_dir / f"{file_name}.png"
 
-    dest_dir = os.path.join(cfg.path.checkpoint_plot_dir, f"epoch_{epoch}", sub_dir)
-    os.makedirs(dest_dir, exist_ok=True)
-    dest_path = os.path.join(dest_dir, f"{file_name}.png")
+    dest_dir = checkpoint_plot_dir / f"epoch_{epoch}" / sub_dir
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest_path = dest_dir / f"{file_name}.png"
 
     shutil.copy2(src_path, dest_path)
 
@@ -278,19 +406,21 @@ def _wandb_title(title: str) -> str:
 
 
 def _process_figure(
-    cfg: DictConfig,
+    use_wandb: bool,
+    plot_dir: Path,
+    checkpoint_plot_dir: Path,
     copy_checkpoint: bool,
     fig: Figure,
     sub_dir: str,
     file_name: str,
     epoch: int,
 ) -> None:
-    if cfg.logging.use_wandb:
+    if use_wandb:
         title = f"{_wandb_title(sub_dir)}/{_wandb_title(file_name)}"
         img = wandb.Image(fig)
         wandb.log({title: img}, commit=False)
     else:
-        _save_figure(cfg, sub_dir, file_name, fig)
+        _save_figure(plot_dir, sub_dir, file_name, fig)
         if copy_checkpoint:
-            _checkpoint_copy(cfg, sub_dir, file_name, epoch)
+            _checkpoint_copy(plot_dir, checkpoint_plot_dir, sub_dir, file_name, epoch)
     plt.close(fig)

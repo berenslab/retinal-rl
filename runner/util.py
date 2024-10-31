@@ -5,6 +5,7 @@
 import logging
 import os
 import shutil
+from pathlib import Path
 from typing import Any, Dict, List, Tuple, cast
 
 import networkx as nx
@@ -25,8 +26,8 @@ log = logging.getLogger(__name__)
 
 
 def save_checkpoint(
-    data_dir: str,
-    checkpoint_dir: str,
+    data_dir: Path,
+    checkpoint_dir: Path,
     max_checkpoints: int,
     brain: nn.Module,
     optimizer: Optimizer,
@@ -34,8 +35,8 @@ def save_checkpoint(
     completed_epochs: int,
 ) -> None:
     """Save a checkpoint of the model and optimizer state."""
-    current_file = os.path.join(data_dir, "current_checkpoint.pt")
-    checkpoint_file = os.path.join(checkpoint_dir, f"epoch_{completed_epochs}.pt")
+    current_file = data_dir / "current_checkpoint.pt"
+    checkpoint_file = checkpoint_dir / f"epoch_{completed_epochs}.pt"
     checkpoint_dict: Dict[str, Any] = {
         "completed_epochs": completed_epochs,
         "brain_state_dict": brain.state_dict(),
@@ -59,11 +60,10 @@ def save_checkpoint(
         os.remove(os.path.join(checkpoint_dir, checkpoints.pop()))
 
 
-def delete_results(cfg: DictConfig) -> None:
+def delete_results(run_dir: Path) -> None:
     """Delete the results directory."""
-    run_dir: str = cfg.path.run_dir
 
-    if not os.path.exists(run_dir):
+    if not run_dir.exists():
         print(f"Directory {run_dir} does not exist.")
         return
 

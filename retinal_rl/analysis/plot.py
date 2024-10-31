@@ -57,13 +57,13 @@ def plot_transforms(
         ncol = nrow
         nrow = (n - 1) // ncol + 1
 
-        C, H, W = arrays[0].shape
-        grid = np.zeros((C, H * nrow, W * ncol))
+        nchns, hght, wdth = arrays[0].shape
+        grid = np.zeros((nchns, hght * nrow, wdth * ncol))
 
         for idx, array in enumerate(arrays):
             i = idx // ncol
             j = idx % ncol
-            grid[:, i * H : (i + 1) * H, j * W : (j + 1) * W] = array
+            grid[:, i * hght : (i + 1) * hght, j * wdth : (j + 1) * wdth] = array
 
         return grid
 
