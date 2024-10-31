@@ -142,7 +142,7 @@ def obs_dict_to_tuple(obs_dct):
     """
     obs = obs_dct["obs"][0]
     msm = None
-    if "measurements" in obs_dct.keys():
+    if "measurements" in obs_dct:
         msm = obs_dct["measurements"][0]
     # visualize obs only for the 1st agent
     return (obs, msm)
@@ -155,8 +155,7 @@ def obs_to_img(obs):
     # convert to HWC
     obs = obs.permute(1, 2, 0)
     # convert to numpy
-    img = obs.cpu().numpy()
-    return img
+    return obs.cpu().numpy()
 
 
 ### Network Tools ###
@@ -177,7 +176,7 @@ def activation(act) -> nn.Module:
 
 
 def is_activation(mdl: nn.Module) -> bool:
-    bl = any(
+    return any(
         [
             isinstance(mdl, nn.ELU),
             isinstance(mdl, nn.ReLU),
@@ -186,7 +185,6 @@ def is_activation(mdl: nn.Module) -> bool:
             isinstance(mdl, nn.Identity),
         ]
     )
-    return bl
 
 
 def double_up(x):
@@ -281,6 +279,4 @@ def fill_in_argv_template(argv):
     # Replace cfg string templates
     cfg = {k: v.format(**cfg) for k, v in cfg.items()}
     # Convert cfg back into argv
-    argv = [f"--{k}={v}" for k, v in cfg.items()]
-
-    return argv
+    return [f"--{k}={v}" for k, v in cfg.items()]

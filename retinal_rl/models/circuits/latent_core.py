@@ -37,9 +37,7 @@ class LatentFFN(NeuralCircuit):
     # noinspection PyMethodMayBeStatic
     def forward(self, head_output, fake_rnn_states=None):
         # Apply tanh to head output
-        head_output = torch.tanh(head_output)
-
-        return head_output  # , fake_rnn_states
+        return torch.tanh(head_output)  # , fake_rnn_states
 
     @NeuralCircuit.output_shape.getter
     def output_shape(self) -> List[int]:  # TODO: fake_rnn_states?

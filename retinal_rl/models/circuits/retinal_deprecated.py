@@ -69,5 +69,4 @@ class RetinalEncoder(NeuralCircuit):
 
     def forward(self, x: torch.Tensor):
         x = self.flatten(self.conv_head(x))
-        x = self.nl_fc(self.fc(x))
-        return x
+        return self.nl_fc(self.fc(x))

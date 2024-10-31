@@ -78,9 +78,7 @@ class SatietyInput(gym.Wrapper):
         hlth = np.clip(hlth, 0, 100)
         satiety = (hlth - 50) / 50.0
         self.measurements_vec[0] = satiety
-        obs_dict = {"obs": obs, "measurements": self.measurements_vec}
-
-        return obs_dict
+        return {"obs": obs, "measurements": self.measurements_vec}
 
     def reset(self, **kwargs):
         obs, _ = self.env.reset(**kwargs)

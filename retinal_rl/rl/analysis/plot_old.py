@@ -42,12 +42,11 @@ def enhance_attribution(attr_series):
     lower_bound = np.percentile(attr_series, 0)
     upper_bound = np.percentile(attr_series, 99.9)
     enhanced_series = np.clip(attr_series, lower_bound, upper_bound)
-    enhanced_series_normalized = (
+    return (
         (enhanced_series - enhanced_series.min())
         / (enhanced_series.max() - enhanced_series.min())
         * 255
     ).astype(np.uint8)
-    return enhanced_series_normalized
 
 
 def simulation_plot(
@@ -104,19 +103,8 @@ def simulation_plot(
     action1_ax.sharex(satax)
     action2_ax.sharex(satax)
 
-    # Example using the pastel palette
-    colors_pastel = sns.color_palette("pastel", 6)
-
     # Example using the Blues palette for the first three actions and Purples for the next three
-    colors_blues_purples = sns.color_palette("Blues", 3) + sns.color_palette(
-        "Purples", 3
-    )
-
-    # Example using the cubehelix palette
-    colors_cubehelix = sns.cubehelix_palette(6, start=0.5, rot=-0.75)
-
-    # Choose one of the above color sets and replace the original 'colors' variable
-    colors = colors_blues_purples  # or colors_blues_purples or colors_cubehelix
+    colors = sns.color_palette("Blues", 3) + sns.color_palette("Purples", 3)
 
     # Policy for Action 1
     bottom = np.zeros(t_max)
@@ -289,10 +277,9 @@ def simulation_plot(
 
         pbar.update(1)
 
-    anim = FuncAnimation(
+    return FuncAnimation(
         fig, update, frames=range(1, t_max), interval=1000 / 35
     )  # Assuming 35 FPS
-    return anim
 
 
 def plot_acts_tsne_stim(sim_recs):  # plot sorted activations

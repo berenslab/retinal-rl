@@ -2,7 +2,7 @@ def nourishment(name: str, states_definitions: str):
     return f"""\
 ACTOR {name} : CustomInventory {{
     +INVENTORY.ALWAYSPICKUP
-    
+
     // Different states used for different appearances, randomly chosen at spawn
     States {{
         Pickup:
@@ -21,7 +21,7 @@ def obstacle(name: str, states_definitions: str, radius: int = 24):
     return f"""\
 ACTOR {name} : TorchTree {{
     Radius {radius}
-    
+
     // Different states used for different appearances, randomly chosen at spawn
     States {{
         {states_definitions}\
@@ -33,7 +33,7 @@ def distractor(name: str, states_definitions: str):
     return f"""\
 ACTOR {name} : CustomInventory {{
     +INVENTORY.ALWAYSPICKUP
-    
+
     // Different states used for different appearances, randomly chosen at spawn
     States {{
         {states_definitions}\

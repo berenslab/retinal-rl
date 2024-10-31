@@ -181,7 +181,7 @@ def make_acs(
             index=i, actor_name=actor_name, num_textures=num_textures
         )
 
-    acs = templates.acs.general(
+    return templates.acs.general(
         metabolic_delay=metabolic_delay,
         metabolic_damage=metabolic_damage,
         object_variables=object_variables_acs,
@@ -190,8 +190,6 @@ def make_acs(
         spawn_relative=spawn_relative,
         spawn_range=spawn_range,
     )
-
-    return acs
 
 
 def values_list(cfg_values):

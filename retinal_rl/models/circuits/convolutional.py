@@ -132,10 +132,7 @@ class ConvolutionalDecoder(NeuralCircuit):
         deconv_layers: List[Tuple[str, nn.Module]] = []
         # Define deconvolutional layers
         for i in range(num_layers):
-            if i == 0:
-                in_channels = self.input_shape[0]
-            else:
-                in_channels = self.num_channels[i - 1]
+            in_channels = self.input_shape[0] if i == 0 else self.num_channels[i - 1]
             lyrnm = (
                 f"{layer_names[i]}_input"
                 if layer_names is not None

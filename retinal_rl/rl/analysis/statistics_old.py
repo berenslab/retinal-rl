@@ -82,42 +82,41 @@ def gradient_receptive_fields(cfg, env, actor_critic, prgrs):
     repttl = len(enc.conv_head)
     mdls = []
 
-    with torch.no_grad():
-        with tqdm(
-            total=repttl, desc="Generating Attributions", disable=not (prgrs)
-        ) as pbar:
-            for lyrnm, mdl in enc.conv_head.named_children():
-                gradient_calculator = NeuronGradient(enc, mdl)
-                mdls.append(mdl)
-                subenc = torch.nn.Sequential(*mdls)
+    with torch.no_grad(), tqdm(
+        total=repttl, desc="Generating Attributions", disable=not (prgrs)
+    ) as pbar:
+        for lyrnm, mdl in enc.conv_head.named_children():
+            gradient_calculator = NeuronGradient(enc, mdl)
+            mdls.append(mdl)
+            subenc = torch.nn.Sequential(*mdls)
 
-                # check if mdl has out channels
-                if hasattr(mdl, "out_channels"):
-                    ochns = mdl.out_channels
-                hsz, wsz = encoder_out_size(subenc, hght, wdth)
+            # check if mdl has out channels
+            if hasattr(mdl, "out_channels"):
+                ochns = mdl.out_channels
+            hsz, wsz = encoder_out_size(subenc, hght, wdth)
 
-                hidx = (hsz - 1) // 2
-                widx = (wsz - 1) // 2
+            hidx = (hsz - 1) // 2
+            widx = (wsz - 1) // 2
 
-                hrf_size, wrf_size, hmn, wmn = rf_size_and_start(subenc, hidx, widx)
+            hrf_size, wrf_size, hmn, wmn = rf_size_and_start(subenc, hidx, widx)
 
-                hmx = hmn + hrf_size
-                wmx = wmn + wrf_size
+            hmx = hmn + hrf_size
+            wmx = wmn + wrf_size
 
-                stas[lyrnm] = np.zeros((ochns, nclrs, hrf_size, wrf_size))
+            stas[lyrnm] = np.zeros((ochns, nclrs, hrf_size, wrf_size))
 
-                pbar.update(1)
+            pbar.update(1)
 
-                for j in range(ochns):
-                    grad = (
-                        gradient_calculator.attribute(obs, (j, hidx, widx))[
-                            0, :, hmn:hmx, wmn:wmx
-                        ]
-                        .cpu()
-                        .numpy()
-                    )
+            for j in range(ochns):
+                grad = (
+                    gradient_calculator.attribute(obs, (j, hidx, widx))[
+                        0, :, hmn:hmx, wmn:wmx
+                    ]
+                    .cpu()
+                    .numpy()
+                )
 
-                    stas[lyrnm][j] = grad
+                stas[lyrnm][j] = grad
 
     return stas
 
@@ -140,8 +139,7 @@ def fit_tsne_1d(data):
         random_state=3,
     )
 
-    tsne_emb = tsne.fit(data)
-    return tsne_emb
+    return tsne.fit(data)
 
 
 def fit_tsne(data):
@@ -155,8 +153,7 @@ def fit_tsne(data):
         random_state=3,
     )
 
-    tsne_emb = tsne.fit(data.T)
-    return tsne_emb
+    return tsne.fit(data.T)
 
 
 def get_stim_coll(all_health, health_dep=-8, death_dep=30):
