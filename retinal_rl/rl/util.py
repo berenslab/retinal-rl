@@ -50,7 +50,7 @@ def read_analysis_count(cfg):
     try:
         with open(join(art, "analysis_count.txt")) as f:
             return int(f.read())
-    except:
+    except (FileNotFoundError, PermissionError, ValueError):
         return 0
 
 
@@ -172,7 +172,7 @@ def activation(act) -> nn.Module:
         return nn.Softplus()
     if act == "identity":
         return nn.Identity(inplace=True)
-    raise Exception("Unknown activation function")
+    raise NotImplementedError("Unknown activation function")
 
 
 def is_activation(mdl: nn.Module) -> bool:

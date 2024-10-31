@@ -6,7 +6,7 @@ from typing import Optional
 @dataclass
 class Directories:
     cache_dir: str = "cache"
-    resource_dir: str = osp.join("doom_creator", "resources")
+    resource_dir: str = osp.join("doom_creator", "resources")  # noqa: RUF009 as this is not really a dynamical call
     scenario_out_dir: Optional[str] = None
     build_dir: Optional[str] = None
     textures_dir: Optional[str] = None

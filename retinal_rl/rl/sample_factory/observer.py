@@ -2,11 +2,6 @@ import multiprocessing
 import os
 
 import wandb
-
-multiprocessing.set_start_method(
-    "spawn", force=True
-)  # Important.  TODO: Readup on this
-
 from sample_factory.algo.runners.runner import AlgoObserver, Runner
 from sample_factory.utils.utils import debug_log_every_n, log
 
@@ -16,6 +11,10 @@ from retinal_rl.util import (
     read_analysis_count,
     write_analysis_count,
 )
+
+multiprocessing.set_start_method(
+    "spawn", force=True
+)  # Important.  TODO: Readup on this
 
 ### Runner ###
 
@@ -46,7 +45,9 @@ class RetinalAlgoObserver(AlgoObserver):
         # envstps = analyze(self.cfg, progress_bar=False)
         # queue.put(envstps, block=False)
 
-    def on_training_step(self, runner: Runner, _) -> None:
+    def on_training_step(
+        self, runner: Runner, _
+    ) -> None:  # TODO: deprecated and will be refactored anyway
         """Called after each training step."""
         # TODO: Check and refactor
         if self.current_process is None:

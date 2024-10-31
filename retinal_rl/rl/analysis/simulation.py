@@ -4,9 +4,6 @@ from typing import Tuple
 
 import numpy as np
 import torch
-
-torch.backends.cudnn.enabled = False
-
 from sample_factory.algo.sampling.batched_sampling import preprocess_actions
 from sample_factory.algo.utils.action_distributions import argmax_actions
 from sample_factory.algo.utils.env_info import extract_env_info
@@ -21,6 +18,8 @@ from sample_factory.utils.utils import log
 from tqdm.auto import tqdm
 
 from retinal_rl.util import from_float_to_rgb, obs_dict_to_tuple, obs_to_img
+
+torch.backends.cudnn.enabled = False
 
 
 def get_brain_env(
@@ -65,7 +64,7 @@ def get_brain_env(
     return brain, env, cfg, nstps
 
 
-def generate_simulation(
+def generate_simulation(  # TODO: code unused, can be deleted?
     cfg: Config,
     brain: ActorCritic,
     env: BatchedVecEnv,

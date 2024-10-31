@@ -1,3 +1,5 @@
+from typing import Literal, override
+
 import matplotlib as mpl
 import numpy as np
 
@@ -33,8 +35,9 @@ class PNGWriter(AbstractMovieWriter):
     def finish(self):
         pass  # No action needed for PNGs
 
+    @override
     @classmethod
-    def isAvailable(cls):
+    def isAvailable(cls) -> Literal[True]:
         return True
 
 
@@ -54,9 +57,9 @@ def simulation_plot(
     frame_step=None,
     val_mu=None,
     val_sigma=None,
-    animate=False,
-    fps=35,
-    prgrs=True,
+    # animate=False,
+    # fps=35,
+    # prgrs=True,
 ):
     imgs = sim_recs["imgs"]
     hlths0 = sim_recs["hlths"]
