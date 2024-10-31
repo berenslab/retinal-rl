@@ -1,7 +1,8 @@
 """Functions for analysis and statistics on a Brain model."""
 
 import logging
-from typing import Dict, List, Tuple, cast
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple, cast
 
 import numpy as np
 import torch
@@ -21,9 +22,76 @@ from retinal_rl.util import (
 logger = logging.getLogger(__name__)
 
 
+### Dataclasses ###
+
+
+@dataclass
+class TransformStatistics:
+    """Results of applying transformations to images."""
+
+    source_transforms: Dict[str, Dict[float, List[Tensor]]]
+    noise_transforms: Dict[str, Dict[float, List[Tensor]]]
+
+
+@dataclass
+class Reconstructions:
+    """Set of source images, inputs, and their reconstructions."""
+
+    sources: List[Tuple[Tensor, int]]
+    inputs: List[Tuple[Tensor, int]]
+    estimates: List[Tuple[Tensor, int]]
+
+
+@dataclass
+class ReconstructionStatistics:
+    """Results of image reconstruction for both training and test sets."""
+
+    train: Reconstructions
+    test: Reconstructions
+
+
+@dataclass
+class SpectralAnalysis:
+    """Results of spectral analysis for a layer."""
+
+    mean_power_spectrum: FloatArray
+    var_power_spectrum: FloatArray
+    mean_autocorr: FloatArray
+    var_autocorr: FloatArray
+
+
+@dataclass
+class HistogramAnalysis:
+    """Results of histogram analysis for a layer."""
+
+    channel_histograms: FloatArray
+    bin_edges: FloatArray
+
+
+@dataclass
+class LayerStatistics:
+    """Statistics for a single layer."""
+
+    receptive_fields: FloatArray
+    num_channels: int
+    spectral: Optional[SpectralAnalysis] = None
+    histogram: Optional[HistogramAnalysis] = None
+
+
+@dataclass
+class CNNStatistics:
+    """Complete statistics for a CNN model."""
+
+    input_shape: Tuple[int, ...]  # nclrs, hght, wdth
+    layers: Dict[str, LayerStatistics]
+
+
+### Functions ###
+
+
 def transform_base_images(
     imageset: Imageset, num_steps: int, num_images: int
-) -> Dict[str, Dict[str, Dict[float, List[Tensor]]]]:
+) -> TransformStatistics:
     """Apply transformations to a set of images from an Imageset."""
     images: List[Image.Image] = []
 
@@ -59,7 +127,7 @@ def transform_base_images(
                         imageset.to_tensor(transform.transform(img, step))
                     )
 
-    return results
+    return TransformStatistics(**results)
 
 
 def reconstruct_images(
@@ -69,15 +137,13 @@ def reconstruct_images(
     test_set: Imageset,
     train_set: Imageset,
     sample_size: int,
-) -> Dict[str, List[Tuple[Tensor, int]]]:
+) -> ReconstructionStatistics:
     """Compute reconstructions of a set of training and test images using a Brain model."""
     brain.eval()  # Set the model to evaluation mode
 
     def collect_reconstructions(
         imageset: Imageset, sample_size: int
-    ) -> Tuple[
-        List[Tuple[Tensor, int]], List[Tuple[Tensor, int]], List[Tuple[Tensor, int]]
-    ]:
+    ) -> Reconstructions:
         """Collect reconstructions for a subset of a dataset."""
         source_subset: List[Tuple[Tensor, int]] = []
         input_subset: List[Tuple[Tensor, int]] = []
@@ -97,23 +163,12 @@ def reconstruct_images(
                 input_subset.append((img.cpu(), k))
                 estimates.append((rec_img.cpu(), pred_k))
 
-        return source_subset, input_subset, estimates
+        return Reconstructions(source_subset, input_subset, estimates)
 
-    train_source, train_input, train_estimates = collect_reconstructions(
-        train_set, sample_size
+    return ReconstructionStatistics(
+        collect_reconstructions(train_set, sample_size),
+        collect_reconstructions(test_set, sample_size),
     )
-    test_source, test_input, test_estimates = collect_reconstructions(
-        test_set, sample_size
-    )
-
-    return {
-        "train_sources": train_source,
-        "train_inputs": train_input,
-        "train_estimates": train_estimates,
-        "test_sources": test_source,
-        "test_inputs": test_input,
-        "test_estimates": test_estimates,
-    }
 
 
 def cnn_statistics(
@@ -122,20 +177,8 @@ def cnn_statistics(
     brain: Brain,
     channel_analysis: bool,
     max_sample_size: int = 0,
-) -> Dict[str, Dict[str, FloatArray]]:
-    """Compute statistics for a convolutional encoder model.
-
-    Args:
-        device: The device to run computations on.
-        imageset: The dataset to analyze.
-        brain: The trained Brain model.
-        channel_analysis: Whether to compute channel-wise statistics (histograms, spectra).
-        max_sample_size: Maximum number of samples to use. If 0, use all samples.
-
-    Returns:
-        A nested dictionary containing statistics for the input and each layer.
-        When channel_analysis is False, only receptive_fields and num_channels are computed.
-    """
+) -> CNNStatistics:
+    """Compute statistics for a convolutional encoder model."""
     brain.eval()
     brain.to(device)
     input_shape, cnn_layers = get_cnn_circuit(brain)
@@ -144,7 +187,7 @@ def cnn_statistics(
     dataloader = _prepare_dataset(imageset, max_sample_size)
 
     # Initialize results
-    results: Dict[str, Dict[str, FloatArray]] = {
+    results = {
         "input": _analyze_input(device, dataloader, input_shape, channel_analysis)
     }
 
@@ -168,7 +211,7 @@ def cnn_statistics(
             device, dataloader, head_layers, input_shape, out_channels, channel_analysis
         )
 
-    return results
+    return CNNStatistics(input_shape, results)
 
 
 def _prepare_dataset(
@@ -225,34 +268,22 @@ def _analyze_layer(
     input_shape: Tuple[int, ...],
     out_channels: int,
     channel_analysis: bool = True,
-) -> Dict[str, FloatArray]:
+) -> LayerStatistics:
     """Analyze statistics for a single layer."""
     head_model = nn.Sequential(*head_layers)
-    results: Dict[str, FloatArray] = {}
 
     # Always compute receptive fields
-    results["receptive_fields"] = _compute_receptive_fields(
-        device, head_layers, input_shape, out_channels
-    )
-    results["num_channels"] = np.array(out_channels, dtype=np.float64)
+    rfs = _compute_receptive_fields(device, head_layers, input_shape, out_channels)
+
+    layer_spectral = None
+    layer_histograms = None
 
     # Compute channel-wise statistics only if requested
     if channel_analysis:
         layer_spectral = _layer_spectral_analysis(device, dataloader, head_model)
         layer_histograms = _layer_pixel_histograms(device, dataloader, head_model)
 
-        results.update(
-            {
-                "pixel_histograms": layer_histograms["channel_histograms"],
-                "histogram_bin_edges": layer_histograms["bin_edges"],
-                "mean_power_spectrum": layer_spectral["mean_power_spectrum"],
-                "var_power_spectrum": layer_spectral["var_power_spectrum"],
-                "mean_autocorr": layer_spectral["mean_autocorr"],
-                "var_autocorr": layer_spectral["var_autocorr"],
-            }
-        )
-
-    return results
+    return LayerStatistics(rfs, out_channels, layer_spectral, layer_histograms)
 
 
 def _analyze_input(
@@ -260,31 +291,22 @@ def _analyze_input(
     dataloader: DataLoader[Tuple[Tensor, Tensor, int]],
     input_shape: Tuple[int, ...],
     channel_analysis: bool,
-) -> Dict[str, FloatArray]:
+) -> LayerStatistics:
     """Analyze statistics for the input layer."""
-    nclrs = input_shape[0]
-    results: Dict[str, FloatArray] = {
-        "receptive_fields": np.eye(nclrs)[:, :, np.newaxis, np.newaxis],
-        "shape": np.array(input_shape, dtype=np.float64),
-        "num_channels": np.array(nclrs, dtype=np.float64),
-    }
+
+    input_spectral = None
+    input_histograms = None
 
     if channel_analysis:
         input_spectral = _layer_spectral_analysis(device, dataloader, nn.Identity())
         input_histograms = _layer_pixel_histograms(device, dataloader, nn.Identity())
 
-        results.update(
-            {
-                "pixel_histograms": input_histograms["channel_histograms"],
-                "histogram_bin_edges": input_histograms["bin_edges"],
-                "mean_power_spectrum": input_spectral["mean_power_spectrum"],
-                "var_power_spectrum": input_spectral["var_power_spectrum"],
-                "mean_autocorr": input_spectral["mean_autocorr"],
-                "var_autocorr": input_spectral["var_autocorr"],
-            }
-        )
-
-    return results
+    return LayerStatistics(
+        np.eye(input_shape[0])[:, :, np.newaxis, np.newaxis],
+        input_shape[0],
+        input_spectral,
+        input_histograms,
+    )
 
 
 def _layer_pixel_histograms(
@@ -292,7 +314,7 @@ def _layer_pixel_histograms(
     dataloader: DataLoader[Tuple[Tensor, Tensor, int]],
     model: nn.Module,
     num_bins: int = 20,
-) -> Dict[str, FloatArray]:
+) -> HistogramAnalysis:
     """Compute histograms of pixel/activation values for each channel across all data in an imageset."""
     _, first_batch, _ = next(iter(dataloader))
     with torch.no_grad():
@@ -335,19 +357,17 @@ def _layer_pixel_histograms(
     bin_width = (hist_range[1] - hist_range[0]) / num_bins
     normalized_histograms = histograms / (total_elements * bin_width / num_channels)
 
-    return {
-        "bin_edges": np.linspace(
-            hist_range[0], hist_range[1], num_bins + 1, dtype=np.float64
-        ),
-        "channel_histograms": normalized_histograms.cpu().numpy(),
-    }
+    return HistogramAnalysis(
+        normalized_histograms.cpu().numpy(),
+        np.linspace(hist_range[0], hist_range[1], num_bins + 1, dtype=np.float64),
+    )
 
 
 def _layer_spectral_analysis(
     device: torch.device,
     dataloader: DataLoader[Tuple[Tensor, Tensor, int]],
     model: nn.Module,
-) -> Dict[str, FloatArray]:
+) -> SpectralAnalysis:
     """Compute spectral analysis statistics for each channel across all data in an imageset."""
     _, first_batch, _ = next(iter(dataloader))
     with torch.no_grad():
@@ -392,9 +412,9 @@ def _layer_spectral_analysis(
     var_power_spectrum = m2_power_spectrum / count - (mean_power_spectrum / count) ** 2
     var_autocorr = m2_autocorr / count - (mean_autocorr / count) ** 2
 
-    return {
-        "mean_power_spectrum": mean_power_spectrum.cpu().numpy(),
-        "var_power_spectrum": var_power_spectrum.cpu().numpy(),
-        "mean_autocorr": mean_autocorr.cpu().numpy(),
-        "var_autocorr": var_autocorr.cpu().numpy(),
-    }
+    return SpectralAnalysis(
+        mean_power_spectrum.cpu().numpy(),
+        var_power_spectrum.cpu().numpy(),
+        mean_autocorr.cpu().numpy(),
+        var_autocorr.cpu().numpy(),
+    )

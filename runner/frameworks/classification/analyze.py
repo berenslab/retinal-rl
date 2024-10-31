@@ -1,9 +1,11 @@
+import json
 import logging
 import os
 import shutil
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import wandb
 from matplotlib.figure import Figure
@@ -34,6 +36,76 @@ logger = logging.getLogger(__name__)
 init_dir = "initialization_analysis"
 
 
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
+
+
+def save_statistics(cfg: DictConfig, stats: Dict[str, Any], epoch: int) -> None:
+    """Save statistics to a JSON file in the plot directory."""
+    stats_dir = os.path.join(cfg.path.plot_dir, "statistics")
+    os.makedirs(stats_dir, exist_ok=True)
+
+    filename = os.path.join(stats_dir, f"epoch_{epoch}_stats.json")
+    with open(filename, "w") as f:
+        json.dump(stats, f, cls=NumpyEncoder)
+
+    if cfg.logging.use_wandb:
+        wandb.save(filename, base_path=cfg.path.plot_dir, policy="now")
+
+
+def collect_statistics(
+    cfg: DictConfig,
+    device: torch.device,
+    brain: Brain,
+    objective: Objective[ContextT],
+    train_set: Imageset,
+    test_set: Imageset,
+    epoch: int,
+) -> Dict[str, Any]:
+    """Collect all statistics without plotting."""
+    stats = {}
+
+    # Collect CNN statistics
+    cnn_stats = cnn_statistics(
+        device,
+        test_set,
+        brain,
+        cfg.logging.channel_analysis,
+        cfg.logging.plot_sample_size,
+    )
+    stats["cnn_analysis"] = cnn_stats
+
+    # Collect reconstruction statistics if applicable
+    reconstruction_decoders = [
+        loss.target_decoder
+        for loss in objective.losses
+        if isinstance(loss, ReconstructionLoss)
+    ]
+
+    if reconstruction_decoders:
+        rec_stats = {}
+        for decoder in reconstruction_decoders:
+            rec_dict = reconstruct_images(
+                device, brain, decoder, train_set, test_set, 5
+            )
+            rec_stats[str(decoder)] = rec_dict
+        stats["reconstruction_analysis"] = rec_stats
+
+    # If it's initialization epoch, collect additional stats
+    if epoch == 0:
+        # Save brain summary
+        stats["brain_summary"] = brain.scan()
+
+        # Save transform statistics
+        transforms = transform_base_images(train_set, num_steps=5, num_images=2)
+        stats["transforms"] = transforms
+
+    return stats
+
+
 def analyze(
     cfg: DictConfig,
     device: torch.device,
@@ -45,49 +117,49 @@ def analyze(
     epoch: int,
     copy_checkpoint: bool = False,
 ):
+    # First collect all statistics
+    stats = collect_statistics(
+        cfg, device, brain, objective, train_set, test_set, epoch
+    )
+
+    # Save statistics to file
+    save_statistics(cfg, stats, epoch)
+
+    # Plot histories if not using wandb
     if not cfg.logging.use_wandb:
         _plot_and_save_histories(cfg, histories)
 
-    cnn_analysis = cnn_statistics(
-        device,
-        test_set,
-        brain,
-        cfg.logging.channel_analysis,
-        cfg.logging.plot_sample_size,
-    )
+    # Plot CNN analysis
+    cnn_analysis = stats["cnn_analysis"]
 
     if epoch == 0:
-        _perform_initialization_analysis(cfg, brain, objective, train_set, cnn_analysis)
+        _plot_initialization_analysis(cfg, brain, objective, train_set, cnn_analysis)
 
-    _analyze_layers(cfg, cnn_analysis, epoch, copy_checkpoint)
+    _plot_layers(cfg, cnn_analysis, epoch, copy_checkpoint)
 
-    _perform_reconstruction_analysis(
-        cfg, device, brain, objective, train_set, test_set, epoch, copy_checkpoint
-    )
-
-
-def _plot_and_save_histories(cfg: DictConfig, histories: Dict[str, List[float]]):
-    hist_fig = plot_histories(histories)
-    _save_figure(cfg, "", "histories", hist_fig)
-    plt.close(hist_fig)
+    # Plot reconstruction analysis if available
+    if "reconstruction_analysis" in stats:
+        _plot_reconstruction_analysis(
+            cfg, train_set, stats["reconstruction_analysis"], epoch, copy_checkpoint
+        )
 
 
-def _perform_initialization_analysis(
+def _plot_initialization_analysis(
     cfg: DictConfig,
     brain: Brain,
     objective: Objective[ContextT],
     train_set: Imageset,
     cnn_analysis: Dict[str, Dict[str, FloatArray]],
 ):
-    summary = brain.scan()
+    # Save brain summary to file
     filepath = os.path.join(cfg.path.run_dir, "brain_summary.txt")
-
     with open(filepath, "w") as f:
-        f.write(summary)
+        f.write(brain.scan())
 
     if cfg.logging.use_wandb:
         wandb.save(filepath, base_path=cfg.path.run_dir, policy="now")
 
+    # Plot various initialization analyses
     rf_sizes_fig = plot_receptive_field_sizes(cnn_analysis)
     _process_figure(cfg, False, rf_sizes_fig, init_dir, "receptive_field_sizes", 0)
 
@@ -98,10 +170,39 @@ def _perform_initialization_analysis(
     transforms_fig = plot_transforms(**transforms)
     _process_figure(cfg, False, transforms_fig, init_dir, "transforms", 0)
 
-    _analyze_input_layer(cfg, cnn_analysis["input"], cfg.logging.channel_analysis)
+    _plot_input_layer(cfg, cnn_analysis["input"], cfg.logging.channel_analysis)
 
 
-def _analyze_layers(
+def _plot_reconstruction_analysis(
+    cfg: DictConfig,
+    train_set: Imageset,
+    rec_stats: Dict[str, Dict],
+    epoch: int,
+    copy_checkpoint: bool,
+):
+    norm_means, norm_stds = train_set.normalization_stats
+    for decoder, rec_dict in rec_stats.items():
+        recon_fig = plot_reconstructions(
+            norm_means, norm_stds, **rec_dict, num_samples=5
+        )
+        _process_figure(
+            cfg,
+            copy_checkpoint,
+            recon_fig,
+            "reconstruction",
+            f"{decoder}_reconstructions",
+            epoch,
+        )
+
+
+# Rest of the helper functions remain the same
+def _plot_and_save_histories(cfg: DictConfig, histories: Dict[str, List[float]]):
+    hist_fig = plot_histories(histories)
+    _save_figure(cfg, "", "histories", hist_fig)
+    plt.close(hist_fig)
+
+
+def _plot_layers(
     cfg: DictConfig,
     cnn_analysis: Dict[str, Dict[str, FloatArray]],
     epoch: int,
@@ -109,7 +210,7 @@ def _analyze_layers(
 ):
     for layer_name, layer_data in cnn_analysis.items():
         if layer_name != "input":
-            _analyze_regular_layer(
+            _plot_regular_layer(
                 cfg,
                 layer_name,
                 layer_data,
@@ -119,7 +220,7 @@ def _analyze_layers(
             )
 
 
-def _analyze_input_layer(
+def _plot_input_layer(
     cfg: DictConfig,
     layer_data: Dict[str, FloatArray],
     channel_analysis: bool,
@@ -136,7 +237,7 @@ def _analyze_input_layer(
             )
 
 
-def _analyze_regular_layer(
+def _plot_regular_layer(
     cfg: DictConfig,
     layer_name: str,
     layer_data: Dict[str, FloatArray],
@@ -163,38 +264,6 @@ def _analyze_regular_layer(
             )
 
 
-def _perform_reconstruction_analysis(
-    cfg: DictConfig,
-    device: torch.device,
-    brain: Brain,
-    objective: Objective[ContextT],
-    train_set: Imageset,
-    test_set: Imageset,
-    epoch: int,
-    copy_checkpoint: bool,
-):
-    reconstruction_decoders = [
-        loss.target_decoder
-        for loss in objective.losses
-        if isinstance(loss, ReconstructionLoss)
-    ]
-
-    for decoder in reconstruction_decoders:
-        norm_means, norm_stds = train_set.normalization_stats
-        rec_dict = reconstruct_images(device, brain, decoder, train_set, test_set, 5)
-        recon_fig = plot_reconstructions(
-            norm_means, norm_stds, **rec_dict, num_samples=5
-        )
-        _process_figure(
-            cfg,
-            copy_checkpoint,
-            recon_fig,
-            "reconstruction",
-            f"{decoder}_reconstructions",
-            epoch,
-        )
-
-
 def _save_figure(cfg: DictConfig, sub_dir: str, file_name: str, fig: Figure) -> None:
     dir = os.path.join(cfg.path.plot_dir, sub_dir)
     os.makedirs(dir, exist_ok=True)
@@ -213,18 +282,13 @@ def _checkpoint_copy(cfg: DictConfig, sub_dir: str, file_name: str, epoch: int) 
 
 
 def _wandb_title(title: str) -> str:
-    # Split the title by slashes
     parts = title.split("/")
 
     def capitalize_part(part: str) -> str:
-        # Split the part by dashes
         words = part.split("_")
-        # Capitalize each word
         capitalized_words = [word.capitalize() for word in words]
-        # Join the words with spaces
         return " ".join(capitalized_words)
 
-    # Capitalize each part, then join with slashes
     capitalized_parts = [capitalize_part(part) for part in parts]
     return "/".join(capitalized_parts)
 
