@@ -1,17 +1,14 @@
-import os
-from os.path import join
 import functools
+import os
 from typing import Optional
-import numpy as np
-
-from sample_factory.envs.env_utils import register_env
-
-from sf_examples.vizdoom.doom.doom_utils import DoomSpec, make_doom_env_impl
 
 import gymnasium as gym
+import numpy as np
 
 # import gym
 from gymnasium.spaces import Discrete
+from sample_factory.envs.env_utils import register_env
+from sf_examples.vizdoom.doom.doom_utils import DoomSpec, make_doom_env_impl
 
 # from gym.spaces import Discrete
 
@@ -23,7 +20,7 @@ def key_to_action_basic(key):
     from pynput.keyboard import Key
 
     table = {Key.left: 0, Key.right: 1, Key.up: 2, Key.down: 3}
-    return table.get(key, None)
+    return table.get(key)
 
 
 def doom_action_space_basic():
@@ -73,7 +70,6 @@ class SatietyInput(gym.Wrapper):
         self.measurements_vec = np.zeros([num_measurements], dtype=np.float32)
 
     def _parse_info(self, obs, info):
-
         # we don't really care how much negative health we have, dead is dead
         hlth = float(
             info["HEALTH"]
@@ -82,12 +78,9 @@ class SatietyInput(gym.Wrapper):
         hlth = np.clip(hlth, 0, 100)
         satiety = (hlth - 50) / 50.0
         self.measurements_vec[0] = satiety
-        obs_dict = {"obs": obs, "measurements": self.measurements_vec}
-
-        return obs_dict
+        return {"obs": obs, "measurements": self.measurements_vec}
 
     def reset(self, **kwargs):
-
         obs, _ = self.env.reset(**kwargs)
         info = self.env.unwrapped.get_info()
         obs = self._parse_info(obs, info)

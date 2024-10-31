@@ -181,7 +181,7 @@ def make_acs(
             index=i, actor_name=actor_name, num_textures=num_textures
         )
 
-    acs = templates.acs.general(
+    return templates.acs.general(
         metabolic_delay=metabolic_delay,
         metabolic_damage=metabolic_damage,
         object_variables=object_variables_acs,
@@ -190,8 +190,6 @@ def make_acs(
         spawn_relative=spawn_relative,
         spawn_range=spawn_range,
     )
-
-    return acs
 
 
 def values_list(cfg_values):
@@ -208,8 +206,7 @@ def actor_code(i, j):
     """Creates a 4-digit alpha all-caps string, F is skipped in first digit"""
     if i >= 5:
         return chr(65 + 1 + i) + texture_code(j)
-    else:
-        return chr(65 + i) + texture_code(j)
+    return chr(65 + i) + texture_code(j)
 
 
 def texture_code(j):
@@ -247,7 +244,7 @@ def make_actor_decorate(
             name=actor_name, states_definitions=states
         )
     else:
-        raise ValueError("Invalid actor type: {0}".format(typ))
+        raise ValueError(f"Invalid actor type: {typ}")
 
     return decorate
 

@@ -3,8 +3,7 @@
 from typing import Dict, List, Optional, Tuple
 
 import torch
-import torch.nn as nn
-from torch import Tensor
+from torch import Tensor, nn
 
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.loss import BaseContext, Loss

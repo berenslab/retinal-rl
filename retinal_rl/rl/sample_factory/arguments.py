@@ -3,12 +3,11 @@ retina_rl library
 
 """
 
+from sample_factory.utils.utils import str2bool
 from sf_examples.vizdoom.doom.doom_params import (
     add_doom_env_args,
     add_doom_env_eval_args,
 )
-
-from sample_factory.utils.utils import str2bool
 
 
 def retinal_override_defaults(parser):

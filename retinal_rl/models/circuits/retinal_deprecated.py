@@ -1,6 +1,7 @@
-from typing import List, Optional, OrderedDict
+from typing import List, OrderedDict
+
 import torch
-from torch.nn import Linear, Conv2d, AvgPool2d, MaxPool2d, Sequential, Flatten
+from torch.nn import AvgPool2d, Conv2d, Flatten, Linear, MaxPool2d, Sequential
 
 from retinal_rl.models.neural_circuit import NeuralCircuit
 
@@ -9,11 +10,7 @@ class RetinalEncoder(NeuralCircuit):
     """TODO: Description"""
 
     def __init__(
-        self,
-        input_shape: List[int],
-        bp_channels: int,
-        act_name: str,
-        out_shape: int
+        self, input_shape: List[int], bp_channels: int, act_name: str, out_shape: int
     ):
         super().__init__(input_shape)
 
@@ -66,11 +63,10 @@ class RetinalEncoder(NeuralCircuit):
 
         self.conv_head = Sequential(OrderedDict(layers))
         self.flatten = Flatten()
-        _test_inp = torch.empty(1,*self.input_shape)
+        _test_inp = torch.empty(1, *self.input_shape)
         _test_out = self.flatten(self.conv_head(_test_inp))
         self.fc = Linear(_test_out.shape[1], out_shape)
 
     def forward(self, x: torch.Tensor):
         x = self.flatten(self.conv_head(x))
-        x = self.nl_fc(self.fc(x))
-        return x
+        return self.nl_fc(self.fc(x))

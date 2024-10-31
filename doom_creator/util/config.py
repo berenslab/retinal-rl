@@ -1,6 +1,6 @@
-from enum import Enum
 import os.path as osp
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Dict, List, Optional
 
 from omegaconf import SCMode
@@ -51,7 +51,7 @@ class Config:
 ### Load Config ###
 def load(filenames: list[str], yaml_dir: str) -> Config:
     # list all config files
-    file_pths = [osp.join(yaml_dir, "{0}.yaml".format(file)) for file in filenames]
+    file_pths = [osp.join(yaml_dir, f"{file}.yaml") for file in filenames]
 
     # Load all yaml files listed in flnms and combine into a single dictionary, recursively combining keys
     cfg = OmegaConf.structured(Config)
