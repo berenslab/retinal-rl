@@ -1,5 +1,5 @@
 def nourishment(name: str, states_definitions: str):
-    return """\
+    return f"""\
 ACTOR {name} : CustomInventory {{
     +INVENTORY.ALWAYSPICKUP
     
@@ -10,9 +10,7 @@ ACTOR {name} : CustomInventory {{
             Stop
         {states_definitions}
         }}
-}}""".format(
-        name=name, states_definitions=states_definitions
-    )
+}}"""
 
 
 def poison(name: str, states_definitions: str):
@@ -20,7 +18,7 @@ def poison(name: str, states_definitions: str):
 
 
 def obstacle(name: str, states_definitions: str, radius: int = 24):
-    return """\
+    return f"""\
 ACTOR {name} : TorchTree {{
     Radius {radius}
     
@@ -28,13 +26,11 @@ ACTOR {name} : TorchTree {{
     States {{
         {states_definitions}\
     }}
-}}""".format(
-        name=name, radius=radius, states_definitions=states_definitions
-    )
+}}"""
 
 
 def distractor(name: str, states_definitions: str):
-    return """\
+    return f"""\
 ACTOR {name} : CustomInventory {{
     +INVENTORY.ALWAYSPICKUP
     
@@ -43,16 +39,12 @@ ACTOR {name} : CustomInventory {{
         {states_definitions}\
     }}
 }}
-""".format(
-        name=name, states_definitions=states_definitions
-    )
+"""
 
 
 def states_template(index: int, texture_code: str):
-    return "Texture{index}: {texture_code} A -1\n\t".format(
-        index=index, texture_code=texture_code
-    )
+    return f"Texture{index}: {texture_code} A -1\n\t"
 
 
 def include(actor_name: str):
-    return '#include "actors/{0}.dec"\n'.format(actor_name)
+    return f'#include "actors/{actor_name}.dec"\n'

@@ -1,21 +1,21 @@
-import os
-import wandb
 import multiprocessing
+import os
 
-multiprocessing.set_start_method("spawn", force=True) # Important.  TODO: Readup on this
+import wandb
+
+multiprocessing.set_start_method(
+    "spawn", force=True
+)  # Important.  TODO: Readup on this
 
 from sample_factory.algo.runners.runner import AlgoObserver, Runner
-from sample_factory.utils.utils import log, debug_log_every_n
+from sample_factory.utils.utils import debug_log_every_n, log
 
 from retinal_rl.util import (
     analysis_root,
     plot_path,
-    write_analysis_count,
     read_analysis_count,
+    write_analysis_count,
 )
-
-from retinal_rl.util import plot_path
-
 
 ### Runner ###
 
@@ -41,7 +41,7 @@ class RetinalAlgoObserver(AlgoObserver):
 
     def analyze(self, queue):
         """Run analysis in a separate process."""
-        
+
         # TODO: Implement our desired analysis
         # envstps = analyze(self.cfg, progress_bar=False)
         # queue.put(envstps, block=False)
@@ -50,7 +50,6 @@ class RetinalAlgoObserver(AlgoObserver):
         """Called after each training step."""
         # TODO: Check and refactor
         if self.current_process is None:
-
             total_env_steps = sum(runner.env_steps.values())
             current_step = total_env_steps // self.freq
 
@@ -72,9 +71,7 @@ class RetinalAlgoObserver(AlgoObserver):
 
         else:
             if not self.current_process.is_alive():
-
                 if self.current_process.exitcode == 0:
-
                     log.debug(
                         "RETINAL RL: Analysis process finished successfully. Retrieving envstps..."
                     )

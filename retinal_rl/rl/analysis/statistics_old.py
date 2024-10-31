@@ -1,13 +1,7 @@
-import torch
-
-from tqdm import tqdm
-
 import numpy as np
-
-from openTSNE import TSNE
-
+import torch
 from captum.attr import NeuronGradient
-
+from openTSNE import TSNE
 from tqdm import tqdm
 
 from retinal_rl.util import encoder_out_size, rf_size_and_start
@@ -32,11 +26,8 @@ def gaussian_noise_stas(cfg, env, actor_critic, nbtch, nreps, prgrs):
     mdls = []
 
     with torch.no_grad():
-
         with tqdm(total=repttl, desc="Generating STAs", disable=not (prgrs)) as pbar:
-
             for lyrnm, mdl in enc.conv_head.named_children():
-
                 mdls.append(mdl)
                 subenc = torch.nn.Sequential(*mdls)
 
@@ -56,11 +47,9 @@ def gaussian_noise_stas(cfg, env, actor_critic, nbtch, nreps, prgrs):
                 stas[lyrnm] = np.zeros((ochns, nclrs, hrf_size, wrf_size))
 
                 for _ in range(nreps):
-
                     pbar.update(1)
 
                     for j in range(ochns):
-
                         obss = torch.randn(size=btchsz, device=dev)
                         obss1 = obss[:, :, hmn:hmx, wmn:wmx].cpu()
                         outs = subenc(obss)[:, j, hidx, widx].cpu()
@@ -94,13 +83,10 @@ def gradient_receptive_fields(cfg, env, actor_critic, prgrs):
     mdls = []
 
     with torch.no_grad():
-
         with tqdm(
             total=repttl, desc="Generating Attributions", disable=not (prgrs)
         ) as pbar:
-
             for lyrnm, mdl in enc.conv_head.named_children():
-
                 gradient_calculator = NeuronGradient(enc, mdl)
                 mdls.append(mdl)
                 subenc = torch.nn.Sequential(*mdls)
@@ -123,7 +109,6 @@ def gradient_receptive_fields(cfg, env, actor_critic, prgrs):
                 pbar.update(1)
 
                 for j in range(ochns):
-
                     grad = (
                         gradient_calculator.attribute(obs, (j, hidx, widx))[
                             0, :, hmn:hmx, wmn:wmx
@@ -175,7 +160,6 @@ def fit_tsne(data):
 
 
 def get_stim_coll(all_health, health_dep=-8, death_dep=30):
-
     stim_coll = np.diff(all_health)
     stim_coll[stim_coll == health_dep] = 0  # excluding 'hunger' decrease
     stim_coll[stim_coll > death_dep] = 0  # excluding decrease due to death

@@ -208,8 +208,7 @@ def actor_code(i, j):
     """Creates a 4-digit alpha all-caps string, F is skipped in first digit"""
     if i >= 5:
         return chr(65 + 1 + i) + texture_code(j)
-    else:
-        return chr(65 + i) + texture_code(j)
+    return chr(65 + i) + texture_code(j)
 
 
 def texture_code(j):
@@ -247,7 +246,7 @@ def make_actor_decorate(
             name=actor_name, states_definitions=states
         )
     else:
-        raise ValueError("Invalid actor type: {0}".format(typ))
+        raise ValueError(f"Invalid actor type: {typ}")
 
     return decorate
 

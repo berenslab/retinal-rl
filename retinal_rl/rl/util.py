@@ -1,16 +1,13 @@
 ### Util for preparing simulations and data for analysis
 
-import numpy as np
-import torch
-from math import floor, ceil
-
+from math import ceil, floor
 from os.path import join
 
+import numpy as np
+import torch
 from sample_factory.utils.typing import Config
 from sample_factory.utils.utils import experiment_dir
-
 from torch import nn
-
 
 ## Paths ###
 
@@ -51,7 +48,7 @@ def read_analysis_count(cfg):
     """
     art = analysis_root(cfg)
     try:
-        with open(join(art, "analysis_count.txt"), "r") as f:
+        with open(join(art, "analysis_count.txt")) as f:
             return int(f.read())
     except:
         return 0
@@ -168,16 +165,15 @@ def obs_to_img(obs):
 def activation(act) -> nn.Module:
     if act == "elu":
         return nn.ELU(inplace=True)
-    elif act == "relu":
+    if act == "relu":
         return nn.ReLU(inplace=True)
-    elif act == "tanh":
+    if act == "tanh":
         return nn.Tanh()
-    elif act == "softplus":
+    if act == "softplus":
         return nn.Softplus()
-    elif act == "identity":
+    if act == "identity":
         return nn.Identity(inplace=True)
-    else:
-        raise Exception("Unknown activation function")
+    raise Exception("Unknown activation function")
 
 
 def is_activation(mdl: nn.Module) -> bool:
@@ -196,8 +192,7 @@ def is_activation(mdl: nn.Module) -> bool:
 def double_up(x):
     if isinstance(x, int):
         return (x, x)
-    else:
-        return x
+    return x
 
 
 def encoder_out_size(mdls, hght0, wdth0):
@@ -211,7 +206,6 @@ def encoder_out_size(mdls, hght0, wdth0):
 
     # iterate over modules that are not activations
     for mdl in mdls:
-
         if is_activation(mdl):
             continue
 
@@ -247,7 +241,6 @@ def rf_size_and_start(mdls, hidx, widx):
     wmn = widx
 
     for mdl in mdls:
-
         if is_activation(mdl):
             continue
 
