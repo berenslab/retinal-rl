@@ -347,6 +347,11 @@ def _perform_reconstruction_analysis(
         rec_dict = asdict(
             reconstruct_images(device, brain, decoder, train_set, test_set, 5)
         )
+        # Save the reconstructions
+        rec_path = plot_dir / f"{decoder}_reconstructions_epoch_{epoch}.json"
+        with open(rec_path, "w") as f:
+            json.dump(rec_dict, f, cls=NumpyEncoder)
+
         recon_fig = plot_reconstructions(
             norm_means,
             norm_stds,
