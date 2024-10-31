@@ -28,11 +28,11 @@ sound_enabled = false
 episode_timeout = 20000
 
 # Available buttons
-available_buttons = 
-	{{ 
-		TURN_LEFT 
-		TURN_RIGHT 
-		MOVE_FORWARD 
+available_buttons =
+	{{
+		TURN_LEFT
+		TURN_RIGHT
+		MOVE_FORWARD
         MOVE_BACKWARD
 	}}
 

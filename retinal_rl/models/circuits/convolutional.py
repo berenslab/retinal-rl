@@ -5,8 +5,7 @@ from collections import OrderedDict
 from typing import List, Optional, Tuple, Union
 
 import torch
-import torch.nn as nn
-from torch import Tensor
+from torch import Tensor, nn
 
 from retinal_rl.models.neural_circuit import NeuralCircuit
 from retinal_rl.util import assert_list
@@ -65,7 +64,9 @@ class ConvolutionalEncoder(NeuralCircuit):
         for i in range(num_layers):
             in_channels = self.input_shape[0] if i == 0 else self.num_channels[i - 1]
             lyrnm = (
-                f"{layer_names[i]}_input" if layer_names is not None else "conv" + str(i)
+                f"{layer_names[i]}_input"
+                if layer_names is not None
+                else "conv" + str(i)
             )
             actnm = (
                 f"{layer_names[i]}_activation"
@@ -131,10 +132,7 @@ class ConvolutionalDecoder(NeuralCircuit):
         deconv_layers: List[Tuple[str, nn.Module]] = []
         # Define deconvolutional layers
         for i in range(num_layers):
-            if i == 0:
-                in_channels = self.input_shape[0]
-            else:
-                in_channels = self.num_channels[i - 1]
+            in_channels = self.input_shape[0] if i == 0 else self.num_channels[i - 1]
             lyrnm = (
                 f"{layer_names[i]}_input"
                 if layer_names is not None

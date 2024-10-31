@@ -1,25 +1,25 @@
-import numpy as np
+from typing import Literal, override
+
 import matplotlib as mpl
+import numpy as np
 
 mpl.use("Agg")
 
 import matplotlib.pyplot as plt
 
 # plt.style.use("resources/default.mplstyle")
-
 import seaborn as sns
-
+from matplotlib.animation import AbstractMovieWriter, FuncAnimation
 from PIL import Image
-from torchvision.transforms.functional import adjust_contrast
-from matplotlib.animation import FuncAnimation, AbstractMovieWriter
-from retinal_rl.rl.analysis.statistics_old import fit_tsne_1d, get_stim_coll, row_zscore
-
 from tqdm.auto import tqdm
+
+from retinal_rl.rl.analysis.statistics_old import fit_tsne_1d, get_stim_coll, row_zscore
 
 greyscale = np.array([0.299, 0.587, 0.114])
 
 
-#TODO: Get rid and merge with other analysis / plot stuff
+# TODO: Get rid and merge with other analysis / plot stuff
+
 
 # Custom writer class to save frames as PNG files
 class PNGWriter(AbstractMovieWriter):
@@ -35,8 +35,9 @@ class PNGWriter(AbstractMovieWriter):
     def finish(self):
         pass  # No action needed for PNGs
 
+    @override
     @classmethod
-    def isAvailable(cls):
+    def isAvailable(cls) -> Literal[True]:
         return True
 
 
@@ -44,12 +45,11 @@ def enhance_attribution(attr_series):
     lower_bound = np.percentile(attr_series, 0)
     upper_bound = np.percentile(attr_series, 99.9)
     enhanced_series = np.clip(attr_series, lower_bound, upper_bound)
-    enhanced_series_normalized = (
+    return (
         (enhanced_series - enhanced_series.min())
         / (enhanced_series.max() - enhanced_series.min())
         * 255
     ).astype(np.uint8)
-    return enhanced_series_normalized
 
 
 def simulation_plot(
@@ -57,11 +57,10 @@ def simulation_plot(
     frame_step=None,
     val_mu=None,
     val_sigma=None,
-    animate=False,
-    fps=35,
-    prgrs=True,
+    # animate=False,
+    # fps=35,
+    # prgrs=True,
 ):
-
     imgs = sim_recs["imgs"]
     hlths0 = sim_recs["hlths"]
     vals0 = sim_recs["vals"]
@@ -107,19 +106,8 @@ def simulation_plot(
     action1_ax.sharex(satax)
     action2_ax.sharex(satax)
 
-    # Example using the pastel palette
-    colors_pastel = sns.color_palette("pastel", 6)
-
     # Example using the Blues palette for the first three actions and Purples for the next three
-    colors_blues_purples = sns.color_palette("Blues", 3) + sns.color_palette(
-        "Purples", 3
-    )
-
-    # Example using the cubehelix palette
-    colors_cubehelix = sns.cubehelix_palette(6, start=0.5, rot=-0.75)
-
-    # Choose one of the above color sets and replace the original 'colors' variable
-    colors = colors_blues_purples  # or colors_blues_purples or colors_cubehelix
+    colors = sns.color_palette("Blues", 3) + sns.color_palette("Purples", 3)
 
     # Policy for Action 1
     bottom = np.zeros(t_max)
@@ -275,32 +263,29 @@ def simulation_plot(
 
         return fig
 
-    else:
-        pbar = tqdm(total=t_max, desc="Animating", ncols=100)
+    pbar = tqdm(total=t_max, desc="Animating", ncols=100)
 
-        def update(i):
-            img = imgs[:, :, :, i]
-            im.set_array(img)
+    def update(i):
+        img = imgs[:, :, :, i]
+        im.set_array(img)
 
-            attr = attrs[:, :, :, i]
-            attr_image = Image.fromarray(attr)
-            att.set_array(attr_image)
+        attr = attrs[:, :, :, i]
+        attr_image = Image.fromarray(attr)
+        att.set_array(attr_image)
 
-            vl1.set_xdata([i])
-            vl2.set_xdata([i])
-            vl3.set_xdata([i])
-            vl4.set_xdata([i])
+        vl1.set_xdata([i])
+        vl2.set_xdata([i])
+        vl3.set_xdata([i])
+        vl4.set_xdata([i])
 
-            pbar.update(1)
+        pbar.update(1)
 
-        anim = FuncAnimation(
-            fig, update, frames=range(1, t_max), interval=1000 / 35
-        )  # Assuming 35 FPS
-        return anim
+    return FuncAnimation(
+        fig, update, frames=range(1, t_max), interval=1000 / 35
+    )  # Assuming 35 FPS
 
 
 def plot_acts_tsne_stim(sim_recs):  # plot sorted activations
-
     ltnts = sim_recs["ltnts"]
     hlths = sim_recs["hlths"]
 
@@ -327,7 +312,7 @@ def plot_acts_tsne_stim(sim_recs):  # plot sorted activations
     plt.vlines(pos_col, 0, data.shape[0], color="grey", linewidth=0.3, linestyle="--")
     plt.vlines(neg_col, 0, data.shape[0], color="black", linewidth=0.3, linestyle=":")
     plt.xlabel("Time (stamps)")
-    plt.ylabel(f"unit id.")
+    plt.ylabel("unit id.")
 
     return fig
 
@@ -350,12 +335,10 @@ def receptive_field_plots(lyr):
     cmaps = ["inferno", "viridis", "cividis"]
 
     for i in range(ochns):
-
         mx = np.amax(lyr[i])
         mn = np.amin(lyr[i])
 
         for j in range(nclrs):
-
             ax = axs[i + ochns * j]
             # hght,wdth = lyr[i,j,:,:].shape
             im = ax.imshow(lyr[i, j, :, :], cmap=cmaps[j], vmin=mn, vmax=mx)

@@ -1,12 +1,10 @@
+import os
+import shutil
 from abc import ABC
 from enum import Enum
 
-import shutil
-import os
 from num2words import num2words
-from torchvision.datasets import MNIST
-from torchvision.datasets import CIFAR10
-from torchvision.datasets import CIFAR100
+from torchvision.datasets import CIFAR10, CIFAR100, MNIST
 
 
 class DatasetWrapper(ABC):
@@ -108,7 +106,11 @@ class TextureType(Enum):
         if self is TextureType.MNIST:
             wrapper = MNISTWrapper(data_src_path, train, download)
         elif self is TextureType.CIFAR10:
-            wrapper = MNISTWrapper(data_src_path, train, download)
+            wrapper = CIFAR10Wrapper(data_src_path, train, download)
         elif self is TextureType.CIFAR100:
-            wrapper = MNISTWrapper(data_src_path, train, download)
+            wrapper = CIFAR100Wrapper(data_src_path, train, download)
+        else:
+            raise NotImplementedError(
+                "Only MNIST, CIFAR10 and CIFAR100 are currently implemented."
+            )
         return wrapper
