@@ -85,11 +85,18 @@ def initialize(
     logger.info(
         f"Experiment data path {cfg.data_dir} does not exist. Initializing {cfg.run_name}."
     )
-    return _initialize_create(cfg, brain, optimizer)
+
+    cfg_backup = omegaconf.OmegaConf.to_container(
+        dict_cfg, resolve=True, throw_on_missing=True
+    )
+    cfg_backup = cast(Dict[str, Any], cfg_backup)
+
+    return _initialize_create(cfg, cfg_backup, brain, optimizer)
 
 
 def _initialize_create(
     cfg: InitConfig,
+    cfg_backup: dict[Any, Any],
     brain: Brain,
     optimizer: Optimizer,
 ) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
@@ -104,10 +111,6 @@ def _initialize_create(
     else:
         cfg.wandb_dir.mkdir(parents=True, exist_ok=True)
         # convert DictConfig to dict
-        dict_conf = omegaconf.OmegaConf.to_container(
-            cfg, resolve=True, throw_on_missing=True
-        )
-        dict_conf = cast(Dict[str, Any], dict_conf)
         entity = cfg.wandb_entity
         if entity == "default":
             entity = None
@@ -116,7 +119,7 @@ def _initialize_create(
             entity=entity,
             group=HydraConfig.get().runtime.choices.experiment,
             job_type=HydraConfig.get().runtime.choices.brain,
-            config=dict_conf,
+            config=cfg_backup,
             name=cfg.run_name,
             id=cfg.run_name,
             dir=cfg.wandb_dir,
