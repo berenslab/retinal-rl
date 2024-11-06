@@ -19,6 +19,27 @@ from retinal_rl.models.objective import ContextT, Objective
 from retinal_rl.util import FloatArray
 
 
+def make_image_grid(arrays: List[FloatArray], nrow: int) -> FloatArray:
+    """Create a grid of images from a list of numpy arrays."""
+    # Assuming arrays are [C, H, W]
+    n = len(arrays)
+    if not n:
+        return np.array([])
+
+    ncol = nrow
+    nrow = (n - 1) // ncol + 1
+
+    nchns, hght, wdth = arrays[0].shape
+    grid = np.zeros((nchns, hght * nrow, wdth * ncol))
+
+    for idx, array in enumerate(arrays):
+        i = idx // ncol
+        j = idx % ncol
+        grid[:, i * hght : (i + 1) * hght, j * wdth : (j + 1) * wdth] = array
+
+    return grid
+
+
 def plot_transforms(
     source_transforms: Dict[str, Dict[float, List[FloatArray]]],
     noise_transforms: Dict[str, Dict[float, List[FloatArray]]],
@@ -46,26 +67,6 @@ def plot_transforms(
         axs = [axs]
 
     transform_index = 0
-
-    def make_image_grid(arrays: List[FloatArray], nrow: int) -> FloatArray:
-        """Create a grid of images from a list of numpy arrays."""
-        # Assuming arrays are [C, H, W]
-        n = len(arrays)
-        if not n:
-            return np.array([])
-
-        ncol = nrow
-        nrow = (n - 1) // ncol + 1
-
-        nchns, hght, wdth = arrays[0].shape
-        grid = np.zeros((nchns, hght * nrow, wdth * ncol))
-
-        for idx, array in enumerate(arrays):
-            i = idx // ncol
-            j = idx % ncol
-            grid[:, i * hght : (i + 1) * hght, j * wdth : (j + 1) * wdth] = array
-
-        return grid
 
     # Plot source transforms
     for transform_name, transform_data in source_transforms.items():

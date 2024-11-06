@@ -102,32 +102,36 @@ def transform_base_images(
         src, _ = base_dataset[np.random.randint(base_len)]
         images.append(src)
 
-    results: Dict[str, Dict[str, Dict[float, List[FloatArray]]]] = {
-        "source_transforms": {},
-        "noise_transforms": {},
-    }
+    results = TransformStatistics(
+        source_transforms={},
+        noise_transforms={},
+    )
 
-    transforms: List[Tuple[str, nn.Module]] = []
-    transforms += [
-        ("source_transforms", transform) for transform in imageset.source_transforms
-    ]
-    transforms += [
-        ("noise_transforms", transform) for transform in imageset.noise_transforms
-    ]
-
-    for category, transform in transforms:
+    for transform in imageset.source_transforms:
         if isinstance(transform, ContinuousTransform):
-            results[category][transform.name] = {}
+            results.source_transforms[transform.name] = {}
             trans_range: Tuple[float, float] = transform.trans_range
             transform_steps = np.linspace(*trans_range, num_steps)
             for step in transform_steps:
-                results[category][transform.name][step] = []
+                results.source_transforms[transform.name][step] = []
                 for img in images:
-                    results[category][transform.name][step].append(
+                    results.source_transforms[transform.name][step].append(
                         imageset.to_tensor(transform.transform(img, step)).cpu().numpy()
                     )
 
-    return TransformStatistics(**results)
+    for transform in imageset.noise_transforms:
+        if isinstance(transform, ContinuousTransform):
+            results.noise_transforms[transform.name] = {}
+            trans_range: Tuple[float, float] = transform.trans_range
+            transform_steps = np.linspace(*trans_range, num_steps)
+            for step in transform_steps:
+                results.noise_transforms[transform.name][step] = []
+                for img in images:
+                    results.noise_transforms[transform.name][step].append(
+                        imageset.to_tensor(transform.transform(img, step)).cpu().numpy()
+                    )
+
+    return results
 
 
 def reconstruct_images(
