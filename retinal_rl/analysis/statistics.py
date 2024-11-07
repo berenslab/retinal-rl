@@ -102,36 +102,30 @@ def transform_base_images(
         src, _ = base_dataset[np.random.randint(base_len)]
         images.append(src)
 
-    results = TransformStatistics(
+    resultss = TransformStatistics(
         source_transforms={},
         noise_transforms={},
     )
 
-    for transform in imageset.source_transforms:
-        if isinstance(transform, ContinuousTransform):
-            results.source_transforms[transform.name] = {}
-            trans_range: Tuple[float, float] = transform.trans_range
-            transform_steps = np.linspace(*trans_range, num_steps)
-            for step in transform_steps:
-                results.source_transforms[transform.name][step] = []
-                for img in images:
-                    results.source_transforms[transform.name][step].append(
-                        imageset.to_tensor(transform.transform(img, step)).cpu().numpy()
-                    )
+    for transforms, results in [
+        (imageset.source_transforms, resultss.source_transforms),
+        (imageset.noise_transforms, resultss.noise_transforms),
+    ]:
+        for transform in transforms:
+            if isinstance(transform, ContinuousTransform):
+                results[transform.name] = {}
+                trans_range: Tuple[float, float] = transform.trans_range
+                transform_steps = np.linspace(*trans_range, num_steps)
+                for step in transform_steps:
+                    results[transform.name][step] = []
+                    for img in images:
+                        results[transform.name][step].append(
+                            imageset.to_tensor(transform.transform(img, step))
+                            .cpu()
+                            .numpy()
+                        )
 
-    for transform in imageset.noise_transforms:
-        if isinstance(transform, ContinuousTransform):
-            results.noise_transforms[transform.name] = {}
-            trans_range: Tuple[float, float] = transform.trans_range
-            transform_steps = np.linspace(*trans_range, num_steps)
-            for step in transform_steps:
-                results.noise_transforms[transform.name][step] = []
-                for img in images:
-                    results.noise_transforms[transform.name][step].append(
-                        imageset.to_tensor(transform.transform(img, step)).cpu().numpy()
-                    )
-
-    return results
+    return resultss
 
 
 def reconstruct_images(
