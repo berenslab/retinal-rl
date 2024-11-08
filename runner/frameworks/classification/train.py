@@ -2,6 +2,7 @@
 
 import logging
 import time
+from pathlib import Path
 from typing import Dict, List
 
 import torch
@@ -47,11 +48,23 @@ def train(
         history (Dict[str, List[float]]): The training history.
 
     """
+
+    use_wandb = cfg.logging.use_wandb
+
+    data_dir = Path(cfg.path.data_dir)
+    checkpoint_dir = Path(cfg.path.checkpoint_dir)
+
+    max_checkpoints = cfg.logging.max_checkpoints
+    checkpoint_step = cfg.logging.checkpoint_step
+
+    num_epochs = cfg.optimizer.num_epochs
+    num_workers = cfg.system.num_workers
+
     trainloader = DataLoader(
-        train_set, batch_size=64, shuffle=True, num_workers=cfg.system.num_workers
+        train_set, batch_size=64, shuffle=True, num_workers=num_workers
     )
     testloader = DataLoader(
-        test_set, batch_size=64, shuffle=False, num_workers=cfg.system.num_workers
+        test_set, batch_size=64, shuffle=False, num_workers=num_workers
     )
 
     wall_time = time.time()
@@ -103,7 +116,7 @@ def train(
         wall_time = new_wall_time
         logger.info(f"Initialization complete. Wall Time: {epoch_wall_time:.2f}s.")
 
-        if cfg.logging.use_wandb:
+        if use_wandb:
             _wandb_log_statistics(initial_epoch, epoch_wall_time, history)
 
     else:
@@ -111,7 +124,7 @@ def train(
             f"Reloading complete. Resuming training from epoch {initial_epoch}."
         )
 
-    for epoch in range(initial_epoch + 1, cfg.optimizer.num_epochs + 1):
+    for epoch in range(initial_epoch + 1, num_epochs + 1):
         brain, history = run_epoch(
             device,
             brain,
@@ -128,13 +141,13 @@ def train(
         wall_time = new_wall_time
         logger.info(f"Epoch {epoch} complete. Wall Time: {epoch_wall_time:.2f}s.")
 
-        if epoch % cfg.logging.checkpoint_step == 0:
+        if epoch % checkpoint_step == 0:
             logger.info("Saving checkpoint and plots.")
 
             save_checkpoint(
-                cfg.path.data_dir,
-                cfg.path.checkpoint_dir,
-                cfg.logging.max_checkpoints,
+                data_dir,
+                checkpoint_dir,
+                max_checkpoints,
                 brain,
                 optimizer,
                 history,
@@ -154,7 +167,7 @@ def train(
             )
             logger.info("Analysis complete.")
 
-        if cfg.logging.use_wandb:
+        if use_wandb:
             _wandb_log_statistics(epoch, epoch_wall_time, history)
 
 

@@ -2,7 +2,9 @@
 ### Imports ###
 
 import logging
-import os
+from dataclasses import dataclass
+from os import getenv
+from pathlib import Path
 from typing import Any, Dict, List, Tuple, cast
 
 import omegaconf
@@ -15,68 +17,115 @@ from torch.optim.optimizer import Optimizer
 from retinal_rl.models.brain import Brain
 from runner.util import save_checkpoint
 
+### Infrastructure ###
+
+
 # Initialize the logger
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class InitConfig:
+    """Configuration for initialization."""
+
+    # Paths
+    data_dir: Path
+    checkpoint_dir: Path
+    plot_dir: Path
+    wandb_dir: Path
+
+    # WandB settings
+    use_wandb: bool
+    wandb_project: str
+    wandb_entity: str | None
+    wandb_preempt: bool
+
+    # Run settings
+    run_name: str
+    max_checkpoints: int
+
+    @classmethod
+    def from_dict_config(cls, cfg: DictConfig) -> "InitConfig":
+        """Create InitConfig from a DictConfig."""
+        return cls(
+            data_dir=Path(cfg.path.data_dir),
+            checkpoint_dir=Path(cfg.path.checkpoint_dir),
+            plot_dir=Path(cfg.path.plot_dir),
+            wandb_dir=Path(cfg.path.wandb_dir),
+            use_wandb=cfg.logging.use_wandb,
+            wandb_project=cfg.logging.wandb_project,
+            wandb_entity=None
+            if cfg.logging.wandb_entity == "default"
+            else cfg.logging.wandb_entity,
+            wandb_preempt=cfg.logging.wandb_preempt,
+            run_name=cfg.run_name,
+            max_checkpoints=cfg.logging.max_checkpoints,
+        )
+
+
+### Initialization ###
+
+
 def initialize(
-    cfg: DictConfig,
+    dict_cfg: DictConfig,
     brain: Brain,
     optimizer: Optimizer,
 ) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
     """Initialize the Brain, Optimizers, and training histories. Checks whether the experiment directory exists and loads the model and history if it does. Otherwise, initializes a new model and history."""
-    wandb_sweep_id = os.getenv("WANDB_SWEEP_ID", "local")
+
+    cfg = InitConfig.from_dict_config(dict_cfg)
+    wandb_sweep_id = getenv("WANDB_SWEEP_ID", "local")
     logger.info(f"Run Name: {cfg.run_name}")
     logger.info(f"(WANDB) Sweep ID: {wandb_sweep_id}")
 
     # If continuing from a previous run, load the model and history
-    if os.path.exists(cfg.path.data_dir):
+    if cfg.data_dir.exists():
         return _initialize_reload(cfg, brain, optimizer)
     # else, initialize a new model and history
-    return _initialize_create(cfg, brain, optimizer)
+    logger.info(
+        f"Experiment data path {cfg.data_dir} does not exist. Initializing {cfg.run_name}."
+    )
+
+    cfg_backup = omegaconf.OmegaConf.to_container(
+        dict_cfg, resolve=True, throw_on_missing=True
+    )
+    cfg_backup = cast(Dict[str, Any], cfg_backup)
+
+    return _initialize_create(cfg, cfg_backup, brain, optimizer)
 
 
 def _initialize_create(
-    cfg: DictConfig,
+    cfg: InitConfig,
+    cfg_backup: dict[Any, Any],
     brain: Brain,
     optimizer: Optimizer,
 ) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
     epoch = 0
-    logger.info(
-        f"Experiment path {cfg.path.run_dir} does not exist. Initializing {cfg.run_name}."
-    )
-
     # initialize the training histories
     histories: Dict[str, List[float]] = {}
 
-    # create the directories
-    os.makedirs(cfg.path.data_dir)
-    os.makedirs(cfg.path.checkpoint_dir)
-    if not cfg.logging.use_wandb:
-        os.makedirs(cfg.path.plot_dir)
-
+    cfg.data_dir.mkdir(parents=True, exist_ok=True)
+    cfg.checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    if not cfg.use_wandb:
+        cfg.plot_dir.mkdir(parents=True, exist_ok=True)
     else:
-        os.makedirs(cfg.path.wandb_dir)
+        cfg.wandb_dir.mkdir(parents=True, exist_ok=True)
         # convert DictConfig to dict
-        dict_conf = omegaconf.OmegaConf.to_container(
-            cfg, resolve=True, throw_on_missing=True
-        )
-        dict_conf = cast(Dict[str, Any], dict_conf)
-        entity = cfg.logging.wandb_entity
+        entity = cfg.wandb_entity
         if entity == "default":
             entity = None
         wandb.init(
-            project=cfg.logging.wandb_project,
+            project=cfg.wandb_project,
             entity=entity,
             group=HydraConfig.get().runtime.choices.experiment,
             job_type=HydraConfig.get().runtime.choices.brain,
-            config=dict_conf,
+            config=cfg_backup,
             name=cfg.run_name,
             id=cfg.run_name,
-            dir=cfg.path.wandb_dir,
+            dir=cfg.wandb_dir,
         )
 
-        if cfg.logging.wandb_preempt:
+        if cfg.wandb_preempt:
             wandb.mark_preempting()
 
         wandb.define_metric("Epoch")
@@ -84,9 +133,9 @@ def _initialize_create(
         wandb.define_metric("Test/*", step_metric="Epoch")
 
     save_checkpoint(
-        cfg.path.data_dir,
-        cfg.path.checkpoint_dir,
-        cfg.logging.max_checkpoints,
+        cfg.data_dir,
+        cfg.checkpoint_dir,
+        cfg.max_checkpoints,
         brain,
         optimizer,
         histories,
@@ -97,15 +146,15 @@ def _initialize_create(
 
 
 def _initialize_reload(
-    cfg: DictConfig, brain: Brain, optimizer: Optimizer
+    cfg: InitConfig, brain: Brain, optimizer: Optimizer
 ) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
     logger.info(
-        f"Experiment dir {cfg.path.run_dir} exists. Loading existing model and history."
+        f"Experiment data dir {cfg.data_dir} exists. Loading existing model and history."
     )
-    checkpoint_file = os.path.join(cfg.path.data_dir, "current_checkpoint.pt")
+    checkpoint_file = cfg.data_dir / "current_checkpoint.pt"
 
     # check if files don't exist
-    if not os.path.exists(checkpoint_file):
+    if not checkpoint_file.exists():
         logger.error(f"File not found: {checkpoint_file}")
         raise FileNotFoundError("Checkpoint file does not exist.")
 
@@ -115,22 +164,22 @@ def _initialize_reload(
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     completed_epochs = checkpoint["completed_epochs"]
     history = checkpoint["histories"]
-    entity = cfg.logging.wandb_entity
+    entity = cfg.wandb_entity
     if entity == "default":
         entity = None
 
-    if cfg.logging.use_wandb:
+    if cfg.use_wandb:
         wandb.init(
-            project=cfg.logging.wandb_project,
+            project=cfg.wandb_project,
             entity=entity,
             group=HydraConfig.get().runtime.choices.experiment,
             job_type=HydraConfig.get().runtime.choices.brain,
             name=cfg.run_name,
             id=cfg.run_name,
             resume="must",
-            dir=cfg.path.wandb_dir,
+            dir=cfg.wandb_dir,
         )
-        if cfg.logging.wandb_preempt:
+        if cfg.wandb_preempt:
             wandb.mark_preempting()
 
     return brain, optimizer, history, completed_epochs
