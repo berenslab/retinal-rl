@@ -10,6 +10,8 @@ from gymnasium.spaces import Discrete
 from sample_factory.envs.env_utils import register_env
 from sf_examples.vizdoom.doom.doom_utils import DoomSpec, make_doom_env_impl
 
+import retinal_rl
+
 # from gym.spaces import Discrete
 
 
@@ -131,9 +133,12 @@ def make_retinal_env_from_spec(
 
 
 def register_retinal_env(scene_name: str, cache_dir: str, input_satiety: bool):
-    cfg_path = os.path.join(
-        cache_dir, "scenarios", scene_name + ".cfg"
-    )  # TODO: Check if this stays
+    print(cache_dir)
+    if not os.path.isabs(cache_dir):
+        # make path absolute by making it relative to the path of this file
+        # TODO: Discuss whether this is desired behaviour...
+        cache_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", cache_dir)
+    cfg_path = os.path.join(cache_dir, "scenarios", scene_name + ".cfg")
 
     env_spec = retinal_doomspec(scene_name, cfg_path, input_satiety)
     make_env_func = functools.partial(make_retinal_env_from_spec, env_spec)
