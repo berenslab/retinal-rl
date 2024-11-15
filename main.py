@@ -44,6 +44,7 @@ def _program(cfg: DictConfig):
         objective = instantiate(cfg.optimizer.objective, brain=brain)
         # TODO: RL framework currently can't use objective
     else:
+        objective=None
         warnings.warn("No objective specified, is that wanted?")
 
     if cfg.command == "scan":
