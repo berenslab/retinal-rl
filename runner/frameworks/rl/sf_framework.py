@@ -61,7 +61,7 @@ class SFFramework(TrainingFramework):
         objective: Optional[Objective[ContextT]] = None,
     ):
         warnings.warn(
-            "device, brain, optimizer are initialized differently in sample_factory and thus there current state will be ignored"
+            "device, brain, optimizer are initialized differently in sample_factory and thus their current state will be ignored"
         )
         warnings.warn(
             "objective is currently not supported for sample factory simulations"
@@ -133,6 +133,8 @@ class SFFramework(TrainingFramework):
         SFFramework._set_cfg_cli_argument(sf_cfg, "optimizer", optimizer_name)
 
         SFFramework._set_cfg_cli_argument(sf_cfg, "brain", OmegaConf.to_object(cfg.brain))
+        SFFramework._set_cfg_cli_argument(sf_cfg, "train_dir", os.path.join(cfg.path.run_dir, "train_dir"))
+        SFFramework._set_cfg_cli_argument(sf_cfg, "wandb_dir", cfg.path.wandb_dir)
         return sf_cfg
 
     def analyze(
@@ -142,7 +144,7 @@ class SFFramework(TrainingFramework):
         objective: Optional[Objective[ContextT]] = None,
     ):
         warnings.warn(
-            "device, brain, optimizer are initialized differently in sample_factory and thus there current state will be ignored"
+            "device, brain, optimizer are initialized differently in sample_factory and thus their current state will be ignored"
         )
         enjoy(self.sf_cfg)
         # TODO: Implement analyze function for sf framework
