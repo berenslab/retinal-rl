@@ -75,13 +75,12 @@ From: ubuntu:22.04
     torchinfo==1.8.0 \
     num2words==0.5.13 \
     omgifol==0.5.1 \
+    git+https://github.com/fabioseel/sample-factory.git@abbc4591fcfa3f2cb20b98bb9b0f2a1ee83f47fa \
     dpcpp-cpp-rt==2024.2.1 \
     seaborn==0.13.2 \
     hydra-core==1.3.2 \
     networkx==3.3 \
     ruff==0.7.0
-
-  pip3 install -e ../sample-factory
   
   # Clean up for smaller container size
   rm acc159linux-x64.zip
