@@ -43,4 +43,6 @@ jobs:
 
     - name: Pytest
       if: always() && steps.cache-singularity.outputs.cache-hit == 'true'
-      run: apptainer exec ${{ env.sif_file }} pytest tests/modules
+      run: |
+        bash tests/ci/build_scenario.sh ${{ env.sif_file }}
+        apptainer exec ${{ env.sif_file }} pytest tests/modules
