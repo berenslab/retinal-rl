@@ -14,7 +14,6 @@ import argparse
 import os
 import sys
 import warnings
-from pathlib import Path
 
 from doom_creator.util.config import load
 from doom_creator.util.directories import Directories
@@ -107,8 +106,6 @@ def main():
     args = parser.parse_args(argv)
 
     dirs = Directories(args.out_dir)
-
-    Path(dirs.CACHE_DIR).mkdir(parents=True, exist_ok=True)
 
     cfg = load(args.yamls, dirs.SCENARIO_YAML_DIR)
     # Check preload flag
