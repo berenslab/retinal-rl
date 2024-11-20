@@ -3,7 +3,7 @@ import os.path as osp
 import shutil
 import struct
 from glob import glob
-from typing import Optional
+from typing import Optional, Set, Tuple
 
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
@@ -105,8 +105,8 @@ def preload_dataset(
             dataset_wrapper.clean(source_dir)
 
 
-def check_preload(cfg: Config, test: bool):
-    needed_types = set()
+def check_preload(cfg: Config, test: bool) -> Tuple[Config, Set[TextureType]]:
+    needed_types: Set[TextureType] = set()
     for type_cfg in cfg.objects.values():
         for actor in type_cfg.actors.values():
             for i in range(len(actor.textures)):

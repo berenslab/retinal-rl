@@ -142,6 +142,7 @@ class SFFramework(TrainingFramework):
         SFFramework._set_cfg_cli_argument(
             sf_cfg, "train_dir", os.path.join(cfg.path.run_dir, "train_dir")
         )
+        SFFramework._set_cfg_cli_argument(sf_cfg, "with_wandb", cfg.logging.use_wandb)
         SFFramework._set_cfg_cli_argument(sf_cfg, "wandb_dir", cfg.path.wandb_dir)
         return sf_cfg
 
