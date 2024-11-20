@@ -1,6 +1,6 @@
 import sys
 
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 from sample_factory.algo.utils.context import global_model_factory
 from sample_factory.algo.utils.make_env import make_env_func_batched
 from sample_factory.algo.utils.misc import ExperimentStatus
@@ -18,7 +18,7 @@ def test_init_framework(config: DictConfig, data_root):
     framework = SFFramework(config, data_root)
     cfg, runner = make_runner(framework.sf_cfg)
     status = runner.init()
-    assert status==ExperimentStatus.SUCCESS
+    assert status == ExperimentStatus.SUCCESS
 
 
 def test_actor_critic_brain(config: DictConfig, data_root):

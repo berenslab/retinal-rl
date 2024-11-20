@@ -10,8 +10,6 @@ from gymnasium.spaces import Discrete
 from sample_factory.envs.env_utils import register_env
 from sf_examples.vizdoom.doom.doom_utils import DoomSpec, make_doom_env_impl
 
-import retinal_rl
-
 # from gym.spaces import Discrete
 
 

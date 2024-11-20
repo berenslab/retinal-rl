@@ -197,6 +197,7 @@ def _resolve_output_shape(
         f"Invalid format for output_shape: {output_shape}. Must be of the form 'circuit_name.property_name'"
     )
 
+
 def search_conf(config: DictConfig | dict, search_str: str) -> List:
     """
     Recursively search for strings in a DictConfig.
