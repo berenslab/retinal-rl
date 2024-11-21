@@ -11,6 +11,7 @@ import torch
 from omegaconf import DictConfig
 from omegaconf.omegaconf import OmegaConf
 from sample_factory.algo.learning.learner import Learner
+from sample_factory.algo.learning.learner_factory import global_learner_factory
 from sample_factory.algo.utils.context import global_model_factory
 from sample_factory.algo.utils.misc import ExperimentStatus
 from sample_factory.cfg.arguments import (
@@ -32,6 +33,7 @@ from retinal_rl.rl.sample_factory.arguments import (
     retinal_override_defaults,
 )
 from retinal_rl.rl.sample_factory.environment import register_retinal_env
+from retinal_rl.rl.sample_factory.learner import RetinalLearner
 from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
 from runner.frameworks.framework_interface import TrainingFramework
 from runner.util import create_brain
@@ -48,6 +50,7 @@ class SFFramework(TrainingFramework):
         # Register retinal environments and models.
         register_retinal_env(self.sf_cfg.env, self.data_root, self.sf_cfg.input_satiety)
         global_model_factory().register_actor_critic_factory(SampleFactoryBrain)
+        global_learner_factory().register_learner_factory(RetinalLearner)
 
     def initialize(self, brain: Brain, optimizer: torch.optim.Optimizer):
         # brain = SFFramework.load_brain_from_checkpoint(...)
