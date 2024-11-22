@@ -1,6 +1,6 @@
 import warnings
 from enum import Enum
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import networkx as nx
 import numpy as np
@@ -116,7 +116,7 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         return out, rnn_states
 
     def forward_tail(
-        self, core_output, values_only: bool, sample_actions: bool
+        self, core_output, values_only: bool, sample_actions: bool, action_mask: Optional[Tensor] = None
     ) -> TensorDict:
         out = self.brain.circuits[self.decoder_name](core_output)
         out = torch.flatten(out, 1)
@@ -138,7 +138,7 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         return result
 
     def forward(
-        self, normalized_obs_dict, rnn_states, values_only: bool = False
+        self, normalized_obs_dict, rnn_states, values_only: bool = False, action_mask: Optional[Tensor] = None
     ) -> TensorDict:
         head_out = self.forward_head(normalized_obs_dict)
         core_out, new_rnn_states = self.forward_core(head_out, rnn_states)
