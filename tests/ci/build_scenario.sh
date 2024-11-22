@@ -10,4 +10,4 @@
 #   (run from top level directory!)
 #===============================================================================
 
-apptainer exec "$1" python -m doom_creator.compile_scenario gathering apples
+singularity exec "$1" python -m doom_creator.compile_scenario gathering apples

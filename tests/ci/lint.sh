@@ -43,9 +43,9 @@ fi
 
 if [ -n "$changed_files" ]; then
     # Format
-    apptainer exec "$CONTAINER" ruff format $changed_files $check
+    singularity exec "$CONTAINER" ruff format $changed_files $check
     # Run ruff on changed files with any remaining arguments
-    apptainer exec "$CONTAINER" ruff check $changed_files "$@"
+    singularity exec "$CONTAINER" ruff check $changed_files "$@"
 else
     echo "No .py files changed"
 fi
