@@ -61,7 +61,7 @@ class SFFramework(TrainingFramework):
         objective: Optional[Objective[ContextT]] = None,
     ):
         warnings.warn(
-            "device, brain, optimizer are initialized differently in sample_factory and thus there current state will be ignored"
+            "device, brain, optimizer are initialized differently in sample_factory and thus their current state will be ignored"
         )
         warnings.warn(
             "objective is currently not supported for sample factory simulations"
@@ -113,25 +113,37 @@ class SFFramework(TrainingFramework):
         brain.to(device)
         return brain
 
-    def to_sf_cfg(self, cfg: DictConfig) -> Config:
-        sf_cfg = self._get_default_cfg(cfg.dataset.env_name)  # Load Defaults
+    @staticmethod
+    def to_sf_cfg(cfg: DictConfig) -> Config:
+        sf_cfg = SFFramework._get_default_cfg(cfg.dataset.env_name)  # Load Defaults
 
         # overwrite default values with those set in cfg
         # TODO: which other parameters need to be set_
-        self._set_cfg_cli_argument(sf_cfg, "learning_rate", cfg.optimizer.optimizer.lr)
+        SFFramework._set_cfg_cli_argument(
+            sf_cfg, "learning_rate", cfg.optimizer.optimizer.lr
+        )
         # Using this function is necessary to make sure that the parameters are not overwritten when sample_factory loads a checkpoint
 
-        self._set_cfg_cli_argument(sf_cfg, "res_h", cfg.dataset.vision_width)
-        self._set_cfg_cli_argument(sf_cfg, "res_w", cfg.dataset.vision_height)
-        self._set_cfg_cli_argument(sf_cfg, "env", cfg.dataset.env_name)
-        self._set_cfg_cli_argument(sf_cfg, "input_satiety", cfg.dataset.input_satiety)
-        self._set_cfg_cli_argument(sf_cfg, "device", cfg.system.device)
+        SFFramework._set_cfg_cli_argument(sf_cfg, "res_h", cfg.dataset.vision_width)
+        SFFramework._set_cfg_cli_argument(sf_cfg, "res_w", cfg.dataset.vision_height)
+        SFFramework._set_cfg_cli_argument(sf_cfg, "env", cfg.dataset.env_name)
+        SFFramework._set_cfg_cli_argument(
+            sf_cfg, "input_satiety", cfg.dataset.input_satiety
+        )
+        SFFramework._set_cfg_cli_argument(sf_cfg, "device", cfg.system.device)
         optimizer_name = str.lower(
             str.split(cfg.optimizer.optimizer._target_, sep=".")[-1]
         )
-        self._set_cfg_cli_argument(sf_cfg, "optimizer", optimizer_name)
+        SFFramework._set_cfg_cli_argument(sf_cfg, "optimizer", optimizer_name)
 
-        self._set_cfg_cli_argument(sf_cfg, "brain", OmegaConf.to_object(cfg.brain))
+        SFFramework._set_cfg_cli_argument(
+            sf_cfg, "brain", OmegaConf.to_object(cfg.brain)
+        )
+        SFFramework._set_cfg_cli_argument(
+            sf_cfg, "train_dir", os.path.join(cfg.path.run_dir, "train_dir")
+        )
+        SFFramework._set_cfg_cli_argument(sf_cfg, "with_wandb", cfg.logging.use_wandb)
+        SFFramework._set_cfg_cli_argument(sf_cfg, "wandb_dir", cfg.path.wandb_dir)
         return sf_cfg
 
     def analyze(
@@ -141,7 +153,7 @@ class SFFramework(TrainingFramework):
         objective: Optional[Objective[ContextT]] = None,
     ):
         warnings.warn(
-            "device, brain, optimizer are initialized differently in sample_factory and thus there current state will be ignored"
+            "device, brain, optimizer are initialized differently in sample_factory and thus their current state will be ignored"
         )
         enjoy(self.sf_cfg)
         # TODO: Implement analyze function for sf framework

@@ -41,7 +41,7 @@ def make_parser():
         running the first time one should use the --preload flag to download the
         necessary resources into the --out_dir ('{Directories().CACHE_DIR}').
         """,
-        epilog="Example: python -m exec.compile_scenario gathering apples",
+        epilog="Example: python -m doom_creator.compile_scenario gathering apples",
     )
     # Positional argument for scenario yaml files (required, can be multiple)
     parser.add_argument(
@@ -106,6 +106,7 @@ def main():
     args = parser.parse_args(argv)
 
     dirs = Directories(args.out_dir)
+
     cfg = load(args.yamls, dirs.SCENARIO_YAML_DIR)
     # Check preload flag
     do_load, do_make, do_list = args.preload, len(args.yamls) > 0, args.list_yamls

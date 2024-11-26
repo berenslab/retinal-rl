@@ -196,3 +196,30 @@ def _resolve_output_shape(
     raise ValueError(
         f"Invalid format for output_shape: {output_shape}. Must be of the form 'circuit_name.property_name'"
     )
+
+
+def search_conf(config: DictConfig | dict, search_str: str) -> List:
+    """
+    Recursively search for strings in a DictConfig.
+
+    Args:
+        config (omegaconf.DictConfig): The configuration to search.
+
+    Returns:
+        list: A list of all values containing the string.
+    """
+    found_values = []
+
+    def traverse_config(cfg):
+        for key, value in cfg.items():
+            if isinstance(value, (dict, DictConfig)):
+                traverse_config(value)
+            elif isinstance(value, str) and search_str in value:
+                found_values.append(value)
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, str) and search_str in item:
+                        found_values.append(item)
+
+    traverse_config(config)
+    return found_values

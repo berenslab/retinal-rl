@@ -40,3 +40,11 @@ jobs:
       run: |
          bash tests/ci/copy_configs.sh ${{ env.sif_file }}
          bash tests/ci/scan_configs.sh ${{ env.sif_file }}
+    
+    - name: Build Scenario
+      if: always() && steps.cache-singularity.outputs.cache-hit == 'true'
+      run: bash tests/ci/build_scenario.sh ${{ env.sif_file }}
+
+    - name: Pytest
+      if: always() && steps.cache-singularity.outputs.cache-hit == 'true'
+      run: apptainer exec ${{ env.sif_file }} pytest tests/modules

@@ -19,6 +19,7 @@ def make_scenario(
     scenario_name: Optional[str] = None,
 ):
     # Create Zip for output
+    directories.SCENARIO_OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_file = osp.join(directories.SCENARIO_OUT_DIR, scenario_name) + ".zip"
     if osp.exists(out_file):
         os.remove(out_file)
