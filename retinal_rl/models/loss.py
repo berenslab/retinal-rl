@@ -37,7 +37,25 @@ class BaseContext:
         self.epoch = epoch
 
 
-class Loss(Generic[ContextT]):
+class LogStatistic(Generic[ContextT]):
+    """Base class for statistics that should be logged.
+    """
+
+    def __call__(self, context: ContextT) -> Tensor:
+        return self.compute_value(context)
+
+    @abstractmethod
+    def compute_value(self, context: ContextT) -> Tensor:
+        """Compute the value for this losses The context dictionary contains the necessary information to compute the loss."""
+        pass
+
+    @property
+    def key_name(self) -> str:
+        """Return a user-friendly name for the loss."""
+        return camel_to_snake(self.__class__.__name__)
+
+
+class Loss(LogStatistic[ContextT]):
     """Base class for losses that can be used to define a multiobjective optimization problem.
 
     Attributes
@@ -62,9 +80,6 @@ class Loss(Generic[ContextT]):
         self.min_epoch = min_epoch
         self.max_epoch = max_epoch
 
-    def __call__(self, context: ContextT) -> Tensor:
-        return self.compute_value(context)
-
     def is_training_epoch(self, epoch: int) -> bool:
         """Check if the objective should currently be pursued.
 
@@ -80,16 +95,6 @@ class Loss(Generic[ContextT]):
         if self.min_epoch is not None and epoch < self.min_epoch:
             return False
         return self.max_epoch is None or epoch <= self.max_epoch
-
-    @abstractmethod
-    def compute_value(self, context: ContextT) -> Tensor:
-        """Compute the value for this losses The context dictionary contains the necessary information to compute the loss."""
-        pass
-
-    @property
-    def key_name(self) -> str:
-        """Return a user-friendly name for the loss."""
-        return camel_to_snake(self.__class__.__name__)
 
 
 class ReconstructionLoss(Loss[ContextT]):
