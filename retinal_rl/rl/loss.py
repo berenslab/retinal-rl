@@ -79,6 +79,7 @@ class PolicyLoss(Loss[RLContext]):
         max_epoch: Optional[int] = None,
         clip_ratio=1.1,  # TODO: Check default
     ):
+        super().__init__(target_circuits, weights, min_epoch, max_epoch)
         # PPO clipping
         self.clip_ratio_high = 1.0 + clip_ratio  # e.g. 1.1
         # this still works with e.g. clip_ratio = 2, while PPO's 1-r would give negative ratio
@@ -115,11 +116,12 @@ class ExplorationLoss(Loss[RLContext]):
         weights: List[float] = [],
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
-        loss_coeff: float = 1.0,  # TODO: This is taken care of by the objective system
+        loss_coeff: float = 0.001,  # TODO: This is taken care of by the objective system
         exploration_loss: str = "entropy",  # TODO: Different losses for this?!
     ):
+        super().__init__(target_circuits, weights, min_epoch, max_epoch)
         self.loss_coeff = loss_coeff
-        if self.exploration_loss_coeff == 0.0:
+        if self.loss_coeff == 0.0:
             self.exploration_loss_func = lambda action_distr, valids, num_invalids: 0.0
         elif exploration_loss == "entropy":
             self.exploration_loss_func = self._entropy_exploration_loss
@@ -151,7 +153,7 @@ class ExplorationLoss(Loss[RLContext]):
         )
 
 
-class KLLoss(Loss[RLContext]):
+class KlLoss(Loss[RLContext]):
     """TODO: Doc"""
 
     def __init__(
@@ -163,10 +165,11 @@ class KLLoss(Loss[RLContext]):
         action_space=None,  # TODO: Where to get this
         loss_coeff: float = 0.0,  # TODO: This is taken care of by the objective system
     ):
+        super().__init__(target_circuits, weights, min_epoch, max_epoch)
         self.action_space = action_space
         self.loss_coeff = loss_coeff  # TODO: loss coefficient system
         if loss_coeff == 0.0:
-            if is_continuous_action_space(self.env_info.action_space):
+            if is_continuous_action_space(self.action_space):
                 log.warning(
                     "WARNING! It is generally recommended to enable Fixed KL loss (https://arxiv.org/pdf/1707.06347.pdf) for continuous action tasks to avoid potential numerical issues. "
                     "I.e. set --kl_loss_coeff=0.1"
@@ -176,7 +179,7 @@ class KLLoss(Loss[RLContext]):
                 action_logits,
                 distribution,
                 valids,
-                num_invalids: 0.0
+                num_invalids: torch.tensor(0.0)
             )
         else:
             self.kl_loss_func = self._kl_loss
@@ -218,9 +221,10 @@ class ValueLoss(Loss[RLContext]):
         weights: List[float] = [],
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
-        clip_value=1.0,  # TODO: Check clip value default
-        loss_coeff: float = 1.0,  # TODO: This is taken care of by the objective system
+        clip_value=0.2,  # TODO: Check clip value default
+        loss_coeff: float = 0.5,  # TODO: This is should be taken care of by the objective system
     ):
+        super().__init__(target_circuits, weights, min_epoch, max_epoch)
         self.clip_value = clip_value
         self.loss_coeff = loss_coeff
 

@@ -42,7 +42,7 @@ from sample_factory.utils.utils import log
 from torch import Tensor
 
 from retinal_rl.models.objective import Objective
-from retinal_rl.rl.loss import RLContext, VTraceParams, build_context
+from retinal_rl.rl.loss import KlLoss, RLContext, VTraceParams, build_context
 from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
 
 
@@ -102,8 +102,6 @@ class RetinalLearner(Learner):
         self.is_initialized = False
 
     def init(self) -> InitModelData:
-        # TODO: Init objective / losses (?)
-
         # initialize the Torch modules
         if self.cfg.seed is None:
             log.info("Starting seed is not provided")
@@ -154,6 +152,11 @@ class RetinalLearner(Learner):
 
         assert isinstance(self.actor_critic, SampleFactoryBrain) # for now let's just assert that
         self.objective = instantiate(self.cfg.objective, brain=self.actor_critic.brain)
+
+        # Hotfix: inject action space to kl_loss TODO: Fix this
+        for loss in self.objective.losses:
+            if isinstance(loss, KlLoss):
+                loss.action_space = self.env_info.action_space
 
         self.load_from_checkpoint(self.policy_id)
         self.param_server.init(self.actor_critic, self.train_step, self.device)
@@ -277,14 +280,14 @@ class RetinalLearner(Learner):
                     # TODO: log here based on loss_dict instead of inside losses function
                     with timing.add_time("losses_postprocess"):
                         # noinspection PyTypeChecker
-                        actor_loss: Tensor = loss_dict['policy_loss'] + loss_dict['exploration_loss'] + loss_dict['kl_loss']
+                        actor_loss: float = loss_dict['policy_loss'] + loss_dict['exploration_loss'] + loss_dict['kl_loss']
                         critic_loss = loss_dict['value_loss']
-                        loss: Tensor = actor_loss + critic_loss
+                        loss: float = actor_loss + critic_loss
 
                         epoch_actor_losses[batch_num] = float(actor_loss)
 
                         high_loss = 30.0
-                        if torch.abs(loss) > high_loss:
+                        if abs(loss) > high_loss:
                             log.warning(
                                 "High loss value: l:%.4f pl:%.4f vl:%.4f exp_l:%.4f kl_l:%.4f (recommended to adjust the --reward_scale parameter)",
                                 to_scalar(loss),
