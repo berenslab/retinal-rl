@@ -2,6 +2,7 @@ import os
 import shutil
 import sys
 import time
+from typing import Generator
 
 import hydra
 import pytest
@@ -13,10 +14,8 @@ from runner.util import search_conf
 OmegaConf.register_new_resolver("eval", eval)
 
 
-@pytest.fixture
-def config() -> DictConfig:
+def config(experiment: str) -> DictConfig:
     with hydra.initialize(config_path="../../config/base", version_base=None):
-        experiment = "gathering-apples"
         config = hydra.compose(
             "config", overrides=[f"+experiment={experiment}", "system.device=cpu"]
         )
@@ -35,11 +34,25 @@ def config() -> DictConfig:
         ), "hydra: values can not be resolved here. Set them manually in this fixture for tests!"
 
         OmegaConf.resolve(config)
-        yield config
+        return config
 
-        # Cleanup: remove temporary dir
-        if os.path.exists(config.path.run_dir):
-            shutil.rmtree(config.path.run_dir)
+def cleanup(config: DictConfig):
+    # Cleanup: remove temporary dir
+    if os.path.exists(config.path.run_dir):
+        shutil.rmtree(config.path.run_dir)
+
+
+@pytest.fixture
+def classification_config()-> Generator[DictConfig, None, None]:
+    _config = config('classification')
+    yield _config
+    cleanup(_config)
+
+@pytest.fixture
+def rl_config() -> Generator[DictConfig, None, None]:
+    _config = config('gathering-apples')
+    yield _config
+    cleanup(_config)
 
 
 @pytest.fixture
