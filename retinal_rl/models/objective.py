@@ -7,7 +7,7 @@ import torch
 from torch.nn.parameter import Parameter
 
 from retinal_rl.models.brain import Brain
-from retinal_rl.models.loss import ContextT, Loss, LogStatistic
+from retinal_rl.models.loss import ContextT, LogStatistic, Loss
 
 logger = logging.getLogger(__name__)
 
@@ -61,18 +61,18 @@ class Objective(Generic[ContextT]):
     def _weighted_params(
         self, loss: Loss[ContextT]
     ) -> Tuple[List[float], List[Parameter]]:
+        _targets = loss.target_circuits
+        _weights = loss.weights
+
+        if "__all__" in _targets:
+            _targets = self.brain.circuits.keys()
+            if len(_weights) == 1:
+                _weights = [_weights[0] for _ in range(len(_targets))]
+            assert len(_weights) == len(_targets)
+
         weights: List[float] = []
         params: List[Parameter] = []
-        targets = loss.target_circuits
-        weights = loss.weights
-
-        if "__all__" in targets:
-            targets = self.brain.circuits.keys()
-            if len(weights) == 1:
-                weights = [weights[0] for _ in range(len(targets))]
-            assert len(weights) == len(targets)
-
-        for weight, circuit_name in zip(weights, targets):
+        for weight, circuit_name in zip(_weights, _targets):
             if circuit_name in self.brain.circuits:
                 params0 = list(self.brain.circuits[circuit_name].parameters())
                 weights += [weight] * len(params0)

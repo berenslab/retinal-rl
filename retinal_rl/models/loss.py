@@ -38,8 +38,7 @@ class BaseContext:
 
 
 class LogStatistic(Generic[ContextT]):
-    """Base class for statistics that should be logged.
-    """
+    """Base class for statistics that should be logged."""
 
     def __call__(self, context: ContextT) -> Tensor:
         return self.compute_value(context)
@@ -60,7 +59,7 @@ class Loss(LogStatistic[ContextT]):
 
     Attributes
     ----------
-        target_circuits (List[str]): The target circuits for the loss.
+        target_circuits (List[str]): The target circuits for the loss. If '__all__', will target all circuits
         weights (List[float]): The weights for the loss.
         min_epoch (int): The minimum epoch to start training the loss.
         max_epoch (int): The maximum epoch to train the loss. Unbounded if < 0.
