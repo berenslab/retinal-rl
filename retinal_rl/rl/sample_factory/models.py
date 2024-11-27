@@ -37,7 +37,8 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         self.critic_linear = nn.Linear(decoder_out_size, 1)
         self.action_parameterization = self.get_action_parameterization(
             decoder_out_size
-        )  # boils down to a linear layer mapping to num_action_outputs
+        )
+        # boils down to a linear layer mapping to num_action_outputs
 
     def set_brain(self, brain: Brain):
         """
@@ -116,7 +117,11 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         return out, rnn_states
 
     def forward_tail(
-        self, core_output, values_only: bool, sample_actions: bool, action_mask: Optional[Tensor] = None
+        self,
+        core_output,
+        values_only: bool,
+        sample_actions: bool,
+        action_mask: Optional[Tensor] = None,
     ) -> TensorDict:
         out = self.brain.circuits[self.decoder_name](core_output)
         out = torch.flatten(out, 1)
@@ -138,7 +143,11 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         return result
 
     def forward(
-        self, normalized_obs_dict, rnn_states, values_only: bool = False, action_mask: Optional[Tensor] = None
+        self,
+        normalized_obs_dict,
+        rnn_states,
+        values_only: bool = False,
+        action_mask: Optional[Tensor] = None,
     ) -> TensorDict:
         head_out = self.forward_head(normalized_obs_dict)
         core_out, new_rnn_states = self.forward_core(head_out, rnn_states)

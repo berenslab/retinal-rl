@@ -1,27 +1,26 @@
 from __future__ import annotations
 
-import glob
-import os
 import time
-from abc import ABC, abstractmethod
-from os.path import join
 from typing import Callable, Dict, Optional, Tuple
 
 import numpy as np
 import torch
-from torch import Tensor
-from torch.nn import Module
-
+from hydra.utils import instantiate
 from sample_factory.algo.learning.learner import (
     Learner,
     LearningRateScheduler,
     get_lr_scheduler,
     model_initialization_data,
 )
-from sample_factory.algo.learning.rnn_utils import build_core_out_from_seq, build_rnn_inputs
-from sample_factory.algo.utils.action_distributions import get_action_distribution, is_continuous_action_space
+from sample_factory.algo.utils.action_distributions import get_action_distribution
 from sample_factory.algo.utils.env_info import EnvInfo
-from sample_factory.algo.utils.misc import LEARNER_ENV_STEPS, POLICY_ID_KEY, STATS_KEY, TRAIN_STATS, memory_stats
+from sample_factory.algo.utils.misc import (
+    LEARNER_ENV_STEPS,
+    POLICY_ID_KEY,
+    STATS_KEY,
+    TRAIN_STATS,
+    memory_stats,
+)
 from sample_factory.algo.utils.model_sharing import ParameterServer
 from sample_factory.algo.utils.optimizers import Lamb
 from sample_factory.algo.utils.rl_utils import gae_advantages, prepare_and_normalize_obs
@@ -34,8 +33,17 @@ from sample_factory.utils.attr_dict import AttrDict
 from sample_factory.utils.decay import LinearDecay
 from sample_factory.utils.dicts import iterate_recursively
 from sample_factory.utils.timing import Timing
-from sample_factory.utils.typing import ActionDistribution, Config, InitModelData, PolicyID
-from sample_factory.utils.utils import ensure_dir_exists, experiment_dir, log
+from sample_factory.utils.typing import (
+    Config,
+    InitModelData,
+    PolicyID,
+)
+from sample_factory.utils.utils import log
+from torch import Tensor
+
+from retinal_rl.models.objective import Objective
+from retinal_rl.rl.loss import RLContext, VTraceParams, build_context
+from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
 
 
 class RetinalLearner(Learner):
@@ -60,7 +68,7 @@ class RetinalLearner(Learner):
 
         self.optimizer = None
 
-        self.objective = None
+        self.objective: Objective[RLContext] = None
 
         self.curr_lr: Optional[float] = None
         self.lr_scheduler: Optional[LearningRateScheduler] = None
@@ -94,24 +102,7 @@ class RetinalLearner(Learner):
         self.is_initialized = False
 
     def init(self) -> InitModelData:
-        if self.cfg.exploration_loss_coeff == 0.0:
-            self.exploration_loss_func = lambda action_distr, valids, num_invalids: 0.0
-        elif self.cfg.exploration_loss == "entropy":
-            self.exploration_loss_func = self._entropy_exploration_loss
-        elif self.cfg.exploration_loss == "symmetric_kl":
-            self.exploration_loss_func = self._symmetric_kl_exploration_loss
-        else:
-            raise NotImplementedError(f"{self.cfg.exploration_loss} not supported!")
-
-        if self.cfg.kl_loss_coeff == 0.0:
-            if is_continuous_action_space(self.env_info.action_space):
-                log.warning(
-                    "WARNING! It is generally recommended to enable Fixed KL loss (https://arxiv.org/pdf/1707.06347.pdf) for continuous action tasks to avoid potential numerical issues. "
-                    "I.e. set --kl_loss_coeff=0.1"
-                )
-            self.kl_loss_func = lambda action_space, action_logits, distribution, valids, num_invalids: (None, 0.0)
-        else:
-            self.kl_loss_func = self._kl_loss
+        # TODO: Init objective / losses (?)
 
         # initialize the Torch modules
         if self.cfg.seed is None:
@@ -161,6 +152,9 @@ class RetinalLearner(Learner):
 
         self.optimizer = optimizer_cls(params, **optimizer_kwargs)
 
+        assert isinstance(self.actor_critic, SampleFactoryBrain) # for now let's just assert that
+        self.objective = instantiate(self.cfg.objective, brain=self.actor_critic.brain)
+
         self.load_from_checkpoint(self.policy_id)
         self.param_server.init(self.actor_critic, self.train_step, self.device)
         self.policy_versions_tensor[self.policy_id] = self.train_step
@@ -194,211 +188,6 @@ class RetinalLearner(Learner):
             "curr_lr": self.curr_lr,
         }
         return checkpoint
-
-    def _value_loss(
-        self,
-        new_values: Tensor,
-        old_values: Tensor,
-        target: Tensor,
-        clip_value: float,
-        valids: Tensor,
-        num_invalids: int,
-    ) -> Tensor:
-        value_clipped = old_values + torch.clamp(new_values - old_values, -clip_value, clip_value)
-        value_original_loss = (new_values - target).pow(2)
-        value_clipped_loss = (value_clipped - target).pow(2)
-        value_loss = torch.max(value_original_loss, value_clipped_loss)
-        value_loss = masked_select(value_loss, valids, num_invalids)
-        value_loss = value_loss.mean()
-
-        value_loss *= self.cfg.value_loss_coeff
-
-        return value_loss
-
-    def _kl_loss(
-        self, action_space, action_logits, action_distribution, valids, num_invalids: int
-    ) -> Tuple[Tensor, Tensor]:
-        old_action_distribution = get_action_distribution(action_space, action_logits)
-        kl_old = action_distribution.kl_divergence(old_action_distribution)
-        kl_old = masked_select(kl_old, valids, num_invalids)
-        kl_loss = kl_old.mean()
-
-        kl_loss *= self.cfg.kl_loss_coeff
-
-        return kl_old, kl_loss
-
-    def _entropy_exploration_loss(self, action_distribution, valids, num_invalids: int) -> Tensor:
-        entropy = action_distribution.entropy()
-        entropy = masked_select(entropy, valids, num_invalids)
-        entropy_loss = -self.cfg.exploration_loss_coeff * entropy.mean()
-        return entropy_loss
-
-    def _symmetric_kl_exploration_loss(self, action_distribution, valids, num_invalids: int) -> Tensor:
-        kl_prior = action_distribution.symmetric_kl_with_uniform_prior()
-        kl_prior = masked_select(kl_prior, valids, num_invalids).mean()
-        if not torch.isfinite(kl_prior):
-            kl_prior = torch.zeros(kl_prior.shape)
-        kl_prior = torch.clamp(kl_prior, max=30)
-        kl_prior_loss = self.cfg.exploration_loss_coeff * kl_prior
-        return kl_prior_loss
-
-    def _optimizer_lr(self):
-        for param_group in self.optimizer.param_groups:
-            return param_group["lr"]
-
-    def _apply_lr(self, lr: float) -> None:
-        """Change learning rate in the optimizer."""
-        if lr != self._optimizer_lr():
-            for param_group in self.optimizer.param_groups:
-                param_group["lr"] = lr
-
-#######################################################################################################################################
-#######################################################################################################################################
-#######################################################################################################################################
-
-    def _calculate_losses(
-        self, mb: AttrDict, num_invalids: int
-    ) -> Tuple[ActionDistribution, Tensor, Tensor | float, Optional[Tensor], Tensor | float, Tensor, Dict]:
-        # TODO: Calculate losses here using objective
-        with torch.no_grad(), self.timing.add_time("losses_init"):
-            recurrence: int = self.cfg.recurrence
-
-            # PPO clipping
-            clip_ratio_high = 1.0 + self.cfg.ppo_clip_ratio  # e.g. 1.1
-            # this still works with e.g. clip_ratio = 2, while PPO's 1-r would give negative ratio
-            clip_ratio_low = 1.0 / clip_ratio_high
-            clip_value = self.cfg.ppo_clip_value
-
-            valids = mb.valids
-
-        # calculate policy head outside of recurrent loop
-        with self.timing.add_time("forward_head"):
-            head_outputs = self.actor_critic.forward_head(mb.normalized_obs)  # TODO: Check actor_critic usage
-            minibatch_size: int = head_outputs.size(0)
-
-        # initial rnn states
-        with self.timing.add_time("bptt_initial"):
-            if self.cfg.use_rnn:
-                # this is the only way to stop RNNs from backpropagating through invalid timesteps
-                # (i.e. experience collected by another policy)
-                done_or_invalid = torch.logical_or(mb.dones_cpu, ~valids.cpu()).float()
-                head_output_seq, rnn_states, inverted_select_inds = build_rnn_inputs(
-                    head_outputs,
-                    done_or_invalid,
-                    mb.rnn_states,
-                    recurrence,
-                )
-            else:
-                rnn_states = mb.rnn_states[::recurrence]
-
-        # calculate RNN outputs for each timestep in a loop
-        with self.timing.add_time("bptt"):
-            if self.cfg.use_rnn:
-                with self.timing.add_time("bptt_forward_core"):
-                    core_output_seq, _ = self.actor_critic.forward_core(head_output_seq, rnn_states)
-                # TODO: Check actor_critic usage
-                # How to deal with rnns at other layers? Suitable / even desirable?
-                # whole logic around rnn stuff here?
-                core_outputs = build_core_out_from_seq(core_output_seq, inverted_select_inds)
-                del core_output_seq
-            else:
-                core_outputs, _ = self.actor_critic.forward_core(head_outputs, rnn_states)
-                # TODO: Check actor_critic usage
-
-            del head_outputs
-
-        num_trajectories = minibatch_size // recurrence
-        assert core_outputs.shape[0] == minibatch_size
-
-        with self.timing.add_time("tail"):
-            # calculate policy tail outside of recurrent loop
-            result = self.actor_critic.forward_tail(core_outputs, values_only=False, sample_actions=False)
-            # TODO: Check actor_critic usage
-            action_distribution = self.actor_critic.action_distribution()  # TODO: Check actor_critic usage
-            log_prob_actions = action_distribution.log_prob(mb.actions)
-            ratio = torch.exp(log_prob_actions - mb.log_prob_actions)  # pi / pi_old
-
-            # super large/small values can cause numerical problems and are probably noise anyway
-            ratio = torch.clamp(ratio, 0.05, 20.0)
-
-            values = result["values"].squeeze()
-
-            del core_outputs
-
-        # these computations are not the part of the computation graph
-        with torch.no_grad(), self.timing.add_time("advantages_returns"):
-            if self.cfg.with_vtrace:
-                # V-trace parameters
-                rho_hat = torch.Tensor([self.cfg.vtrace_rho])
-                c_hat = torch.Tensor([self.cfg.vtrace_c])
-
-                ratios_cpu = ratio.cpu()
-                values_cpu = values.cpu()
-                rewards_cpu = mb.rewards_cpu
-                dones_cpu = mb.dones_cpu
-
-                vtrace_rho = torch.min(rho_hat, ratios_cpu)
-                vtrace_c = torch.min(c_hat, ratios_cpu)
-
-                vs = torch.zeros((num_trajectories * recurrence))
-                adv = torch.zeros((num_trajectories * recurrence))
-
-                next_values = values_cpu[recurrence - 1 :: recurrence] - rewards_cpu[recurrence - 1 :: recurrence]
-                next_values /= self.cfg.gamma
-                next_vs = next_values
-
-                for i in reversed(range(self.cfg.recurrence)):
-                    rewards = rewards_cpu[i::recurrence]
-                    dones = dones_cpu[i::recurrence]
-                    not_done = 1.0 - dones
-                    not_done_gamma = not_done * self.cfg.gamma
-
-                    curr_values = values_cpu[i::recurrence]
-                    curr_vtrace_rho = vtrace_rho[i::recurrence]
-                    curr_vtrace_c = vtrace_c[i::recurrence]
-
-                    delta_s = curr_vtrace_rho * (rewards + not_done_gamma * next_values - curr_values)
-                    adv[i::recurrence] = curr_vtrace_rho * (rewards + not_done_gamma * next_vs - curr_values)
-                    next_vs = curr_values + delta_s + not_done_gamma * curr_vtrace_c * (next_vs - next_values)
-                    vs[i::recurrence] = next_vs
-
-                    next_values = curr_values
-
-                targets = vs.to(self.device)
-                adv = adv.to(self.device)
-            else:
-                # using regular GAE
-                adv = mb.advantages
-                targets = mb.returns
-
-            adv_std, adv_mean = torch.std_mean(masked_select(adv, valids, num_invalids))
-            adv = (adv - adv_mean) / torch.clamp_min(adv_std, 1e-7)  # normalize advantage
-
-        with self.timing.add_time("losses"):
-            # noinspection PyTypeChecker
-            policy_loss = self._policy_loss(ratio, adv, clip_ratio_low, clip_ratio_high, valids, num_invalids)
-            exploration_loss = self.exploration_loss_func(action_distribution, valids, num_invalids)
-            kl_old, kl_loss = self.kl_loss_func(
-                self.actor_critic.action_space,
-                mb.action_logits,
-                action_distribution,
-                valids,
-                num_invalids,  # TODO: Check actor_critic usage
-            )
-            old_values = mb["values"]
-            value_loss = self._value_loss(values, old_values, targets, clip_value, valids, num_invalids)
-
-        loss_summaries = dict(
-            ratio=ratio,
-            clip_ratio_low=clip_ratio_low,
-            clip_ratio_high=clip_ratio_high,
-            values=result["values"],
-            adv=adv,
-            adv_std=adv_std,
-            adv_mean=adv_mean,
-        )
-
-        return action_distribution, policy_loss, exploration_loss, kl_old, kl_loss, value_loss, loss_summaries
 
 #######################################################################################################################################
 #######################################################################################################################################
@@ -448,9 +237,8 @@ class RetinalLearner(Learner):
                 force_summaries = False
                 minibatches = self._get_minibatches(batch_size, experience_size)
 
-            for batch_num in range(len(minibatches)):
+            for batch_num, indices in enumerate(minibatches):
                 with torch.no_grad(), timing.add_time("minibatch_init"):
-                    indices = minibatches[batch_num]
 
                     # current minibatch consisting of short trajectory segments with length == recurrence
                     mb = self._get_minibatch(gpu_buffer, indices)
@@ -458,49 +246,21 @@ class RetinalLearner(Learner):
                     # enable syntactic sugar that allows us to access dict's keys as object attributes
                     mb = AttrDict(mb)
 
-                with timing.add_time("calculate_losses"):
-                    (
-                        action_distribution,
-                        policy_loss,
-                        exploration_loss,
-                        kl_old,
-                        kl_loss,
-                        value_loss,
-                        loss_summaries,
-                    ) = self._calculate_losses(mb, num_invalids)
-
-                with timing.add_time("losses_postprocess"):
-                    # noinspection PyTypeChecker
-                    actor_loss: Tensor = policy_loss + exploration_loss + kl_loss
-                    critic_loss = value_loss
-                    loss: Tensor = actor_loss + critic_loss
-
-                    epoch_actor_losses[batch_num] = float(actor_loss)
-
-                    high_loss = 30.0
-                    if torch.abs(loss) > high_loss:
-                        log.warning(
-                            "High loss value: l:%.4f pl:%.4f vl:%.4f exp_l:%.4f kl_l:%.4f (recommended to adjust the --reward_scale parameter)",
-                            to_scalar(loss),
-                            to_scalar(policy_loss),
-                            to_scalar(value_loss),
-                            to_scalar(exploration_loss),
-                            to_scalar(kl_loss),
-                        )
-
-                        # perhaps something weird is happening, we definitely want summaries from this step
-                        force_summaries = True
+                # Forward pass through the model / calculate losses
+                vtrace_params = VTraceParams(self.cfg.with_vtrace, self.cfg.vtrace_rho, self.cfg.vtrace_c, self.cfg.gamma)
+                context = build_context(self.actor_critic, mb, num_invalids, epoch, self.policy_id, self.cfg.recurrence, timing, self.cfg.use_rnn, vtrace_params, self.device) # TODO: transform mb to inputs & sources!
 
                 with torch.no_grad(), timing.add_time("kl_divergence"):
+                    # TODO: KL Old not returned in our loss, so recalculate it here? Additional Log Statistic?
                     # if kl_old is not None it is already calculated above
-                    if kl_old is None:
-                        # calculate KL-divergence with the behaviour policy action distribution
-                        old_action_distribution = get_action_distribution(
-                            self.actor_critic.action_space,  # TODO: Check actor_critic usage
-                            mb.action_logits,
-                        )
-                        kl_old = action_distribution.kl_divergence(old_action_distribution)
-                        kl_old = masked_select(kl_old, mb.valids, num_invalids)
+                    # if kl_old is None:
+                    # calculate KL-divergence with the behaviour policy action distribution
+                    old_action_distribution = get_action_distribution(
+                        self.actor_critic.action_space,
+                        mb.action_logits,
+                    )
+                    kl_old = context.action_distribution.kl_divergence(old_action_distribution)
+                    kl_old = masked_select(kl_old, mb.valids, num_invalids)
 
                     kl_old_mean = float(kl_old.mean().item())
                     recent_kls.append(kl_old_mean)
@@ -509,17 +269,36 @@ class RetinalLearner(Learner):
 
                 # update the weights
                 with timing.add_time("update"):
-                    # following advice from https://youtu.be/9mS1fIYj1So set grad to None instead of optimizer.zero_grad()
-                    for p in self.actor_critic.parameters():
-                        p.grad = None
+                    self.optimizer.zero_grad(set_to_none=True)
 
-                    loss.backward()
+                    loss_dict = self.objective.backward(context)
+                    # action_distribution, policy_loss, exploration_loss, kl_old, kl_loss, value_loss, loss_summaries = loss_dict # TODO: etc
 
+                    # TODO: log here based on loss_dict instead of inside losses function
+                    with timing.add_time("losses_postprocess"):
+                        # noinspection PyTypeChecker
+                        actor_loss: Tensor = loss_dict['policy_loss'] + loss_dict['exploration_loss'] + loss_dict['kl_loss']
+                        critic_loss = loss_dict['value_loss']
+                        loss: Tensor = actor_loss + critic_loss
+
+                        epoch_actor_losses[batch_num] = float(actor_loss)
+
+                        high_loss = 30.0
+                        if torch.abs(loss) > high_loss:
+                            log.warning(
+                                "High loss value: l:%.4f pl:%.4f vl:%.4f exp_l:%.4f kl_l:%.4f (recommended to adjust the --reward_scale parameter)",
+                                to_scalar(loss),
+                                to_scalar(loss_dict['policy_loss']),
+                                to_scalar(loss_dict['value_loss']),
+                                to_scalar(loss_dict['exploration_loss']),
+                                to_scalar(loss_dict['kl_loss']),
+                            )
+
+                            # perhaps something weird is happening, we definitely want summaries from this step
+                            force_summaries = True
                     if self.cfg.max_grad_norm > 0.0:
                         with timing.add_time("clip"):
                             torch.nn.utils.clip_grad_norm_(self.actor_critic.parameters(), self.cfg.max_grad_norm)
-
-                    curr_policy_version = self.train_step  # policy version before the weight update
 
                     actual_lr = self.curr_lr
                     if num_invalids > 0:
@@ -547,9 +326,10 @@ class RetinalLearner(Learner):
                     should_record_summaries |= force_summaries
                     if should_record_summaries:
                         # hacky way to collect all of the intermediate variables for summaries
-                        summary_vars = {**locals(), **loss_summaries}
-                        stats_and_summaries = self._record_summaries(AttrDict(summary_vars))
-                        del summary_vars
+                        # summary_vars = {**locals(), **loss_summaries}
+                        # stats_and_summaries = self._record_summaries(AttrDict(summary_vars))
+                        # del summary_vars
+                        # TODO: Check how important this is / whether we want to use it
                         force_summaries = False
 
                     # make sure everything (such as policy weights) is committed to shared device memory

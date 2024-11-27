@@ -149,6 +149,9 @@ class SFFramework(TrainingFramework):
             sf_cfg, "brain", OmegaConf.to_object(cfg.brain)
         )
         SFFramework._set_cfg_cli_argument(
+            sf_cfg, "objective", OmegaConf.to_object(cfg.optimizer.objective)
+        )
+        SFFramework._set_cfg_cli_argument(
             sf_cfg, "train_dir", os.path.join(cfg.path.run_dir, "train_dir")
         )
         SFFramework._set_cfg_cli_argument(sf_cfg, "with_wandb", cfg.logging.use_wandb)
