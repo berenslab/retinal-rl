@@ -1,7 +1,6 @@
 import sys
 
 from omegaconf import DictConfig
-import pytest
 from sample_factory.algo.utils.context import global_model_factory
 from sample_factory.algo.utils.make_env import make_env_func_batched
 from sample_factory.algo.utils.misc import ExperimentStatus

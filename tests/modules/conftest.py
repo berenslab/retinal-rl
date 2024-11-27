@@ -36,6 +36,7 @@ def config(experiment: str) -> DictConfig:
         OmegaConf.resolve(config)
         return config
 
+
 def cleanup(config: DictConfig):
     # Cleanup: remove temporary dir
     if os.path.exists(config.path.run_dir):
@@ -43,14 +44,15 @@ def cleanup(config: DictConfig):
 
 
 @pytest.fixture
-def classification_config()-> Generator[DictConfig, None, None]:
-    _config = config('classification')
+def classification_config() -> Generator[DictConfig, None, None]:
+    _config = config("classification")
     yield _config
     cleanup(_config)
 
+
 @pytest.fixture
 def rl_config() -> Generator[DictConfig, None, None]:
-    _config = config('gathering-apples')
+    _config = config("gathering-apples")
     yield _config
     cleanup(_config)
 
