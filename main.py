@@ -26,6 +26,7 @@ OmegaConf.register_new_resolver("eval", eval)
 def _program(cfg: DictConfig):
     # TODO: Instead of doing checks of the config here, we should implement
     # sth like the configstore which ensures config parameters are present
+    print(cfg)
 
     if cfg.command == "clean":
         delete_results(cfg)
@@ -44,7 +45,6 @@ def _program(cfg: DictConfig):
         objective = instantiate(cfg.optimizer.objective, brain=brain)
         # TODO: RL framework currently can't use objective
     else:
-        objective = None
         warnings.warn("No objective specified, is that wanted?")
 
     if cfg.command == "scan":
