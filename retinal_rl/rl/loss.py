@@ -116,14 +116,10 @@ class ExplorationLoss(Loss[RLContext]):
         weights: List[float] = [],
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
-        loss_coeff: float = 0.001,  # TODO: This is taken care of by the objective system
-        exploration_loss: str = "entropy",  # TODO: Different losses for this?!
+        exploration_loss: str = "symmetric_kl",  # TODO: Different losses for this?!
     ):
         super().__init__(target_circuits, weights, min_epoch, max_epoch)
-        self.loss_coeff = loss_coeff
-        if self.loss_coeff == 0.0:
-            self.exploration_loss_func = lambda action_distr, valids, num_invalids: 0.0
-        elif exploration_loss == "entropy":
+        if exploration_loss == "entropy":
             self.exploration_loss_func = self._entropy_exploration_loss
         elif exploration_loss == "symmetric_kl":
             self.exploration_loss_func = self._symmetric_kl_exploration_loss
@@ -135,7 +131,7 @@ class ExplorationLoss(Loss[RLContext]):
     ) -> Tensor:
         entropy = action_distribution.entropy()
         entropy = masked_select(entropy, valids, num_invalids)
-        return -self.loss_coeff * entropy.mean()
+        return -entropy.mean()
 
     def _symmetric_kl_exploration_loss(
         self, action_distribution, valids, num_invalids: int
@@ -144,8 +140,7 @@ class ExplorationLoss(Loss[RLContext]):
         kl_prior = masked_select(kl_prior, valids, num_invalids).mean()
         if not torch.isfinite(kl_prior):
             kl_prior = torch.zeros(kl_prior.shape)
-        kl_prior = torch.clamp(kl_prior, max=30)
-        return self.loss_coeff * kl_prior
+        return torch.clamp(kl_prior, max=30)
 
     def compute_value(self, context):
         return self.exploration_loss_func(
@@ -163,26 +158,16 @@ class KlLoss(Loss[RLContext]):
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
         action_space=None,  # TODO: Where to get this
-        loss_coeff: float = 0.0,  # TODO: This is taken care of by the objective system
     ):
         super().__init__(target_circuits, weights, min_epoch, max_epoch)
         self.action_space = action_space
-        self.loss_coeff = loss_coeff  # TODO: loss coefficient system
-        if loss_coeff == 0.0:
-            if is_continuous_action_space(self.action_space):
-                log.warning(
-                    "WARNING! It is generally recommended to enable Fixed KL loss (https://arxiv.org/pdf/1707.06347.pdf) for continuous action tasks to avoid potential numerical issues. "
-                    "I.e. set --kl_loss_coeff=0.1"
-                )
-            self.kl_loss_func = (
-                lambda action_space,
-                action_logits,
-                distribution,
-                valids,
-                num_invalids: torch.tensor(0.0)
+        if all(x == 0.0 for x in weights) and is_continuous_action_space(
+            self.action_space
+        ):
+            log.warning(
+                "WARNING! It is generally recommended to enable Fixed KL loss (https://arxiv.org/pdf/1707.06347.pdf) for continuous action tasks to avoid potential numerical issues. "
+                "I.e. set --kl_loss_coeff=0.1"
             )
-        else:
-            self.kl_loss_func = self._kl_loss
 
     def _kl_loss(
         self,
@@ -197,19 +182,17 @@ class KlLoss(Loss[RLContext]):
         kl_old = masked_select(kl_old, valids, num_invalids)
         kl_loss = kl_old.mean()
 
-        kl_loss *= self.loss_coeff
-
         return kl_old, kl_loss
 
     def compute_value(self, context):
-        # TODO: this returns kl_loss, kl_loss_old
-        return self.kl_loss_func(
+        # TODO: this theoretically returns kl_loss, kl_loss_old
+        return self._kl_loss(
             self.action_space,
             context.action_distribution_parameter,
             context.action_distribution,
             context.valids,
             context.num_invalids,
-        )
+        )[1]
 
 
 class ValueLoss(Loss[RLContext]):
@@ -222,11 +205,9 @@ class ValueLoss(Loss[RLContext]):
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
         clip_value=0.2,  # TODO: Check clip value default
-        loss_coeff: float = 0.5,  # TODO: This is should be taken care of by the objective system
     ):
         super().__init__(target_circuits, weights, min_epoch, max_epoch)
         self.clip_value = clip_value
-        self.loss_coeff = loss_coeff
 
     def _value_loss(
         self,
@@ -244,11 +225,7 @@ class ValueLoss(Loss[RLContext]):
         value_clipped_loss = (value_clipped - target).pow(2)
         value_loss = torch.max(value_original_loss, value_clipped_loss)
         value_loss = masked_select(value_loss, valids, num_invalids)
-        value_loss = value_loss.mean()
-
-        value_loss *= self.loss_coeff
-
-        return value_loss
+        return value_loss.mean()
 
     def compute_value(self, context):
         # TODO: Unpack context

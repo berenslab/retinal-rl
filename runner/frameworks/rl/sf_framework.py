@@ -65,10 +65,7 @@ class SFFramework(TrainingFramework):
         objective: Optional[Objective[ContextT]] = None,
     ):
         warnings.warn(
-            "device, brain, optimizer are initialized differently in sample_factory and thus their current state will be ignored"
-        )
-        warnings.warn(
-            "objective is currently not supported for sample factory simulations"
+            "device, brain, optimizer and objective are initialized differently in sample_factory and thus their current state will be ignored"
         )
         # Run simulation
         if not (self.sf_cfg.dry_run):
@@ -133,8 +130,8 @@ class SFFramework(TrainingFramework):
         )
         # Using this function is necessary to make sure that the parameters are not overwritten when sample_factory loads a checkpoint
 
-        SFFramework._set_cfg_cli_argument(sf_cfg, "res_h", cfg.dataset.vision_width)
-        SFFramework._set_cfg_cli_argument(sf_cfg, "res_w", cfg.dataset.vision_height)
+        SFFramework._set_cfg_cli_argument(sf_cfg, "res_h", cfg.dataset.vision_height)
+        SFFramework._set_cfg_cli_argument(sf_cfg, "res_w", cfg.dataset.vision_width)
         SFFramework._set_cfg_cli_argument(sf_cfg, "env", cfg.dataset.env_name)
         SFFramework._set_cfg_cli_argument(
             sf_cfg, "input_satiety", cfg.dataset.input_satiety
