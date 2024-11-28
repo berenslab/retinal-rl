@@ -1,7 +1,34 @@
 # The optimizer to use
 optimizer: # torch.optim Class and parameters
   _target_: torch.optim.Adam
-  lr: 0.0003
+  lr: 0.0001
 
 # The objective function
 # TODO: Implement in RL and update config
+objective:
+  _target_: retinal_rl.models.objective.Objective
+  losses:
+    - _target_: retinal_rl.rl.loss.PolicyLoss
+      target_circuits:
+        - encoder
+        - action_decoder
+      weights:
+        - 1
+        - 1
+      clip_ratio: 1.1
+    - _target_: retinal_rl.rl.loss.ExplorationLoss
+      target_circuits:
+        - encoder
+        - action_decoder
+      weights:
+        - 0.001
+        - 0.001
+    - _target_: retinal_rl.rl.loss.KlLoss
+    - _target_: retinal_rl.rl.loss.ValueLoss
+      target_circuits:
+        - encoder
+        - action_decoder
+      weights:
+        - 0.5
+        - 0.5
+      clip_value: 0.2
