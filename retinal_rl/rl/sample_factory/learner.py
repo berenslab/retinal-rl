@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from typing import Callable, Dict, Optional, Tuple
 
@@ -40,10 +41,13 @@ from sample_factory.utils.typing import (
 )
 from sample_factory.utils.utils import log
 from torch import Tensor
+import wandb
 
 from retinal_rl.models.objective import Objective
 from retinal_rl.rl.loss import KlLoss, RLContext, VTraceParams, build_context
 from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
+
+logger = logging.getLogger(__name__)
 
 
 class RetinalLearner(Learner):
@@ -313,7 +317,6 @@ class RetinalLearner(Learner):
 
                     with self.param_server.policy_lock:
                         self.optimizer.step()
-                        # TODO: add objective here? How to get through interface?
 
                     num_sgd_steps += 1
 
@@ -329,9 +332,9 @@ class RetinalLearner(Learner):
                     should_record_summaries |= force_summaries
                     if should_record_summaries:
                         # hacky way to collect all of the intermediate variables for summaries
-                        # summary_vars = {**locals(), **loss_summaries}
-                        # stats_and_summaries = self._record_summaries(AttrDict(summary_vars))
-                        # del summary_vars
+                        summary_vars = {**locals()}
+                        stats_and_summaries = self._record_summaries(AttrDict(summary_vars), loss_dict)
+                        del summary_vars
                         # TODO: Check how important this is / whether we want to use it
                         force_summaries = False
 
@@ -365,81 +368,80 @@ class RetinalLearner(Learner):
 #######################################################################################################################################
 #######################################################################################################################################
 
-    def _record_summaries(self, train_loop_vars) -> AttrDict:
-        var = train_loop_vars
-
+    def _record_summaries(self, train_loop_vars, losses) -> AttrDict:
+        # FIXME: IMPROVISED FOR LOGGING
         self.last_summary_time = time.time()
-        stats = AttrDict()
+        stats = AttrDict(losses)
 
-        stats.lr = self.curr_lr
-        stats.actual_lr = train_loop_vars.actual_lr  # potentially scaled because of masked data
+        # stats.lr = self.curr_lr
+        # stats.actual_lr = train_loop_vars.actual_lr  # potentially scaled because of masked data
 
-        stats.update(self.actor_critic.summaries())  # TODO: Check actor_critic usage
+        # stats.update(self.actor_critic.summaries())  # TODO: Check actor_critic usage
 
-        stats.valids_fraction = var.mb.valids.float().mean()
-        stats.same_policy_fraction = (var.mb.policy_id == self.policy_id).float().mean()
+        # # stats.valids_fraction = train_loop_vars.mb.valids.float().mean()
+        # # stats.same_policy_fraction = (train_loop_vars.mb.policy_id == self.policy_id).float().mean()
 
-        grad_norm = (
-            sum(p.grad.data.norm(2).item() ** 2 for p in self.actor_critic.parameters() if p.grad is not None) ** 0.5
-        )
-        stats.grad_norm = grad_norm
-        stats.loss = var.loss
-        stats.value = var.values.mean()
-        stats.entropy = var.action_distribution.entropy().mean()
-        stats.policy_loss = var.policy_loss
-        stats.kl_loss = var.kl_loss
-        stats.value_loss = var.value_loss
-        stats.exploration_loss = var.exploration_loss
+        # grad_norm = (
+        #     sum(p.grad.data.norm(2).item() ** 2 for p in self.actor_critic.parameters() if p.grad is not None) ** 0.5
+        # )
+        # stats.grad_norm = grad_norm
+        # stats.loss = train_loop_vars.loss
+        # # stats.value = train_loop_vars.values.mean()
+        # # stats.entropy = train_loop_vars.action_distribution.entropy().mean()
+        # # stats.policy_loss = train_loop_vars.policy_loss
+        # # stats.kl_loss = train_loop_vars.kl_loss
+        # # stats.value_loss = train_loop_vars.value_loss
+        # # stats.exploration_loss = train_loop_vars.exploration_loss
 
-        stats.act_min = var.mb.actions.min()
-        stats.act_max = var.mb.actions.max()
+        # # stats.act_min = train_loop_vars.mb.actions.min()
+        # # stats.act_max = train_loop_vars.mb.actions.max()
 
-        if "adv_mean" in stats:
-            stats.adv_min = var.mb.advantages.min()
-            stats.adv_max = var.mb.advantages.max()
-            stats.adv_std = var.adv_std
-            stats.adv_mean = var.adv_mean
+        # # if "adv_mean" in stats:
+        # #     stats.adv_min = train_loop_vars.mb.advantages.min()
+        # #     stats.adv_max = train_loop_vars.mb.advantages.max()
+        # #     stats.adv_std = train_loop_vars.adv_std
+        # #     stats.adv_mean = train_loop_vars.adv_mean
 
-        stats.max_abs_logprob = torch.abs(var.mb.action_logits).max()
+        # # stats.max_abs_logprob = torch.abs(train_loop_vars.mb.action_logits).max()
 
-        if hasattr(var.action_distribution, "summaries"):
-            stats.update(var.action_distribution.summaries())
+        # # if hasattr(train_loop_vars.action_distribution, "summaries"):
+        # #     stats.update(train_loop_vars.action_distribution.summaries())
 
-        if var.epoch == self.cfg.num_epochs - 1 and var.batch_num == len(var.minibatches) - 1:
-            # we collect these stats only for the last PPO batch, or every time if we're only doing one batch, IMPALA-style
-            valid_ratios = masked_select(var.ratio, var.mb.valids, var.num_invalids)
-            ratio_mean = torch.abs(1.0 - valid_ratios).mean().detach()
-            ratio_min = valid_ratios.min().detach()
-            ratio_max = valid_ratios.max().detach()
-            # log.debug('Learner %d ratio mean min max %.4f %.4f %.4f', self.policy_id, ratio_mean.cpu().item(), ratio_min.cpu().item(), ratio_max.cpu().item())
+        # if train_loop_vars.epoch == self.cfg.num_epochs - 1 and train_loop_vars.batch_num == len(train_loop_vars.minibatches) - 1:
+        #     # we collect these stats only for the last PPO batch, or every time if we're only doing one batch, IMPALA-style
+        #     # valid_ratios = masked_select(train_loop_vars.ratio, train_loop_vars.mb.valids, train_loop_vars.num_invalids)
+        #     # ratio_mean = torch.abs(1.0 - valid_ratios).mean().detach()
+        #     # ratio_min = valid_ratios.min().detach()
+        #     # ratio_max = valid_ratios.max().detach()
+        #     # log.debug('Learner %d ratio mean min max %.4f %.4f %.4f', self.policy_id, ratio_mean.cpu().item(), ratio_min.cpu().item(), ratio_max.cpu().item())
 
-            value_delta = torch.abs(var.values - var.mb.values)
-            value_delta_avg, value_delta_max = value_delta.mean(), value_delta.max()
+        #     # value_delta = torch.abs(train_loop_vars.values - train_loop_vars.mb.values)
+        #     # value_delta_avg, value_delta_max = value_delta.mean(), value_delta.max()
 
-            stats.kl_divergence = var.kl_old_mean
-            stats.kl_divergence_max = var.kl_old.max()
-            stats.value_delta = value_delta_avg
-            stats.value_delta_max = value_delta_max
-            # noinspection PyUnresolvedReferences
-            stats.fraction_clipped = (
-                (valid_ratios < var.clip_ratio_low).float() + (valid_ratios > var.clip_ratio_high).float()
-            ).mean()
-            stats.ratio_mean = ratio_mean
-            stats.ratio_min = ratio_min
-            stats.ratio_max = ratio_max
-            stats.num_sgd_steps = var.num_sgd_steps
+        #     # stats.kl_divergence = train_loop_vars.kl_old_mean
+        #     # stats.kl_divergence_max = train_loop_vars.kl_old.max()
+        #     # stats.value_delta = value_delta_avg
+        #     # stats.value_delta_max = value_delta_max
+        #     # noinspection PyUnresolvedReferences
+        #     # stats.fraction_clipped = (
+        #     #     (valid_ratios < train_loop_vars.clip_ratio_low).float() + (valid_ratios > train_loop_vars.clip_ratio_high).float()
+        #     # ).mean()
+        #     # stats.ratio_mean = ratio_mean
+        #     # stats.ratio_min = ratio_min
+        #     # stats.ratio_max = ratio_max
+        #     stats.num_sgd_steps = train_loop_vars.num_sgd_steps
 
-        # this caused numerical issues on some versions of PyTorch with second moment reaching infinity
-        adam_max_second_moment = 0.0
-        for key, tensor_state in self.optimizer.state.items():
-            if "exp_avg_sq" in tensor_state:
-                adam_max_second_moment = max(tensor_state["exp_avg_sq"].max().item(), adam_max_second_moment)
-        stats.adam_max_second_moment = adam_max_second_moment
+        # # this caused numerical issues on some versions of PyTorch with second moment reaching infinity
+        # adam_max_second_moment = 0.0
+        # for key, tensor_state in self.optimizer.state.items():
+        #     if "exp_avg_sq" in tensor_state:
+        #         adam_max_second_moment = max(tensor_state["exp_avg_sq"].max().item(), adam_max_second_moment)
+        # stats.adam_max_second_moment = adam_max_second_moment
 
-        version_diff = (var.curr_policy_version - var.mb.policy_version)[var.mb.policy_id == self.policy_id]
-        stats.version_diff_avg = version_diff.mean()
-        stats.version_diff_min = version_diff.min()
-        stats.version_diff_max = version_diff.max()
+        # version_diff = (train_loop_vars.curr_policy_version - train_loop_vars.mb.policy_version)[train_loop_vars.mb.policy_id == self.policy_id]
+        # stats.version_diff_avg = version_diff.mean()
+        # stats.version_diff_min = version_diff.min()
+        # stats.version_diff_max = version_diff.max()
 
         for key, value in stats.items():
             stats[key] = to_scalar(value)
