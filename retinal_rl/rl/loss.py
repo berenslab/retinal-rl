@@ -378,10 +378,14 @@ def build_context(
         adv_std, adv_mean = torch.std_mean(masked_select(adv, valids, num_invalids))
         adv = (adv - adv_mean) / torch.clamp_min(adv_std, 1e-7)  # normalize advantage
 
+    # FIXME: IMPROVISED FOR ENABLING THE MULTI-OBJECTIVE
+    # Get responses - (2nd forward pass)
+    responses = actor_critic.brain({'vision': mb.normalized_obs["obs"]})
+
     return RLContext(
+        mb.normalized_obs["obs"],
         None,
-        None,
-        None,
+        responses,
         epoch,
         num_invalids,
         policy_id,
