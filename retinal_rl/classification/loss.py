@@ -39,8 +39,8 @@ class ClassificationLoss(Loss[ClassificationContext]):
 
     def __init__(
         self,
-        target_circuits: List[str] = [],
-        weights: List[float] = [],
+        target_circuits: Optional[List[str]] = None,
+        weights: Optional[List[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
     ):

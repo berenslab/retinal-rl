@@ -68,12 +68,17 @@ class Loss(LoggingStatistic[ContextT]):
 
     def __init__(
         self,
-        target_circuits: List[str] = [],
-        weights: List[float] = [],
+        target_circuits: Optional[List[str]] = None,
+        weights: Optional[List[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
     ):
         """Initialize the loss with a weight."""
+        if target_circuits is None:
+            target_circuits = []
+        if weights is None:
+            weights = [1]
+
         self.target_circuits = target_circuits
         self.weights = weights
         self.min_epoch = min_epoch
@@ -102,8 +107,8 @@ class ReconstructionLoss(Loss[ContextT]):
     def __init__(
         self,
         target_decoder: str,
-        target_circuits: List[str] = [],
-        weights: List[float] = [],
+        target_circuits: Optional[List[str]] = None,
+        weights: Optional[List[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
     ):
@@ -136,8 +141,8 @@ class L1Sparsity(Loss[ContextT]):
     def __init__(
         self,
         target_response: str,
-        target_circuits: List[str] = [],
-        weights: List[float] = [],
+        target_circuits: Optional[List[str]] = None,
+        weights: Optional[List[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
     ):
@@ -167,8 +172,8 @@ class KLDivergenceSparsity(Loss[ContextT]):
         self,
         target_response: str,
         target_sparsity: float = 0.05,
-        target_circuits: List[str] = [],
-        weights: List[float] = [],
+        target_circuits: Optional[List[str]] = None,
+        weights: Optional[List[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
     ):

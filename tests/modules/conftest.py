@@ -9,11 +9,13 @@ import pytest
 from omegaconf import DictConfig, OmegaConf
 
 sys.path.append(".")
+from retinal_rl.models.brain import Brain
 from runner.util import search_conf
 
 OmegaConf.register_new_resolver("eval", eval)
 
 
+# TODO: make this independent of whether templates are in the right place or not etc
 def config(experiment: str) -> DictConfig:
     with hydra.initialize(config_path="../../config/base", version_base=None):
         config = hydra.compose(
