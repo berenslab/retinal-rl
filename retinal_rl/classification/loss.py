@@ -6,7 +6,7 @@ import torch
 from torch import Tensor, nn
 
 from retinal_rl.models.brain import Brain
-from retinal_rl.models.loss import BaseContext, LogStatistic, Loss
+from retinal_rl.models.loss import BaseContext, LoggingStatistic, Loss
 
 
 class ClassificationContext(BaseContext):
@@ -61,7 +61,7 @@ class ClassificationLoss(Loss[ClassificationContext]):
         return self.loss_fn(predictions, classes)
 
 
-class PercentCorrect(LogStatistic[ClassificationContext]):
+class PercentCorrect(LoggingStatistic[ClassificationContext]):
     """(Inverse) Loss for computing the percent correct classification."""
 
     def compute_value(self, context: ClassificationContext) -> Tensor:

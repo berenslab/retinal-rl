@@ -37,7 +37,7 @@ class BaseContext:
         self.epoch = epoch
 
 
-class LogStatistic(Generic[ContextT]):
+class LoggingStatistic(Generic[ContextT]):
     """Base class for statistics that should be logged."""
 
     def __call__(self, context: ContextT) -> Tensor:
@@ -54,7 +54,7 @@ class LogStatistic(Generic[ContextT]):
         return camel_to_snake(self.__class__.__name__)
 
 
-class Loss(LogStatistic[ContextT]):
+class Loss(LoggingStatistic[ContextT]):
     """Base class for losses that can be used to define a multiobjective optimization problem.
 
     Attributes
