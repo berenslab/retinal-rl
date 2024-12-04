@@ -23,10 +23,12 @@ class Objective(Generic[ContextT]):
             logging_statistics = []
 
         for loss in losses:
-            assert isinstance(loss, Loss), "losses need to be subclass Loss"
+            assert isinstance(loss, Loss), "losses need to subclass Loss"
 
         for stat in logging_statistics:
-            assert isinstance(stat, LoggingStatistic), "logging_statistics need to be subclass LoggingStatistic"
+            assert isinstance(
+                stat, LoggingStatistic
+            ), "logging_statistics need to subclass LoggingStatistic"
 
         self.device = next(brain.parameters()).device
         self.losses = losses
