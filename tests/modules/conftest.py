@@ -9,7 +9,6 @@ import pytest
 from omegaconf import DictConfig, OmegaConf
 
 sys.path.append(".")
-from retinal_rl.models.brain import Brain
 from runner.util import search_conf
 
 OmegaConf.register_new_resolver("eval", eval)
