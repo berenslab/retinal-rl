@@ -1,21 +1,38 @@
 """Module for managing optimization of complex neural network models with multiple circuits."""
 
 import logging
-from typing import Dict, Generic, List, Tuple
+from typing import Dict, Generic, List, Optional, Tuple
 
 import torch
 from torch.nn.parameter import Parameter
 
 from retinal_rl.models.brain import Brain
-from retinal_rl.models.loss import ContextT, Loss
+from retinal_rl.models.loss import ContextT, LoggingStatistic, Loss
 
 logger = logging.getLogger(__name__)
 
 
 class Objective(Generic[ContextT]):
-    def __init__(self, brain: Brain, losses: List[Loss[ContextT]]):
+    def __init__(
+        self,
+        brain: Brain,
+        losses: List[Loss[ContextT]],
+        logging_statistics: Optional[List[LoggingStatistic[ContextT]]] = None,
+    ):
+        if logging_statistics is None:
+            logging_statistics = []
+
+        for loss in losses:
+            assert isinstance(loss, Loss), "losses need to subclass Loss"
+
+        for stat in logging_statistics:
+            assert isinstance(
+                stat, LoggingStatistic
+            ), "logging_statistics need to subclass LoggingStatistic"
+
         self.device = next(brain.parameters()).device
-        self.losses: List[Loss[ContextT]] = losses
+        self.losses = losses
+        self.logging_statistics = logging_statistics
         self.brain: Brain = brain
 
         # Build a dictionary of weighted parameters for each loss
@@ -26,12 +43,16 @@ class Objective(Generic[ContextT]):
 
         retain_graph = True
 
+        for i, stat in enumerate(self.logging_statistics):
+            loss_dict[stat.key_name] = stat(context).item()
+
         for i, loss in enumerate(self.losses):
-            # Compute losses
-            weights, params = self._weighted_params(loss)
             name = loss.key_name
             value = loss(context)
             loss_dict[name] = value.item()
+
+            # Compute losses
+            weights, params = self._weighted_params(loss)
             if not loss.is_training_epoch(context.epoch) or not params:
                 continue
 
@@ -57,9 +78,18 @@ class Objective(Generic[ContextT]):
     def _weighted_params(
         self, loss: Loss[ContextT]
     ) -> Tuple[List[float], List[Parameter]]:
+        _targets = loss.target_circuits
+        _weights = loss.weights
+
+        if "__all__" in _targets:
+            _targets = self.brain.circuits.keys()
+            if len(_weights) == 1:
+                _weights = [_weights[0] for _ in range(len(_targets))]
+            assert len(_weights) == len(_targets)
+
         weights: List[float] = []
         params: List[Parameter] = []
-        for weight, circuit_name in zip(loss.weights, loss.target_circuits):
+        for weight, circuit_name in zip(_weights, _targets):
             if circuit_name in self.brain.circuits:
                 params0 = list(self.brain.circuits[circuit_name].parameters())
                 weights += [weight] * len(params0)

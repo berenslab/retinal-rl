@@ -37,12 +37,29 @@ class BaseContext:
         self.epoch = epoch
 
 
-class Loss(Generic[ContextT]):
+class LoggingStatistic(Generic[ContextT]):
+    """Base class for statistics that should be logged."""
+
+    def __call__(self, context: ContextT) -> Tensor:
+        return self.compute_value(context)
+
+    @abstractmethod
+    def compute_value(self, context: ContextT) -> Tensor:
+        """Compute the value for this losses The context dictionary contains the necessary information to compute the loss."""
+        pass
+
+    @property
+    def key_name(self) -> str:
+        """Return a user-friendly name for the loss."""
+        return camel_to_snake(self.__class__.__name__)
+
+
+class Loss(LoggingStatistic[ContextT]):
     """Base class for losses that can be used to define a multiobjective optimization problem.
 
     Attributes
     ----------
-        target_circuits (List[str]): The target circuits for the loss.
+        target_circuits (List[str]): The target circuits for the loss. If '__all__', will target all circuits
         weights (List[float]): The weights for the loss.
         min_epoch (int): The minimum epoch to start training the loss.
         max_epoch (int): The maximum epoch to train the loss. Unbounded if < 0.
@@ -51,19 +68,21 @@ class Loss(Generic[ContextT]):
 
     def __init__(
         self,
-        target_circuits: List[str] = [],
-        weights: List[float] = [],
+        target_circuits: Optional[List[str]] = None,
+        weights: Optional[List[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
     ):
         """Initialize the loss with a weight."""
+        if target_circuits is None:
+            target_circuits = []
+        if weights is None:
+            weights = [1]
+
         self.target_circuits = target_circuits
         self.weights = weights
         self.min_epoch = min_epoch
         self.max_epoch = max_epoch
-
-    def __call__(self, context: ContextT) -> Tensor:
-        return self.compute_value(context)
 
     def is_training_epoch(self, epoch: int) -> bool:
         """Check if the objective should currently be pursued.
@@ -81,16 +100,6 @@ class Loss(Generic[ContextT]):
             return False
         return self.max_epoch is None or epoch <= self.max_epoch
 
-    @abstractmethod
-    def compute_value(self, context: ContextT) -> Tensor:
-        """Compute the value for this losses The context dictionary contains the necessary information to compute the loss."""
-        pass
-
-    @property
-    def key_name(self) -> str:
-        """Return a user-friendly name for the loss."""
-        return camel_to_snake(self.__class__.__name__)
-
 
 class ReconstructionLoss(Loss[ContextT]):
     """Loss for computing the reconstruction loss between inputs and reconstructions."""
@@ -98,8 +107,8 @@ class ReconstructionLoss(Loss[ContextT]):
     def __init__(
         self,
         target_decoder: str,
-        target_circuits: List[str] = [],
-        weights: List[float] = [],
+        target_circuits: Optional[List[str]] = None,
+        weights: Optional[List[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
     ):
@@ -132,8 +141,8 @@ class L1Sparsity(Loss[ContextT]):
     def __init__(
         self,
         target_response: str,
-        target_circuits: List[str] = [],
-        weights: List[float] = [],
+        target_circuits: Optional[List[str]] = None,
+        weights: Optional[List[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
     ):
@@ -163,8 +172,8 @@ class KLDivergenceSparsity(Loss[ContextT]):
         self,
         target_response: str,
         target_sparsity: float = 0.05,
-        target_circuits: List[str] = [],
-        weights: List[float] = [],
+        target_circuits: Optional[List[str]] = None,
+        weights: Optional[List[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
     ):

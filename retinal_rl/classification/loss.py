@@ -6,7 +6,7 @@ import torch
 from torch import Tensor, nn
 
 from retinal_rl.models.brain import Brain
-from retinal_rl.models.loss import BaseContext, Loss
+from retinal_rl.models.loss import BaseContext, LoggingStatistic, Loss
 
 
 class ClassificationContext(BaseContext):
@@ -39,8 +39,8 @@ class ClassificationLoss(Loss[ClassificationContext]):
 
     def __init__(
         self,
-        target_circuits: List[str] = [],
-        weights: List[float] = [],
+        target_circuits: Optional[List[str]] = None,
+        weights: Optional[List[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
     ):
@@ -61,17 +61,8 @@ class ClassificationLoss(Loss[ClassificationContext]):
         return self.loss_fn(predictions, classes)
 
 
-class PercentCorrect(Loss[ClassificationContext]):
+class PercentCorrect(LoggingStatistic[ClassificationContext]):
     """(Inverse) Loss for computing the percent correct classification."""
-
-    def __init__(
-        self,
-        target_circuits: List[str] = [],
-        weights: List[float] = [],
-        min_epoch: Optional[int] = None,
-        max_epoch: Optional[int] = None,
-    ):
-        super().__init__(target_circuits, weights, min_epoch, max_epoch)
 
     def compute_value(self, context: ClassificationContext) -> Tensor:
         """Compute the percent correct classification."""

@@ -11,7 +11,6 @@ optimizer: # torch.optim Class and parameters
 objective:
   _target_: retinal_rl.models.objective.Objective
   losses:
-    - _target_: retinal_rl.classification.loss.PercentCorrect
     - _target_: retinal_rl.classification.loss.ClassificationLoss
       target_circuits: # Circuit parameters to optimize with this optimizer.  We train the retina and the decoder exclusively to maximize reconstruction
         - retina
@@ -55,3 +54,5 @@ objective:
         - ${sparsity_weight}
         - ${sparsity_weight}
         - ${sparsity_weight}
+  logging_statistics:
+    - _target_: retinal_rl.classification.loss.PercentCorrect

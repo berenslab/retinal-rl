@@ -14,15 +14,15 @@ from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
 from runner.frameworks.rl.sf_framework import SFFramework
 
 
-def test_init_framework(config: DictConfig, data_root):
-    framework = SFFramework(config, data_root)
-    cfg, runner = make_runner(framework.sf_cfg)
+def test_init_framework(rl_config: DictConfig, data_root: str):
+    framework = SFFramework(rl_config, data_root)
+    _, runner = make_runner(framework.sf_cfg)
     status = runner.init()
     assert status == ExperimentStatus.SUCCESS
 
 
-def test_actor_critic_brain(config: DictConfig, data_root):
-    sf_cfg = SFFramework.to_sf_cfg(config)
+def test_actor_critic_brain(rl_config: DictConfig, data_root: str):
+    sf_cfg = SFFramework.to_sf_cfg(rl_config)
     register_retinal_env(sf_cfg.env, data_root, False)
     global_model_factory().register_actor_critic_factory(SampleFactoryBrain)
     env = make_env_func_batched(
