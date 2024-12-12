@@ -28,8 +28,8 @@ class ActorCriticProtocol(Protocol):
     def forward_tail(
         self,
         core_output: Tensor,
-        values_only: bool = False,
-        sample_actions: bool = False,
+        values_only: bool,
+        sample_actions: bool,
     ) -> TensorDict: ...
 
     def forward(
