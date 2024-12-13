@@ -1,6 +1,3 @@
-
-
-
 import logging
 from dataclasses import dataclass
 from typing import cast
@@ -23,6 +20,7 @@ from retinal_rl.util import FloatArray, is_nonlinearity
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class SpectralAnalysis:
     """Results of spectral analysis for a layer."""
@@ -40,6 +38,7 @@ class HistogramAnalysis:
     channel_histograms: FloatArray
     bin_edges: FloatArray
 
+
 def spectral_analysis(
     device: torch.device,
     imageset: Imageset,
@@ -54,7 +53,7 @@ def spectral_analysis(
     dataloader = _prepare_dataset(imageset, max_sample_size)
 
     # Initialize results
-    results = {"input": _layer_spectral_analysis(device, dataloader, nn.Identity())}
+    results: dict[str, SpectralAnalysis] = {}
 
     # Analyze each layer
     head_layers: list[nn.Module] = []
@@ -64,7 +63,6 @@ def spectral_analysis(
 
         if is_nonlinearity(layer):
             continue
-        # TODO: Possible for non Conv2D layers?
 
         results[layer_name] = _layer_spectral_analysis(
             device, dataloader, nn.Sequential(*head_layers)
@@ -84,10 +82,10 @@ def histogram_analysis(
     _, cnn_layers = get_cnn_circuit(brain)
 
     # Prepare dataset
-    dataloader = _prepare_dataset(imageset, max_sample_size)
+    dataloader = _prepare_dataset(imageset, max_sample_size)  # TODO: Move outside?
 
     # Initialize results
-    results = {"input": _layer_pixel_histograms(device, dataloader, nn.Identity())}
+    results: dict[str, HistogramAnalysis] = {}
 
     # Analyze each layer
     head_layers: list[nn.Module] = []
@@ -96,7 +94,6 @@ def histogram_analysis(
         head_layers.append(layer)
         if is_nonlinearity(layer):
             continue
-        # TODO: Possible for non Conv2D layers?
         results[layer_name] = _layer_pixel_histograms(
             device, dataloader, nn.Sequential(*head_layers)
         )
@@ -243,8 +240,6 @@ def plot(
     copy_checkpoint: bool,
 ):
     for layer_name, layer_rfs in rf_result.items():
-        if layer_name != "input":
-            continue
         layer_spectral = spectral_result[layer_name]
         layer_histogram = histogram_result[layer_name]
         for channel in range(layer_rfs.shape[0]):
@@ -396,3 +391,36 @@ def _plot_receptive_fields(ax: Axes, rf: FloatArray):
         verticalalignment="center",
         transform=ax.transAxes,
     )
+
+
+def analyze_input(
+    device: torch.device, imageset: Imageset, max_sample_size: int
+) -> tuple[SpectralAnalysis, HistogramAnalysis]:
+    dataloader = _prepare_dataset(imageset, max_sample_size)
+    spectral_result = _layer_spectral_analysis(device, dataloader, nn.Identity())
+    histogram_result = _layer_pixel_histograms(device, dataloader, nn.Identity())
+    return spectral_result, histogram_result
+
+
+def input_plot(
+    log: FigureLogger,
+    rf_result: FloatArray,
+    spectral_result: SpectralAnalysis,
+    histogram_result: HistogramAnalysis,
+    init_dir: str,
+):
+    for channel in range(histogram_result.channel_histograms.shape[0]):
+        channel_fig = layer_channel_plots(
+            rf_result,
+            spectral_result,
+            histogram_result,
+            layer_name="input",
+            channel=channel,
+        )
+        log.log_figure(
+            channel_fig,
+            init_dir,
+            f"input_channel_{channel}",
+            0,
+            False,
+        )
