@@ -1,7 +1,9 @@
 """Utility functions for plotting the results of statistical analyses."""
 
+import json
 import shutil
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -17,7 +19,7 @@ from matplotlib.ticker import MaxNLocator
 
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.objective import ContextT, Objective
-from retinal_rl.util import FloatArray
+from retinal_rl.util import FloatArray, NumpyEncoder
 
 
 def make_image_grid(arrays: list[FloatArray], nrow: int) -> FloatArray:
@@ -178,8 +180,6 @@ def plot_receptive_field_sizes(
     rf_sizes: list[tuple[int, int]] = []
     layer_names: list[str] = []
     for name, rf in rf_layers.items():
-        if name == "input":  # TODO: Should not be possible?!
-            continue
         rf_height, rf_width = rf.shape[2:]
         rf_sizes.append((rf_height, rf_width))
         layer_names.append(name)
@@ -291,13 +291,10 @@ def set_integer_ticks(ax: Axes):
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
+
 class FigureLogger:
     def __init__(
-        self,
-        use_wandb: bool,
-        plot_dir: Path,
-        checkpoint_plot_dir: Path,
-        run_dir: Path
+        self, use_wandb: bool, plot_dir: Path, checkpoint_plot_dir: Path, run_dir: Path
     ):
         self.use_wandb = use_wandb
         self.plot_dir = plot_dir
@@ -340,7 +337,6 @@ class FigureLogger:
         return "/".join(capitalized_parts)
 
     def _checkpoint_copy(self, sub_dir: str, file_name: str, epoch: int) -> None:
-        # TODO: Does this need to be in here?
         src_path = self.plot_dir / sub_dir / f"{file_name}.png"
 
         dest_dir = self.checkpoint_plot_dir / f"epoch_{epoch}" / sub_dir
@@ -370,3 +366,7 @@ class FigureLogger:
 
         if self.use_wandb:
             wandb.save(str(filepath), base_path=self.run_dir, policy="now")
+
+    def save_dict(self, path: Path, dict: dict[str, Any]):
+        with open(path, "w") as f:
+            json.dump(dict, f, cls=NumpyEncoder)

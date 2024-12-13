@@ -40,6 +40,7 @@ def analyze(brain: Brain, device: torch.device):
 
     return input_shape, results
 
+
 def plot(
     log: FigureLogger,
     rf_result: dict[str, FloatArray],
@@ -47,8 +48,6 @@ def plot(
     copy_checkpoint: bool,
 ):
     for layer_name, layer_rfs in rf_result.items():
-        if layer_name == "input": # TODO: Remove, see where this goes
-            continue
         layer_rf_plots = layer_receptive_field_plots(layer_rfs)
         log.log_figure(
             layer_rf_plots,
@@ -58,9 +57,8 @@ def plot(
             copy_checkpoint,
         )
 
-def layer_receptive_field_plots(
-    lyr_rfs: FloatArray, max_cols: int = 8
-) -> Figure:
+
+def layer_receptive_field_plots(lyr_rfs: FloatArray, max_cols: int = 8) -> Figure:
     """Plot the receptive fields of a convolutional layer."""
     ochns, _, _, _ = lyr_rfs.shape
 
@@ -79,9 +77,7 @@ def layer_receptive_field_plots(
 
     for i in range(ochns):
         ax = axs[i]
-        data = np.moveaxis(
-            lyr_rfs[i], 0, -1
-        )  # Move channel axis to the last dimension
+        data = np.moveaxis(lyr_rfs[i], 0, -1)  # Move channel axis to the last dimension
         data_min = data.min()
         data_max = data.max()
         data = (data - data_min) / (data_max - data_min)
@@ -95,6 +91,7 @@ def layer_receptive_field_plots(
 
     fig.tight_layout()  # Adjust layout to fit color bars
     return fig
+
 
 def _compute_receptive_fields(
     device: torch.device,
