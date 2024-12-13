@@ -18,11 +18,8 @@ class TransformStatistics:
     source_transforms: dict[str, dict[float, list[FloatArray]]]
     noise_transforms: dict[str, dict[float, list[FloatArray]]]
 
-# TODO: Make structure match the analyze / plot structure as receptive_fields
 
-def transform_base_images(
-    imageset: Imageset, num_steps: int, num_images: int
-) -> TransformStatistics:
+def analyze(imageset: Imageset, num_steps: int, num_images: int) -> TransformStatistics:
     """Apply transformations to a set of images from an Imageset."""
     images: list[Image.Image] = []
 
@@ -59,7 +56,7 @@ def transform_base_images(
     return resultss
 
 
-def plot_transforms(
+def plot(
     source_transforms: dict[str, dict[float, list[FloatArray]]],
     noise_transforms: dict[str, dict[float, list[FloatArray]]],
 ) -> Figure:

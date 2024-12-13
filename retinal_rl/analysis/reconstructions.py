@@ -1,5 +1,3 @@
-
-import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -13,7 +11,7 @@ from retinal_rl.classification.imageset import Imageset
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.loss import ContextT, ReconstructionLoss
 from retinal_rl.models.objective import Objective
-from retinal_rl.util import FloatArray, NumpyEncoder
+from retinal_rl.util import FloatArray
 
 
 @dataclass
@@ -24,6 +22,7 @@ class Reconstructions:
     inputs: list[tuple[FloatArray, int]]
     estimates: list[tuple[FloatArray, int]]
 
+
 @dataclass
 class ReconstructionStatistics:
     """Results of image reconstruction for both training and test sets."""
@@ -31,35 +30,39 @@ class ReconstructionStatistics:
     train: Reconstructions
     test: Reconstructions
 
-# TODO: Make structure match the analyze / plot structure as receptive_fields
 
-def perform_reconstruction_analysis(
-    log: FigureLogger,
-    analyses_dir: Path,
+def analyze(
     device: torch.device,
     brain: Brain,
     objective: Objective[ContextT],
     train_set: Imageset,
     test_set: Imageset,
-    epoch: int,
-    copy_checkpoint: bool,
-):
+) -> tuple[dict[str, ReconstructionStatistics], list[float], list[float]]:
     reconstruction_decoders = [
         loss.target_decoder
         for loss in objective.losses
         if isinstance(loss, ReconstructionLoss)
     ]
 
+    results: dict[str, ReconstructionStatistics] = {}
     for decoder in reconstruction_decoders:
-        norm_means, norm_stds = train_set.normalization_stats
-        rec_dict = asdict(
-            reconstruct_images(device, brain, decoder, train_set, test_set, 5)
+        results[decoder] = reconstruct_images(
+            device, brain, decoder, train_set, test_set, 5
         )
-        # Save the reconstructions
-        rec_path = analyses_dir / f"{decoder}_reconstructions_epoch_{epoch}.json"
-        with open(rec_path, "w") as f:
-            json.dump(rec_dict, f, cls=NumpyEncoder)
+    return results, *train_set.normalization_stats
 
+
+def plot(
+    log: FigureLogger,
+    analyses_dir: Path,
+    result: dict[str, ReconstructionStatistics],
+    norm_means: list[float],
+    norm_stds: list[float],
+    epoch: int,
+    copy_checkpoint: bool,
+):
+    for decoder, reconstructions in result.items():
+        rec_dict = asdict(reconstructions)
         recon_fig = plot_reconstructions(
             norm_means,
             norm_stds,
@@ -73,6 +76,10 @@ def perform_reconstruction_analysis(
             f"{decoder}_reconstructions",
             epoch,
             copy_checkpoint,
+        )
+        # Save the reconstructions #TODO: most plot functions don't do this, should stay?
+        log.save_dict(
+            analyses_dir / f"{decoder}_reconstructions_epoch_{epoch}.json", rec_dict
         )
 
 

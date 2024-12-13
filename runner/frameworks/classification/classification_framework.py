@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Optional
 
 import torch
@@ -6,7 +7,7 @@ from omegaconf import DictConfig
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.loss import ContextT
 from retinal_rl.models.objective import Objective
-from runner.frameworks.classification.analyze import analyze
+from runner.frameworks.classification.analyze import AnalysesCfg, analyze
 from runner.frameworks.classification.dataset import get_datasets
 from runner.frameworks.classification.initialize import initialize
 from runner.frameworks.classification.train import train
@@ -52,8 +53,17 @@ class ClassificationFramework(TrainingFramework):
         brain: Brain,
         objective: Optional[Objective[ContextT]] = None,
     ):
+        cfg = AnalysesCfg(
+            Path(self.cfg.path.run_dir),
+            Path(self.cfg.path.plot_dir),
+            Path(self.cfg.path.checkpoint_plot_dir),
+            Path(self.cfg.path.data_dir),
+            self.cfg.logging.use_wandb,
+            self.cfg.logging.channel_analysis,
+            self.cfg.logging.plot_sample_size,
+        )
         analyze(
-            self.cfg,
+            cfg,
             device,
             brain,
             objective,

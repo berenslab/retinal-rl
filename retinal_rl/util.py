@@ -19,6 +19,7 @@ T = TypeVar("T")
 
 ### IO Handling stuff
 
+
 class NumpyEncoder(json.JSONEncoder):
     """JSON encoder that handles numpy arrays."""
 
@@ -26,6 +27,7 @@ class NumpyEncoder(json.JSONEncoder):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return super().default(obj)
+
 
 ### Functions
 
