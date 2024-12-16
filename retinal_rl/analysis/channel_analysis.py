@@ -41,16 +41,12 @@ class HistogramAnalysis:
 
 def spectral_analysis(
     device: torch.device,
-    imageset: Imageset,
+    dataloader: DataLoader[tuple[Tensor, Tensor, int]],
     brain: Brain,
-    max_sample_size: int = 0,
 ) -> dict[str, SpectralAnalysis]:
     brain.eval()
     brain.to(device)
     _, cnn_layers = get_cnn_circuit(brain)
-
-    # Prepare dataset
-    dataloader = _prepare_dataset(imageset, max_sample_size)
 
     # Initialize results
     results: dict[str, SpectralAnalysis] = {}
@@ -73,16 +69,12 @@ def spectral_analysis(
 
 def histogram_analysis(
     device: torch.device,
-    imageset: Imageset,
+    dataloader: DataLoader[tuple[Tensor, Tensor, int]],
     brain: Brain,
-    max_sample_size: int = 0,
 ) -> dict[str, HistogramAnalysis]:
     brain.eval()
     brain.to(device)
     _, cnn_layers = get_cnn_circuit(brain)
-
-    # Prepare dataset
-    dataloader = _prepare_dataset(imageset, max_sample_size)  # TODO: Move outside?
 
     # Initialize results
     results: dict[str, HistogramAnalysis] = {}
@@ -101,7 +93,7 @@ def histogram_analysis(
     return results
 
 
-def _prepare_dataset(
+def prepare_dataset(
     imageset: Imageset, max_sample_size: int = 0
 ) -> DataLoader[tuple[Tensor, Tensor, int]]:
     """Prepare dataset and dataloader for analysis."""
@@ -394,9 +386,8 @@ def _plot_receptive_fields(ax: Axes, rf: FloatArray):
 
 
 def analyze_input(
-    device: torch.device, imageset: Imageset, max_sample_size: int
+    device: torch.device, dataloader: DataLoader[tuple[Tensor, Tensor, int]]
 ) -> tuple[SpectralAnalysis, HistogramAnalysis]:
-    dataloader = _prepare_dataset(imageset, max_sample_size)
     spectral_result = _layer_spectral_analysis(device, dataloader, nn.Identity())
     histogram_result = _layer_pixel_histograms(device, dataloader, nn.Identity())
     return spectral_result, histogram_result
