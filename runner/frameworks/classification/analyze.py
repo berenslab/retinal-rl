@@ -68,12 +68,10 @@ def analyze(
     log.save_dict(cfg.analyses_dir / f"receptive_fields_epoch_{epoch}.json", rf_result)
 
     if cfg.channel_analysis:
-        spectral_result = channel_ana.spectral_analysis(
-            device, test_set, brain, cfg.plot_sample_size
-        )
-        histogram_result = channel_ana.histogram_analysis(
-            device, test_set, brain, cfg.plot_sample_size
-        )
+        # Prepare dataset
+        dataloader = channel_ana.prepare_dataset(test_set, cfg.plot_sample_size)
+        spectral_result = channel_ana.spectral_analysis(device, dataloader, brain)
+        histogram_result = channel_ana.histogram_analysis(device, dataloader, brain)
         channel_ana.plot(
             log,
             rf_result,
@@ -142,8 +140,9 @@ def _extended_initialization_plots(
     if channel_analysis:
         # Input 'rfs' is just the colors
         rf_result = np.eye(input_shape[0])[:, :, np.newaxis, np.newaxis]
+        dataloader = channel_ana.prepare_dataset(train_set, max_sample_size)
         spectral_result, histogram_result = channel_ana.analyze_input(
-            device, train_set, max_sample_size
+            device, dataloader
         )
         channel_ana.input_plot(
             log,
