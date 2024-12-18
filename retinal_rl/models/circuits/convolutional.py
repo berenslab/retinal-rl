@@ -8,7 +8,7 @@ import torch
 from torch import Tensor, nn
 
 from retinal_rl.models.neural_circuit import NeuralCircuit
-from retinal_rl.util import assert_list
+from retinal_rl.util import Activation, assert_list
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +73,9 @@ class ConvolutionalEncoder(NeuralCircuit):
                 if layer_names is not None
                 else self.activation[i] + str(i)
             )
+            if i > 0 and self.activation[i - 1] == "multi":
+                in_channels = in_channels * 4
+                # TODO: Well, this is an ugly hack and magic number
             conv_layers.append(
                 (
                     lyrnm,
@@ -144,6 +147,9 @@ class ConvolutionalDecoder(NeuralCircuit):
                 else self.activation[i] + str(i)
             )
 
+            if i > 0 and self.activation[i - 1] == "multi":
+                in_channels = in_channels * 4
+                # TODO: Well, this is an ugly hack and magic number
             deconv_layers.append(
                 (
                     lyrnm,

@@ -32,6 +32,8 @@ class FullyConnected(NeuralCircuit):
 
         self._output_shape = output_shape
         self.hidden_units = hidden_units
+        if activation == "multi":
+            activation = "gelu" #TODO: another hack
         self.activation = activation
 
         num_layers = len(hidden_units) + 1

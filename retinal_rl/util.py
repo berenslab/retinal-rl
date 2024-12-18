@@ -7,6 +7,7 @@ from typing import List, Tuple, TypeVar, Union, cast
 import numpy as np
 from numpy.typing import NDArray
 from torch import nn
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +117,17 @@ def rf_size_and_start(
     return hrf_size, wrf_size, hmn, wmn
 
 
+class MultiActivation(nn.Module):
+    def __init__(
+        self,
+        activations: list[nn.Module] = [nn.ReLU(), nn.Sigmoid(), nn.Tanh(), nn.GELU()],
+    ):
+        super().__init__()
+        self.activations = activations
+
+    def forward(self, x: torch.Tensor):
+        return torch.hstack([act(x) for act in self.activations])
+
 class Activation(Enum):
     elu = nn.ELU
     relu = nn.ReLU
@@ -125,13 +137,13 @@ class Activation(Enum):
     identity = nn.Identity
     gelu = nn.GELU
     sigmoid = nn.Sigmoid
+    multi = MultiActivation
 
     def __call__(self) -> nn.Module:
         act_module = self.value()
         if hasattr(act_module, "inplace"):
             act_module = self.value(inplace=True)
         return act_module
-
 
 def is_nonlinearity(mdl: nn.Module) -> bool:
     """Check if the module is an activation function or a normalization layer."""
