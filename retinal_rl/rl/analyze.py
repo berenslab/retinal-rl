@@ -38,15 +38,12 @@ def analyze(
     device: torch.device,
     brain: Brain,
     objective: Objective[ContextT],
-    histories: dict[str, list[float]],
     epoch: int,
     copy_checkpoint: bool = False,
 ):
     log = FigureLogger(
         cfg.use_wandb, cfg.plot_dir, cfg.checkpoint_plot_dir, cfg.run_dir
     )
-
-    log.plot_and_save_histories(histories)
 
     # perform different analyses, plot and log them
     input_shape, rf_result = receptive_fields.analyze(brain, device)
@@ -60,5 +57,3 @@ def analyze(
 
     if epoch == 0:
         default_ana.initialization_plots(log, brain, objective, input_shape, rf_result)
-
-    log.plot_and_save_histories(histories, save_always=True)

@@ -1,12 +1,16 @@
 import multiprocessing
 import os
 
+import torch
 import wandb
 from sample_factory.algo.runners.runner import AlgoObserver, Runner
 from sample_factory.utils.typing import Config
 from sample_factory.utils.utils import debug_log_every_n, log
 
-from retinal_rl.rl.analyze import analyze
+from hydra.utils import instantiate
+from retinal_rl.models.loss import ContextT
+from retinal_rl.models.objective import Objective
+from retinal_rl.rl.analyze import AnalysesCfg, analyze
 from retinal_rl.rl.util import (
     analysis_root,
     plot_path,
@@ -45,7 +49,11 @@ class RetinalAlgoObserver(AlgoObserver):
         """Run analysis in a separate process."""
 
         brain = SFFramework.load_brain_from_checkpoint(self.cfg)
-        analyze(device='cpu', brain)
+        objective: Objective[ContextT] = instantiate(self.cfg.objective, brain=brain)
+        cfg = AnalysesCfg()
+        histories = DDD
+        epoch = AAA
+        analyze(cfg, torch.device('cuda'), brain, objective, histories, epoch, copy_checkpoint=False)
         # envstps = analyze(self.cfg, progress_bar=False)
         # queue.put(envstps, block=False)
 
