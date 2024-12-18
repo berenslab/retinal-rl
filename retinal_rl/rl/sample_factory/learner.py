@@ -41,7 +41,6 @@ from sample_factory.utils.typing import (
 )
 from sample_factory.utils.utils import log
 from torch import Tensor
-import wandb
 
 from retinal_rl.models.objective import Objective
 from retinal_rl.rl.loss import KlLoss, RLContext, VTraceParams, build_context

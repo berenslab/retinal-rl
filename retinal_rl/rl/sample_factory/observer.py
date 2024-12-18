@@ -3,14 +3,17 @@ import os
 
 import wandb
 from sample_factory.algo.runners.runner import AlgoObserver, Runner
+from sample_factory.utils.typing import Config
 from sample_factory.utils.utils import debug_log_every_n, log
 
-from retinal_rl.util import (
+from retinal_rl.rl.analyze import analyze
+from retinal_rl.rl.util import (
     analysis_root,
     plot_path,
     read_analysis_count,
     write_analysis_count,
 )
+from runner.frameworks.rl.sf_framework import SFFramework
 
 multiprocessing.set_start_method(
     "spawn", force=True
@@ -24,7 +27,7 @@ class RetinalAlgoObserver(AlgoObserver):
     AlgoObserver that runs analysis at specified times.
     """
 
-    def __init__(self, cfg):
+    def __init__(self, cfg: Config):
         self.cfg = cfg
         self.freq = cfg.analysis_freq
         self.current_process = None
@@ -38,10 +41,11 @@ class RetinalAlgoObserver(AlgoObserver):
 
         self.steps_complete = acount
 
-    def analyze(self, queue):
+    def analyze(self, queue : multiprocessing.Queue[None]):
         """Run analysis in a separate process."""
 
-        # TODO: Implement our desired analysis
+        brain = SFFramework.load_brain_from_checkpoint(self.cfg)
+        analyze(device='cpu', brain)
         # envstps = analyze(self.cfg, progress_bar=False)
         # queue.put(envstps, block=False)
 
