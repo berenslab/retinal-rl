@@ -372,6 +372,16 @@ class RetinalLearner(Learner):
         self.last_summary_time = time.time()
         stats = AttrDict(losses)
 
+        # TODO: Use 'new' way of logging (see below)
+
+        ##########################################################################
+        # log = FigureLogger(
+        #     cfg.use_wandb, cfg.plot_dir, cfg.checkpoint_plot_dir, cfg.run_dir
+        # )
+
+        # log.plot_and_save_histories(histories)
+        ##########################################################################
+
         # stats.lr = self.curr_lr
         # stats.actual_lr = train_loop_vars.actual_lr  # potentially scaled because of masked data
 
