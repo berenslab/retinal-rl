@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import warnings
 from argparse import Namespace
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 # from retinal_rl.rl.sample_factory.observer import RetinalAlgoObserver
 import torch
@@ -85,10 +85,11 @@ class SFFramework(TrainingFramework):
 
     @staticmethod
     def load_brain_from_checkpoint(
-        path: str, load_weights: bool = True, device: Optional[torch.device] = None
+        config: Union[str, Config], load_weights: bool = True, device: Optional[torch.device] = None
     ) -> Brain:
-        with open(os.path.join(path, "config.json")) as f:
-            config = Namespace(**json.load(f))
+        if isinstance(config, str):
+            with open(os.path.join(config, "config.json")) as f:
+                config = Namespace(**json.load(f))
         checkpoint_dict, config = SFFramework.get_checkpoint(config)
         config = DictConfig(config)
         model_dict: Dict[str, Any] = checkpoint_dict["model"]
