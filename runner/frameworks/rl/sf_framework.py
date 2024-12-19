@@ -85,7 +85,9 @@ class SFFramework(TrainingFramework):
 
     @staticmethod
     def load_brain_from_checkpoint(
-        config: Union[str, Config], load_weights: bool = True, device: Optional[torch.device] = None
+        config: Union[str, Config],
+        load_weights: bool = True,
+        device: Optional[torch.device] = None,
     ) -> Brain:
         if isinstance(config, str):
             with open(os.path.join(config, "config.json")) as f:
@@ -152,6 +154,15 @@ class SFFramework(TrainingFramework):
         SFFramework._set_cfg_cli_argument(
             sf_cfg, "train_dir", os.path.join(cfg.path.run_dir, "train_dir")
         )
+
+        # Set dirs needed for Analysis
+        SFFramework._set_cfg_cli_argument(sf_cfg, "run_dir", cfg.path.run_dir)
+        SFFramework._set_cfg_cli_argument(sf_cfg, "plot_dir", cfg.path.plot_dir)
+        SFFramework._set_cfg_cli_argument(
+            sf_cfg, "checkpoint_plot_dir", cfg.path.checkpoint_plot_dir
+        )
+        SFFramework._set_cfg_cli_argument(sf_cfg, "data_dir", cfg.path.data_dir)
+
         SFFramework._set_cfg_cli_argument(sf_cfg, "with_wandb", cfg.logging.use_wandb)
         SFFramework._set_cfg_cli_argument(sf_cfg, "wandb_dir", cfg.path.wandb_dir)
         return sf_cfg

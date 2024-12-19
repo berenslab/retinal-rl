@@ -45,20 +45,19 @@ class RetinalAlgoObserver(AlgoObserver):
 
         self.steps_complete = acount
 
-    def analyze(self, queue : multiprocessing.Queue[None]):
+    def analyze(self, queue : multiprocessing.Queue[None], env_step: int):
         """Run analysis in a separate process."""
 
         brain = SFFramework.load_brain_from_checkpoint(self.cfg)
         objective: Objective[ContextT] = instantiate(self.cfg.objective, brain=brain)
-        cfg = AnalysesCfg()
-        histories = DDD
-        epoch = AAA
-        analyze(cfg, torch.device('cuda'), brain, objective, histories, epoch, copy_checkpoint=False)
+        cfg = AnalysesCfg(cfg.run_dir, cfg.plot_dir, cfg.checkpoint_plot_dir, cfg.data_dir, cfg.with_wandb)
+        epoch = env_step # use env_step instead of epoch for logging
+        analyze(cfg, torch.device('cuda'), brain, objective, epoch, copy_checkpoint=False)
         # envstps = analyze(self.cfg, progress_bar=False)
         # queue.put(envstps, block=False)
 
     def on_training_step(
-        self, runner: Runner, _
+        self, runner: Runner, training_iteration_since_resume: int
     ) -> None:  # TODO: deprecated and will be refactored anyway
         """Called after each training step."""
         # TODO: Check and refactor
