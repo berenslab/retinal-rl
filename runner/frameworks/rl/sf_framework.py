@@ -35,6 +35,7 @@ from retinal_rl.rl.sample_factory.arguments import (
 from retinal_rl.rl.sample_factory.environment import register_retinal_env
 from retinal_rl.rl.sample_factory.learner import RetinalLearner
 from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
+from retinal_rl.rl.sample_factory.observer import RetinalAlgoObserver
 from runner.frameworks.framework_interface import TrainingFramework
 from runner.util import create_brain
 
@@ -76,7 +77,7 @@ class SFFramework(TrainingFramework):
 
             cfg, runner = make_runner(self.sf_cfg)
             # if cfg.online_analysis:
-            #     runner.register_observer(RetinalAlgoObserver(self.sf_cfg))
+            runner.register_observer(RetinalAlgoObserver(self.sf_cfg))
 
             status = runner.init()
             if status == ExperimentStatus.SUCCESS:

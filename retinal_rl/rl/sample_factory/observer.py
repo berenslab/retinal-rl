@@ -3,14 +3,14 @@ import os
 
 import torch
 import wandb
+from hydra.utils import instantiate
 from sample_factory.algo.runners.runner import AlgoObserver, Runner
 from sample_factory.utils.typing import Config
 from sample_factory.utils.utils import debug_log_every_n, log
 
-from hydra.utils import instantiate
-from retinal_rl.models.loss import ContextT
 from retinal_rl.models.objective import Objective
 from retinal_rl.rl.analyze import AnalysesCfg, analyze
+from retinal_rl.rl.loss import RLContext
 from retinal_rl.rl.util import (
     analysis_root,
     plot_path,
@@ -49,7 +49,7 @@ class RetinalAlgoObserver(AlgoObserver):
         """Run analysis in a separate process."""
 
         brain = SFFramework.load_brain_from_checkpoint(self.cfg)
-        objective: Objective[ContextT] = instantiate(self.cfg.objective, brain=brain)
+        objective: Objective[RLContext] = instantiate(self.cfg.objective, brain=brain)
         cfg = AnalysesCfg(cfg.run_dir, cfg.plot_dir, cfg.checkpoint_plot_dir, cfg.data_dir, cfg.with_wandb)
         epoch = env_step # use env_step instead of epoch for logging
         analyze(cfg, torch.device('cuda'), brain, objective, epoch, copy_checkpoint=False)
