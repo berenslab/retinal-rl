@@ -131,7 +131,6 @@ def make_retinal_env_from_spec(
 
 
 def register_retinal_env(scene_name: str, cache_dir: str, input_satiety: bool):
-    print(cache_dir)
     if not os.path.isabs(cache_dir):
         # make path absolute by making it relative to the path of this file
         # TODO: Discuss whether this is desired behaviour...
