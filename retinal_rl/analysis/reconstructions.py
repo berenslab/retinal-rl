@@ -26,7 +26,7 @@ class Reconstructions:
 @dataclass
 class ReconstructionStatistics:
     """Results of image reconstruction for both training and test sets."""
-
+    # TODO: Split train / test case
     train: Reconstructions
     test: Reconstructions
 
@@ -111,7 +111,10 @@ def reconstruct_images(
                 stimulus = {"vision": img.unsqueeze(0)}
                 response = brain(stimulus)
                 rec_img = response[decoder].squeeze(0)
-                pred_k = response["classifier"].argmax().item()
+                if "classifier" in response:
+                    pred_k = response["classifier"].argmax().item()
+                else:
+                    pred_k = 0 # FIXME: Reconstructions without classifier prediction?!
                 source_subset.append((src.cpu().numpy(), k))
                 input_subset.append((img.cpu().numpy(), k))
                 estimates.append((rec_img.cpu().numpy(), pred_k))
