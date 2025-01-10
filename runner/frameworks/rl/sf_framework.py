@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+from pathlib import Path
 import warnings
 from argparse import Namespace
 from typing import Any, Dict, Optional
@@ -68,6 +69,11 @@ class SFFramework(TrainingFramework):
         )
         # Run simulation
         if not (self.sf_cfg.dry_run):
+            # HACK: Create the directory for the vizdoom logs, before vizdoom tries to do it:
+            # Else envs will interfere in the creation process and crash, causing RolloutWorkers
+            # to stop and thus the whole training to abort.
+            (Path(self.cfg.path.run_dir) / "_vizdoom").mkdir(parents=True, exist_ok=True)
+
             cfg, runner = make_runner(self.sf_cfg)
             # if cfg.online_analysis:
             #     runner.register_observer(RetinalAlgoObserver(self.sf_cfg))
