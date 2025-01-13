@@ -9,6 +9,7 @@ from retinal_rl.util import FloatArray
 
 INIT_DIR = "initialization_analysis"
 
+
 def initialization_plots(
     log: FigureLogger,
     brain: Brain,
