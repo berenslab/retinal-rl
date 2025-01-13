@@ -1,9 +1,9 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import warnings
 from argparse import Namespace
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 # from retinal_rl.rl.sample_factory.observer import RetinalAlgoObserver
@@ -72,7 +72,9 @@ class SFFramework(TrainingFramework):
             # HACK: Create the directory for the vizdoom logs, before vizdoom tries to do it:
             # Else envs will interfere in the creation process and crash, causing RolloutWorkers
             # to stop and thus the whole training to abort.
-            (Path(self.cfg.path.run_dir) / "_vizdoom").mkdir(parents=True, exist_ok=True)
+            (Path(self.cfg.path.run_dir) / "_vizdoom").mkdir(
+                parents=True, exist_ok=True
+            )
 
             cfg, runner = make_runner(self.sf_cfg)
             # if cfg.online_analysis:
