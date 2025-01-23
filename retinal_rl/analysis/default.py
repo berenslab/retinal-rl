@@ -18,7 +18,6 @@ def initialization_plots(
 ):
     log.save_summary(brain)
 
-    # TODO: This is a bit of a hack, we should refactor this to get the relevant information out of  cnn_stats
     rf_sizes_fig = plot_receptive_field_sizes(input_shape, rf_result)
     log.log_figure(
         rf_sizes_fig,

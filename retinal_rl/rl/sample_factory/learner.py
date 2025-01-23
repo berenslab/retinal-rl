@@ -602,3 +602,5 @@ class RetinalLearner(Learner):
                 stats[STATS_KEY] = memory_stats("learner", self.device)
 
             return stats
+
+# TODO: Define save function using runner.save_checkpoint
