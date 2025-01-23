@@ -89,17 +89,20 @@ def plot_brain_and_optimizers(brain: Brain, objective: Objective[ContextT]) -> F
         # Determine node type and base color
         if node in brain.sensors:
             base_color = color_map["sensor"]
+            targeting_losses = []
         else:
             base_color = color_map["circuit"]
+            targeting_losses = [
+                loss
+                for loss in objective.losses
+                if (node in loss.target_circuits or (loss.target_circuits == "__all__"))
+            ]
 
         # Draw base circle
         circle = Circle((x, y), 0.05, facecolor=base_color, edgecolor="black")
         ax.add_patch(circle)
 
         # Determine which losses target this node
-        targeting_losses = [
-            loss for loss in objective.losses if node in loss.target_circuits
-        ]
 
         if targeting_losses:
             # Calculate angle for each loss
