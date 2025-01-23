@@ -1,28 +1,35 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import warnings
 from argparse import Namespace
-from typing import Any, Dict, Optional, Union
+from pathlib import Path
+from typing import Any, Optional
 
 # from retinal_rl.rl.sample_factory.observer import RetinalAlgoObserver
 import torch
 from omegaconf import DictConfig
 from omegaconf.omegaconf import OmegaConf
-from sample_factory.algo.learning.learner import Learner
 from sample_factory.algo.learning.learner_factory import global_learner_factory
+from sample_factory.algo.runners.runner import Runner
+from sample_factory.algo.utils.action_distributions import (
+    calc_num_action_parameters,
+)
 from sample_factory.algo.utils.context import global_model_factory
+from sample_factory.algo.utils.env_info import (
+    obtain_env_info_in_a_separate_process,
+)
 from sample_factory.algo.utils.misc import ExperimentStatus
 from sample_factory.cfg.arguments import (
-    load_from_checkpoint,
     parse_full_cfg,
     parse_sf_args,
 )
 from sample_factory.enjoy import enjoy
 from sample_factory.train import make_runner
-from sample_factory.utils.attr_dict import AttrDict
-from sample_factory.utils.typing import Config
+from sample_factory.utils.typing import (
+    Config,
+    PolicyID,
+)
 
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.loss import ContextT
@@ -36,6 +43,7 @@ from retinal_rl.rl.sample_factory.environment import register_retinal_env
 from retinal_rl.rl.sample_factory.learner import RetinalLearner
 from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
 from retinal_rl.rl.sample_factory.observer import RetinalAlgoObserver
+from runner.frameworks.classification.initialize import initialize
 from runner.frameworks.framework_interface import TrainingFramework
 from runner.util import create_brain
 
@@ -47,16 +55,43 @@ class SFFramework(TrainingFramework):
         # we need to convert to the sample_factory config style since we can not change the function signatures
         # of the library and that uses it _everywhere_
         self.sf_cfg = self.to_sf_cfg(cfg)
+        self.cfg = cfg
 
         # Register retinal environments and models.
         register_retinal_env(self.sf_cfg.env, self.data_root, self.sf_cfg.input_satiety)
+        env_info = obtain_env_info_in_a_separate_process(self.sf_cfg)
+        self.num_action_outputs = calc_num_action_parameters(env_info.action_space)
+        # TODO: Use for automatic out size of action prediction network
+
         global_model_factory().register_actor_critic_factory(SampleFactoryBrain)
         global_learner_factory().register_learner_factory(RetinalLearner)
 
     def initialize(self, brain: Brain, optimizer: torch.optim.Optimizer):
         # brain = SFFramework.load_brain_from_checkpoint(...)
         # TODO: Implement load brain and optimizer state
+        # TODO: this initialize method is only used for wandb initialization...
+        brain, optimizer, histories, epoch = initialize(self.cfg, brain, optimizer)
         return brain, optimizer
+
+    def preset_model_and_optimizer(
+        self, brain: Brain, optimizer: torch.optim.Optimizer, runner: Runner
+    ):
+        # Get information necessary for the learner from the actual runner
+        env_info = runner.env_info
+        policy_versions_tensor = runner.buffer_mgr.policy_versions
+        param_server = runner.learners[0].param_server
+        policy_id: PolicyID = param_server.policy_id
+
+        # Init learner so we can use the default procedure to save the model and optimizer
+        learner = RetinalLearner(
+            self.sf_cfg, env_info, policy_versions_tensor, policy_id, param_server
+        )
+        learner.init()
+
+        # Update the learners brain and optimizer and save them
+        learner.actor_critic.brain = brain
+        # learner.optimizer = optimizer #TODO: make sure optimizer is loadable
+        learner.save()
 
     def train(
         self,
@@ -73,38 +108,22 @@ class SFFramework(TrainingFramework):
             # HACK: Create the directory for the vizdoom logs, before vizdoom tries to do it:
             # Else envs will interfere in the creation process and crash, causing RolloutWorkers
             # to stop and thus the whole training to abort.
-            (Path(self.cfg.path.run_dir) / "_vizdoom").mkdir(parents=True, exist_ok=True)
+            (Path(self.cfg.path.run_dir) / "_vizdoom").mkdir(
+                parents=True, exist_ok=True
+            )
 
             cfg, runner = make_runner(self.sf_cfg)
             # if cfg.online_analysis:
             runner.register_observer(RetinalAlgoObserver(self.sf_cfg))
 
             status = runner.init()
+
+            # update brain weights
+            self.preset_model_and_optimizer(brain, optimizer, runner)
+
             if status == ExperimentStatus.SUCCESS:
                 status = runner.run()
             print(status)
-
-    @staticmethod
-    def load_brain_from_checkpoint(
-        config: Union[str, Config],
-        load_weights: bool = True,
-        device: Optional[torch.device] = None,
-    ) -> Brain:
-        if isinstance(config, str):
-            with open(os.path.join(config, "config.json")) as f:
-                config = Namespace(**json.load(f))
-        checkpoint_dict, config = SFFramework.get_checkpoint(config)
-        config = DictConfig(config)
-        model_dict: Dict[str, Any] = checkpoint_dict["model"]
-        brain_dict: Dict[str, Any] = {}
-        for key in model_dict:
-            if "brain" in key:
-                brain_dict[key[6:]] = model_dict[key]
-        brain = create_brain(config.brain)
-        if load_weights:
-            brain.load_state_dict(brain_dict)
-        brain.to(device)
-        return brain
 
     @staticmethod
     def load_brain_and_config(
@@ -166,6 +185,9 @@ class SFFramework(TrainingFramework):
 
         SFFramework._set_cfg_cli_argument(sf_cfg, "with_wandb", cfg.logging.use_wandb)
         SFFramework._set_cfg_cli_argument(sf_cfg, "wandb_dir", cfg.path.wandb_dir)
+        if hasattr(cfg, "samplefactory"):
+            for attr in cfg.samplefactory:
+                SFFramework._set_cfg_cli_argument(sf_cfg, attr, cfg.samplefactory[attr])
         return sf_cfg
 
     def analyze(
@@ -205,26 +227,6 @@ class SFFramework(TrainingFramework):
         retinal_override_defaults(parser)
 
         return parse_full_cfg(parser, mock_argv)
-
-    @staticmethod
-    def get_checkpoint(cfg: Config) -> tuple[Dict[str, Any], AttrDict]:
-        """
-        Load the model from checkpoint, initialize the environment, and return both.
-        """
-        # verbose = False
-
-        cfg = load_from_checkpoint(cfg)
-
-        device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
-
-        policy_id = cfg.policy_index
-        name_prefix = dict(latest="checkpoint", best="best")[cfg.load_checkpoint_kind]
-        checkpoints = Learner.get_checkpoints(
-            Learner.checkpoint_dir(cfg, policy_id), f"{name_prefix}_*"
-        )
-        checkpoint_dict: Dict[str, Any] = Learner.load_checkpoint(checkpoints, device)
-
-        return checkpoint_dict, cfg
 
 
 def brain_from_actor_critic(actor_critic: SampleFactoryBrain) -> Brain:

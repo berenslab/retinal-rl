@@ -259,64 +259,51 @@ def build_context(
     vtrace_params: VTraceParams,
     device: torch.device,
 ) -> RLContext:
-    with torch.no_grad(), timing.add_time("losses_init"):
-        recurrence: int = recurrence
-        valids = mb.valids
+    # FIXME: IMPROVISED FOR ENABLING THE MULTI-OBJECTIVE
+    # build brain input
+    brain_inp = {"vision": mb.normalized_obs["obs"]}
 
-    # calculate policy head outside of recurrent loop
-    with timing.add_time("forward_head"):
-        head_outputs = actor_critic.forward_head(mb.normalized_obs)
-        minibatch_size: int = head_outputs.size(0)
+    # TODO: use_rnn not really needed anymore -> check if sample-factory uses it
+    if use_rnn:
+        rnn_states = mb.rnn_states
 
-    # initial rnn states
-    with timing.add_time("bptt_initial"):
-        if use_rnn:
-            # this is the only way to stop RNNs from backpropagating through invalid timesteps
-            # (i.e. experience collected by another policy)
-            done_or_invalid = torch.logical_or(mb.dones_cpu, ~valids.cpu()).float()
-            head_output_seq, rnn_states, inverted_select_inds = build_rnn_inputs(
-                head_outputs,
-                done_or_invalid,
-                mb.rnn_states,
-                recurrence,
-            )
-        else:
-            rnn_states = mb.rnn_states[::recurrence]
+        # Add some attributes to rnn_states needed when training to correctly batch & cut gradients
+        # low importance TODO: Avoid attaching attributes to an object and us it as an information pipe
+        brain_inp.update(
+            {
+                "rnn_state": {  # TODO: this dict entry is bound to the config -> bad!
+                    "states": rnn_states,
+                    "valids": mb.valids,
+                    "dones_cpu": mb.dones_cpu,
+                    "recurrence": recurrence,
+                }  # TODO: Confusing as this will get returned in the responses dict as well, at least rename to rnn_inp_state
+            }
+        )
 
-    # calculate RNN outputs for each timestep in a loop
-    with timing.add_time("bptt"):
-        if use_rnn:
-            with timing.add_time("bptt_forward_core"):
-                core_output_seq, _ = actor_critic.forward_core(
-                    head_output_seq, rnn_states
-                )
-            core_outputs = build_core_out_from_seq(
-                core_output_seq, inverted_select_inds
-            )
-            del core_output_seq
-        else:
-            core_outputs, _ = actor_critic.forward_core(head_outputs, rnn_states)
+    # actual forward pass
+    responses = actor_critic.brain(brain_inp)
 
-        del head_outputs
-
+    minibatch_size: int = responses["vision"].size(0)
     num_trajectories = minibatch_size // recurrence
-    assert core_outputs.shape[0] == minibatch_size
+    # TODO: This might be related to the problem?!
 
     with timing.add_time("tail"):
         # calculate policy tail outside of recurrent loop
-        result = actor_critic.forward_tail(
-            core_outputs, values_only=False, sample_actions=False
-        )
+        out = torch.flatten(responses[actor_critic.decoder], 1)
+        # FIXME: IMPROVISED - ACTION DISTRIBUTION - TO BE BRAINIFIED
+        _, actor_critic.last_action_distribution = actor_critic.action_parameterization(out)
+
+        # TODO: make critic_linear RL-Style + remove this duplicate lines - here it should be sth like values = responses["values"]
+        values = actor_critic.critic_linear(out).squeeze()
+
+        # TODO: 'brainify' action_distribution
         action_distribution = actor_critic.action_distribution()
         log_prob_actions = action_distribution.log_prob(mb.actions)
+        # BUG: shape mismatch :o - also for non rl - context -> broke sth elsewhere
         ratio = torch.exp(log_prob_actions - mb.log_prob_actions)  # pi / pi_old
 
         # super large/small values can cause numerical problems and are probably noise anyway
         ratio = torch.clamp(ratio, 0.05, 20.0)
-
-        values = result["values"].squeeze()
-
-        del core_outputs
 
     # these computations are not the part of the computation graph
     with torch.no_grad(), timing.add_time("advantages_returns"):
@@ -365,6 +352,7 @@ def build_context(
                     + not_done_gamma * curr_vtrace_c * (next_vs - next_values)
                 )
                 vs[i::recurrence] = next_vs
+                # TODO: Check behaviour here when no RNN but recurrence != 0
 
                 next_values = curr_values
 
@@ -375,12 +363,8 @@ def build_context(
             adv = mb.advantages
             targets = mb.returns
 
-        adv_std, adv_mean = torch.std_mean(masked_select(adv, valids, num_invalids))
+        adv_std, adv_mean = torch.std_mean(masked_select(adv, mb.valids, num_invalids))
         adv = (adv - adv_mean) / torch.clamp_min(adv_std, 1e-7)  # normalize advantage
-
-    # FIXME: IMPROVISED FOR ENABLING THE MULTI-OBJECTIVE
-    # Get responses - (2nd forward pass)
-    responses = actor_critic.brain({'vision': mb.normalized_obs["obs"]})
 
     return RLContext(
         mb.normalized_obs["obs"],
@@ -391,7 +375,7 @@ def build_context(
         policy_id,
         ratio,
         adv,
-        valids,
+        mb.valids,
         action_distribution,
         mb.action_logits,
         values,
