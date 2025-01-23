@@ -15,11 +15,10 @@ from runner.frameworks.classification.classification_framework import (
 from runner.frameworks.framework_interface import TrainingFramework
 from runner.frameworks.rl.sf_framework import SFFramework
 from runner.sweep import launch_sweep
-from runner.util import create_brain, delete_results
+from runner.util import create_brain, delete_results, load_brain_weights
 
 # Load the eval resolver for OmegaConf
 OmegaConf.register_new_resolver("eval", eval)
-
 
 # Hydra entry point
 @hydra.main(config_path="config/base", config_name="config", version_base=None)
@@ -43,7 +42,6 @@ def _program(cfg: DictConfig):
     optimizer = instantiate(cfg.optimizer.optimizer, brain.parameters())
     if hasattr(cfg.optimizer, "objective"):
         objective = instantiate(cfg.optimizer.objective, brain=brain)
-        # TODO: RL framework currently can't use objective
     else:
         warnings.warn("No objective specified, is that wanted?")
 
@@ -64,6 +62,10 @@ def _program(cfg: DictConfig):
         )
 
     brain, optimizer = framework.initialize(brain, optimizer)
+
+    # Load brain weights if specified - TODO: same for optimizer? framework specific loading?
+    if hasattr(cfg, "init_weights_path"):
+        load_brain_weights(brain, cfg.init_weights_path)
 
     if cfg.command == "train":
         framework.train(device, brain, optimizer, objective)
