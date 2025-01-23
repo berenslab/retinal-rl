@@ -1,5 +1,6 @@
 """Provides the Brain class, which combines multiple NeuralCircuit instances into a single model by specifying a graph of connections between them."""
 
+import inspect
 import logging
 from io import StringIO
 from typing import Dict, List, OrderedDict, Tuple
@@ -52,8 +53,9 @@ class Brain(nn.Module):
             if node in self.sensors:
                 responses[node] = stimuli[node]
             else:
-                input = self._assemble_inputs(node, responses)
-                responses[node] = self.circuits[node](input)
+                n_forward_params = len(inspect.signature(self.circuits[node].forward).parameters)
+                input = assemble_inputs(node, n_forward_params, self.connectome, responses)
+                responses[node] = self.circuits[node](*input)
         return responses
 
     def scan(self) -> str:
@@ -99,26 +101,6 @@ class Brain(nn.Module):
 
         return result
 
-    def _assemble_inputs(self, node: str, responses: Dict[str, Tensor]) -> Tensor:
-        """Assemble the inputs to a given node by concatenating the responses of its predecessors."""
-        inputs: List[Tensor] = []
-        input = Tensor()
-        for pred in self.connectome.predecessors(node):
-            if pred in responses:
-                inputs.append(responses[pred])
-            else:
-                raise ValueError(
-                    f"Input node {pred} to node {node} does not (yet) exist"
-                )
-        if len(inputs) == 0:
-            raise ValueError(f"No inputs to node {node}")
-        if len(inputs) == 1:
-            input = inputs[0]
-        else:
-            # flatten the inputs and concatenate them
-            input = torch.cat([inp.view(inp.size(0), -1) for inp in inputs], dim=1)
-        return input
-
 
 def get_cnn_circuit(
     brain: Brain,
@@ -162,3 +144,28 @@ def get_cnn_circuit(
 
     input_shape = brain.sensors[sensor]
     return input_shape, OrderedDict(tuples)
+
+
+def assemble_inputs(
+    node: str,
+    n_input_params: int,
+    connectome,#: DiGraph[str],
+    responses: Dict[str, torch.Tensor],
+) -> torch.Tensor:
+    """Assemble the inputs to a given node by concatenating the responses of its predecessors."""
+    inputs: List[torch.Tensor] = []
+    for pred in connectome.predecessors(node):
+        if pred in responses:
+            inputs.append(responses[pred])
+        else:
+            raise ValueError(f"Input node {pred} to node {node} does not (yet) exist")
+    if len(inputs) == 0:
+        raise ValueError(f"No inputs to node {node}")
+
+    # Check whether module takes more than 1 input
+    if n_input_params == 1 and len(inputs) > 1:
+        # Flatten the inputs
+        inputs = [torch.cat([inp.view(inp.size(0), -1) for inp in inputs], dim=1)]
+    else:
+        assert n_input_params == len(inputs), f"Number of inputs does not match number of forward parameters for {node}!"
+    return inputs

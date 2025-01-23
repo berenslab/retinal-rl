@@ -2,6 +2,7 @@
 
 ### Imports ###
 
+import inspect
 import logging
 import os
 import shutil
@@ -16,7 +17,7 @@ from omegaconf import DictConfig, OmegaConf
 from torch import nn
 from torch.optim.optimizer import Optimizer
 
-from retinal_rl.models.brain import Brain
+from retinal_rl.models.brain import Brain, assemble_inputs
 from retinal_rl.models.neural_circuit import NeuralCircuit
 
 nx.DiGraph.__class_getitem__ = classmethod(lambda _, __: "nx.DiGraph")  # type: ignore
@@ -95,6 +96,15 @@ def create_brain(brain_cfg: DictConfig) -> Brain:
     return Brain(circuits, sensors, connectome)
 
 
+def import_class(import_path):  # TODO: Move to more general utils
+    parts = import_path.split(".")
+    module_name = ".".join(parts[:-1])
+    class_name = parts[-1]
+
+    module = __import__(module_name, fromlist=[class_name])
+    return getattr(module, class_name)
+
+
 def assemble_neural_circuits(
     circuits: DictConfig,
     sensors: Dict[str, List[int]],
@@ -136,8 +146,14 @@ def assemble_neural_circuits(
             continue
 
         circuit_config = OmegaConf.select(circuits, node)
-        input_tensor = _assemble_inputs(node, connectome, dummy_responses)
-        input_shape = list(input_tensor.shape[1:])
+
+        _circuit_class = import_class(circuit_config._target_)
+        n_forward_params = len(inspect.signature(_circuit_class.forward).parameters) - 1 # -1 for self
+        inputs = assemble_inputs(node, n_forward_params, connectome, dummy_responses)
+
+        # The default forward input tensor is always in position 0
+        # TODO: automatic retrieval of all input shapes?
+        input_shape = list(inputs[0].shape[1:])
 
         # Check for an explicit output_shape key
         if "output_shape" in circuit_config:
@@ -158,31 +174,13 @@ def assemble_neural_circuits(
             )
 
         # Update dummy responses
-        dummy_responses[node] = circuit(input_tensor)
+        dummy_responses[node] = circuit(*inputs)
+        # TODO: Review: Order of inputs might not be correct, at least there are no guarantees
+        # perhaps implicitly defined through the connectome config (also not a nice way though)
 
         assembled_circuits[node] = circuit
 
     return connectome, assembled_circuits
-
-
-def _assemble_inputs(
-    node: str,
-    connectome: DiGraph[str],
-    responses: Dict[str, torch.Tensor],
-) -> torch.Tensor:
-    """Assemble the inputs to a given node by concatenating the responses of its predecessors."""
-    inputs: List[torch.Tensor] = []
-    for pred in connectome.predecessors(node):
-        if pred in responses:
-            inputs.append(responses[pred])
-        else:
-            raise ValueError(f"Input node {pred} to node {node} does not (yet) exist")
-    if len(inputs) == 0:
-        raise ValueError(f"No inputs to node {node}")
-    if len(inputs) == 1:
-        return inputs[0]
-    # flatten the inputs and concatenate them
-    return torch.cat([inp.view(inp.size(0), -1) for inp in inputs], dim=1)
 
 
 def _resolve_output_shape(
