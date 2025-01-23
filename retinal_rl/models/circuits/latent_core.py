@@ -7,9 +7,10 @@ from retinal_rl.models.neural_circuit import NeuralCircuit
 
 
 class LatentRNN(NeuralCircuit):
-    def __init__(self, input_shape: List[int], rnn_size, rnn_num_layers):
+    def __init__(self, input_shape: List[int], rnn_size: int, rnn_num_layers: int):
         super().__init__(input_shape)
-        self.core = nn.GRU(input_shape, rnn_size, rnn_num_layers)
+        input_size = int(torch.prod(torch.tensor(input_shape)))
+        self.core = nn.GRU(input_size, rnn_size, rnn_num_layers)
 
     def forward(self, head_output, rnn_states):
         is_seq = not torch.is_tensor(head_output)
@@ -19,6 +20,7 @@ class LatentRNN(NeuralCircuit):
 
         rnn_states = rnn_states.unsqueeze(0)
 
+        # as the last element in x is the new_rnn_states, we don't need to return it
         x, new_rnn_states = self.core(head_output, rnn_states.contiguous())
 
         if not is_seq:
@@ -26,7 +28,8 @@ class LatentRNN(NeuralCircuit):
 
         new_rnn_states = new_rnn_states.squeeze(0)
 
-        return x, new_rnn_states  # TODO: not compatible (yet)
+        # x = x.view(-1, *self.output_shape)  # TODO: check how this affects sequence processing
+        return x#, new_rnn_states #TODO: Can we just ignore this and extract new_rnn_states from x?
 
 
 class LatentFFN(NeuralCircuit):
