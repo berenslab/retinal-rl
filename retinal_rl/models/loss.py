@@ -1,6 +1,7 @@
 """Losses for training models, and the context required to evaluate them."""
 
 from abc import abstractmethod
+import numbers
 from typing import Dict, Generic, List, Optional, TypeVar
 
 import torch
@@ -69,7 +70,7 @@ class Loss(LoggingStatistic[ContextT]):
     def __init__(
         self,
         target_circuits: Optional[List[str]] = None,
-        weights: Optional[List[float]] = None,
+        weights: Optional[List[float] | numbers.Number] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
     ):
@@ -77,7 +78,9 @@ class Loss(LoggingStatistic[ContextT]):
         if target_circuits is None:
             target_circuits = []
         if weights is None:
-            weights = [1]
+            weights = [1] * len(target_circuits)
+        if isinstance(weights, numbers.Number):
+            weights = [weights]
 
         self.target_circuits = target_circuits
         self.weights = weights
