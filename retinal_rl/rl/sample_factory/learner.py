@@ -312,7 +312,7 @@ class RetinalLearner(Learner):
                         # this prevents a situation where most of the data in the minibatch is invalid
                         # and we end up doing SGD with super noisy gradients
                         actual_lr = self.curr_lr * (experience_size - num_invalids) / experience_size
-                    self._apply_lr(actual_lr)
+                    self._apply_lr(actual_lr) #TODO: Check
 
                     with self.param_server.policy_lock:
                         self.optimizer.step()

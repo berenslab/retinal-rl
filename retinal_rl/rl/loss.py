@@ -288,18 +288,13 @@ def build_context(
     # TODO: This might be related to the problem?!
 
     with timing.add_time("tail"):
-        # calculate policy tail outside of recurrent loop
-        out = torch.flatten(responses[actor_critic.decoder], 1)
-        # FIXME: IMPROVISED - ACTION DISTRIBUTION - TO BE BRAINIFIED
-        _, actor_critic.last_action_distribution = actor_critic.action_parameterization(out)
+        values = responses["critic"].squeeze()
 
-        # TODO: make critic_linear RL-Style + remove this duplicate lines - here it should be sth like values = responses["values"]
-        values = actor_critic.critic_linear(out).squeeze()
-
-        # TODO: 'brainify' action_distribution
-        action_distribution = actor_critic.action_distribution()
+        # Get Action Distribution from actor output
+        action_distribution = get_action_distribution(
+            actor_critic.action_space, raw_logits=responses["actor"]
+        )
         log_prob_actions = action_distribution.log_prob(mb.actions)
-        # BUG: shape mismatch :o - also for non rl - context -> broke sth elsewhere
         ratio = torch.exp(log_prob_actions - mb.log_prob_actions)  # pi / pi_old
 
         # super large/small values can cause numerical problems and are probably noise anyway
