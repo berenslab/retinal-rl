@@ -112,6 +112,12 @@ def _compute_receptive_fields(
     widx = (wsz - 1) // 2
 
     hrf_size, wrf_size, hmn, wmn = rf_size_and_start(head_layers, hidx, widx)
+    # TODO: Discuss: Do we want to allow receptive fields larger than the input size?
+    hmn = max(0, hmn)
+    wmn = max(0, wmn)
+    hrf_size = min(hrf_size, hght)
+    wrf_size = min(wrf_size, wdth)
+
     grads: list[Tensor] = []
 
     for j in range(out_channels):
