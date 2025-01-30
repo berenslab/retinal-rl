@@ -50,7 +50,7 @@ class RetinalAlgoObserver(AlgoObserver):
 
     def _analyze(self, env_step: int):
         try:
-            brain = load_brain_from_checkpoint(self.cfg)
+            brain = load_brain_from_checkpoint(self.cfg, latest=True)
             brain.sensors['vision'] = (3,160,160) # TODO: Hardcore Hack cause there's a bug in rf estimation
             objective: Objective[RLContext] = instantiate(self.cfg.objective, brain=brain)
             cfg = AnalysesCfg(
