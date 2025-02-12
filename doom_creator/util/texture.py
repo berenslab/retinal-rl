@@ -4,7 +4,7 @@ from abc import ABC
 from enum import Enum
 
 from num2words import num2words
-from torchvision.datasets import CIFAR10, CIFAR100, MNIST
+from torchvision.datasets import CIFAR10, CIFAR100, MNIST, VisionDataset
 
 
 class DatasetWrapper(ABC):
@@ -13,18 +13,19 @@ class DatasetWrapper(ABC):
     ): ...
 
     @property
-    def dataset(self):
+    def dataset(self) -> VisionDataset:
         return self._dataset
 
     @dataset.setter
-    def dataset(self, value):
+    def dataset(self, value: VisionDataset):
         self._dataset = value
 
     @property
-    def num_classes(self) -> int: ...
+    def num_classes(self) -> int:
+        return self._num_classes
 
     @num_classes.setter
-    def num_classes(self, value):
+    def num_classes(self, value: int):
         self._num_classes = value
 
     def label_to_str(self, i: int) -> str: ...
