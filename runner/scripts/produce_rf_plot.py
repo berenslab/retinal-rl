@@ -13,7 +13,9 @@ from tqdm import tqdm
 
 
 def rescale(x: npt.NDArray[Any], min: float = 0, max: float = 1) -> npt.NDArray[Any]:
-    return ((x - x.min()) / (x.max() - x.min())) * (max - min) + min
+    _max = np.max(np.abs(x))
+    _min = -_max # keep 0 as the central value
+    return ((x - _min) / (_max - _min)) * (max - min) + min
 
 
 def reshape_images(
@@ -130,9 +132,11 @@ def produce_anim(experiment_path: Path, out_dir: Path, fast: bool = False):
     rf_files = get_rf_files(rf_dir)
     hyper_params = get_hyperparams(experiment_path)
 
-    fig, imshows, suptitle = init_plot(rf_dir, rf_files[0], hyper_params, figwidth=5 if fast else 10)
+    fig, imshows, suptitle = init_plot(
+        rf_dir, rf_files[0], hyper_params, figwidth=5 if fast else 10
+    )
 
-    step = 2 if fast else 1
+    step = 3 if fast else 1
     n_frames = len(rf_files) // step
 
     def update(frame: int):
