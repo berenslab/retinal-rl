@@ -65,7 +65,7 @@ def analyze(
         epoch,
         copy_checkpoint,
     )
-    log.save_dict(cfg.analyses_dir / f"receptive_fields_epoch_{epoch}.json", rf_result)
+    log.save_dict(cfg.analyses_dir / f"receptive_fields_epoch_{epoch}.npz", rf_result)
 
     if cfg.channel_analysis:
         # Prepare dataset
@@ -81,10 +81,10 @@ def analyze(
             copy_checkpoint,
         )
         log.save_dict(
-            cfg.analyses_dir / f"spectral_stats_epoch_{epoch}.json", spectral_result
-        )
+            cfg.analyses_dir / f"spectral_stats_epoch_{epoch}.npz", spectral_result
+        ) # TODO: Check if compressed save possible
         log.save_dict(
-            cfg.analyses_dir / f"histogram_stats_epoch_{epoch}.json", spectral_result
+            cfg.analyses_dir / f"histogram_stats_epoch_{epoch}.npz", spectral_result
         )
     else:
         spectral_result, histogram_result = None, None
@@ -126,7 +126,7 @@ def _extended_initialization_plots(
 ):
     transforms = transf_ana.analyze(train_set, num_steps=5, num_images=2)
     # Save transform statistics
-    log.save_dict(analyses_dir / "transforms.json", asdict(transforms))
+    log.save_dict(analyses_dir / "transforms.npz", asdict(transforms))
 
     transforms_fig = transf_ana.plot(**asdict(transforms))
     log.log_figure(

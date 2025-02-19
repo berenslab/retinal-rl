@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import seaborn as sns
-import wandb
 from matplotlib import patches
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -17,8 +16,10 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Circle, Wedge
 from matplotlib.ticker import MaxNLocator
 
+import wandb
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.objective import ContextT, Objective
+from retinal_rl.rl.analysis.plot import rescale_range
 from retinal_rl.util import FloatArray, NumpyEncoder
 
 
@@ -370,6 +371,28 @@ class FigureLogger:
         if self.use_wandb:
             wandb.save(str(filepath), base_path=self.run_dir, policy="now")
 
-    def save_dict(self, path: Path, dict: dict[str, Any]):
-        with open(path, "w") as f:
-            json.dump(dict, f, cls=NumpyEncoder)
+    def save_dict(
+        self, path: Path, store_dict: dict[str, Any], compressed: bool = True
+    ):
+        if compressed:
+            compressed_dict: dict[str, Any] = {}
+            for key, value in store_dict.items():
+                if isinstance(value, np.ndarray):
+                    compressed_dict[key] = rescale_range(
+                        value, center_zero=True, out_max=255
+                    ).astype(np.uint8)
+                elif isinstance(value, list) and all(
+                    isinstance(item, np.ndarray) for item in value
+                ):
+                    compressed_dict[key] = [
+                        rescale_range(item, center_zero=True, out_max=255).astype(
+                            np.uint8
+                        )
+                        for item in value
+                    ]
+                else:
+                    compressed_dict[key] = value
+            np.savez_compressed(path, **compressed_dict)
+        else:
+            with open(path, "w") as f:
+                json.dump(store_dict, f, cls=NumpyEncoder)

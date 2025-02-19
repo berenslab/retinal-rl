@@ -79,7 +79,7 @@ def plot(
         )
         # Save the reconstructions #TODO: most plot functions don't do this, should stay?
         log.save_dict(
-            analyses_dir / f"{decoder}_reconstructions_epoch_{epoch}.json", rec_dict
+            analyses_dir / f"{decoder}_reconstructions_epoch_{epoch}.npz", rec_dict
         )
 
 

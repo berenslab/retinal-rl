@@ -53,7 +53,7 @@ def analyze(
         epoch,
         copy_checkpoint,
     )
-    log.save_dict(cfg.analyses_dir / f"receptive_fields_epoch_{epoch}.json", rf_result)
+    log.save_dict(cfg.analyses_dir / f"receptive_fields_epoch_{epoch}.npz", rf_result)
 
     if epoch == 0:
         default_ana.initialization_plots(log, brain, objective, input_shape, rf_result)
