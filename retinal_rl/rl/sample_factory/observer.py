@@ -27,8 +27,6 @@ multiprocessing.set_start_method(
 )  # Important.  TODO: Readup on this
 
 ### Runner ###
-
-
 class RetinalAlgoObserver(AlgoObserver):
     """
     AlgoObserver that runs analysis at specified times.
@@ -36,7 +34,8 @@ class RetinalAlgoObserver(AlgoObserver):
 
     def __init__(self, cfg: Config):
         self.cfg = cfg
-        self.freq = cfg.analysis_freq
+        self.cur_freq = cfg.analysis_freq_start
+        self.end_freq = cfg.analysis_freq_end
         self.current_process = None
         self.queue = multiprocessing.Queue()
 
@@ -46,7 +45,7 @@ class RetinalAlgoObserver(AlgoObserver):
 
         # acount = read_analysis_count(cfg)
 
-        self.steps_complete = 0  # Skip step 0 as no model is saved yet
+        self.next_analysis_step = 0
 
     def _analyze(self, env_step: int):
         try:
@@ -81,13 +80,13 @@ class RetinalAlgoObserver(AlgoObserver):
         """Called after each training step."""
         # TODO: Check and refactor
         total_env_steps = sum(runner.env_steps.values())
-        current_step = total_env_steps // self.freq
 
-        if current_step >= self.steps_complete:
+        if total_env_steps >= self.next_analysis_step:
             # run analysis in a separate process
             log.debug(
                 "RETINAL RL: current_step >= self.steps_complete, launching analysis process..."
             )
 
             self._analyze(total_env_steps)
-            self.steps_complete += 1
+            self.next_analysis_step = self.next_analysis_step + min(self.cur_freq, self.end_freq)
+            self.cur_freq = self.cur_freq * 2
