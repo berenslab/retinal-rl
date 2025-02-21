@@ -4,7 +4,7 @@ from abc import ABC
 from enum import Enum
 
 from num2words import num2words
-from torchvision.datasets import CIFAR10, CIFAR100, MNIST, VisionDataset
+from torchvision.datasets import CIFAR10, CIFAR100, MNIST, SVHN, VisionDataset
 
 
 class DatasetWrapper(ABC):
@@ -30,25 +30,25 @@ class DatasetWrapper(ABC):
 
     def label_to_str(self, i: int) -> str: ...
 
-    def clean(self, path: str): ...
+    def clean(self, data_path: str): ...
 
 
 class MNISTWrapper(DatasetWrapper):
     def __init__(
         self, data_src_path: str, train: bool = True, download: bool = True
-    ) -> DatasetWrapper:
+    ):
         self.dataset = MNIST(data_src_path, train=train, download=download)
         self.label_to_str = num2words
         self.num_classes = len(self.dataset.classes)
-        self.clean = lambda path: shutil.rmtree(
-            os.path.join(path, "MNIST"), ignore_errors=True
+        self.clean = lambda data_path: shutil.rmtree(
+            os.path.join(data_path, "MNIST"), ignore_errors=True
         )
 
 
 class CIFAR10Wrapper(DatasetWrapper):
     def __init__(
         self, data_src_path: str, train: bool = True, download: bool = True
-    ) -> DatasetWrapper:
+    ):
         self.dataset = CIFAR10(data_src_path, train=train, download=download)
         self.label_to_str = lambda i: self.dataset.classes[i]
         self.num_classes = len(self.dataset.classes)
@@ -64,7 +64,7 @@ class CIFAR10Wrapper(DatasetWrapper):
 class CIFAR100Wrapper(DatasetWrapper):
     def __init__(
         self, data_src_path: str, train: bool = True, download: bool = True
-    ) -> DatasetWrapper:
+    ):
         self.dataset = CIFAR100(data_src_path, train=train, download=download)
         self.label_to_str = lambda i: self.dataset.classes[i]
         self.num_classes = len(self.dataset.classes)
@@ -77,6 +77,18 @@ class CIFAR100Wrapper(DatasetWrapper):
         )
 
 
+class SVHNWrapper(DatasetWrapper):
+    def __init__(
+        self, data_src_path: str, train: bool = True, download: bool = True
+    ):
+        self.dataset = SVHN(data_src_path, split="train" if train else "test", download=download)
+        self.label_to_str = num2words
+        self.num_classes = len(set(self.dataset.labels))
+
+    def clean(self, data_path: str):
+        os.remove(os.path.join(data_path, "train_32x32.mat"))
+
+
 class TextureType(Enum):
     APPLES = "apples"
     OBSTACLES = "obstacles"
@@ -84,6 +96,7 @@ class TextureType(Enum):
     MNIST = "mnist"
     CIFAR10 = "cifar-10"
     CIFAR100 = "cifar-100"
+    SVHN = "svhn"
 
     @property
     def is_asset(self):
@@ -110,6 +123,8 @@ class TextureType(Enum):
             wrapper = CIFAR10Wrapper(data_src_path, train, download)
         elif self is TextureType.CIFAR100:
             wrapper = CIFAR100Wrapper(data_src_path, train, download)
+        elif self is TextureType.SVHN:
+            wrapper = SVHNWrapper(data_src_path, train, download)
         else:
             raise NotImplementedError(
                 "Only MNIST, CIFAR10 and CIFAR100 are currently implemented."
