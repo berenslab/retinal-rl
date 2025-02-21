@@ -7,6 +7,7 @@ from typing import Optional, Set, Tuple
 
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
+from tqdm import tqdm
 
 from doom_creator.util.config import Config
 from doom_creator.util.texture import TextureType
@@ -82,27 +83,27 @@ def preload_dataset(
     out_path = osp.join(textures_dir, dataset_type.out_dir(not train))
 
     if source_dir is None:
-        source_dir = out_path
+        source_dir = osp.join(textures_dir, dataset_type.out_dir(test=False) + "_data")
 
     # check if resources/textures/$dataset$ exists
-    if not osp.exists(out_path):
-        dataset_wrapper = dataset_type.get_dataset_wrapper(source_dir, train)
-        os.makedirs(out_path)
+    os.makedirs(out_path, exist_ok=True)
+    dataset_wrapper = dataset_type.get_dataset_wrapper(source_dir, train)
 
-        # save images as pngs organized by word label
-        for i in range(dataset_wrapper.num_classes):
-            os.makedirs(osp.join(out_path, dataset_wrapper.label_to_str(i)))
-        for i in range(len(dataset_wrapper.dataset)):
-            png = osp.join(
-                out_path,
-                dataset_wrapper.label_to_str(dataset_wrapper.dataset[i][1]),
-                str(i) + ".png",
-            )  # TODO: instead of saving and then doomifying, doomify and save
+    # save images as pngs organized by word label
+    for i in range(dataset_wrapper.num_classes):
+        os.makedirs(osp.join(out_path, dataset_wrapper.label_to_str(i)), exist_ok=True)
+    for i in tqdm(range(len(dataset_wrapper.dataset)), "Doomifying images"):
+        png = osp.join(
+            out_path,
+            dataset_wrapper.label_to_str(dataset_wrapper.dataset[i][1]),
+            str(i) + ".png",
+        )  # TODO: instead of saving and then doomifying, doomify and save
+        if not osp.exists(png):
             dataset_wrapper.dataset[i][0].save(png)
             doomify_image(png, 2)
 
-        if clean:
-            dataset_wrapper.clean(source_dir)
+    if clean:
+        dataset_wrapper.clean(source_dir)
 
 
 def check_preload(cfg: Config, test: bool) -> Tuple[Config, Set[TextureType]]:
