@@ -86,7 +86,10 @@ class SVHNWrapper(DatasetWrapper):
         self.num_classes = len(set(self.dataset.labels))
 
     def clean(self, data_path: str):
-        os.remove(os.path.join(data_path, "train_32x32.mat"))
+        for split in ["train", "test"]:
+            split_path = os.path.join(data_path, f"{split}_32x32.mat")
+            if os.path.exists(split_path):
+                os.remove(split_path)
 
 
 class TextureType(Enum):
