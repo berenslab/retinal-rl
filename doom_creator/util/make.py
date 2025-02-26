@@ -52,6 +52,9 @@ def make_scenario(
 
     include_decorate = ""
     actor_idx = 0
+    n_actors = sum(len(type_cfg.actors) for type_cfg in cfg.objects.values())
+    buffer = 500 # have a buffer for objects / lumps other than the actor sprites
+    max_sprites_per_class = (65535 - buffer) // n_actors # There's a hard limit for number of objects in vizdoom, so make sure we don't reach that
     for typ, type_cfg in tqdm(cfg.objects.items(), desc="Creating Objects"):
         for actor_name, actor_cfg in tqdm(
             type_cfg.actors.items(), desc="Creating " + typ.value, leave=False
@@ -60,6 +63,7 @@ def make_scenario(
             # get all pngs listend in pngpths and subdirs
             png_pths = actor_cfg.textures
             pngs = get_pngs(osp.join(directories.CACHE_DIR, "textures"), png_pths)
+            pngs = pngs[:min(len(pngs), max_sprites_per_class)]
             num_textures = len(pngs)
 
             sprite_names = [actor_code(actor_idx, i) for i in range(num_textures)]
