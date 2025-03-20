@@ -35,6 +35,11 @@ def get_checkpoint(cfg: Config, latest:bool=False) -> tuple[Dict[str, Any], Attr
     checkpoints = Learner.get_checkpoints(
         Learner.checkpoint_dir(cfg, policy_id), "checkpoint_*"
     )
+
+    for checkpoint in checkpoints:
+        if "checkpoint_temp" in checkpoint:
+            checkpoints.remove(checkpoint) #TODO: Find out what checkpoint_temp is used for in sample factory
+
     if not latest and len(checkpoints) > 0:
         best_checkpoint = Learner.get_checkpoints(
             Learner.checkpoint_dir(cfg, policy_id), "best_*"
