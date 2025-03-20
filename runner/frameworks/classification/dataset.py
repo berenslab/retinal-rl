@@ -25,6 +25,9 @@ def _get_datasets(cache_dir: str, dataset_name: str, imageset: DictConfig) -> tu
     elif dataset_name.upper() == "MNIST":
         train_base = datasets.MNIST(root=cache_dir, train=True, download=True)
         test_base = datasets.MNIST(root=cache_dir, train=False, download=True)
+    elif dataset_name.upper() == "SVHN":
+        train_base = datasets.SVHN(root=cache_dir, split="train", download=True)
+        test_base = datasets.SVHN(root=cache_dir, split="test", download=True)
     elif dataset_name.upper() == "RL_STREAM": # TODO: Reconsider if this is the approach to go for
         train_base = datasets.ImageFolder(root=cache_dir)
         test_base = datasets.ImageFolder(root=cache_dir)
