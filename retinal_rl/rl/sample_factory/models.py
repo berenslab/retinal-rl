@@ -86,10 +86,9 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
 
         self._maybe_sample_actions(True, result)
 
-        # TODO: Check why both is needed but the same in all cases I looked at so far
-        # TODO: works only if there's a single rnn module named "rnn"
-        if "rnn" in responses:
-            core_out = responses["rnn"]
+        # TODO: hack piping the rnn_state through the result dict
+        if "rnn_state" in responses:
+            core_out = responses["rnn_state"]
             result["new_rnn_states"] = core_out
             result["latent_states"] = core_out
         else:

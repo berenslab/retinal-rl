@@ -37,7 +37,7 @@ def decorate_forward(rnn: LatentRNN):
             warnings.warn(
                 "RNN is in training mode and rnn_states is not a dictionary. Using original forward method."
             )
-            output = orig_method(input, rnn_states)
+            output, state = orig_method(input, rnn_states)
         else:
             assert all(
                 attr in rnn_states
@@ -51,10 +51,10 @@ def decorate_forward(rnn: LatentRNN):
                 rnn_states["dones_cpu"],
                 rnn_states["recurrence"],
             )
-            core_output_seq = orig_method(input_seq, rnn_states)
+            core_output_seq, state = orig_method(input_seq, rnn_states)
 
             output = build_core_out_from_seq(core_output_seq, inverted_select_inds)
-        return output  # , state
+        return output, state #TODO: Double check state might not be used here or also readjusted
 
     setattr(rnn, orig_method.__name__, wrapper)
     return wrapper

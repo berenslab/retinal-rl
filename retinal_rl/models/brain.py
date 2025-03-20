@@ -55,7 +55,12 @@ class Brain(nn.Module):
             else:
                 n_forward_params = len(inspect.signature(self.circuits[node].forward).parameters)
                 input = assemble_inputs(node, n_forward_params, self.connectome, responses)
-                responses[node] = self.circuits[node](*input)
+                if node == "rnn":
+                    out, rnn_state = self.circuits[node](*input)
+                    responses[node] = out
+                    responses["rnn_state"] = rnn_state
+                else:
+                    responses[node] = self.circuits[node](*input)
         return responses
 
     def scan(self) -> str:

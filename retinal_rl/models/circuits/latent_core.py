@@ -12,13 +12,17 @@ class LatentRNN(NeuralCircuit):
         input_size = int(torch.prod(torch.tensor(input_shape)))
         self.core = nn.GRU(input_size, rnn_size, rnn_num_layers)
 
-    def forward(self, head_output, rnn_states):
+    def forward(self, head_output, rnn_states: torch.Tensor):
         is_seq = not torch.is_tensor(head_output)
 
         if not is_seq:
             head_output = head_output.unsqueeze(0)
 
-        rnn_states = rnn_states.unsqueeze(0)
+        if self.core.num_layers > 1:
+            rnn_states = rnn_states.view(rnn_states.size(0), self.core.num_layers, -1)
+            rnn_states = rnn_states.permute(1, 0, 2)
+        else:
+            rnn_states = rnn_states.unsqueeze(0)
 
         # as the last element in x is the new_rnn_states, we don't need to return it
         x, new_rnn_states = self.core(head_output, rnn_states.contiguous())
@@ -26,10 +30,13 @@ class LatentRNN(NeuralCircuit):
         if not is_seq:
             x = x.squeeze(0)
 
-        new_rnn_states = new_rnn_states.squeeze(0)
+        if self.core.num_layers > 1:
+            new_rnn_states = new_rnn_states.permute(1, 0, 2)
+            new_rnn_states = new_rnn_states.reshape(new_rnn_states.size(0), -1)
+        else:
+            new_rnn_states = new_rnn_states.squeeze(0)
 
-        # x = x.view(-1, *self.output_shape)  # TODO: check how this affects sequence processing
-        return x#, new_rnn_states #TODO: Can we just ignore this and extract new_rnn_states from x?
+        return x, new_rnn_states
 
 
 class LatentFFN(NeuralCircuit):

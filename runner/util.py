@@ -148,6 +148,9 @@ def assemble_neural_circuits(
     dummy_responses = {
         sensor: torch.rand((1, *sensor_shapes[sensor])) for sensor in sensor_shapes
     }
+    if 'rnn_state' in sensor_shapes: 
+        shape = (1, *sensor_shapes['rnn_state'])
+        dummy_responses['rnn_state'] = torch.rand(shape)
 
     # Instantiate the neural circuits
     for node in nx.topological_sort(connectome):
@@ -183,7 +186,12 @@ def assemble_neural_circuits(
             )
 
         # Update dummy responses
-        dummy_responses[node] = circuit(*inputs)
+        if node == "rnn": # TODO: Code duplicate from brain forward function, refactor
+            out, rnn_state = circuit(*inputs)
+            dummy_responses[node] = out
+            dummy_responses["rnn_state"] = rnn_state
+        else:
+            dummy_responses[node] = circuit(*inputs)
         # TODO: Review: Order of inputs might not be correct, at least there are no guarantees
         # perhaps implicitly defined through the connectome config (also not a nice way though)
 
