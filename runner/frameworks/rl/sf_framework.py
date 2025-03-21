@@ -185,6 +185,11 @@ class SFFramework(TrainingFramework):
 
         SFFramework._set_cfg_cli_argument(sf_cfg, "with_wandb", cfg.logging.use_wandb)
         SFFramework._set_cfg_cli_argument(sf_cfg, "wandb_dir", cfg.path.wandb_dir)
+        if hasattr(cfg.brain.circuits, "rnn"): # TODO: remove samplefactory dependency for rnn setup
+            SFFramework._set_cfg_cli_argument(sf_cfg, "use_rnn", True)
+            # needed for initalizing the state correctly
+            SFFramework._set_cfg_cli_argument(sf_cfg, "rnn_size", cfg.brain.circuits.rnn.rnn_size)
+            SFFramework._set_cfg_cli_argument(sf_cfg, "rnn_num_layers", cfg.brain.circuits.rnn.rnn_num_layers)
         if hasattr(cfg, "samplefactory"):
             for attr in cfg.samplefactory:
                 SFFramework._set_cfg_cli_argument(sf_cfg, attr, cfg.samplefactory[attr])
