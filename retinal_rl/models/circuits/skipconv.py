@@ -35,13 +35,15 @@ class SkipConvolution(NeuralCircuit):
         )
         self.add = add
 
+        self.pre_add_conv = torch.nn.Identity()
         if self.add:
             last_channels = (
                 num_channels if isinstance(num_channels, int) else num_channels[-1]
             )
-            assert (
-                last_channels == input_shape[0]
-            ), "If the skip connection should be added to the output (ResNet style), the number of input and output channels must match."
+            same_channels = last_channels == input_shape[0]
+            # assert same_channels, "If the skip connection should be added to the output (ResNet style), the number of input and output channels must match."
+            if not same_channels:
+                self.pre_add_conv = torch.nn.Conv2d(input_shape[0], last_channels, 1)
 
     def forward(self, x: torch.Tensor):
         output = self.conv(x)
@@ -50,7 +52,7 @@ class SkipConvolution(NeuralCircuit):
         cropped_input = center_crop(x, output.shape[-2:])
 
         if self.add:
-            output = output + cropped_input
+            output = output + self.pre_add_conv(cropped_input)
         else:
             output = torch.concat([output, cropped_input], dim=1)
 
