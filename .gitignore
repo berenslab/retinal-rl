@@ -168,3 +168,7 @@ wandb
 data/obsolete*
 data/cifar*
 data/MNIST*
+
+# results
+results
+*.gif
