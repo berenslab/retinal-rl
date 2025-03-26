@@ -21,6 +21,7 @@ class SkipConvolution(NeuralCircuit):
         layer_names: Optional[List[str]] = None,
         add: bool = False,
     ):
+        super().__init__(input_shape)
         self.conv = ConvolutionalEncoder(
             input_shape,
             num_layers,
@@ -46,7 +47,7 @@ class SkipConvolution(NeuralCircuit):
         output = self.conv(x)
 
         # Crop input
-        cropped_input = center_crop(x, output.shape)
+        cropped_input = center_crop(x, output.shape[-2:])
 
         if self.add:
             output = output + cropped_input
