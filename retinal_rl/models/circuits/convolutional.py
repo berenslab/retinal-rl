@@ -97,7 +97,7 @@ class ConvolutionalEncoder(NeuralCircuit):
             conv_layers.append((actnm, self.str_to_activation(self.activation[i])))
         self.conv_head = nn.Sequential(OrderedDict(conv_layers))
 
-    def forward(self, x: Tensor):
+    def forward(self, x: Tensor) -> Tensor:
         return self.conv_head(x)
 
 
