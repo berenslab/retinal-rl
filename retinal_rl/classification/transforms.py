@@ -133,6 +133,7 @@ class ScaleShiftTransform(ContinuousTransform):
         vision_width: int,
         vision_height: int,
         image_rescale_range: Tuple[float, float],
+        shift: bool = True,
     ) -> None:
         """Initialize the ScaleShiftTransform.
 
@@ -141,11 +142,13 @@ class ScaleShiftTransform(ContinuousTransform):
             vision_width (int): The width of the visual field.
             vision_height (int): The height of the visual field.
             image_rescale_range (List[float]): Range of image rescaling factors. For an identity transform, set the range to [1, 1].
+            shift: (bool): Whether to apply random shifts to the image. Else the image will always be centered.
 
         """
         super().__init__(image_rescale_range)
         self.vision_width = vision_width
         self.vision_height = vision_height
+        self.shift = shift
 
     def transform(self, img: Image.Image, trans_factor: float) -> Image.Image:
         """Apply the scale and shift transformation to an input image.
@@ -174,23 +177,24 @@ class ScaleShiftTransform(ContinuousTransform):
         center_y = visual_field[1] // 2
 
         # Calculate the initial top-left position to center the image
-        initial_x = center_x - (scaled_size[0] // 2)
-        initial_y = center_y - (scaled_size[1] // 2)
+        pos_x = center_x - (scaled_size[0] // 2)
+        pos_y = center_y - (scaled_size[1] // 2)
 
-        # Calculate maximum possible shifts to keep the image within the bounds
-        max_x_shift = min(initial_x, visual_field[0] - (initial_x + scaled_size[0]))
-        max_y_shift = min(initial_y, visual_field[1] - (initial_y + scaled_size[1]))
+        if self.shift:
+            # Calculate maximum possible shifts to keep the image within the bounds
+            max_x_shift = min(pos_x, visual_field[0] - (pos_x + scaled_size[0]))
+            max_y_shift = min(pos_y, visual_field[1] - (pos_y + scaled_size[1]))
 
-        # Random shift within the calculated range
-        x_shift = np.random.randint(-max_x_shift, max_x_shift + 1)
-        y_shift = np.random.randint(-max_y_shift, max_y_shift + 1)
+            # Random shift within the calculated range
+            x_shift = np.random.randint(-max_x_shift, max_x_shift + 1)
+            y_shift = np.random.randint(-max_y_shift, max_y_shift + 1)
 
-        # Calculate the final position with shift
-        final_x = initial_x + x_shift
-        final_y = initial_y + y_shift
+            # Calculate the final position with shift
+            pos_x = pos_x + x_shift
+            pos_y = pos_y + y_shift
 
         # Paste the scaled image onto the background
-        background.paste(img, (final_x, final_y))
+        background.paste(img, (pos_x, pos_y))
 
         return background
 
