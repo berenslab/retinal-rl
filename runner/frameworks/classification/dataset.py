@@ -6,6 +6,7 @@ from typing import Tuple
 import hydra
 from omegaconf import DictConfig
 from torchvision import datasets
+from torchvision.transforms.v2 import RGB
 
 from retinal_rl.classification.imageset import Imageset
 
@@ -20,8 +21,11 @@ def get_datasets(cfg: DictConfig) -> Tuple[Imageset, Imageset]:
         train_base = datasets.CIFAR10(root=cache_dir, train=True, download=True)
         test_base = datasets.CIFAR10(root=cache_dir, train=False, download=True)
     elif cfg.dataset.name.upper() == "MNIST":
-        train_base = datasets.MNIST(root=cache_dir, train=True, download=True)
-        test_base = datasets.MNIST(root=cache_dir, train=False, download=True)
+        train_base = datasets.MNIST(root=cache_dir, train=True, download=True, transform=RGB())
+        test_base = datasets.MNIST(root=cache_dir, train=False, download=True, transform=RGB())
+    elif cfg.dataset.name.upper() == "SVHN":
+        train_base = datasets.SVHN(root=cache_dir, split="train", download=True)
+        test_base = datasets.SVHN(root=cache_dir, split="test", download=True)
     else:
         raise ValueError(f"Unsupported dataset: {cfg.name}")
 
