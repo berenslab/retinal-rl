@@ -9,7 +9,7 @@ It includes various image transformations:
 """
 
 from abc import ABC, abstractmethod
-from typing import Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 from PIL import Image, ImageEnhance, ImageFilter
@@ -134,6 +134,7 @@ class ScaleShiftTransform(ContinuousTransform):
         vision_height: int,
         image_rescale_range: Tuple[float, float],
         shift: bool = True,
+        background_img: Optional[str] = None,
     ) -> None:
         """Initialize the ScaleShiftTransform.
 
@@ -143,12 +144,30 @@ class ScaleShiftTransform(ContinuousTransform):
             vision_height (int): The height of the visual field.
             image_rescale_range (List[float]): Range of image rescaling factors. For an identity transform, set the range to [1, 1].
             shift: (bool): Whether to apply random shifts to the image. Else the image will always be centered.
+            background_img (Optional[str]): Path to the background image. If None, a black background will be used.
+                If the background image doesn't match the visual field size, it will be resized so one side matches and the other
+                side is cropped randomly.
 
         """
         super().__init__(image_rescale_range)
-        self.vision_width = vision_width
-        self.vision_height = vision_height
+        self.visual_field = (vision_width, vision_height)
         self.shift = shift
+        if background_img is not None:
+            self.background = Image.open(background_img).convert("RGB")
+            bg_ratio = self.background.size[0] / self.background.size[1]
+            vf_ratio = self.visual_field[0] / self.visual_field[1]
+            if bg_ratio > vf_ratio:
+                # Background is wider than visual field
+                new_height = self.visual_field[1]
+                new_width = int(new_height * bg_ratio)
+            else:
+                # Background is taller than visual field
+                new_width = self.visual_field[0]
+                new_height = int(new_width / bg_ratio)
+            self.background = self.background.resize((new_width, new_height))
+        else:
+            self.background = Image.new("RGB", (self.visual_field[0], self.visual_field[1]), (0, 0, 0))
+
 
     def transform(self, img: Image.Image, trans_factor: float) -> Image.Image:
         """Apply the scale and shift transformation to an input image.
@@ -164,17 +183,13 @@ class ScaleShiftTransform(ContinuousTransform):
 
         """
         # Scale the image
-        visual_field = (self.vision_width, self.vision_height)
 
         scaled_size = (int(img.size[0] * trans_factor), int(img.size[1] * trans_factor))
         img = img.resize(scaled_size, Image.LANCZOS)  # type: ignore
 
-        # Create a black background
-        background = Image.new("RGB", visual_field, (0, 0, 0))
-
         # Center position in the target area
-        center_x = visual_field[0] // 2
-        center_y = visual_field[1] // 2
+        center_x = self.visual_field[0] // 2
+        center_y = self.visual_field[1] // 2
 
         # Calculate the initial top-left position to center the image
         pos_x = center_x - (scaled_size[0] // 2)
@@ -182,8 +197,8 @@ class ScaleShiftTransform(ContinuousTransform):
 
         if self.shift:
             # Calculate maximum possible shifts to keep the image within the bounds
-            max_x_shift = min(pos_x, visual_field[0] - (pos_x + scaled_size[0]))
-            max_y_shift = min(pos_y, visual_field[1] - (pos_y + scaled_size[1]))
+            max_x_shift = min(pos_x, self.visual_field[0] - (pos_x + scaled_size[0]))
+            max_y_shift = min(pos_y, self.visual_field[1] - (pos_y + scaled_size[1]))
 
             # Random shift within the calculated range
             x_shift = np.random.randint(-max_x_shift, max_x_shift + 1)
@@ -193,6 +208,15 @@ class ScaleShiftTransform(ContinuousTransform):
             pos_x = pos_x + x_shift
             pos_y = pos_y + y_shift
 
+
+        # get random crop of background image matching the visual field size
+        background = self.background.copy()
+        if self.background.size != self.visual_field:
+            width_diff = self.background.size[0] - self.visual_field[0]
+            x_start = 0 if width_diff == 0 else np.random.randint(0, width_diff)
+            height_diff = self.background.size[1] - self.visual_field[1]
+            y_start = 0 if height_diff == 0 else np.random.randint(0, height_diff)
+            background = background.crop((x_start, y_start, x_start + self.visual_field[0], y_start + self.visual_field[1]))
         # Paste the scaled image onto the background
         background.paste(img, (pos_x, pos_y))
 
