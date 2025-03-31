@@ -114,11 +114,13 @@ class ReconstructionLoss(Loss[ContextT]):
         weights: Optional[List[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
+        normalize: bool = False,
     ):
         """Initialize the reconstruction loss loss."""
         super().__init__(target_circuits, weights, min_epoch, max_epoch)
         self.loss_fn = nn.MSELoss(reduction="mean")
         self.target_decoder = target_decoder
+        self.normalize = normalize
 
     def compute_value(self, context: ContextT) -> Tensor:
         """Compute the mean squared error between inputs and reconstructions."""
@@ -129,6 +131,15 @@ class ReconstructionLoss(Loss[ContextT]):
             raise ValueError(
                 f"Shape mismatch: sources {sources.shape}, reconstructions {reconstructions.shape}"
             )
+
+        if self.normalize:
+            sources = (
+                sources - sources.mean(dim=[1, 2, 3])[:, None, None, None]
+            ) / sources.std(dim=[1, 2, 3])[:, None, None, None]
+            reconstructions = (
+                reconstructions
+                - reconstructions.mean(dim=[1, 2, 3])[:, None, None, None]
+            ) / reconstructions.std(dim=[1, 2, 3])[:, None, None, None]
 
         return self.loss_fn(reconstructions, sources)
 
