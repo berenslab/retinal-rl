@@ -204,6 +204,8 @@ class SFFramework(TrainingFramework):
         warnings.warn(
             "device, brain, optimizer are initialized differently in sample_factory and thus their current state will be ignored"
         )
+        SFFramework._set_cfg_cli_argument(self.sf_cfg, "save_video", True)
+        SFFramework._set_cfg_cli_argument(self.sf_cfg, "no_render", True)
         enjoy(self.sf_cfg)
         # TODO: Implement analyze function for sf framework
 
