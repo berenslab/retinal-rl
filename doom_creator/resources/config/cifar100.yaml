@@ -1,0 +1,125 @@
+objects:
+  nourishment:
+    actors:
+      nourishment-1:
+        textures:
+          - 'cifar-100/apple'
+          - 'cifar-100/bicycle'
+          - 'cifar-100/baby'
+          - 'cifar-100/cloud'
+          - 'cifar-100/dinosaur'
+          - 'cifar-100/bottle'
+          - 'cifar-100/woman'
+          - 'cifar-100/cattle'
+          - 'cifar-100/sea'
+          - 'cifar-100/maple_tree'
+      nourishment-2:
+        textures:
+          - 'cifar-100/orange'
+          - 'cifar-100/motorcycle'
+          - 'cifar-100/boy'
+          - 'cifar-100/forest'
+          - 'cifar-100/crocodile'
+          - 'cifar-100/can'
+          - 'cifar-100/man'
+          - 'cifar-100/bear'
+          - 'cifar-100/mountain'
+          - 'cifar-100/palm_tree'
+      nourishment-3:
+        textures:
+          - 'cifar-100/pear'
+          - 'cifar-100/bus'
+          - 'cifar-100/girl'
+          - 'cifar-100/bridge'
+          - 'cifar-100/rabbit'
+          - 'cifar-100/plate'
+          - 'cifar-100/aquarium_fish'
+          - 'cifar-100/raccoon'
+          - 'cifar-100/plain'
+          - 'cifar-100/pine_tree'
+      nourishment-4:
+        textures:
+          - 'cifar-100/sweet_pepper'
+          - 'cifar-100/train'
+          - 'cifar-100/mouse'
+          - 'cifar-100/castle'
+          - 'cifar-100/turtle'
+          - 'cifar-100/bowl'
+          - 'cifar-100/flatfish'
+          - 'cifar-100/fox'
+          - 'cifar-100/house'
+          - 'cifar-100/willow_tree'
+      nourishment-5:
+        textures:
+          - 'cifar-100/mushroom'
+          - 'cifar-100/lawn_mower'
+          - 'cifar-100/hamster'
+          - 'cifar-100/skyscraper'
+          - 'cifar-100/whale'
+          - 'cifar-100/cup'
+          - 'cifar-100/ray'
+          - 'cifar-100/porcupine'
+          - 'cifar-100/road'
+          - 'cifar-100/oak_tree'
+  poison:
+    actors:
+      poison-1:
+        textures:
+          - 'cifar-100/orchid'
+          - 'cifar-100/rocket'
+          - 'cifar-100/caterpillar'
+          - 'cifar-100/clock'
+          - 'cifar-100/dolphin'
+          - 'cifar-100/keyboard'
+          - 'cifar-100/shark'
+          - 'cifar-100/possum'
+          - 'cifar-100/bed'
+          - 'cifar-100/cockroach'
+      poison-2:
+        textures:
+          - 'cifar-100/rose'
+          - 'cifar-100/tank'
+          - 'cifar-100/snake'
+          - 'cifar-100/television'
+          - 'cifar-100/beaver'
+          - 'cifar-100/chair'
+          - 'cifar-100/trout'
+          - 'cifar-100/skunk'
+          - 'cifar-100/couch'
+          - 'cifar-100/tulip'
+      poison-3:
+        textures:
+          - 'cifar-100/sunflower'
+          - 'cifar-100/tractor'
+          - 'cifar-100/bee'
+          - 'cifar-100/lamp'
+          - 'cifar-100/otter'
+          - 'cifar-100/table'
+          - 'cifar-100/tiger'
+          - 'cifar-100/wolf'
+          - 'cifar-100/wardrobe'
+          - 'cifar-100/worm'
+      poison-4:
+        textures:
+          - 'cifar-100/pickup_truck'
+          - 'cifar-100/seal'
+          - 'cifar-100/telephone'
+          - 'cifar-100/lion'
+          - 'cifar-100/leopard'
+          - 'cifar-100/crab'
+          - 'cifar-100/squirrel'
+          - 'cifar-100/shrew'
+          - 'cifar-100/snail'
+          - 'cifar-100/elephant'
+      poison-5:
+        textures:
+          - 'cifar-100/streetcar'
+          - 'cifar-100/beetle'
+          - 'cifar-100/lobster'
+          - 'cifar-100/kangaroo'
+          - 'cifar-100/camel'
+          - 'cifar-100/poppy'
+          - 'cifar-100/lizard'
+          - 'cifar-100/butterfly'
+          - 'cifar-100/spider'
+          - 'cifar-100/chimpanzee'
