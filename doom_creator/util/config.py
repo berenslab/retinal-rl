@@ -10,7 +10,7 @@ from omegaconf.omegaconf import OmegaConf
 @dataclass
 class SpawnObjects:
     relative: bool = False
-    range: float = 1000
+    range: int = 1000
 
 
 @dataclass

@@ -1,6 +1,6 @@
 spawn_objects:
   relative: False
-  range: 1000.0
+  range: 1000
 metabolic:
   delay: 2
   damage: 1
