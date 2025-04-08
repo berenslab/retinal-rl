@@ -8,8 +8,10 @@ def general(
     array_variables: str,
     actor_functions: str,
     spawn_relative: bool = True,
-    spawn_range: float = 1000.0,
+    spawn_range: int = 1000,
+    cell_width: int = 150,
 ):
+    grid_size = spawn_range * 2 // cell_width
     return f"""\
 // Directives
 #import "acs/retinal.acs"
@@ -25,6 +27,10 @@ script "Load Config Information" OPEN {{
     // Spawn behaviour
     spawn_relative = {str(spawn_relative).lower()};
     spawn_range = {spawn_range};
+    grid_size = {grid_size};
+    {""
+    "".join([f"free_positions[{i}]=1;" for i in range(grid_size**2)])};
+    objects_left_to_spawn = {grid_size**2};
 
     // Object Variables
     {object_variables}
@@ -58,6 +64,18 @@ script "func_{actor_name}" (void)
 {{
     int i = Random(0,{num_values}-1);
     {heal_or_damage}Thing(values_{actor_name}[i]);
+
+    // Free space for spawning
+    int x = GetActorX(0) >> 16;
+    int y = GetActorY(0) >> 16;
+
+    int cell_width = spawn_range/grid_size * 2;
+    int grid_x = (x + spawn_range + cell_width/2)/cell_width;
+    int grid_y = (y + spawn_range + cell_width/2)/cell_width;
+    int grid_index = grid_x*grid_size + grid_y;
+    free_positions[grid_index] = 1;
+    objects_left_to_spawn++;
+
 }}
 """
 
