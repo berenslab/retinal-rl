@@ -55,13 +55,16 @@ class SFFramework(TrainingFramework):
         # we need to convert to the sample_factory config style since we can not change the function signatures
         # of the library and that uses it _everywhere_
         self.sf_cfg = self.to_sf_cfg(cfg)
-        self.cfg = cfg
 
         # Register retinal environments and models.
-        register_retinal_env(self.sf_cfg.env, self.data_root, self.sf_cfg.input_satiety)
-        env_info = obtain_env_info_in_a_separate_process(self.sf_cfg)
-        self.num_action_outputs = calc_num_action_parameters(env_info.action_space)
-        # TODO: Use for automatic out size of action prediction network
+        register_retinal_env(self.sf_cfg.env, self.data_root, self.sf_cfg.input_satiety, self.sf_cfg.allow_backwards)
+
+        if hasattr(cfg.brain.circuits, "actor"):
+            env_info = obtain_env_info_in_a_separate_process(self.sf_cfg)
+            num_action_outputs = calc_num_action_parameters(env_info.action_space)
+            assert cfg.brain.circuits.actor.output_shape == [int(num_action_outputs)], "Output shape of actor doesn't match action space"
+        self.cfg = cfg
+
 
         global_model_factory().register_actor_critic_factory(SampleFactoryBrain)
         global_learner_factory().register_learner_factory(RetinalLearner)
@@ -159,6 +162,13 @@ class SFFramework(TrainingFramework):
         SFFramework._set_cfg_cli_argument(
             sf_cfg, "input_satiety", cfg.dataset.input_satiety
         )
+
+        if hasattr(cfg.dataset, "allow_backwards"):
+            SFFramework._set_cfg_cli_argument(
+                sf_cfg, "allow_backwards", cfg.dataset.allow_backwards
+            ) #TODO: Doesn't need to be part of sf_cfg!
+        else:
+            SFFramework._set_cfg_cli_argument(sf_cfg, "allow_backwards", True)
         SFFramework._set_cfg_cli_argument(sf_cfg, "device", cfg.system.device)
         optimizer_name = str.lower(
             str.split(cfg.optimizer.optimizer._target_, sep=".")[-1]
@@ -185,11 +195,18 @@ class SFFramework(TrainingFramework):
 
         SFFramework._set_cfg_cli_argument(sf_cfg, "with_wandb", cfg.logging.use_wandb)
         SFFramework._set_cfg_cli_argument(sf_cfg, "wandb_dir", cfg.path.wandb_dir)
-        if hasattr(cfg.brain.circuits, "rnn"): # TODO: remove samplefactory dependency for rnn setup
+        if hasattr(
+            cfg.brain.circuits, "rnn"
+        ):  # TODO: remove samplefactory dependency for rnn setup
             SFFramework._set_cfg_cli_argument(sf_cfg, "use_rnn", True)
             # needed for initalizing the state correctly
-            SFFramework._set_cfg_cli_argument(sf_cfg, "rnn_size", cfg.brain.circuits.rnn.rnn_size)
-            SFFramework._set_cfg_cli_argument(sf_cfg, "rnn_num_layers", cfg.brain.circuits.rnn.rnn_num_layers)
+            SFFramework._set_cfg_cli_argument(
+                sf_cfg, "rnn_size", cfg.brain.circuits.rnn.rnn_size
+            )
+            SFFramework._set_cfg_cli_argument(
+                sf_cfg, "rnn_num_layers", cfg.brain.circuits.rnn.rnn_num_layers
+            )
+
         if hasattr(cfg, "samplefactory"):
             for attr in cfg.samplefactory:
                 SFFramework._set_cfg_cli_argument(sf_cfg, attr, cfg.samplefactory[attr])

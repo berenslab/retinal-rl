@@ -8,6 +8,7 @@ import numpy as np
 # import gym
 from gymnasium.spaces import Discrete
 from sample_factory.envs.env_utils import register_env
+from sf_examples.vizdoom.doom.action_space import key_to_action_basic, doom_action_space_basic
 from sf_examples.vizdoom.doom.doom_utils import DoomSpec, make_doom_env_impl
 
 # from gym.spaces import Discrete
@@ -15,27 +16,18 @@ from sf_examples.vizdoom.doom.doom_utils import DoomSpec, make_doom_env_impl
 
 ### Action Spaces ###
 
-
-def key_to_action_basic(key):
-    from pynput.keyboard import Key
-
-    table = {Key.left: 0, Key.right: 1, Key.up: 2, Key.down: 3}
-    return table.get(key)
-
-
-def doom_action_space_basic():
+def doom_action_space_no_backwards():
     """
     TURN_LEFT
     TURN_RIGHT
     MOVE_FORWARD
-    MOVE_BACKWARD
     """
     space = gym.spaces.Tuple(
         (
             Discrete(3),
-            Discrete(3),
+            Discrete(2),
         )
-    )  # noop, turn left, turn right  # noop, forward, backward
+    )  # noop, turn left, turn right  # noop, forward
 
     space.key_to_action = key_to_action_basic
     return space
@@ -99,16 +91,17 @@ class SatietyInput(gym.Wrapper):
 ### Retinal Environments ###
 
 
-def retinal_doomspec(scene_name: str, cfg_path: str, sat_in: bool):
+def retinal_doomspec(scene_name: str, cfg_path: str, sat_in: bool, allow_backwards: bool):
     ewraps = []
 
     if sat_in:
         ewraps = [(SatietyInput, {})]
 
+    action_space = doom_action_space_basic() if allow_backwards else doom_action_space_no_backwards()
     return DoomSpec(
         scene_name,
         cfg_path,
-        doom_action_space_basic(),
+        action_space,
         reward_scaling=1,
         extra_wrappers=ewraps,
     )
@@ -130,13 +123,13 @@ def make_retinal_env_from_spec(
     )
 
 
-def register_retinal_env(scene_name: str, cache_dir: str, input_satiety: bool):
+def register_retinal_env(scene_name: str, cache_dir: str, input_satiety: bool, allow_backwards: bool = True):
     if not os.path.isabs(cache_dir):
         # make path absolute by making it relative to the path of this file
         # TODO: Discuss whether this is desired behaviour...
         cache_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", cache_dir)
     cfg_path = os.path.join(cache_dir, "scenarios", scene_name + ".cfg")
 
-    env_spec = retinal_doomspec(scene_name, cfg_path, input_satiety)
+    env_spec = retinal_doomspec(scene_name, cfg_path, input_satiety, allow_backwards)
     make_env_func = functools.partial(make_retinal_env_from_spec, env_spec)
     register_env(env_spec.name, make_env_func)
