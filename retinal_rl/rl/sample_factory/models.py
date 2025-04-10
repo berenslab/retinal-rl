@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Optional
 
+import hydra
 import torch
 from omegaconf import DictConfig
 from sample_factory.algo.utils.tensor_dict import TensorDict
@@ -33,6 +34,18 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
 
         self.set_brain(create_brain(DictConfig(cfg.brain)))
         # TODO: Find way to instantiate brain outside
+        transforms_list = hydra.utils.instantiate(cfg.transforms)
+        self.inp_transforms = torch.nn.Sequential(*transforms_list)
+
+    def normalize_obs(self, obs: dict[str, Tensor]) -> dict[str, Tensor]:
+        """
+        This is used to implement input transforms!
+        """
+        obs_clone: dict[str, Tensor] = {}
+        for k in obs: # There should be only one key "obs" in all our cases as far as I know
+            inp = obs[k].clone() if obs[k].dtype == torch.float else obs[k].float()
+            obs_clone[k] = self.inp_transforms(inp)
+        return obs_clone
 
     def wrap_rnns(self):
         for circuit_name in self.brain.circuits:

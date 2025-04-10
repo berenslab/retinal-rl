@@ -12,6 +12,8 @@ from abc import ABC, abstractmethod
 from typing import Tuple
 
 import numpy as np
+
+# TODO: Make it torch transforms instead of PIL so they can be used in RL
 from PIL import Image, ImageEnhance, ImageFilter
 from torch import nn
 

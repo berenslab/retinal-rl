@@ -57,14 +57,20 @@ class SFFramework(TrainingFramework):
         self.sf_cfg = self.to_sf_cfg(cfg)
 
         # Register retinal environments and models.
-        register_retinal_env(self.sf_cfg.env, self.data_root, self.sf_cfg.input_satiety, self.sf_cfg.allow_backwards)
+        register_retinal_env(
+            self.sf_cfg.env,
+            self.data_root,
+            self.sf_cfg.input_satiety,
+            self.sf_cfg.allow_backwards,
+        )
 
         if hasattr(cfg.brain.circuits, "actor"):
             env_info = obtain_env_info_in_a_separate_process(self.sf_cfg)
             num_action_outputs = calc_num_action_parameters(env_info.action_space)
-            assert cfg.brain.circuits.actor.output_shape == [int(num_action_outputs)], "Output shape of actor doesn't match action space"
+            assert cfg.brain.circuits.actor.output_shape == [
+                int(num_action_outputs)
+            ], "Output shape of actor doesn't match action space"
         self.cfg = cfg
-
 
         global_model_factory().register_actor_critic_factory(SampleFactoryBrain)
         global_learner_factory().register_learner_factory(RetinalLearner)
@@ -166,9 +172,20 @@ class SFFramework(TrainingFramework):
         if hasattr(cfg.dataset, "allow_backwards"):
             SFFramework._set_cfg_cli_argument(
                 sf_cfg, "allow_backwards", cfg.dataset.allow_backwards
-            ) #TODO: Doesn't need to be part of sf_cfg!
+            )
+            # TODO: Doesn't need to be part of sf_cfg!
         else:
             SFFramework._set_cfg_cli_argument(sf_cfg, "allow_backwards", True)
+            # TODO: move to default!
+
+        if hasattr(cfg.dataset, "transforms"):
+            SFFramework._set_cfg_cli_argument(
+                sf_cfg, "transforms", OmegaConf.to_object(cfg.dataset.transforms)
+            )
+        else:
+            SFFramework._set_cfg_cli_argument(sf_cfg, "transforms", [])
+            # TODO: move to default!
+
         SFFramework._set_cfg_cli_argument(sf_cfg, "device", cfg.system.device)
         optimizer_name = str.lower(
             str.split(cfg.optimizer.optimizer._target_, sep=".")[-1]
