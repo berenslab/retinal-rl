@@ -8,6 +8,7 @@ from sample_factory.algo.utils.tensor_dict import TensorDict
 from sample_factory.model.action_parameterization import get_action_distribution
 from sample_factory.model.actor_critic import ActorCritic
 from sample_factory.model.model_utils import model_device
+from sample_factory.utils.normalize import ObservationNormalizer
 from sample_factory.utils.typing import ActionSpace, Config, ObsSpace
 from torch import Tensor
 
@@ -41,9 +42,10 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         """
         This is used to implement input transforms!
         """
-        obs_clone: dict[str, Tensor] = {}
+        obs_clone = ObservationNormalizer._clone_tensordict(obs)
         for k in obs: # There should be only one key "obs" in all our cases as far as I know
             inp = obs[k].clone() if obs[k].dtype == torch.float else obs[k].float()
+            # TODO: This should not be needed after the cloning before
             obs_clone[k] = self.inp_transforms(inp)
         return obs_clone
 
