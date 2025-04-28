@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.figure import Figure
 from PIL import Image
+from torch import nn
 
 from retinal_rl.analysis.plot import make_image_grid
 from retinal_rl.classification.imageset import Imageset
@@ -48,9 +49,18 @@ def analyze(imageset: Imageset, num_steps: int, num_images: int) -> TransformSta
                     results[transform.name][step] = []
                     for img in images:
                         results[transform.name][step].append(
-                            imageset.to_tensor(transform.transform(img, step))
+                            imageset.normalize_maybe(transform.transform(imageset.to_tensor(img), step))
                             .cpu()
                             .numpy()
+                        )
+            elif isinstance(transform, nn.Module):
+                name = transform.__class__.__name__.replace("([a-z])([A-Z])", r"\1 \2").lower()
+                results[name] = {}
+                for step in range(num_steps):
+                    results[name][step] = []
+                    for img in images:
+                        results[name][step].append(
+                            imageset.normalize_maybe(transform(imageset.to_tensor(img))).cpu().numpy()
                         )
 
     return resultss
