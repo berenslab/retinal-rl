@@ -47,6 +47,7 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
             inp = obs[k].clone() if obs[k].dtype == torch.float else obs[k].float()
             # TODO: This should not be needed after the cloning before
             obs_clone[k] = self.inp_transforms(inp)
+            obs_clone[k+"_raw"] = obs[k]
         return obs_clone
 
     def wrap_rnns(self):

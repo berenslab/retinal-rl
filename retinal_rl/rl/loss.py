@@ -23,17 +23,6 @@ from retinal_rl.models.loss import BaseContext, Loss
 
 
 class RLContext(BaseContext):
-    """Context class for classification tasks.
-
-    This class extends BaseContext with attributes specific to classification problems.
-
-    Attributes
-    ----------
-        inputs (Tensor): The input data for the classification task.
-        classes (Tensor): The true class labels for the input data.
-
-    """
-
     def __init__(
         self,
         sources: Tensor,
@@ -361,8 +350,9 @@ def build_context(
         adv_std, adv_mean = torch.std_mean(masked_select(adv, mb.valids, num_invalids))
         adv = (adv - adv_mean) / torch.clamp_min(adv_std, 1e-7)  # normalize advantage
 
+        vis_input = mb.normalized_obs["obs_raw"] if "obs_raw" in mb.normalized_obs else mb.normalized_obs["obs"]
     return RLContext(
-        mb.normalized_obs["obs"],
+        vis_input,
         None,
         responses,
         epoch,

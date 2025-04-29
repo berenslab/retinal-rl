@@ -470,8 +470,10 @@ class RetinalLearner(Learner):
             normalized_obs = prepare_and_normalize_obs(self.actor_critic, obs)  # TODO: Check actor_critic usage
 
         # restore original shape
-        for key, x in normalized_obs.items():
-            normalized_obs[key] = x.view(og_shape[key])
+        for key, shape in og_shape.items():
+            normalized_obs[key] = normalized_obs[key].view(shape)
+            if key+"_raw" in normalized_obs: # TODO: +"_raw" is an ugly hack
+                normalized_obs[key+"_raw"] = normalized_obs[key+"_raw"].view(shape)
 
         return normalized_obs
 
