@@ -1,0 +1,15 @@
+objects:
+  distractor:
+    init: 40
+    delay: 30
+    actors:
+      distractor-1:
+        textures:
+          - 'gabors/high-0.png'
+          - 'gabors/high-45.png'
+          - 'gabors/high-90.png'
+          - 'gabors/high-135.png'
+          - 'gabors/low-0.png'
+          - 'gabors/low-45.png'
+          - 'gabors/low-90.png'
+          - 'gabors/low-135.png'

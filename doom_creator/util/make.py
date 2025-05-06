@@ -61,6 +61,7 @@ def make_scenario(
             png_pths = actor_cfg.textures
             pngs = get_pngs(osp.join(directories.CACHE_DIR, "textures"), png_pths)
             num_textures = len(pngs)
+            assert num_textures < 26**3, "Too many textures for actor: " + actor_name
 
             sprite_names = [actor_code(actor_idx, i) for i in range(num_textures)]
             # Add pngs as sprites
