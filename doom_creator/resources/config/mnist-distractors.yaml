@@ -18,18 +18,18 @@ objects:
       distractor-5:
         textures:
           - 'mnist/zero'
-      distractor-1:
+      distractor-6:
         textures:
           - 'mnist/five'
-      distractor-2:
+      distractor-7:
         textures:
           - 'mnist/four'
-      distractor-3:
+      distractor-8:
         textures:
           - 'mnist/three'
-      distractor-4:
+      distractor-9:
         textures:
           - 'mnist/two'
-      distractor-5:
+      distractor-0:
         textures:
           - 'mnist/one'
