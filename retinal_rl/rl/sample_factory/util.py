@@ -17,7 +17,7 @@ from retinal_rl.models.brain import Brain
 from runner.util import create_brain
 
 
-def get_checkpoint(cfg: Config, latest:bool=False) -> tuple[Dict[str, Any], AttrDict]:
+def get_checkpoint(cfg: Union[str, Config], latest:bool=False) -> tuple[Dict[str, Any], AttrDict]:
     """
     Load a checkpoint from a given config file.
 
@@ -26,6 +26,10 @@ def get_checkpoint(cfg: Config, latest:bool=False) -> tuple[Dict[str, Any], Attr
         latest (bool): If True, the latest checkpoint is loaded, else the best checkpoint is loaded. Defaults to False.
     """
     # verbose = False
+
+    if isinstance(cfg, str):
+        with open(os.path.join(cfg, "config.json")) as f:
+            cfg = Namespace(**json.load(f))
 
     cfg = load_from_checkpoint(cfg)
 
@@ -56,9 +60,6 @@ def load_brain_from_checkpoint(
     device: Optional[torch.device] = None,
     latest = False
 ) -> Brain:
-    if isinstance(config, str):
-        with open(os.path.join(config, "config.json")) as f:
-            config = Namespace(**json.load(f))
     checkpoint_dict, config = get_checkpoint(config, latest)
     config = DictConfig(config)
     model_dict: Dict[str, Any] = checkpoint_dict["model"]

@@ -42,6 +42,9 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         """
         This is used to implement input transforms!
         """
+        if self.cfg['normalize_input']: # FIXME: have a properly defined switch between default samplefactory inp normalization and our input transforms
+            return self.obs_normalizer(obs)
+
         obs_clone = ObservationNormalizer._clone_tensordict(obs)
         for k in obs: # There should be only one key "obs" in all our cases as far as I know
             inp = obs[k].clone() if obs[k].dtype == torch.float else obs[k].float()

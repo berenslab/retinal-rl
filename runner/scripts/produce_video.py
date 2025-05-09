@@ -2,7 +2,7 @@ import sys
 import time
 from collections import deque
 from pathlib import Path
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 import torch
@@ -49,7 +49,19 @@ def create_video(experiment_path: Path):
     custom_enjoy(framework.sf_cfg)
 
 
-def custom_enjoy(cfg: Config) -> Tuple[StatusCode, float]: # TODO: Properly implement this
+def _rescale_zero_one(
+    x, min: Optional[float] = None, max: Optional[float] = None
+):
+    if min is None:
+        min = np.min(x)
+    if max is None:
+        max = np.max(x)
+    return (x - min) / (max - min)
+
+
+def custom_enjoy(
+    cfg: Config,
+) -> Tuple[StatusCode, float]:  # TODO: Properly implement this
     verbose = False
 
     cfg = load_from_checkpoint(cfg)
@@ -138,15 +150,16 @@ def custom_enjoy(cfg: Config) -> Tuple[StatusCode, float]: # TODO: Properly impl
             for _ in range(render_action_repeat):
                 obs, rew, terminated, truncated, infos = env.step(actions)
 
-
-                need_video_frame = len(video_frames) < cfg.video_frames or cfg.video_frames < 0 and num_episodes == 0
+                need_video_frame = (
+                    len(video_frames) < cfg.video_frames
+                    or cfg.video_frames < 0
+                    and num_episodes == 0
+                )
                 if need_video_frame:
                     # frame = env.render()
                     normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
-                    frame = normalized_obs['obs']
-                    # make sure frames values are in [0, 255]
-                    frame: np.ndarray = (frame[0].movedim(0,-1) * 255 + 127).byte().cpu().numpy()
-                    video_frames.append(frame)
+                    frame = normalized_obs["obs"]
+                    video_frames.append(frame[0].movedim(0, -1).cpu().numpy())
 
                 action_mask = (
                     obs.pop("action_mask").to(device) if "action_mask" in obs else None
@@ -247,6 +260,9 @@ def custom_enjoy(cfg: Config) -> Tuple[StatusCode, float]: # TODO: Properly impl
             fps = cfg.fps
         else:
             fps = 30
+
+        # assert frames are in the right range (0-255) to produce the video
+        video_frames = (_rescale_zero_one(np.array(video_frames)) * 255).astype(np.uint8)
         generate_replay_video(experiment_dir(cfg=cfg), video_frames, fps, cfg)
 
     if cfg.push_to_hub:
@@ -263,7 +279,7 @@ def custom_enjoy(cfg: Config) -> Tuple[StatusCode, float]: # TODO: Properly impl
 
     return ExperimentStatus.SUCCESS, sum(
         [sum(episode_rewards[i]) for i in range(env.num_agents)]
-    ) / sum([len(episode_rewards[i]) for i in range(env.num_agents)])
+    ) / max(1, sum([len(episode_rewards[i]) for i in range(env.num_agents)]))
 
 
 experiment_path = Path(sys.argv[1])
