@@ -35,6 +35,8 @@ class Objective(Generic[ContextT]):
         self.logging_statistics = logging_statistics
         self.brain: Brain = brain
 
+        self._freeze_parameters()
+
         # Build a dictionary of weighted parameters for each loss
         # TODO: If the parameters() list of a neural circuit changes dynamically, this will break
 
@@ -101,3 +103,15 @@ class Objective(Generic[ContextT]):
                 params += params0
 
         return weights, params
+
+    def _freeze_parameters(self):
+        for circuit_name in self.brain.circuits:
+            grad_needed = False
+            for loss in self.losses:
+                if circuit_name in loss.target_circuits:
+                    grad_needed = True
+                    break
+            if not grad_needed:
+                logger.debug(f"Freezing parameters of {circuit_name}")
+                for param in self.brain.circuits[circuit_name].parameters():
+                    param.requires_grad = False
