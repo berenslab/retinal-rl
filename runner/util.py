@@ -61,13 +61,25 @@ def save_checkpoint(
         os.remove(os.path.join(checkpoint_dir, checkpoints.pop()))
 
 def load_brain_weights(brain: Brain, checkpoint_path: str):
-    checkpoint = torch.load(checkpoint_path)["brain_state_dict"]
-
     actual_state_dict = brain.state_dict()
+    ckpt = torch.load(checkpoint_path)
+    if "brain_state_dict" in ckpt: # classification / our logging file
+        checkpoint = ["brain_state_dict"]
+        for key in checkpoint:
+            if key in actual_state_dict and "fc" not in key:
+                actual_state_dict[key] = checkpoint[key]
+    elif "model" in ckpt: # Sample Factory file
+        checkpoint = ckpt["model"]
 
-    for key in checkpoint:
-        if key in actual_state_dict and "fc" not in key:
-            actual_state_dict[key] = checkpoint[key]
+        for key in checkpoint:
+            if "brain" in key:
+                actual_state_dict[key[6:]] = checkpoint[key]
+    else:
+        raise ValueError(
+            "Checkpoint does not contain 'brain_state_dict' or 'brain' key."
+        )
+
+
     brain.load_state_dict(actual_state_dict)
 
 def delete_results(run_dir: Path) -> None:
