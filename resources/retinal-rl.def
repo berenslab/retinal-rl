@@ -75,7 +75,7 @@ From: ubuntu:22.04
     torchinfo==1.8.0 \
     num2words==0.5.13 \
     omgifol==0.5.1 \
-    git+https://github.com/fabioseel/sample-factory.git@6810db57d953c3b6dceb7db107826f6f250693b2 \
+    git+https://github.com/fabioseel/sample-factory.git@8cc38973f68ba23f83b924dc2e52f87075117a57 \
     dpcpp-cpp-rt==2024.2.1 \
     seaborn==0.13.2 \
     hydra-core==1.3.2 \
