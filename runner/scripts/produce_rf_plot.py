@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 def rescale(x: npt.NDArray[Any], min: float = 0, max: float = 1) -> npt.NDArray[Any]:
     _max = np.max(np.abs(x))
-    _min = -_max # keep 0 as the central value
+    _min = -_max  # keep 0 as the central value
     return ((x - _min) / (_max - _min)) * (max - min) + min
 
 

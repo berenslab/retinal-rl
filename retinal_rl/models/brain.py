@@ -53,8 +53,12 @@ class Brain(nn.Module):
             if node in self.sensors:
                 responses[node] = stimuli[node]
             else:
-                n_forward_params = len(inspect.signature(self.circuits[node].forward).parameters)
-                input = assemble_inputs(node, n_forward_params, self.connectome, responses)
+                n_forward_params = len(
+                    inspect.signature(self.circuits[node].forward).parameters
+                )
+                input = assemble_inputs(
+                    node, n_forward_params, self.connectome, responses
+                )
                 if node == "rnn":
                     out, rnn_state = self.circuits[node](*input)
                     responses[node] = out
@@ -154,7 +158,7 @@ def get_cnn_circuit(
 def assemble_inputs(
     node: str,
     n_input_params: int,
-    connectome,#: DiGraph[str],
+    connectome,  #: DiGraph[str],
     responses: Dict[str, torch.Tensor],
 ) -> torch.Tensor:
     """Assemble the inputs to a given node by concatenating the responses of its predecessors."""
@@ -172,5 +176,7 @@ def assemble_inputs(
         # Flatten the inputs
         inputs = [torch.cat([inp.view(inp.size(0), -1) for inp in inputs], dim=1)]
     else:
-        assert n_input_params == len(inputs), f"Number of inputs does not match number of forward parameters for {node}!"
+        assert n_input_params == len(
+            inputs
+        ), f"Number of inputs does not match number of forward parameters for {node}!"
     return inputs

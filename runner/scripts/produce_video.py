@@ -15,7 +15,6 @@ from sample_factory.algo.utils.rl_utils import make_dones, prepare_and_normalize
 from sample_factory.algo.utils.tensor_utils import unsqueeze_tensor
 from sample_factory.cfg.arguments import load_from_checkpoint
 from sample_factory.enjoy import (
-    enjoy,
     load_state_dict,
     make_env,
     render_frame,
@@ -49,9 +48,7 @@ def create_video(experiment_path: Path):
     custom_enjoy(framework.sf_cfg)
 
 
-def _rescale_zero_one(
-    x, min: Optional[float] = None, max: Optional[float] = None
-):
+def _rescale_zero_one(x, min: Optional[float] = None, max: Optional[float] = None):
     if min is None:
         min = np.min(x)
     if max is None:
@@ -262,7 +259,9 @@ def custom_enjoy(
             fps = 30
 
         # assert frames are in the right range (0-255) to produce the video
-        video_frames = (_rescale_zero_one(np.array(video_frames)) * 255).astype(np.uint8)
+        video_frames = (_rescale_zero_one(np.array(video_frames)) * 255).astype(
+            np.uint8
+        )
         generate_replay_video(experiment_dir(cfg=cfg), video_frames, fps, cfg)
 
     if cfg.push_to_hub:

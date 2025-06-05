@@ -49,18 +49,24 @@ def analyze(imageset: Imageset, num_steps: int, num_images: int) -> TransformSta
                     results[transform.name][step] = []
                     for img in images:
                         results[transform.name][step].append(
-                            imageset.normalize_maybe(transform.transform(imageset.to_tensor(img), step))
+                            imageset.normalize_maybe(
+                                transform.transform(imageset.to_tensor(img), step)
+                            )
                             .cpu()
                             .numpy()
                         )
             elif isinstance(transform, nn.Module):
-                name = transform.__class__.__name__.replace("([a-z])([A-Z])", r"\1 \2").lower()
+                name = transform.__class__.__name__.replace(
+                    "([a-z])([A-Z])", r"\1 \2"
+                ).lower()
                 results[name] = {}
                 for step in range(num_steps):
                     results[name][step] = []
                     for img in images:
                         results[name][step].append(
-                            imageset.normalize_maybe(transform(imageset.to_tensor(img))).cpu().numpy()
+                            imageset.normalize_maybe(transform(imageset.to_tensor(img)))
+                            .cpu()
+                            .numpy()
                         )
 
     return resultss

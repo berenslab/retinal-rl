@@ -60,15 +60,16 @@ def save_checkpoint(
     while len(checkpoints) > max_checkpoints:
         os.remove(os.path.join(checkpoint_dir, checkpoints.pop()))
 
+
 def load_brain_weights(brain: Brain, checkpoint_path: str):
     actual_state_dict = brain.state_dict()
     ckpt = torch.load(checkpoint_path)
-    if "brain_state_dict" in ckpt: # classification / our logging file
+    if "brain_state_dict" in ckpt:  # classification / our logging file
         checkpoint = ["brain_state_dict"]
         for key in checkpoint:
             if key in actual_state_dict and "fc" not in key:
                 actual_state_dict[key] = checkpoint[key]
-    elif "model" in ckpt: # Sample Factory file
+    elif "model" in ckpt:  # Sample Factory file
         checkpoint = ckpt["model"]
 
         for key in checkpoint:
@@ -79,8 +80,8 @@ def load_brain_weights(brain: Brain, checkpoint_path: str):
             "Checkpoint does not contain 'brain_state_dict' or 'brain' key."
         )
 
-
     brain.load_state_dict(actual_state_dict)
+
 
 def delete_results(run_dir: Path) -> None:
     """Delete the results directory."""
@@ -160,9 +161,9 @@ def assemble_neural_circuits(
     dummy_responses = {
         sensor: torch.rand((1, *sensor_shapes[sensor])) for sensor in sensor_shapes
     }
-    if 'rnn_state' in sensor_shapes: 
-        shape = (1, *sensor_shapes['rnn_state'])
-        dummy_responses['rnn_state'] = torch.rand(shape)
+    if "rnn_state" in sensor_shapes:
+        shape = (1, *sensor_shapes["rnn_state"])
+        dummy_responses["rnn_state"] = torch.rand(shape)
 
     # Instantiate the neural circuits
     for node in nx.topological_sort(connectome):
@@ -172,7 +173,9 @@ def assemble_neural_circuits(
         circuit_config = OmegaConf.select(circuits, node)
 
         _circuit_class = import_class(circuit_config._target_)
-        n_forward_params = len(inspect.signature(_circuit_class.forward).parameters) - 1 # -1 for self
+        n_forward_params = (
+            len(inspect.signature(_circuit_class.forward).parameters) - 1
+        )  # -1 for self
         inputs = assemble_inputs(node, n_forward_params, connectome, dummy_responses)
 
         # The default forward input tensor is always in position 0
@@ -198,7 +201,7 @@ def assemble_neural_circuits(
             )
 
         # Update dummy responses
-        if node == "rnn": # TODO: Code duplicate from brain forward function, refactor
+        if node == "rnn":  # TODO: Code duplicate from brain forward function, refactor
             out, rnn_state = circuit(*inputs)
             dummy_responses[node] = out
             dummy_responses["rnn_state"] = rnn_state

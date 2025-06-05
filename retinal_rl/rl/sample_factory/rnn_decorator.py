@@ -1,6 +1,5 @@
 import warnings
 from functools import wraps
-from inspect import signature
 
 import torch
 from sample_factory.algo.learning.rnn_utils import (
@@ -54,7 +53,10 @@ def decorate_forward(rnn: LatentRNN):
             core_output_seq, state = orig_method(input_seq, rnn_states)
 
             output = build_core_out_from_seq(core_output_seq, inverted_select_inds)
-        return output, state #TODO: Double check state might not be used here or also readjusted
+        return (
+            output,
+            state,
+        )  # TODO: Double check state might not be used here or also readjusted
 
     setattr(rnn, orig_method.__name__, wrapper)
     return wrapper

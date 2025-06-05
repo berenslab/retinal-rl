@@ -13,7 +13,7 @@ from retinal_rl.models.objective import ContextT, Objective
 
 
 @dataclass
-class AnalysesCfg: # TODO: Unify analyze scripts & cfg -> common 'base_analysis'? How much is actually framework specific?
+class AnalysesCfg:  # TODO: Unify analyze scripts & cfg -> common 'base_analysis'? How much is actually framework specific?
     run_dir: Path
     plot_dir: Path
     checkpoint_plot_dir: Path

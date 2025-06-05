@@ -53,7 +53,7 @@ class FullyConnected(NeuralCircuit):
             if self.activation is not None:
                 fc_layers.append(
                     (self.activation + str(i), self.str_to_activation(self.activation))
-            )
+                )
             input_size = output_size
 
         self.fc_head = nn.Sequential(OrderedDict(fc_layers))

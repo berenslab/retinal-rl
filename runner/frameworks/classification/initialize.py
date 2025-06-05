@@ -9,11 +9,11 @@ from typing import Any, Dict, List, Tuple, cast
 
 import omegaconf
 import torch
-import wandb
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 from torch.optim.optimizer import Optimizer
 
+import wandb
 from retinal_rl.models.brain import Brain
 from runner.util import save_checkpoint
 
@@ -62,7 +62,7 @@ class InitConfig:
             wandb_preempt=cfg.logging.wandb_preempt,
             run_name=cfg.run_name,
             max_checkpoints=cfg.logging.max_checkpoints,
-            device = cfg.system.device
+            device=cfg.system.device,
         )
 
 

@@ -8,13 +8,17 @@ import numpy as np
 # import gym
 from gymnasium.spaces import Discrete
 from sample_factory.envs.env_utils import register_env
-from sf_examples.vizdoom.doom.action_space import key_to_action_basic, doom_action_space_basic
+from sf_examples.vizdoom.doom.action_space import (
+    doom_action_space_basic,
+    key_to_action_basic,
+)
 from sf_examples.vizdoom.doom.doom_utils import DoomSpec, make_doom_env_impl
 
 # from gym.spaces import Discrete
 
 
 ### Action Spaces ###
+
 
 def doom_action_space_no_backwards():
     """
@@ -91,13 +95,19 @@ class SatietyInput(gym.Wrapper):
 ### Retinal Environments ###
 
 
-def retinal_doomspec(scene_name: str, cfg_path: str, sat_in: bool, allow_backwards: bool):
+def retinal_doomspec(
+    scene_name: str, cfg_path: str, sat_in: bool, allow_backwards: bool
+):
     ewraps = []
 
     if sat_in:
         ewraps = [(SatietyInput, {})]
 
-    action_space = doom_action_space_basic() if allow_backwards else doom_action_space_no_backwards()
+    action_space = (
+        doom_action_space_basic()
+        if allow_backwards
+        else doom_action_space_no_backwards()
+    )
     return DoomSpec(
         scene_name,
         cfg_path,
@@ -123,7 +133,9 @@ def make_retinal_env_from_spec(
     )
 
 
-def register_retinal_env(scene_name: str, cache_dir: str, input_satiety: bool, allow_backwards: bool = True):
+def register_retinal_env(
+    scene_name: str, cache_dir: str, input_satiety: bool, allow_backwards: bool = True
+):
     if not os.path.isabs(cache_dir):
         # make path absolute by making it relative to the path of this file
         # TODO: Discuss whether this is desired behaviour...

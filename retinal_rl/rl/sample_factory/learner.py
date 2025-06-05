@@ -77,7 +77,9 @@ class RetinalLearner(Learner):
         self.lr_scheduler: Optional[LearningRateScheduler] = None
 
         self.train_step: int = 0  # total number of SGD steps
-        self.env_steps: int = 0  # total number of environment steps consumed by the learner
+        self.env_steps: int = (
+            0  # total number of environment steps consumed by the learner
+        )
 
         self.best_performance = -1e9
 
@@ -90,7 +92,9 @@ class RetinalLearner(Learner):
         # decay rate at which summaries are collected
         # save summaries every 5 seconds in the beginning, but decay to every 4 minutes in the limit, because we
         # do not need frequent summaries for longer experiments
-        self.summary_rate_decay_seconds = LinearDecay([(0, 2), (100000, 60), (1000000, 120)])
+        self.summary_rate_decay_seconds = LinearDecay(
+            [(0, 2), (100000, 60), (1000000, 120)]
+        )
         self.last_summary_time = 0
         self.last_milestone_time = 0
 
@@ -119,7 +123,9 @@ class RetinalLearner(Learner):
         log.debug("Initializing actor-critic model on device %s", self.device)
 
         # trainable torch module
-        self.actor_critic = create_actor_critic(self.cfg, self.env_info.obs_space, self.env_info.action_space)
+        self.actor_critic = create_actor_critic(
+            self.cfg, self.env_info.obs_space, self.env_info.action_space
+        )
         # TODO: Check actor_critic usage
         log.debug("Created Actor Critic model with architecture:")
         log.debug(self.actor_critic)
@@ -136,7 +142,9 @@ class RetinalLearner(Learner):
 
         params = list(self.actor_critic.parameters())
 
-        optimizer_cls = dict(adam=torch.optim.Adam, lamb=Lamb)  # TODO: Support for other optimizers
+        optimizer_cls = dict(
+            adam=torch.optim.Adam, lamb=Lamb
+        )  # TODO: Support for other optimizers
         if self.cfg.optimizer not in optimizer_cls:
             raise RuntimeError(f"Unknown optimizer {self.cfg.optimizer}")
 
@@ -153,7 +161,9 @@ class RetinalLearner(Learner):
 
         self.optimizer = optimizer_cls(params, **optimizer_kwargs)
 
-        assert isinstance(self.actor_critic, SampleFactoryBrain) # for now let's just assert that
+        assert isinstance(
+            self.actor_critic, SampleFactoryBrain
+        )  # for now let's just assert that
         self.objective = instantiate(self.cfg.objective, brain=self.actor_critic.brain)
 
         # Hotfix: inject action space to kl_loss TODO: Fix this
@@ -171,13 +181,17 @@ class RetinalLearner(Learner):
 
         self.is_initialized = True
 
-        return model_initialization_data(self.cfg, self.policy_id, self.actor_critic, self.train_step, self.device)
+        return model_initialization_data(
+            self.cfg, self.policy_id, self.actor_critic, self.train_step, self.device
+        )
 
     def _load_state(self, checkpoint_dict, load_progress=True):
         if load_progress:
             self.train_step = checkpoint_dict["train_step"]
             self.env_steps = checkpoint_dict["env_steps"]
-            self.best_performance = checkpoint_dict.get("best_performance", self.best_performance)
+            self.best_performance = checkpoint_dict.get(
+                "best_performance", self.best_performance
+            )
         self.actor_critic.load_state_dict(checkpoint_dict["model"])
         self.optimizer.load_state_dict(checkpoint_dict["optimizer"])
         self.curr_lr = checkpoint_dict.get("curr_lr", self.cfg.learning_rate)
@@ -195,12 +209,16 @@ class RetinalLearner(Learner):
         }
         return checkpoint
 
-#######################################################################################################################################
-#######################################################################################################################################
-#######################################################################################################################################
+    #######################################################################################################################################
+    #######################################################################################################################################
+    #######################################################################################################################################
 
     def _train(
-        self, gpu_buffer: TensorDict, batch_size: int, experience_size: int, num_invalids: int
+        self,
+        gpu_buffer: TensorDict,
+        batch_size: int,
+        experience_size: int,
+        num_invalids: int,
     ) -> Optional[AttrDict]:
         timing = self.timing
         with torch.no_grad():
@@ -245,7 +263,6 @@ class RetinalLearner(Learner):
 
             for batch_num, indices in enumerate(minibatches):
                 with torch.no_grad(), timing.add_time("minibatch_init"):
-
                     # current minibatch consisting of short trajectory segments with length == recurrence
                     mb = self._get_minibatch(gpu_buffer, indices)
 
@@ -253,8 +270,24 @@ class RetinalLearner(Learner):
                     mb = AttrDict(mb)
 
                 # Forward pass through the model / calculate losses
-                vtrace_params = VTraceParams(self.cfg.with_vtrace, self.cfg.vtrace_rho, self.cfg.vtrace_c, self.cfg.gamma)
-                context = build_context(self.actor_critic, mb, num_invalids, epoch, self.policy_id, self.cfg.recurrence, timing, self.cfg.use_rnn, vtrace_params, self.device) # TODO: transform mb to inputs & sources!
+                vtrace_params = VTraceParams(
+                    self.cfg.with_vtrace,
+                    self.cfg.vtrace_rho,
+                    self.cfg.vtrace_c,
+                    self.cfg.gamma,
+                )
+                context = build_context(
+                    self.actor_critic,
+                    mb,
+                    num_invalids,
+                    epoch,
+                    self.policy_id,
+                    self.cfg.recurrence,
+                    timing,
+                    self.cfg.use_rnn,
+                    vtrace_params,
+                    self.device,
+                )  # TODO: transform mb to inputs & sources!
 
                 with torch.no_grad(), timing.add_time("kl_divergence"):
                     # TODO: KL Old not returned in our loss, so recalculate it here? Additional Log Statistic?
@@ -265,13 +298,17 @@ class RetinalLearner(Learner):
                         self.actor_critic.action_space,
                         mb.action_logits,
                     )
-                    kl_old = context.action_distribution.kl_divergence(old_action_distribution)
+                    kl_old = context.action_distribution.kl_divergence(
+                        old_action_distribution
+                    )
                     kl_old = masked_select(kl_old, mb.valids, num_invalids)
 
                     kl_old_mean = float(kl_old.mean().item())
                     recent_kls.append(kl_old_mean)
                     if kl_old.numel() > 0 and kl_old.max().item() > 100:
-                        log.warning(f"KL-divergence is very high: {kl_old.max().item():.4f}")
+                        log.warning(
+                            f"KL-divergence is very high: {kl_old.max().item():.4f}"
+                        )
 
                 # update the weights
                 with timing.add_time("update"):
@@ -283,8 +320,12 @@ class RetinalLearner(Learner):
                     # TODO: log here based on loss_dict instead of inside losses function
                     with timing.add_time("losses_postprocess"):
                         # noinspection PyTypeChecker
-                        actor_loss: float = loss_dict['policy_loss'] + loss_dict['exploration_loss'] + loss_dict['kl_loss']
-                        critic_loss = loss_dict['value_loss']
+                        actor_loss: float = (
+                            loss_dict["policy_loss"]
+                            + loss_dict["exploration_loss"]
+                            + loss_dict["kl_loss"]
+                        )
+                        critic_loss = loss_dict["value_loss"]
                         loss: float = actor_loss + critic_loss
 
                         epoch_actor_losses[batch_num] = float(actor_loss)
@@ -294,25 +335,31 @@ class RetinalLearner(Learner):
                             log.warning(
                                 "High loss value: l:%.4f pl:%.4f vl:%.4f exp_l:%.4f kl_l:%.4f (recommended to adjust the --reward_scale parameter)",
                                 to_scalar(loss),
-                                to_scalar(loss_dict['policy_loss']),
-                                to_scalar(loss_dict['value_loss']),
-                                to_scalar(loss_dict['exploration_loss']),
-                                to_scalar(loss_dict['kl_loss']),
+                                to_scalar(loss_dict["policy_loss"]),
+                                to_scalar(loss_dict["value_loss"]),
+                                to_scalar(loss_dict["exploration_loss"]),
+                                to_scalar(loss_dict["kl_loss"]),
                             )
 
                             # perhaps something weird is happening, we definitely want summaries from this step
                             force_summaries = True
                     if self.cfg.max_grad_norm > 0.0:
                         with timing.add_time("clip"):
-                            torch.nn.utils.clip_grad_norm_(self.actor_critic.parameters(), self.cfg.max_grad_norm)
+                            torch.nn.utils.clip_grad_norm_(
+                                self.actor_critic.parameters(), self.cfg.max_grad_norm
+                            )
 
                     actual_lr = self.curr_lr
                     if num_invalids > 0:
                         # if we have masked (invalid) data we should reduce the learning rate accordingly
                         # this prevents a situation where most of the data in the minibatch is invalid
                         # and we end up doing SGD with super noisy gradients
-                        actual_lr = self.curr_lr * (experience_size - num_invalids) / experience_size
-                    self._apply_lr(actual_lr) #TODO: Check
+                        actual_lr = (
+                            self.curr_lr
+                            * (experience_size - num_invalids)
+                            / experience_size
+                        )
+                    self._apply_lr(actual_lr)  # TODO: Check
 
                     with self.param_server.policy_lock:
                         self.optimizer.step()
@@ -323,16 +370,22 @@ class RetinalLearner(Learner):
                     self._after_optimizer_step()
 
                     if self.lr_scheduler.invoke_after_each_minibatch():
-                        self.curr_lr = self.lr_scheduler.update(self.curr_lr, recent_kls)
+                        self.curr_lr = self.lr_scheduler.update(
+                            self.curr_lr, recent_kls
+                        )
 
                     # collect and report summaries
                     should_record_summaries = with_summaries
-                    should_record_summaries &= epoch == summaries_epoch and batch_num == summaries_batch
+                    should_record_summaries &= (
+                        epoch == summaries_epoch and batch_num == summaries_batch
+                    )
                     should_record_summaries |= force_summaries
                     if should_record_summaries:
                         # hacky way to collect all of the intermediate variables for summaries
                         summary_vars = {**locals()}
-                        stats_and_summaries = self._record_summaries(AttrDict(summary_vars), loss_dict)
+                        stats_and_summaries = self._record_summaries(
+                            AttrDict(summary_vars), loss_dict
+                        )
                         del summary_vars
                         # TODO: Check how important this is / whether we want to use it
                         force_summaries = False
@@ -362,10 +415,9 @@ class RetinalLearner(Learner):
 
         return stats_and_summaries
 
-
-#######################################################################################################################################
-#######################################################################################################################################
-#######################################################################################################################################
+    #######################################################################################################################################
+    #######################################################################################################################################
+    #######################################################################################################################################
 
     def _record_summaries(self, train_loop_vars, losses) -> AttrDict:
         # FIXME: IMPROVISED FOR LOGGING
@@ -467,13 +519,15 @@ class RetinalLearner(Learner):
 
         # hold the lock while we alter the state of the normalizer since they can be used in other processes too
         with self.param_server.policy_lock:
-            normalized_obs = prepare_and_normalize_obs(self.actor_critic, obs)  # TODO: Check actor_critic usage
+            normalized_obs = prepare_and_normalize_obs(
+                self.actor_critic, obs
+            )  # TODO: Check actor_critic usage
 
         # restore original shape
         for key, shape in og_shape.items():
             normalized_obs[key] = normalized_obs[key].view(shape)
-            if key+"_raw" in normalized_obs: # TODO: +"_raw" is an ugly hack
-                normalized_obs[key+"_raw"] = normalized_obs[key+"_raw"].view(shape)
+            if key + "_raw" in normalized_obs:  # TODO: +"_raw" is an ugly hack
+                normalized_obs[key + "_raw"] = normalized_obs[key + "_raw"].view(shape)
 
         return normalized_obs
 
@@ -487,7 +541,9 @@ class RetinalLearner(Learner):
             valids: Tensor = buff["policy_id"] == self.policy_id
             # ignore experience that was older than the threshold even before training started
             curr_policy_version: int = self.train_step
-            buff["valids"][:, :-1] = valids & (curr_policy_version - buff["policy_version"] < self.cfg.max_policy_lag)
+            buff["valids"][:, :-1] = valids & (
+                curr_policy_version - buff["policy_version"] < self.cfg.max_policy_lag
+            )
             # for last T+1 step, we want to use the validity of the previous step
             buff["valids"][:, -1] = buff["valids"][:, -2]
 
@@ -500,7 +556,9 @@ class RetinalLearner(Learner):
 
             # calculate estimated value for the next step (T+1)
             normalized_last_obs = buff["normalized_obs"][:, -1]
-            next_values = self.actor_critic(normalized_last_obs, buff["rnn_states"][:, -1], values_only=True)["values"]
+            next_values = self.actor_critic(
+                normalized_last_obs, buff["rnn_states"][:, -1], values_only=True
+            )["values"]
             # TODO: Check actor_critic usage
             buff["values"][:, -1] = next_values
 
@@ -509,8 +567,12 @@ class RetinalLearner(Learner):
                 # We need to denormalize them before using them for GAE caculation and value bootstrapping.
                 # rl_games PPO uses a similar approach, see:
                 # https://github.com/Denys88/rl_games/blob/7b5f9500ee65ae0832a7d8613b019c333ecd932c/rl_games/algos_torch/models.py#L51
-                denormalized_values = buff["values"].clone()  # need to clone since normalizer is in-place
-                self.actor_critic.returns_normalizer(denormalized_values, denormalize=True)
+                denormalized_values = buff[
+                    "values"
+                ].clone()  # need to clone since normalizer is in-place
+                self.actor_critic.returns_normalizer(
+                    denormalized_values, denormalize=True
+                )
                 # TODO: Check actor_critic usage
             else:
                 # values are not normalized in this case, so we can use them as is
@@ -526,7 +588,12 @@ class RetinalLearner(Learner):
 
                 # Multiply by both time_out and done flags to make sure we count only timeouts in terminal states.
                 # There was a bug in older versions of isaacgym where timeouts were reported for non-terminal states.
-                buff["rewards"].add_(self.cfg.gamma * denormalized_values[:, :-1] * buff["time_outs"] * buff["dones"])
+                buff["rewards"].add_(
+                    self.cfg.gamma
+                    * denormalized_values[:, :-1]
+                    * buff["time_outs"]
+                    * buff["dones"]
+                )
 
             if not self.cfg.with_vtrace:
                 # calculate advantage estimate (in case of V-trace it is done separately for each minibatch)
@@ -539,7 +606,10 @@ class RetinalLearner(Learner):
                     self.cfg.gae_lambda,
                 )
                 # here returns are not normalized yet, so we should use denormalized values
-                buff["returns"] = buff["advantages"] + buff["valids"][:, :-1] * denormalized_values[:, :-1]
+                buff["returns"] = (
+                    buff["advantages"]
+                    + buff["valids"][:, :-1] * denormalized_values[:, :-1]
+                )
 
             # remove next step obs, rnn_states, and values from the batch, we don't need them anymore
             for key in ["normalized_obs", "rnn_states", "values", "valids"]:
@@ -550,25 +620,35 @@ class RetinalLearner(Learner):
                 # collapse first two dimensions (batch and time) into a single dimension
                 d[k] = v.reshape((dataset_size,) + tuple(v.shape[2:]))
 
-            buff["dones_cpu"] = buff["dones"].to("cpu", copy=True, dtype=torch.float, non_blocking=True)
-            buff["rewards_cpu"] = buff["rewards"].to("cpu", copy=True, dtype=torch.float, non_blocking=True)
+            buff["dones_cpu"] = buff["dones"].to(
+                "cpu", copy=True, dtype=torch.float, non_blocking=True
+            )
+            buff["rewards_cpu"] = buff["rewards"].to(
+                "cpu", copy=True, dtype=torch.float, non_blocking=True
+            )
 
             # return normalization parameters are only used on the learner, no need to lock the mutex
             if self.cfg.normalize_returns:
-                self.actor_critic.returns_normalizer(buff["returns"])  # in-place # TODO: Check actor_critic usage
+                self.actor_critic.returns_normalizer(
+                    buff["returns"]
+                )  # in-place # TODO: Check actor_critic usage
 
             num_invalids = dataset_size - buff["valids"].sum().item()
             if num_invalids > 0:
                 invalid_fraction = num_invalids / dataset_size
                 if invalid_fraction > 0.5:
-                    log.warning(f"{self.policy_id=} batch has {invalid_fraction:.2%} of invalid samples")
+                    log.warning(
+                        f"{self.policy_id=} batch has {invalid_fraction:.2%} of invalid samples"
+                    )
 
                 # invalid action values can cause problems when we calculate logprobs
                 # here we set them to 0 just to be safe
                 invalid_indices = (buff["valids"] == 0).nonzero().squeeze()
                 buff["actions"][invalid_indices] = 0
                 # likewise, some invalid values of log_prob_actions can cause NaNs or infs
-                buff["log_prob_actions"][invalid_indices] = -1  # -1 seems like a safe value
+                buff["log_prob_actions"][
+                    invalid_indices
+                ] = -1  # -1 seems like a safe value
 
             return buff, dataset_size, num_invalids
 
@@ -582,27 +662,33 @@ class RetinalLearner(Learner):
 
         if num_invalids >= experience_size:
             if self.cfg.with_pbt:
-                log.warning("No valid samples in the batch, with PBT this must mean we just replaced weights")
+                log.warning(
+                    "No valid samples in the batch, with PBT this must mean we just replaced weights"
+                )
             else:
-                log.error(f"Learner {self.policy_id=} received an entire batch of invalid data, skipping...")
+                log.error(
+                    f"Learner {self.policy_id=} received an entire batch of invalid data, skipping..."
+                )
             return None
+        with self.timing.add_time("train"):
+            train_stats = self._train(
+                buff, self.cfg.batch_size, experience_size, num_invalids
+            )
+
+        # multiply the number of samples by frameskip so that FPS metrics reflect the number
+        # of environment steps actually simulated
+        if self.cfg.summaries_use_frameskip:
+            self.env_steps += experience_size * self.env_info.frameskip
         else:
-            with self.timing.add_time("train"):
-                train_stats = self._train(buff, self.cfg.batch_size, experience_size, num_invalids)
+            self.env_steps += experience_size
 
-            # multiply the number of samples by frameskip so that FPS metrics reflect the number
-            # of environment steps actually simulated
-            if self.cfg.summaries_use_frameskip:
-                self.env_steps += experience_size * self.env_info.frameskip
-            else:
-                self.env_steps += experience_size
-
-            stats = {LEARNER_ENV_STEPS: self.env_steps, POLICY_ID_KEY: self.policy_id}
+        stats = {LEARNER_ENV_STEPS: self.env_steps, POLICY_ID_KEY: self.policy_id}
+        if train_stats is not None:
             if train_stats is not None:
-                if train_stats is not None:
-                    stats[TRAIN_STATS] = train_stats
-                stats[STATS_KEY] = memory_stats("learner", self.device)
+                stats[TRAIN_STATS] = train_stats
+            stats[STATS_KEY] = memory_stats("learner", self.device)
 
-            return stats
+        return stats
+
 
 # TODO: Define save function using runner.save_checkpoint

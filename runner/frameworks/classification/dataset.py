@@ -5,7 +5,6 @@ import os
 import hydra
 from omegaconf import DictConfig
 from torchvision import datasets
-from torchvision.transforms.v2 import RGB
 
 from retinal_rl.classification.imageset import Imageset
 
@@ -15,7 +14,10 @@ def get_datasets(cfg: DictConfig) -> tuple[Imageset, Imageset]:
     cache_dir = os.path.join(hydra.utils.get_original_cwd(), "cache")
     return _get_datasets(cache_dir, cfg.dataset.name, cfg.dataset.imageset)
 
-def _get_datasets(cache_dir: str, dataset_name: str, imageset: DictConfig) -> tuple[Imageset, Imageset]:
+
+def _get_datasets(
+    cache_dir: str, dataset_name: str, imageset: DictConfig
+) -> tuple[Imageset, Imageset]:
     """Get the train and test datasets based on the configuration."""
     os.makedirs(cache_dir, exist_ok=True)
 
@@ -29,7 +31,9 @@ def _get_datasets(cache_dir: str, dataset_name: str, imageset: DictConfig) -> tu
     elif dataset_name.upper() == "SVHN":
         train_base = datasets.SVHN(root=cache_dir, split="train", download=True)
         test_base = datasets.SVHN(root=cache_dir, split="test", download=True)
-    elif dataset_name.upper() == "RL_STREAM": # TODO: Reconsider if this is the approach to go for
+    elif (
+        dataset_name.upper() == "RL_STREAM"
+    ):  # TODO: Reconsider if this is the approach to go for
         train_base = datasets.ImageFolder(root=cache_dir)
         test_base = datasets.ImageFolder(root=cache_dir)
     else:

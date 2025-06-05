@@ -4,10 +4,6 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 import torch
-from sample_factory.algo.learning.rnn_utils import (
-    build_core_out_from_seq,
-    build_rnn_inputs,
-)
 from sample_factory.algo.utils.action_distributions import (
     get_action_distribution,
     is_continuous_action_space,
@@ -350,7 +346,11 @@ def build_context(
         adv_std, adv_mean = torch.std_mean(masked_select(adv, mb.valids, num_invalids))
         adv = (adv - adv_mean) / torch.clamp_min(adv_std, 1e-7)  # normalize advantage
 
-        vis_input = mb.normalized_obs["obs_raw"] if "obs_raw" in mb.normalized_obs else mb.normalized_obs["obs"]
+        vis_input = (
+            mb.normalized_obs["obs_raw"]
+            if "obs_raw" in mb.normalized_obs
+            else mb.normalized_obs["obs"]
+        )
     return RLContext(
         vis_input,
         None,

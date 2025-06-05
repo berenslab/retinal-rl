@@ -103,7 +103,9 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
 
         # Apply source transformations
         source_tensor = self.source_transforms(img_tensor)
-        noisy_tensor = self.normalize_maybe(self.noise_transforms(source_tensor.clone()))
+        noisy_tensor = self.normalize_maybe(
+            self.noise_transforms(source_tensor.clone())
+        )
         source_tensor = self.normalize_maybe(source_tensor)
 
         return source_tensor, noisy_tensor, label

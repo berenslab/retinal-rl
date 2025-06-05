@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Protocol, Tuple
+from typing import Dict, Optional, Protocol
 
 import torch
 from sample_factory.algo.utils.running_mean_std import RunningMeanStdInPlace
@@ -39,6 +39,7 @@ class ActorCriticProtocol(Protocol):
         rnn_states: Tensor,
         values_only: bool = False,
     ) -> TensorDict: ...
+
     """
     Return needs to contain (might not be a complete list):
 	- actions

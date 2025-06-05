@@ -17,7 +17,6 @@ from retinal_rl.classification.training import process_dataset, run_epoch
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.objective import Objective
 from runner.frameworks.classification.analyze import AnalysesCfg, analyze
-from runner.frameworks.classification.analyze import AnalysesCfg, analyze
 from runner.util import save_checkpoint
 
 # Initialize the logger
@@ -100,14 +99,14 @@ def train(
         for key, value in test_losses.items():
             history[f"test_{key}"] = [value]
         ana_cfg = AnalysesCfg(
-                    Path(cfg.path.run_dir),
-                    Path(cfg.path.plot_dir),
-                    Path(cfg.path.checkpoint_plot_dir),
-                    Path(cfg.path.data_dir),
-                    cfg.logging.use_wandb,
-                    cfg.logging.channel_analysis,
-                    cfg.logging.plot_sample_size,
-                )
+            Path(cfg.path.run_dir),
+            Path(cfg.path.plot_dir),
+            Path(cfg.path.checkpoint_plot_dir),
+            Path(cfg.path.data_dir),
+            cfg.logging.use_wandb,
+            cfg.logging.channel_analysis,
+            cfg.logging.plot_sample_size,
+        )
         analyze(
             ana_cfg,
             ana_cfg,
@@ -164,16 +163,15 @@ def train(
                 epoch,
             )
 
-
             ana_cfg = AnalysesCfg(
-                        Path(cfg.path.run_dir),
-                        Path(cfg.path.plot_dir),
-                        Path(cfg.path.checkpoint_plot_dir),
-                        Path(cfg.path.data_dir),
-                        cfg.logging.use_wandb,
-                        cfg.logging.channel_analysis,
-                        cfg.logging.plot_sample_size,
-                    )
+                Path(cfg.path.run_dir),
+                Path(cfg.path.plot_dir),
+                Path(cfg.path.checkpoint_plot_dir),
+                Path(cfg.path.data_dir),
+                cfg.logging.use_wandb,
+                cfg.logging.channel_analysis,
+                cfg.logging.plot_sample_size,
+            )
 
             analyze(
                 ana_cfg,

@@ -67,13 +67,13 @@ class Objective(Generic[ContextT]):
                 params,
                 create_graph=False,
                 retain_graph=retain_graph,
-                allow_unused=True, # TODO: check if this is actually the desired behavior. Needed to be added for when eg a head is not used for loss computation, but we have target all
+                allow_unused=True,  # TODO: check if this is actually the desired behavior. Needed to be added for when eg a head is not used for loss computation, but we have target all
             )
 
             # Manually update parameters
             with torch.no_grad():
                 for param, weight, grad in zip(params, weights, grads):
-                    if grad is not None: # TODO: also only added as allow_unused above
+                    if grad is not None:  # TODO: also only added as allow_unused above
                         if param.grad is None:
                             param.grad = weight * grad
                         else:

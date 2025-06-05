@@ -20,6 +20,7 @@ from runner.util import create_brain, delete_results, load_brain_weights
 # Load the eval resolver for OmegaConf
 OmegaConf.register_new_resolver("eval", eval)
 
+
 # Hydra entry point
 @hydra.main(config_path="config/base", config_name="config", version_base=None)
 def _program(cfg: DictConfig):

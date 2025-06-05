@@ -1,30 +1,21 @@
 import multiprocessing
-import os
 from pathlib import Path
 
 import torch
-import wandb
 from hydra.utils import instantiate
 from sample_factory.algo.runners.runner import AlgoObserver, Runner
 from sample_factory.utils.typing import Config
-from sample_factory.utils.utils import debug_log_every_n, log
+from sample_factory.utils.utils import log
 
-from retinal_rl.models.brain import Brain
 from retinal_rl.models.objective import Objective
 from retinal_rl.rl.analyze import AnalysesCfg, analyze
 from retinal_rl.rl.loss import RLContext
-from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
 from retinal_rl.rl.sample_factory.util import load_brain_from_checkpoint
-from retinal_rl.rl.util import (
-    analysis_root,
-    plot_path,
-    read_analysis_count,
-    write_analysis_count,
-)
 
 multiprocessing.set_start_method(
     "spawn", force=True
 )  # Important.  TODO: Readup on this
+
 
 ### Runner ###
 class RetinalAlgoObserver(AlgoObserver):
@@ -50,8 +41,14 @@ class RetinalAlgoObserver(AlgoObserver):
     def _analyze(self, env_step: int):
         try:
             brain = load_brain_from_checkpoint(self.cfg, latest=True)
-            brain.sensors['vision'] = (3,160,160) # TODO: Hardcore Hack cause there's a bug in rf estimation
-            objective: Objective[RLContext] = instantiate(self.cfg.objective, brain=brain)
+            brain.sensors["vision"] = (
+                3,
+                160,
+                160,
+            )  # TODO: Hardcore Hack cause there's a bug in rf estimation
+            objective: Objective[RLContext] = instantiate(
+                self.cfg.objective, brain=brain
+            )
             cfg = AnalysesCfg(
                 Path(self.cfg.run_dir),
                 Path(self.cfg.plot_dir),
@@ -61,7 +58,12 @@ class RetinalAlgoObserver(AlgoObserver):
             )
             epoch = env_step  # use env_step instead of epoch for logging
             analyze(
-                cfg, torch.device("cuda"), brain, objective, epoch, copy_checkpoint=False
+                cfg,
+                torch.device("cuda"),
+                brain,
+                objective,
+                epoch,
+                copy_checkpoint=False,
             )
         except Exception as e:
             log.error(f"Analysis failed: {e}")
@@ -88,5 +90,7 @@ class RetinalAlgoObserver(AlgoObserver):
             )
 
             self._analyze(total_env_steps)
-            self.next_analysis_step = self.next_analysis_step + min(self.cur_freq, self.end_freq)
+            self.next_analysis_step = self.next_analysis_step + min(
+                self.cur_freq, self.end_freq
+            )
             self.cur_freq = self.cur_freq * 2

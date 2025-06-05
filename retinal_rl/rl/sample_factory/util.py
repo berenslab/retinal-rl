@@ -17,7 +17,9 @@ from retinal_rl.models.brain import Brain
 from runner.util import create_brain
 
 
-def get_checkpoint(cfg: Union[str, Config], latest:bool=False) -> tuple[Dict[str, Any], AttrDict]:
+def get_checkpoint(
+    cfg: Union[str, Config], latest: bool = False
+) -> tuple[Dict[str, Any], AttrDict]:
     """
     Load a checkpoint from a given config file.
 
@@ -42,23 +44,26 @@ def get_checkpoint(cfg: Union[str, Config], latest:bool=False) -> tuple[Dict[str
 
     for checkpoint in checkpoints:
         if "checkpoint_temp" in checkpoint:
-            checkpoints.remove(checkpoint) #TODO: Find out what checkpoint_temp is used for in sample factory
+            checkpoints.remove(
+                checkpoint
+            )  # TODO: Find out what checkpoint_temp is used for in sample factory
 
     if not latest and len(checkpoints) > 0:
         best_checkpoint = Learner.get_checkpoints(
             Learner.checkpoint_dir(cfg, policy_id), "best_*"
-        ) # If a best chekpoint is availabe, use it
+        )  # If a best chekpoint is availabe, use it
         checkpoints.extend(best_checkpoint)
     checkpoint_dict: Dict[str, Any] = Learner.load_checkpoint(checkpoints, device)
 
     return checkpoint_dict, cfg
+
 
 @staticmethod
 def load_brain_from_checkpoint(
     config: Union[str, Config],
     load_weights: bool = True,
     device: Optional[torch.device] = None,
-    latest = False
+    latest=False,
 ) -> Brain:
     checkpoint_dict, config = get_checkpoint(config, latest)
     config = DictConfig(config)
