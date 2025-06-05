@@ -1,8 +1,9 @@
+import json
 import logging
 import re
 from enum import Enum
 from math import ceil, floor
-from typing import List, Tuple, TypeVar, Union, cast
+from typing import Any, List, Tuple, TypeVar, Union, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -15,6 +16,18 @@ logger = logging.getLogger(__name__)
 FloatArray = NDArray[np.float64]
 
 T = TypeVar("T")
+
+### IO Handling stuff
+
+
+class NumpyEncoder(json.JSONEncoder):
+    """JSON encoder that handles numpy arrays."""
+
+    def default(self, obj: Any) -> Any:
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
+
 
 ### Functions
 

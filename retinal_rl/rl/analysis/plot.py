@@ -7,19 +7,29 @@ from numpy.typing import NDArray
 from torch import Tensor
 
 
-def rescale_zero_one(input):
-    return (input - input.min()) / (input.max() - input.min())
+def rescale_range(
+    input: NDArray[np.float64],
+    center_zero: bool = False,
+    out_min: float = 0,
+    out_max: float = 1,
+) -> NDArray[np.float64]:
+    _max = np.max(input)
+    _min = np.min(input)
+    if center_zero:
+        _max = max(abs(_max), abs(_min))
+        _min = -_max
+    return (input - _min) / (_max - _min) * (out_max - out_min) + out_min
 
 
 def receptive_field_plots(
     lyr_rfs: NDArray[np.float64],
     max_cols: int = 8,
-    rgb_rfs=False,
-    rescale_individual=True,
+    rgb_rfs: bool = False,
+    rescale_individual: bool = True,
 ) -> Figure:
     """Plot the receptive fields of a convolutional layer."""
     ochns, nclrs, _, _ = lyr_rfs.shape
-    lyr_rfs = rescale_zero_one(lyr_rfs)  # scale all to [0,1]
+    lyr_rfs = rescale_range(lyr_rfs, center_zero=True)  # scale all to [0,1]
     rgb_rfs = rgb_rfs and (nclrs == 3)
 
     # Calculate the number of rows needed based on max_cols
@@ -62,7 +72,9 @@ def receptive_field_plots(
         else:
             ax = axs[i]
             rescaled_img = (
-                rescale_zero_one(lyr_rfs[i]) if rescale_individual else lyr_rfs[i]
+                rescale_range(lyr_rfs[i], center_zero=True)
+                if rescale_individual
+                else lyr_rfs[i]
             )
             im = ax.imshow(np.moveaxis(rescaled_img, 0, 2))
             ax.set_xticks([])

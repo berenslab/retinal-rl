@@ -53,7 +53,7 @@ def classification_config() -> Generator[DictConfig, None, None]:
 
 @pytest.fixture
 def rl_config() -> Generator[DictConfig, None, None]:
-    _config = config("gathering-apples")
+    _config = config("decoding-rl")
     yield _config
     cleanup(_config)
 

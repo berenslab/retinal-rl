@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Protocol, Tuple
+from typing import Dict, Optional, Protocol
 
 import torch
 from sample_factory.algo.utils.running_mean_std import RunningMeanStdInPlace
@@ -19,18 +19,19 @@ class ActorCriticProtocol(Protocol):
     action_space: ActionSpace
     returns_normalizer: Optional[RunningMeanStdInPlace]
 
-    def forward_head(self, normalized_obs_dict: Dict[str, Tensor]) -> Tensor: ...
+    # forward head, core and tail not needed with retinal learner!
+    # def forward_head(self, normalized_obs_dict: Dict[str, Tensor]) -> Tensor: ... # CAN BE DELETED IF OWN LEARNER IS USED
 
-    def forward_core(
-        self, head_output: Tensor, rnn_states: Tensor
-    ) -> Tuple[Tensor, Tensor]: ...
+    # def forward_core(
+    #     self, head_output: Tensor, rnn_states: Tensor
+    # ) -> Tuple[Tensor, Tensor]: ...
 
-    def forward_tail(
-        self,
-        core_output: Tensor,
-        values_only: bool = False,
-        sample_actions: bool = False,
-    ) -> TensorDict: ...
+    # def forward_tail(
+    #     self,
+    #     core_output: Tensor,
+    #     values_only: bool,
+    #     sample_actions: bool,
+    # ) -> TensorDict: ...
 
     def forward(
         self,
@@ -38,6 +39,14 @@ class ActorCriticProtocol(Protocol):
         rnn_states: Tensor,
         values_only: bool = False,
     ) -> TensorDict: ...
+
+    """
+    Return needs to contain (might not be a complete list):
+	- actions
+	- new_rnn_states
+	- values
+	- policy_version
+    """
 
     def action_distribution(self) -> ActionDistribution: ...
 
