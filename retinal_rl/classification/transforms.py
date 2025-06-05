@@ -9,7 +9,7 @@ It includes various image transformations:
 """
 
 from abc import ABC, abstractmethod
-from typing import Tuple
+from typing import List, Optional, Tuple
 
 import torch
 import torchvision.transforms as T
@@ -136,6 +136,8 @@ class ScaleShiftTransform(ContinuousTransform):
         vision_width: int,
         vision_height: int,
         image_rescale_range: Tuple[float, float],
+        shift: bool = True,
+        background_img: Optional[str] = None,
     ) -> None:
         """Initialize the ScaleShiftTransform.
 
@@ -145,6 +147,12 @@ class ScaleShiftTransform(ContinuousTransform):
             vision_height (int): The height of the visual field.
             image_rescale_range (Tuple[float, float]): Range of image rescaling factors. For an identity transform, set the range to (1, 1).
 
+        
+        TODO: readd the following parameters (lost in merge)
+            shift: (bool): Whether to apply random shifts to the image. Else the image will always be centered.
+            background_img (Optional[str]): Path to the background image. If None, a black background will be used.
+                If the background image doesn't match the visual field size, it will be resized so one side matches and the other
+                side is cropped randomly.
         """
         super().__init__(image_rescale_range)
         self.vision_width = vision_width
@@ -183,14 +191,23 @@ class ScaleShiftTransform(ContinuousTransform):
         max_x_shift = min(initial_x, self.vision_width - (initial_x + scaled_size[0]))
         max_y_shift = min(initial_y, self.vision_height - (initial_y + scaled_size[1]))
 
-        # Random shift within the calculated range
-        x_shift = np.random.randint(-max_x_shift, max_x_shift + 1)
-        y_shift = np.random.randint(-max_y_shift, max_y_shift + 1)
+            # Random shift within the calculated range
+            x_shift = np.random.randint(-max_x_shift, max_x_shift + 1)
+            y_shift = np.random.randint(-max_y_shift, max_y_shift + 1)
 
-        # Calculate the final position with shift
-        final_x = initial_x + x_shift
-        final_y = initial_y + y_shift
+            # Calculate the final position with shift
+            pos_x = pos_x + x_shift
+            pos_y = pos_y + y_shift
 
+
+        # get random crop of background image matching the visual field size
+        background = self.background.copy()
+        if self.background.size != self.visual_field:
+            width_diff = self.background.size[0] - self.visual_field[0]
+            x_start = 0 if width_diff == 0 else np.random.randint(0, width_diff)
+            height_diff = self.background.size[1] - self.visual_field[1]
+            y_start = 0 if height_diff == 0 else np.random.randint(0, height_diff)
+            background = background.crop((x_start, y_start, x_start + self.visual_field[0], y_start + self.visual_field[1]))
         # Paste the scaled image onto the background
         background[
             :, final_y : final_y + img.shape[1], final_x : final_x + img.shape[2]

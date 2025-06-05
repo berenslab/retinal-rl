@@ -291,6 +291,7 @@ def plot_histories(histories: dict[str, list[float]]) -> Figure:
 
 
 def set_integer_ticks(ax: Axes):
+def set_integer_ticks(ax: Axes):
     """Set integer ticks for both x and y axes."""
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     ax.yaxis.set_major_locator(MaxNLocator(integer=True))

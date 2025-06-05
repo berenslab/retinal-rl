@@ -117,6 +117,8 @@ def process_dataset(
             with torch.no_grad():
                 brain.eval()
                 losses: Dict[str, float] = {}
+                for stat in objective.logging_statistics:
+                    losses[stat.key_name] = stat(context).item()
                 for loss in objective.losses:
                     losses[loss.key_name] = loss(context).item()
 

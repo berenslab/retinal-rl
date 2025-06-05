@@ -5,6 +5,7 @@ import os
 import hydra
 from omegaconf import DictConfig
 from torchvision import datasets
+from torchvision.transforms.v2 import RGB
 
 from retinal_rl.classification.imageset import Imageset
 
