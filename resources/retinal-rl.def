@@ -22,6 +22,7 @@ From: ubuntu:22.04
 
   apt install -y \
     cmake \
+    curl \
     libboost-all-dev \
     libsdl2-dev \
     libfreetype6-dev \
@@ -37,7 +38,6 @@ From: ubuntu:22.04
     timidity \
     git \
     tar \
-    wget \
     unzip \
     gifsicle \
     parallel \
@@ -55,7 +55,7 @@ From: ubuntu:22.04
   ln -s /usr/bin/python3 /usr/bin/python
 
   # install action code compiler
-  wget https://zdoom.org/files/utils/acc/acc159linux-x64.zip
+  curl -O https://zdoom.org/files/utils/acc/acc159linux-x64.zip
   mkdir /usr/share/acc
   unzip acc159linux-x64.zip -d /usr/share/acc
   mv /usr/share/acc/acc /usr/bin/acc
