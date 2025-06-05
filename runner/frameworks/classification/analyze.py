@@ -82,7 +82,7 @@ def analyze(
         )
         log.save_dict(
             cfg.analyses_dir / f"spectral_stats_epoch_{epoch}.npz", spectral_result
-        ) # TODO: Check if compressed save possible
+        )  # TODO: Check if compressed save possible
         log.save_dict(
             cfg.analyses_dir / f"histogram_stats_epoch_{epoch}.npz", spectral_result
         )

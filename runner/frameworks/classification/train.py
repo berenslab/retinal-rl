@@ -6,11 +6,11 @@ from pathlib import Path
 from typing import Dict, List
 
 import torch
+import wandb
 from omegaconf import DictConfig
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 
-import wandb
 from retinal_rl.classification.imageset import Imageset
 from retinal_rl.classification.loss import ClassificationContext
 from retinal_rl.classification.training import process_dataset, run_epoch

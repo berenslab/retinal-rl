@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable
 
 import numpy as np
 import torch
@@ -67,14 +67,14 @@ class RetinalLearner(Learner):
         self.env_info = env_info
 
         self.device = None
-        self.actor_critic: Optional[ActorCritic] = None
+        self.actor_critic: ActorCritic | None = None
 
         self.optimizer = None
 
         self.objective: Objective[RLContext] = None
 
-        self.curr_lr: Optional[float] = None
-        self.lr_scheduler: Optional[LearningRateScheduler] = None
+        self.curr_lr: float | None = None
+        self.lr_scheduler: LearningRateScheduler | None = None
 
         self.train_step: int = 0  # total number of SGD steps
         self.env_steps: int = (
@@ -84,10 +84,10 @@ class RetinalLearner(Learner):
         self.best_performance = -1e9
 
         # for configuration updates, i.e. from PBT
-        self.new_cfg: Optional[Dict] = None
+        self.new_cfg: dict | None = None
 
         # for multi-policy learning (i.e. with PBT) when we need to load weights of another policy
-        self.policy_to_load: Optional[PolicyID] = None
+        self.policy_to_load: PolicyID | None = None
 
         # decay rate at which summaries are collected
         # save summaries every 5 seconds in the beginning, but decay to every 4 minutes in the limit, because we
@@ -103,8 +103,8 @@ class RetinalLearner(Learner):
 
         self.param_server: ParameterServer = param_server
 
-        self.exploration_loss_func: Optional[Callable] = None
-        self.kl_loss_func: Optional[Callable] = None
+        self.exploration_loss_func: Callable | None = None
+        self.kl_loss_func: Callable | None = None
 
         self.is_initialized = False
 
@@ -199,7 +199,7 @@ class RetinalLearner(Learner):
         log.info(f"Loaded experiment state at {self.train_step=}, {self.env_steps=}")
 
     def _get_checkpoint_dict(self):
-        checkpoint = {
+        return {
             "train_step": self.train_step,
             "env_steps": self.env_steps,
             "best_performance": self.best_performance,
@@ -207,19 +207,18 @@ class RetinalLearner(Learner):
             "optimizer": self.optimizer.state_dict(),
             "curr_lr": self.curr_lr,
         }
-        return checkpoint
 
     #######################################################################################################################################
     #######################################################################################################################################
     #######################################################################################################################################
 
-    def _train(
+    def _train(  # noqa: C901 # TODO: Refactor this method, by now pretty close to original. Complexity too high though.
         self,
         gpu_buffer: TensorDict,
         batch_size: int,
         experience_size: int,
         num_invalids: int,
-    ) -> Optional[AttrDict]:
+    ) -> AttrDict | None:
         timing = self.timing
         with torch.no_grad():
             early_stopping_tolerance = 1e-6
@@ -236,7 +235,7 @@ class RetinalLearner(Learner):
                 ), "V-trace requires to recurrence and rollout to be equal"
 
             num_sgd_steps = 0
-            stats_and_summaries: Optional[AttrDict] = None
+            stats_and_summaries: AttrDict | None = None
 
             # When it is time to record train summaries, we randomly sample epoch/batch for which the summaries are
             # collected to get equal representation from different stages of training.
@@ -531,7 +530,7 @@ class RetinalLearner(Learner):
 
         return normalized_obs
 
-    def _prepare_batch(self, batch: TensorDict) -> Tuple[TensorDict, int, int]:
+    def _prepare_batch(self, batch: TensorDict) -> tuple[TensorDict, int, int]:
         with torch.no_grad():
             # create a shallow copy so we can modify the dictionary
             # we still reference the same buffers though
@@ -618,7 +617,7 @@ class RetinalLearner(Learner):
             dataset_size = buff["actions"].shape[0] * buff["actions"].shape[1]
             for d, k, v in iterate_recursively(buff):
                 # collapse first two dimensions (batch and time) into a single dimension
-                d[k] = v.reshape((dataset_size,) + tuple(v.shape[2:]))
+                d[k] = v.reshape((dataset_size, *tuple(v.shape[2:])))
 
             buff["dones_cpu"] = buff["dones"].to(
                 "cpu", copy=True, dtype=torch.float, non_blocking=True
@@ -652,7 +651,7 @@ class RetinalLearner(Learner):
 
             return buff, dataset_size, num_invalids
 
-    def train(self, batch: TensorDict) -> Optional[Dict]:
+    def train(self, batch: TensorDict) -> dict | None:
         with self.timing.add_time("misc"):
             self._maybe_update_cfg()
             self._maybe_load_policy()

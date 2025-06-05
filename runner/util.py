@@ -126,6 +126,16 @@ def import_class(import_path):  # TODO: Move to more general utils
     module = __import__(module_name, fromlist=[class_name])
     return getattr(module, class_name)
 
+def _create_dummy_responses(sensor_shapes: Dict[str, Tuple[int, ...]]) -> Dict[str, torch.Tensor]:
+    # Create dummy responses to help calculate the input shape for each neural circuit
+    dummy_responses = {
+        sensor: torch.rand((1, *sensor_shapes[sensor])) for sensor in sensor_shapes
+    }
+    if "rnn_state" in sensor_shapes:
+        shape = (1, *sensor_shapes["rnn_state"])
+        dummy_responses["rnn_state"] = torch.rand(shape)
+    return dummy_responses
+
 
 def assemble_neural_circuits(
     circuits: DictConfig,
@@ -157,13 +167,7 @@ def assemble_neural_circuits(
     if not nx.is_directed_acyclic_graph(connectome):
         raise ValueError("The connectome should be a directed acyclic graph.")
 
-    # Create dummy responses to help calculate the input shape for each neural circuit
-    dummy_responses = {
-        sensor: torch.rand((1, *sensor_shapes[sensor])) for sensor in sensor_shapes
-    }
-    if "rnn_state" in sensor_shapes:
-        shape = (1, *sensor_shapes["rnn_state"])
-        dummy_responses["rnn_state"] = torch.rand(shape)
+    dummy_responses = _create_dummy_responses(sensor_shapes)
 
     # Instantiate the neural circuits
     for node in nx.topological_sort(connectome):

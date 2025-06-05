@@ -56,7 +56,8 @@ def reshape_images(
 
     return np.moveaxis(final_image, 0, -1)
 
-def produce_image(experiment_path: Path, out_dir: Path, last= True):
+
+def produce_image(experiment_path: Path, out_dir: Path, last=True):
     rf_dir = experiment_path / "data/analyses"
     config_path = experiment_path / "config/config.yaml"
 
@@ -66,10 +67,10 @@ def produce_image(experiment_path: Path, out_dir: Path, last= True):
         config = yaml.safe_load(file)
 
     rf_files = os.listdir(rf_dir)
-    rf_files.sort(key= lambda f: os.path.getctime(rf_dir / f))
+    rf_files.sort(key=lambda f: os.path.getctime(rf_dir / f))
 
     cur_file = rf_files[index]
-    with open (rf_dir / cur_file) as f:
+    with open(rf_dir / cur_file) as f:
         rf = json.load(f)
 
     hyper_params = [
@@ -80,21 +81,31 @@ def produce_image(experiment_path: Path, out_dir: Path, last= True):
     ]
     comp_layer_rfs = []
     for i, (layer, layer_rfs) in enumerate(rf.items()):
-        comp_layer_rfs.append(reshape_images(np.array(layer_rfs), n_cols=8, whitespace=0.1))
+        comp_layer_rfs.append(
+            reshape_images(np.array(layer_rfs), n_cols=8, whitespace=0.1)
+        )
 
-    height_ratios = [x.shape[0]/x.shape[1] for x in comp_layer_rfs]
+    height_ratios = [x.shape[0] / x.shape[1] for x in comp_layer_rfs]
 
-    fig = plt.subplots(nrows=len(rf.keys()), ncols=1, height_ratios=height_ratios, figsize=(10, 10*sum(height_ratios)+1))
+    plt.subplots(
+        nrows=len(rf.keys()),
+        ncols=1,
+        height_ratios=height_ratios,
+        figsize=(10, 10 * sum(height_ratios) + 1),
+    )
     for i, (layer, layer_rfs) in enumerate(zip(rf.keys(), comp_layer_rfs)):
         plt.subplot(len(rf.keys()), 1, i + 1)
         plt.imshow(layer_rfs)
         plt.axis("off")
-        plt.title(layer, loc='left')
+        plt.title(layer, loc="left")
     plt.suptitle(str.join(", ", hyper_params))
     plt.tight_layout()
-    filename = str.join("_", hyper_params[:-1])+ ("_last" if last else "_early")+".png"
+    filename = (
+        str.join("_", hyper_params[:-1]) + ("_last" if last else "_early") + ".png"
+    )
     plt.savefig(out_dir / filename)
     plt.close()
+
 
 experiment_path = Path(sys.argv[1])
 out_dir = Path(sys.argv[2])

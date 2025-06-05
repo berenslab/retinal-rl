@@ -11,10 +11,10 @@ It includes various image transformations:
 from abc import ABC, abstractmethod
 from typing import Tuple
 
-import torch
-import torchvision.transforms as T
-import torchvision.transforms.functional as TF
 import numpy as np
+import torch
+import torchvision.transforms as tv_transforms
+import torchvision.transforms.functional as tv_functional
 from torch import nn
 
 
@@ -93,13 +93,15 @@ class IlluminationTransform(ContinuousTransform):
             torch.Tensor: The transformed image tensor with adjusted illumination.
 
         """
-        return TF.adjust_contrast(img, contrast_factor=trans_factor)
+        return tv_functional.adjust_contrast(img, contrast_factor=trans_factor)
 
 
 class BlurTransform(ContinuousTransform):
     """Apply random Gaussian blur to the input image."""
 
-    def __init__(self, blur_range: Tuple[float, float], kernel_size: list[int] = 3) -> None:
+    def __init__(
+        self, blur_range: Tuple[float, float], kernel_size: list[int] = 3
+    ) -> None:
         """Initialize the BlurTransform.
 
         Args:
@@ -123,8 +125,10 @@ class BlurTransform(ContinuousTransform):
             torch.Tensor: The transformed image tensor with applied blur.
 
         """
-        blur_transform = T.GaussianBlur(kernel_size=int(trans_factor), sigma=(0.1, 2.0))
-        TF.gaussian_blur(img, kernel_size=5)
+        blur_transform = tv_transforms.GaussianBlur(
+            kernel_size=int(trans_factor), sigma=(0.1, 2.0)
+        )
+        tv_functional.gaussian_blur(img, kernel_size=5)
         return blur_transform(img)
 
 
@@ -145,7 +149,7 @@ class ScaleShiftTransform(ContinuousTransform):
             vision_height (int): The height of the visual field.
             image_rescale_range (Tuple[float, float]): Range of image rescaling factors. For an identity transform, set the range to (1, 1).
 
-        
+
         TODO: readd the following parameters (lost in merge)
             shift: (bool): Whether to apply random shifts to the image. Else the image will always be centered.
             background_img (Optional[str]): Path to the background image. If None, a black background will be used.
@@ -169,8 +173,11 @@ class ScaleShiftTransform(ContinuousTransform):
             torch.Tensor: The transformed image tensor.
         """
         # Scale the image
-        scaled_size = (int(img.shape[1] * trans_factor), int(img.shape[2] * trans_factor))
-        img = T.Resize(scaled_size)(img)
+        scaled_size = (
+            int(img.shape[1] * trans_factor),
+            int(img.shape[2] * trans_factor),
+        )
+        img = tv_transforms.Resize(scaled_size)(img)
 
         # Create a black background
         background = torch.zeros(
@@ -236,9 +243,7 @@ class ShotNoiseTransform(ContinuousTransform):
 
         # Apply shot noise
         noise = torch.poisson(img * trans_factor) / trans_factor
-        noisy_img = torch.clamp(noise, 0, 1)  # Assuming img is normalized to [0, 1]
-
-        return noisy_img
+        return torch.clamp(noise, 0, 1)  # Assuming img is normalized to [0, 1]
 
 
 class ContrastTransform(ContinuousTransform):
@@ -253,7 +258,7 @@ class ContrastTransform(ContinuousTransform):
 
         """
         super().__init__(contrast_range)
-        self.contrast_transform = T.ColorJitter(contrast=contrast_range[1])
+        self.contrast_transform = tv_transforms.ColorJitter(contrast=contrast_range[1])
 
     def transform(self, img: torch.Tensor, trans_factor: float) -> torch.Tensor:
         """Apply random contrast adjustment to the input image.

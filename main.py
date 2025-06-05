@@ -20,6 +20,18 @@ from runner.util import create_brain, delete_results, load_brain_weights
 # Load the eval resolver for OmegaConf
 OmegaConf.register_new_resolver("eval", eval)
 
+def get_framework(cfg: DictConfig, cache_path: str) -> TrainingFramework:
+    framework_classes = {
+        "rl": lambda: SFFramework(cfg, data_root=cache_path),
+        "classification": lambda: ClassificationFramework(cfg)
+    }
+
+    try:
+        return framework_classes[cfg.framework]()
+    except KeyError:
+        raise NotImplementedError(
+            f"Framework '{cfg.framework}' is not implemented. Available frameworks: {list(framework_classes.keys())}"
+        )
 
 # Hydra entry point
 @hydra.main(config_path="config/base", config_name="config", version_base=None)
@@ -56,14 +68,8 @@ def _program(cfg: DictConfig):
     framework: TrainingFramework
 
     cache_path = os.path.join(hydra.utils.get_original_cwd(), "cache")
-    if cfg.framework == "rl":
-        framework = SFFramework(cfg, data_root=cache_path)
-    elif cfg.framework == "classification":
-        framework = ClassificationFramework(cfg)
-    else:
-        raise NotImplementedError(
-            "only 'rl' or 'classification' framework implemented currently"
-        )
+
+    framework = get_framework(cfg, cache_path)
 
     brain, optimizer = framework.initialize(brain, optimizer)
 

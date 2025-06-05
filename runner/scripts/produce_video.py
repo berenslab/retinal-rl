@@ -56,9 +56,9 @@ def _rescale_zero_one(x, min: Optional[float] = None, max: Optional[float] = Non
     return (x - min) / (max - min)
 
 
-def custom_enjoy(
+def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
     cfg: Config,
-) -> Tuple[StatusCode, float]:  # TODO: Properly implement this
+) -> Tuple[StatusCode, float]:
     verbose = False
 
     cfg = load_from_checkpoint(cfg)
@@ -202,7 +202,7 @@ def custom_enjoy(
 
                         if cfg.use_record_episode_statistics:
                             # we want the scores from the full episode not a single agent death (due to EpisodicLifeEnv wrapper)
-                            if "episode" in infos[agent_i].keys():
+                            if "episode" in infos[agent_i]:
                                 num_episodes += 1
                                 reward_list.append(infos[agent_i]["episode"]["r"])
                         else:
@@ -253,10 +253,7 @@ def custom_enjoy(
     env.close()
 
     if cfg.save_video:
-        if cfg.fps > 0:
-            fps = cfg.fps
-        else:
-            fps = 30
+        fps = cfg.fps if cfg.fps > 0 else 30
 
         # assert frames are in the right range (0-255) to produce the video
         video_frames = (_rescale_zero_one(np.array(video_frames)) * 255).astype(
