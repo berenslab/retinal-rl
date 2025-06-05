@@ -172,3 +172,4 @@ data/MNIST*
 # results
 results
 *.gif
+*.mp4
