@@ -50,7 +50,7 @@ def preload(
         )  # only gabor images are not doomified somehow
         preload_assets(type, textures_dir, source_dir, doomify)
     else:
-        preload_dataset(type, textures_dir, source_dir, train=train)
+        preload_dataset(type, textures_dir, source_dir, train=train, clean=False)
 
 
 def preload_assets(
