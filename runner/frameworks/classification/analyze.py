@@ -1,16 +1,8 @@
 from dataclasses import asdict, dataclass
-from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import numpy as np
 import torch
-
-from retinal_rl.analysis import channel_analysis as channel_ana
-from retinal_rl.analysis import default as default_ana
-from retinal_rl.analysis import receptive_fields
-from retinal_rl.analysis import reconstructions as recon_ana
-from retinal_rl.analysis import transforms_analysis as transf_ana
-from retinal_rl.analysis.plot import FigureLogger
 
 from retinal_rl.analysis import channel_analysis as channel_ana
 from retinal_rl.analysis import default as default_ana
@@ -43,24 +35,6 @@ class AnalysesCfg:
         self.plot_dir.mkdir(parents=True, exist_ok=True)
         self.checkpoint_plot_dir.mkdir(parents=True, exist_ok=True)
         self.analyses_dir.mkdir(parents=True, exist_ok=True)
-@dataclass
-class AnalysesCfg:
-    run_dir: Path
-    plot_dir: Path
-    checkpoint_plot_dir: Path
-    data_dir: Path
-    use_wandb: bool
-    channel_analysis: bool
-    plot_sample_size: int
-
-    def __post_init__(self):
-        self.analyses_dir = Path(self.data_dir) / "analyses"
-
-        # Ensure all dirs exist
-        self.run_dir.mkdir(parents=True, exist_ok=True)
-        self.plot_dir.mkdir(parents=True, exist_ok=True)
-        self.checkpoint_plot_dir.mkdir(parents=True, exist_ok=True)
-        self.analyses_dir.mkdir(parents=True, exist_ok=True)
 
 
 ### Analysis ###
@@ -68,11 +42,9 @@ class AnalysesCfg:
 
 def analyze(
     cfg: AnalysesCfg,
-    cfg: AnalysesCfg,
     device: torch.device,
     brain: Brain,
     objective: Objective[ContextT],
-    histories: dict[str, list[float]],
     histories: dict[str, list[float]],
     train_set: Imageset,
     test_set: Imageset,
@@ -82,18 +54,9 @@ def analyze(
     log = FigureLogger(
         cfg.use_wandb, cfg.plot_dir, cfg.checkpoint_plot_dir, cfg.run_dir
     )
-    log = FigureLogger(
-        cfg.use_wandb, cfg.plot_dir, cfg.checkpoint_plot_dir, cfg.run_dir
-    )
 
     log.plot_and_save_histories(histories)
-    log.plot_and_save_histories(histories)
 
-    # perform different analyses, plot and log them
-    input_shape, rf_result = receptive_fields.analyze(brain, device)
-    receptive_fields.plot(
-        log,
-        rf_result,
     # perform different analyses, plot and log them
     input_shape, rf_result = receptive_fields.analyze(brain, device)
     receptive_fields.plot(
@@ -150,34 +113,14 @@ def analyze(
         )
 
     log.plot_and_save_histories(histories, save_always=True)
-    if epoch == 0:
-        default_ana.initialization_plots(log, brain, objective, input_shape, rf_result)
-        _extended_initialization_plots(
-            log,
-            cfg.channel_analysis,
-            cfg.analyses_dir,
-            input_shape,
-            train_set,
-            cfg.plot_sample_size,
-            device,
-        )
-
-    log.plot_and_save_histories(histories, save_always=True)
 
 
-def _extended_initialization_plots(
-    log: FigureLogger,
 def _extended_initialization_plots(
     log: FigureLogger,
     channel_analysis: bool,
     analyses_dir: Path,
     input_shape: tuple[int, ...],
-    input_shape: tuple[int, ...],
     train_set: Imageset,
-    max_sample_size: int,
-    device: torch.device,
-):
-    transforms = transf_ana.analyze(train_set, num_steps=5, num_images=2)
     max_sample_size: int,
     device: torch.device,
 ):
@@ -187,10 +130,7 @@ def _extended_initialization_plots(
 
     transforms_fig = transf_ana.plot(**asdict(transforms))
     log.log_figure(
-    transforms_fig = transf_ana.plot(**asdict(transforms))
-    log.log_figure(
         transforms_fig,
-        default_ana.INIT_DIR,
         default_ana.INIT_DIR,
         "transforms",
         0,
@@ -198,19 +138,6 @@ def _extended_initialization_plots(
     )
 
     if channel_analysis:
-        # Input 'rfs' is just the colors
-        rf_result = np.eye(input_shape[0])[:, :, np.newaxis, np.newaxis]
-        dataloader = channel_ana.prepare_dataset(train_set, max_sample_size)
-        spectral_result, histogram_result = channel_ana.analyze_input(
-            device, dataloader
-        )
-        channel_ana.input_plot(
-            log,
-            rf_result,
-            spectral_result,
-            histogram_result,
-            default_ana.INIT_DIR,
-        )
         # Input 'rfs' is just the colors
         rf_result = np.eye(input_shape[0])[:, :, np.newaxis, np.newaxis]
         dataloader = channel_ana.prepare_dataset(train_set, max_sample_size)
