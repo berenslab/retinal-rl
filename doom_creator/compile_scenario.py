@@ -117,6 +117,7 @@ def main():
 
         preload(TType.MNIST, dirs.TEXTURES_DIR, args.dataset_dir, train=not args.test)
         preload(TType.CIFAR10, dirs.TEXTURES_DIR, args.dataset_dir, train=not args.test)
+        preload(TType.SVHN, dirs.TEXTURES_DIR, args.dataset_dir, train=not args.test)
     if do_list:
         print(f"Listing contents of {dirs.SCENARIO_YAML_DIR}:")
         for flnm in os.listdir(dirs.SCENARIO_YAML_DIR):

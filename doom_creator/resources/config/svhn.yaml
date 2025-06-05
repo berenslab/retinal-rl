@@ -1,0 +1,35 @@
+objects:
+  nourishment:
+    actors:
+      nourishment-1:
+        textures:
+          - 'svhn/six'
+      nourishment-2:
+        textures:
+          - 'svhn/seven'
+      nourishment-3:
+        textures:
+          - 'svhn/eight'
+      nourishment-4:
+        textures:
+          - 'svhn/nine'
+      nourishment-5:
+        textures:
+          - 'svhn/zero'
+  poison:
+    actors:
+      poison-1:
+        textures:
+          - 'svhn/five'
+      poison-2:
+        textures:
+          - 'svhn/four'
+      poison-3:
+        textures:
+          - 'svhn/three'
+      poison-4:
+        textures:
+          - 'svhn/two'
+      poison-5:
+        textures:
+          - 'svhn/one'
