@@ -35,6 +35,7 @@ class Objective(Generic[ContextT]):
         self.logging_statistics = logging_statistics
         self.brain: Brain = brain
 
+        self._reevaluate_targets()
         self._freeze_parameters()
 
         # Build a dictionary of weighted parameters for each loss
@@ -82,17 +83,25 @@ class Objective(Generic[ContextT]):
         # Perform optimization step
         return loss_dict
 
+    def _reevaluate_targets(self):
+        """Re-evaluate the target circuits for each loss."""
+        for loss in self.losses:
+            _targets = loss.target_circuits
+            _weights = loss.weights
+            if "__all__" in _targets:
+                _targets = self.brain.circuits.keys()
+                if len(_weights) == 1:
+                    _weights = [_weights[0] for _ in range(len(_targets))]
+                assert len(_weights) == len(_targets)
+
+                loss.target_circuits = list(_targets)
+                loss.weights = _weights
+
     def _weighted_params(
         self, loss: Loss[ContextT]
     ) -> Tuple[List[float], List[Parameter]]:
         _targets = loss.target_circuits
         _weights = loss.weights
-
-        if "__all__" in _targets:
-            _targets = self.brain.circuits.keys()
-            if len(_weights) == 1:
-                _weights = [_weights[0] for _ in range(len(_targets))]
-            assert len(_weights) == len(_targets)
 
         weights: List[float] = []
         params: List[Parameter] = []

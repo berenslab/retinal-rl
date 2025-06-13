@@ -126,7 +126,10 @@ def import_class(import_path):  # TODO: Move to more general utils
     module = __import__(module_name, fromlist=[class_name])
     return getattr(module, class_name)
 
-def _create_dummy_responses(sensor_shapes: Dict[str, Tuple[int, ...]]) -> Dict[str, torch.Tensor]:
+
+def _create_dummy_responses(
+    sensor_shapes: Dict[str, Tuple[int, ...]],
+) -> Dict[str, torch.Tensor]:
     # Create dummy responses to help calculate the input shape for each neural circuit
     dummy_responses = {
         sensor: torch.rand((1, *sensor_shapes[sensor])) for sensor in sensor_shapes

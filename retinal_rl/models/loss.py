@@ -1,6 +1,5 @@
 """Losses for training models, and the context required to evaluate them."""
 
-import numbers
 from abc import abstractmethod
 from typing import Dict, Generic, List, Optional, TypeVar
 
@@ -70,7 +69,7 @@ class Loss(LoggingStatistic[ContextT]):
     def __init__(
         self,
         target_circuits: Optional[List[str]] = None,
-        weights: Optional[List[float] | numbers.Number] = None,
+        weights: Optional[List[float] | float | int] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
     ):
@@ -78,9 +77,13 @@ class Loss(LoggingStatistic[ContextT]):
         if target_circuits is None:
             target_circuits = []
         if weights is None:
-            weights = [1] * len(target_circuits)
-        if isinstance(weights, numbers.Number):
+            weights = [1.0] * len(target_circuits)
+        elif isinstance(weights, float):
             weights = [weights]
+        elif isinstance(weights, int):
+            weights = [float(weights)] * len(target_circuits)
+
+        print(weights)
 
         self.target_circuits = target_circuits
         self.weights = weights

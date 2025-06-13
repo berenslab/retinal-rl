@@ -20,10 +20,11 @@ from runner.util import create_brain, delete_results, load_brain_weights
 # Load the eval resolver for OmegaConf
 OmegaConf.register_new_resolver("eval", eval)
 
+
 def get_framework(cfg: DictConfig, cache_path: str) -> TrainingFramework:
     framework_classes = {
         "rl": lambda: SFFramework(cfg, data_root=cache_path),
-        "classification": lambda: ClassificationFramework(cfg)
+        "classification": lambda: ClassificationFramework(cfg),
     }
 
     try:
@@ -32,6 +33,7 @@ def get_framework(cfg: DictConfig, cache_path: str) -> TrainingFramework:
         raise NotImplementedError(
             f"Framework '{cfg.framework}' is not implemented. Available frameworks: {list(framework_classes.keys())}"
         )
+
 
 # Hydra entry point
 @hydra.main(config_path="config/base", config_name="config", version_base=None)
