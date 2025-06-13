@@ -44,6 +44,8 @@ class InitConfig:
     run_name: str
     max_checkpoints: int
 
+    device: torch.device
+
     @classmethod
     def from_dict_config(cls, cfg: DictConfig) -> "InitConfig":
         """Create InitConfig from a DictConfig."""
@@ -60,6 +62,7 @@ class InitConfig:
             wandb_preempt=cfg.logging.wandb_preempt,
             run_name=cfg.run_name,
             max_checkpoints=cfg.logging.max_checkpoints,
+            device=cfg.system.device,
         )
 
 
@@ -159,7 +162,7 @@ def _initialize_reload(
         raise FileNotFoundError("Checkpoint file does not exist.")
 
     # Load the state dict into the brain model
-    checkpoint = torch.load(checkpoint_file)
+    checkpoint = torch.load(checkpoint_file, map_location=cfg.device)
     brain.load_state_dict(checkpoint["brain_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     completed_epochs = checkpoint["completed_epochs"]

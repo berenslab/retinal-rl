@@ -1,0 +1,6 @@
+name: rl-base
+
+env_name: ${env_name}
+vision_width: 135
+vision_height:  108
+input_satiety: false

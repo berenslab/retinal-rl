@@ -35,6 +35,9 @@ class Objective(Generic[ContextT]):
         self.logging_statistics = logging_statistics
         self.brain: Brain = brain
 
+        self._reevaluate_targets()
+        self._freeze_parameters()
+
         # Build a dictionary of weighted parameters for each loss
         # TODO: If the parameters() list of a neural circuit changes dynamically, this will break
 
@@ -61,31 +64,44 @@ class Objective(Generic[ContextT]):
 
             # Compute gradients
             grads = torch.autograd.grad(
-                value, params, create_graph=False, retain_graph=retain_graph
+                value,
+                params,
+                create_graph=False,
+                retain_graph=retain_graph,
+                allow_unused=True,  # TODO: check if this is actually the desired behavior. Needed to be added for when eg a head is not used for loss computation, but we have target all
             )
 
             # Manually update parameters
             with torch.no_grad():
                 for param, weight, grad in zip(params, weights, grads):
-                    if param.grad is None:
-                        param.grad = weight * grad
-                    else:
-                        param.grad += weight * grad
+                    if grad is not None:  # TODO: also only added as allow_unused above
+                        if param.grad is None:
+                            param.grad = weight * grad
+                        else:
+                            param.grad += weight * grad
 
         # Perform optimization step
         return loss_dict
+
+    def _reevaluate_targets(self):
+        """Re-evaluate the target circuits for each loss."""
+        for loss in self.losses:
+            _targets = loss.target_circuits
+            _weights = loss.weights
+            if "__all__" in _targets:
+                _targets = self.brain.circuits.keys()
+                if len(_weights) == 1:
+                    _weights = [_weights[0] for _ in range(len(_targets))]
+                assert len(_weights) == len(_targets)
+
+                loss.target_circuits = list(_targets)
+                loss.weights = _weights
 
     def _weighted_params(
         self, loss: Loss[ContextT]
     ) -> Tuple[List[float], List[Parameter]]:
         _targets = loss.target_circuits
         _weights = loss.weights
-
-        if "__all__" in _targets:
-            _targets = self.brain.circuits.keys()
-            if len(_weights) == 1:
-                _weights = [_weights[0] for _ in range(len(_targets))]
-            assert len(_weights) == len(_targets)
 
         weights: List[float] = []
         params: List[Parameter] = []
@@ -96,3 +112,15 @@ class Objective(Generic[ContextT]):
                 params += params0
 
         return weights, params
+
+    def _freeze_parameters(self):
+        for circuit_name in self.brain.circuits:
+            grad_needed = False
+            for loss in self.losses:
+                if circuit_name in loss.target_circuits:
+                    grad_needed = True
+                    break
+            if not grad_needed:
+                logger.debug(f"Freezing parameters of {circuit_name}")
+                for param in self.brain.circuits[circuit_name].parameters():
+                    param.requires_grad = False

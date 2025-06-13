@@ -60,6 +60,7 @@ class NeuralCircuit(nn.Module, ABC):
 
     @abstractmethod
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # TODO: some neural circuits need more than one input, e.g. RNNs
         """Forward pass of the neural circuit."""
         raise NotImplementedError(
             "Each subclass must implement its own forward method."
