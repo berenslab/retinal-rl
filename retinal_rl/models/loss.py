@@ -83,8 +83,6 @@ class Loss(LoggingStatistic[ContextT]):
         elif isinstance(weights, int):
             weights = [float(weights)] * len(target_circuits)
 
-        print(weights)
-
         self.target_circuits = target_circuits
         self.weights = weights
         self.min_epoch = min_epoch

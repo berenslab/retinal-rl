@@ -99,9 +99,10 @@ class Brain(nn.Module):
                 f"\nOutput Shape: {circuit.output_shape}\n"
             )
 
-            circuit_stats = summary(
-                circuit, (1, *tuple(circuit.input_shape)), verbose=0
-            )
+            inp_shape = (1, *tuple(circuit.input_shape))
+            if circuit_name == "rnn":
+                inp_shape = circuit.input_shape
+            circuit_stats = summary(circuit, inp_shape, verbose=0)
             output.write(str(circuit_stats))
 
         # Get the complete output as a string
