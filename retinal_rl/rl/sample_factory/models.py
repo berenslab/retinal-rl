@@ -1,18 +1,20 @@
-import warnings
 from enum import Enum
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
-import networkx as nx
-import numpy as np
+import hydra
 import torch
 from omegaconf import DictConfig
 from sample_factory.algo.utils.tensor_dict import TensorDict
+from sample_factory.model.action_parameterization import get_action_distribution
 from sample_factory.model.actor_critic import ActorCritic
 from sample_factory.model.model_utils import model_device
+from sample_factory.utils.normalize import ObservationNormalizer
 from sample_factory.utils.typing import ActionSpace, Config, ObsSpace
-from torch import Tensor, nn
+from torch import Tensor
 
 from retinal_rl.models.brain import Brain
+from retinal_rl.models.circuits.latent_core import LatentRNN
+from retinal_rl.rl.sample_factory.rnn_decorator import decorate_forward
 from retinal_rl.rl.sample_factory.sf_interfaces import ActorCriticProtocol
 from runner.util import create_brain  # TODO: Remove runner reference!
 
@@ -29,15 +31,36 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         # Attention: make_actor_critic passes [cfg, obs_space, action_space], but ActorCritic takes the reversed order of arguments [obs_space, action_space, cfg]
         super().__init__(obs_space, action_space, cfg)
 
+        self.check_brain_config(DictConfig(cfg.brain))  # TODO: Use this
+
         self.set_brain(create_brain(DictConfig(cfg.brain)))
         # TODO: Find way to instantiate brain outside
+        transforms_list = hydra.utils.instantiate(cfg.transforms)
+        self.inp_transforms = torch.nn.Sequential(*transforms_list)
 
-        dec_out_shape = self.brain.circuits[self.decoder_name].output_shape
-        decoder_out_size = np.prod(dec_out_shape)
-        self.critic_linear = nn.Linear(decoder_out_size, 1)
-        self.action_parameterization = self.get_action_parameterization(
-            decoder_out_size
-        )  # boils down to a linear layer mapping to num_action_outputs
+    def normalize_obs(self, obs: dict[str, Tensor]) -> dict[str, Tensor]:
+        """
+        This is used to implement input transforms!
+        """
+        if self.cfg[
+            "normalize_input"
+        ]:  # FIXME: have a properly defined switch between default samplefactory inp normalization and our input transforms
+            return self.obs_normalizer(obs)
+
+        obs_clone = ObservationNormalizer._clone_tensordict(obs)
+        for k in (
+            obs
+        ):  # There should be only one key "obs" in all our cases as far as I know
+            inp = obs[k].clone() if obs[k].dtype == torch.float else obs[k].float()
+            # TODO: This should not be needed after the cloning before
+            obs_clone[k] = self.inp_transforms(inp)
+            obs_clone[k + "_raw"] = obs[k]
+        return obs_clone
+
+    def wrap_rnns(self):
+        for circuit_name in self.brain.circuits:
+            if isinstance(self.brain.circuits[circuit_name], LatentRNN):
+                decorate_forward(self.brain.circuits[circuit_name])
 
     def set_brain(self, brain: Brain):
         """
@@ -45,108 +68,55 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         Checks for brain compatibility.
         Decide which part of the brain is head/core/tail or creates Identity transforms if needed.
         """
-        enc, core, dec = self.get_encoder_decoder(brain)
         self.brain = brain
-        self.encoder_name = enc
-        self.core_mode = core
-        self.decoder_name = dec
+        self.wrap_rnns()
 
     @staticmethod
-    def get_encoder_decoder(brain: Brain) -> Tuple[str, CoreMode, str]:
-        assert "vision" in brain.sensors  # needed as input
-        # potential TODO: add other input sources if needed?
-
-        vision_paths = []
-        for node in brain.connectome:
-            if brain.connectome.out_degree(node) == 0:  # it's a leaf
-                vision_paths.append(nx.shortest_path(brain.connectome, "vision", node))
-
-        decoder = "action_decoder"  # default assumption
-        if decoder in brain.circuits:  # needed to produce output = decoder
-            vision_path = nx.shortest_path(brain.connectome, "vision", "action_decoder")
-        else:
-            selected_path = 0
-            out_dim = np.inf
-            for i, vision_path in enumerate(
-                vision_paths
-            ):  # Assuming that the path with the smallest output dimension is best for action prediction (eg in contrast to a decoder trying to reproduce the input)
-                dec_out_shape = brain.circuits[vision_path[-1]].output_shape
-                if np.prod(dec_out_shape) < out_dim:
-                    out_dim = np.prod(dec_out_shape)
-                    selected_path = i
-            vision_path = vision_paths[selected_path]
-            decoder = vision_path[-1]
-            warnings.warn(
-                "No action_decoder in model. Will use " + decoder + " instead."
-            )
-
-        encoder = vision_path[1]
-        if len(vision_path) == 4:
-            core = CoreMode.SIMPLE
-            CoreMode.SIMPLE.value = vision_path[2]  # use center module as core
-            # TODO: Check if recurrent!
-        if len(vision_path) < 4:
-            core = CoreMode.IDENTITY
-            warnings.warn("Seems like there is no model core. Will use an Identity.")
-        else:  # more than four
-            core = CoreMode.MULTI_MODULES
-            warnings.warn(
-                "Will use multiple modules as core: "
-                + ", ".join([mod_name for mod_name in vision_path[2:-1]])
-            )
-
-        return encoder, core, decoder
-
-    def forward_head(self, normalized_obs_dict: Dict[str, Tensor]) -> Tensor:
-        vision_input = normalized_obs_dict["obs"]
-        return self.brain.circuits[self.encoder_name](vision_input)
-
-    def forward_core(self, head_output, rnn_states):
-        # TODO: what to do with rnn states? -> implement neural circuit that is capable?! (could also be done by some module internally, right?)
-        if self.core_mode == CoreMode.SIMPLE:
-            out = self.brain.circuits[self.core_mode.value](head_output)
-        elif self.core_mode == CoreMode.RNN:
-            out, rnn_states = self.brain.circuits[self.core_mode.value](
-                head_output, rnn_states
-            )
-        elif self.core_mode == CoreMode.IDENTITY:
-            out = head_output
-        if self.core_mode == CoreMode.MULTI_MODULES:
-            out = head_output  # TODO: Implement partial forward (in brain!)
-        return out, rnn_states
-
-    def forward_tail(
-        self, core_output, values_only: bool, sample_actions: bool, action_mask: Optional[Tensor] = None
-    ) -> TensorDict:
-        out = self.brain.circuits[self.decoder_name](core_output)
-        out = torch.flatten(out, 1)
-
-        values = self.critic_linear(out).squeeze()
-
-        result = TensorDict(values=values)
-        if values_only:
-            return result
-
-        action_distribution_params, self.last_action_distribution = (
-            self.action_parameterization(out)
-        )
-
-        # `action_logits` is not the best name here, better would be "action distribution parameters"
-        result["action_logits"] = action_distribution_params
-
-        self._maybe_sample_actions(sample_actions, result)
-        return result
+    def check_brain_config(config: DictConfig):
+        assert (
+            "critic" in config["circuits"]
+        ), "For RL, a circuit named 'critic' is needed"
+        assert (
+            "actor" in config["circuits"]
+        ), "For RL, a circuit named 'actor' is needed"
 
     def forward(
-        self, normalized_obs_dict, rnn_states, values_only: bool = False, action_mask: Optional[Tensor] = None
+        self,
+        normalized_obs_dict: dict[str, Tensor],
+        rnn_states: Tensor,
+        values_only: bool = False,
+        action_mask: Optional[Tensor] = None,
     ) -> TensorDict:
-        head_out = self.forward_head(normalized_obs_dict)
-        core_out, new_rnn_states = self.forward_core(head_out, rnn_states)
-        result = self.forward_tail(
-            core_out, values_only=values_only, sample_actions=True
+        responses = self.brain(
+            {"vision": normalized_obs_dict["obs"], "rnn_state": rnn_states}
         )
-        result["new_rnn_states"] = new_rnn_states
-        result["latent_states"] = core_out
+        # TODO: this dict entry is bound to the config -> bad!
+
+        # Create Sample Factory result dict
+        result = TensorDict(values=responses["critic"].squeeze())
+        # if values_only: TODO: Not needed, right?
+        #     return result
+
+        # `action_logits` is not the best name here, better would be "action distribution parameters"
+        result["action_logits"] = responses["actor"]
+
+        # Create distribution object based on the prediction of the action parameters
+        # NOTE: Only Discrete action spaces are supported
+        self.last_action_distribution = get_action_distribution(
+            self.action_space, raw_logits=responses["actor"], action_mask=action_mask
+        )
+        #  TODO: Check: would be nice to get rid of self.last_action_distribution & self.action_distribution()
+
+        self._maybe_sample_actions(True, result)
+
+        # TODO: hack piping the rnn_state through the result dict
+        if "rnn_state" in responses:
+            core_out = responses["rnn_state"]
+            result["new_rnn_states"] = core_out
+            result["latent_states"] = core_out
+        else:
+            result["new_rnn_states"] = torch.full_like(rnn_states, 999999)
+            # Sample Factory always needs "new_rnn_states" in the output - #TODO: Trace down the usage
         return result
 
     def get_brain(self) -> Brain:

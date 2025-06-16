@@ -1,25 +1,29 @@
 """Utility functions for plotting the results of statistical analyses."""
 
-from typing import Dict, List, Tuple
+import json
+import shutil
+from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import seaborn as sns
-from matplotlib import gridspec, patches
+import wandb
+from matplotlib import patches
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.patches import Circle, Wedge
 from matplotlib.ticker import MaxNLocator
-from numpy import fft
 
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.objective import ContextT, Objective
-from retinal_rl.util import FloatArray
+from retinal_rl.rl.analysis.plot import rescale_range
+from retinal_rl.util import FloatArray, NumpyEncoder
 
 
-def make_image_grid(arrays: List[FloatArray], nrow: int) -> FloatArray:
+def make_image_grid(arrays: list[FloatArray], nrow: int) -> FloatArray:
     """Create a grid of images from a list of numpy arrays."""
     # Assuming arrays are [C, H, W]
     n = len(arrays)
@@ -40,105 +44,19 @@ def make_image_grid(arrays: List[FloatArray], nrow: int) -> FloatArray:
     return grid
 
 
-def plot_transforms(
-    source_transforms: Dict[str, Dict[float, List[FloatArray]]],
-    noise_transforms: Dict[str, Dict[float, List[FloatArray]]],
-) -> Figure:
-    """Plot effects of source and noise transforms on images.
-
-    Args:
-        source_transforms: Dictionary of source transforms (numpy arrays)
-        noise_transforms: Dictionary of noise transforms (numpy arrays)
-
-    Returns:
-        Figure containing the plotted transforms
-    """
-    num_source_transforms = len(source_transforms)
-    num_noise_transforms = len(noise_transforms)
-    num_transforms = num_source_transforms + num_noise_transforms
-    num_images = len(
-        next(iter(source_transforms.values()))[
-            next(iter(next(iter(source_transforms.values())).keys()))
-        ]
-    )
-
-    fig, axs = plt.subplots(num_transforms, 1, figsize=(20, 5 * num_transforms))
-    if num_transforms == 1:
-        axs = [axs]
-
-    transform_index = 0
-
-    # Plot source transforms
-    for transform_name, transform_data in source_transforms.items():
-        ax = axs[transform_index]
-        steps = sorted(transform_data.keys())
-
-        # Create a grid of images for each step
-        images = [
-            make_image_grid(
-                [(img * 0.5 + 0.5) for img in transform_data[step]],
-                nrow=num_images,
-            )
-            for step in steps
-        ]
-        grid = make_image_grid(images, nrow=len(steps))
-
-        # Move channels last for imshow
-        grid_display = np.transpose(grid, (1, 2, 0))
-        ax.imshow(grid_display)
-        ax.set_title(f"Source Transform: {transform_name}")
-        ax.set_xticks(
-            [(i + 0.5) * grid_display.shape[1] / len(steps) for i in range(len(steps))]
-        )
-        ax.set_xticklabels([f"{step:.2f}" for step in steps])
-        ax.set_yticks([])
-
-        transform_index += 1
-
-    # Plot noise transforms
-    for transform_name, transform_data in noise_transforms.items():
-        ax = axs[transform_index]
-        steps = sorted(transform_data.keys())
-
-        # Create a grid of images for each step
-        images = [
-            make_image_grid(
-                [(img * 0.5 + 0.5) for img in transform_data[step]],
-                nrow=num_images,
-            )
-            for step in steps
-        ]
-        grid = make_image_grid(images, nrow=len(steps))
-
-        # Move channels last for imshow
-        grid_display = np.transpose(grid, (1, 2, 0))
-        ax.imshow(grid_display)
-        ax.set_title(f"Noise Transform: {transform_name}")
-        ax.set_xticks(
-            [(i + 0.5) * grid_display.shape[1] / len(steps) for i in range(len(steps))]
-        )
-        ax.set_xticklabels([f"{step:.2f}" for step in steps])
-        ax.set_yticks([])
-
-        transform_index += 1
-
-    plt.tight_layout()
-    return fig
-
-
 def plot_brain_and_optimizers(brain: Brain, objective: Objective[ContextT]) -> Figure:
     graph = brain.connectome
 
     # Compute the depth of each node
-    depths: Dict[str, int] = {}
+    depths: dict[str, int] = {}
     for node in nx.topological_sort(graph):
         depths[node] = (
             max([depths[pred] for pred in graph.predecessors(node)] + [-1]) + 1
         )
 
     # Create a position dictionary based on depth
-    pos: Dict[str, Tuple[float, float]] = {}
-    nodes_at_depth: Dict[int, List[str]] = {}
+    pos: dict[str, tuple[float, float]] = {}
+    nodes_at_depth: dict[int, list[str]] = {}
     for node, depth in depths.items():
         if depth not in nodes_at_depth:
             nodes_at_depth[depth] = []
@@ -172,17 +90,20 @@ def plot_brain_and_optimizers(brain: Brain, objective: Objective[ContextT]) -> F
         # Determine node type and base color
         if node in brain.sensors:
             base_color = color_map["sensor"]
+            targeting_losses = []
         else:
             base_color = color_map["circuit"]
+            targeting_losses = [
+                loss
+                for loss in objective.losses
+                if (node in loss.target_circuits or (loss.target_circuits == "__all__"))
+            ]
 
         # Draw base circle
         circle = Circle((x, y), 0.05, facecolor=base_color, edgecolor="black")
         ax.add_patch(circle)
 
         # Determine which losses target this node
-        targeting_losses = [
-            loss for loss in objective.losses if node in loss.target_circuits
-        ]
 
         if targeting_losses:
             # Calculate angle for each loss
@@ -253,19 +174,16 @@ def plot_brain_and_optimizers(brain: Brain, objective: Objective[ContextT]) -> F
 
 
 def plot_receptive_field_sizes(
-    input_shape: Tuple[int, ...], layers: Dict[str, Dict[str, FloatArray]]
+    input_shape: tuple[int, ...], rf_layers: dict[str, FloatArray]
 ) -> Figure:
     """Plot the receptive field sizes for each layer of the convolutional part of the network."""
     # Get visual field size from the input shape
     [_, height, width] = list(input_shape)
 
     # Calculate receptive field sizes for each layer
-    rf_sizes: List[Tuple[int, int]] = []
-    layer_names: List[str] = []
-    for name, layer_data in layers.items():
-        if name == "input":
-            continue
-        rf = layer_data["receptive_fields"]
+    rf_sizes: list[tuple[int, int]] = []
+    layer_names: list[str] = []
+    for name, rf in rf_layers.items():
         rf_height, rf_width = rf.shape[2:]
         rf_sizes.append((rf_height, rf_width))
         layer_names.append(name)
@@ -318,7 +236,7 @@ def plot_receptive_field_sizes(
     return fig
 
 
-def plot_histories(histories: Dict[str, List[float]]) -> Figure:
+def plot_histories(histories: dict[str, list[float]]) -> Figure:
     """Plot training and test losses over epochs."""
     train_metrics = [
         key.split("_", 1)[1] for key in histories if key.startswith("train_")
@@ -334,7 +252,7 @@ def plot_histories(histories: Dict[str, List[float]]) -> Figure:
     num_rows = (len(metrics) + 1) // 2
 
     fig: Figure
-    axs: List[Axes]
+    axs: list[Axes]
     fig, axs = plt.subplots(
         num_rows, 2, figsize=(15, 5 * num_rows), constrained_layout=True
     )
@@ -372,308 +290,109 @@ def plot_histories(histories: Dict[str, List[float]]) -> Figure:
     return fig
 
 
-def plot_channel_statistics(
-    receptive_fields: FloatArray,
-    spectral: Dict[str, FloatArray],
-    histogram: Dict[str, FloatArray],
-    layer_name: str,
-    channel: int,
-) -> Figure:
-    """Plot receptive fields, pixel histograms, and autocorrelation plots for a single channel in a layer."""
-    fig, axs = plt.subplots(2, 3, figsize=(20, 10))
-    fig.suptitle(f"Layer: {layer_name}, Channel: {channel}", fontsize=16)
-
-    # Receptive Fields
-    rf = receptive_fields[channel]
-    _plot_receptive_fields(axs[0, 0], rf)
-    axs[0, 0].set_title("Receptive Field")
-    axs[0, 0].set_xlabel("X")
-    axs[0, 0].set_ylabel("Y")
-
-    # Pixel Histograms
-    hist = histogram["channel_histograms"][channel]
-    bin_edges = histogram["bin_edges"]
-    axs[1, 0].bar(
-        bin_edges[:-1],
-        hist,
-        width=np.diff(bin_edges),
-        align="edge",
-        color="gray",
-        edgecolor="black",
-    )
-    axs[1, 0].set_title("Channel Histogram")
-    axs[1, 0].set_xlabel("Value")
-    axs[1, 0].set_ylabel("Empirical Probability")
-
-    # Autocorrelation plots
-    # Plot average 2D autocorrelation and variance
-    autocorr = fft.fftshift(spectral["mean_autocorr"][channel])
-    h, w = autocorr.shape
-    extent = [-w // 2, w // 2, -h // 2, h // 2]
-    im = axs[0, 1].imshow(
-        autocorr, cmap="twilight", vmin=-1, vmax=1, origin="lower", extent=extent
-    )
-    axs[0, 1].set_title("Average 2D Autocorrelation")
-    axs[0, 1].set_xlabel("Lag X")
-    axs[0, 1].set_ylabel("Lag Y")
-    fig.colorbar(im, ax=axs[0, 1])
-    _set_integer_ticks(axs[0, 1])
-
-    autocorr_sd = fft.fftshift(np.sqrt(spectral["var_autocorr"][channel]))
-    im = axs[0, 2].imshow(
-        autocorr_sd, cmap="inferno", origin="lower", extent=extent, vmin=0
-    )
-    axs[0, 2].set_title("2D Autocorrelation SD")
-    axs[0, 2].set_xlabel("Lag X")
-    axs[0, 2].set_ylabel("Lag Y")
-    fig.colorbar(im, ax=axs[0, 2])
-    _set_integer_ticks(axs[0, 2])
-
-    # Plot average 2D power spectrum
-    log_power_spectrum = fft.fftshift(
-        np.log1p(spectral["mean_power_spectrum"][channel])
-    )
-    h, w = log_power_spectrum.shape
-
-    im = axs[1, 1].imshow(
-        log_power_spectrum, cmap="viridis", origin="lower", extent=extent, vmin=0
-    )
-    axs[1, 1].set_title("Average 2D Power Spectrum (log)")
-    axs[1, 1].set_xlabel("Frequency X")
-    axs[1, 1].set_ylabel("Frequency Y")
-    fig.colorbar(im, ax=axs[1, 1])
-    _set_integer_ticks(axs[1, 1])
-
-    log_power_spectrum_sd = fft.fftshift(
-        np.log1p(np.sqrt(spectral["var_power_spectrum"][channel]))
-    )
-    im = axs[1, 2].imshow(
-        log_power_spectrum_sd,
-        cmap="viridis",
-        origin="lower",
-        extent=extent,
-        vmin=0,
-    )
-    axs[1, 2].set_title("2D Power Spectrum SD")
-    axs[1, 2].set_xlabel("Frequency X")
-    axs[1, 2].set_ylabel("Frequency Y")
-    fig.colorbar(im, ax=axs[1, 2])
-    _set_integer_ticks(axs[1, 2])
-
-    plt.tight_layout()
-    return fig
-
-
-def _set_integer_ticks(ax: Axes):
+def set_integer_ticks(ax: Axes):
     """Set integer ticks for both x and y axes."""
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
 
-def plot_reconstructions(
-    normalization_mean: List[float],
-    normalization_std: List[float],
-    train_sources: List[Tuple[FloatArray, int]],
-    train_inputs: List[Tuple[FloatArray, int]],
-    train_estimates: List[Tuple[FloatArray, int]],
-    test_sources: List[Tuple[FloatArray, int]],
-    test_inputs: List[Tuple[FloatArray, int]],
-    test_estimates: List[Tuple[FloatArray, int]],
-    num_samples: int,
-) -> Figure:
-    """Plot original and reconstructed images for both training and test sets, including the classes."""
-    fig, axes = plt.subplots(6, num_samples, figsize=(15, 10))
+class FigureLogger:
+    def __init__(
+        self, use_wandb: bool, plot_dir: Path, checkpoint_plot_dir: Path, run_dir: Path
+    ):
+        self.use_wandb = use_wandb
+        self.plot_dir = plot_dir
+        self.checkpoint_plot_dir = checkpoint_plot_dir
+        self.run_dir = run_dir
 
-    for i in range(num_samples):
-        train_source, _ = train_sources[i]
-        train_input, train_class = train_inputs[i]
-        train_recon, train_pred = train_estimates[i]
-        test_source, _ = test_sources[i]
-        test_input, test_class = test_inputs[i]
-        test_recon, test_pred = test_estimates[i]
+    def log_figure(
+        self,
+        fig: Figure,
+        sub_dir: str,
+        file_name: str,
+        epoch: int,
+        copy_checkpoint: bool,
+    ) -> None:
+        if self.use_wandb:
+            title = f"{self._wandb_title(sub_dir)}/{self._wandb_title(file_name)}"
+            img = wandb.Image(fig)
+            wandb.log({title: img}, commit=False)
+        else:
+            self.save_figure(sub_dir, file_name, fig)
+            if copy_checkpoint:
+                self._checkpoint_copy(sub_dir, file_name, epoch)
+        plt.close(fig)
 
-        # Unnormalize the original images using the normalization lists
-        # Arrays are already [C, H, W], need to move channels to last dimension
-        train_source = (
-            np.transpose(train_source, (1, 2, 0)) * normalization_std
-            + normalization_mean
-        )
-        train_input = (
-            np.transpose(train_input, (1, 2, 0)) * normalization_std
-            + normalization_mean
-        )
-        train_recon = (
-            np.transpose(train_recon, (1, 2, 0)) * normalization_std
-            + normalization_mean
-        )
-        test_source = (
-            np.transpose(test_source, (1, 2, 0)) * normalization_std
-            + normalization_mean
-        )
-        test_input = (
-            np.transpose(test_input, (1, 2, 0)) * normalization_std + normalization_mean
-        )
-        test_recon = (
-            np.transpose(test_recon, (1, 2, 0)) * normalization_std + normalization_mean
-        )
+    @staticmethod
+    def _wandb_title(title: str) -> str:
+        # Split the title by slashes
+        parts = title.split("/")
 
-        axes[0, i].imshow(np.clip(train_source, 0, 1))
-        axes[0, i].axis("off")
-        axes[0, i].set_title(f"Class: {train_class}")
+        def capitalize_part(part: str) -> str:
+            # Split the part by dashes
+            words = part.split("_")
+            # Capitalize each word
+            capitalized_words = [word.capitalize() for word in words]
+            # Join the words with spaces
+            return " ".join(capitalized_words)
 
-        axes[1, i].imshow(np.clip(train_input, 0, 1))
-        axes[1, i].axis("off")
-        axes[1, i].set_title(f"Class: {train_class}")
+        # Capitalize each part, then join with slashes
+        capitalized_parts = [capitalize_part(part) for part in parts]
+        return "/".join(capitalized_parts)
 
-        axes[2, i].imshow(np.clip(train_recon, 0, 1))
-        axes[2, i].axis("off")
-        axes[2, i].set_title(f"Pred: {train_pred}")
+    def _checkpoint_copy(self, sub_dir: str, file_name: str, epoch: int) -> None:
+        src_path = self.plot_dir / sub_dir / f"{file_name}.png"
 
-        axes[3, i].imshow(np.clip(test_source, 0, 1))
-        axes[3, i].axis("off")
-        axes[3, i].set_title(f"Class: {test_class}")
+        dest_dir = self.checkpoint_plot_dir / f"epoch_{epoch}" / sub_dir
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest_path = dest_dir / f"{file_name}.png"
 
-        axes[4, i].imshow(np.clip(test_input, 0, 1))
-        axes[4, i].axis("off")
-        axes[4, i].set_title(f"Class: {test_class}")
+        shutil.copy2(src_path, dest_path)
 
-        axes[5, i].imshow(np.clip(test_recon, 0, 1))
-        axes[5, i].axis("off")
-        axes[5, i].set_title(f"Pred: {test_pred}")
+    def save_figure(self, sub_dir: str, file_name: str, fig: Figure) -> None:
+        dir = self.plot_dir / sub_dir
+        dir.mkdir(exist_ok=True)
+        file_path = dir / f"{file_name}.png"
+        fig.savefig(file_path)
 
-    # Set y-axis labels for each row
-    fig.text(
-        0.02,
-        0.90,
-        "Train Source",
-        va="center",
-        rotation="vertical",
-        fontsize=12,
-        weight="bold",
-    )
-    fig.text(
-        0.02,
-        0.74,
-        "Train Input",
-        va="center",
-        rotation="vertical",
-        fontsize=12,
-        weight="bold",
-    )
-    fig.text(
-        0.02,
-        0.56,
-        "Train Recon.",
-        va="center",
-        rotation="vertical",
-        fontsize=12,
-        weight="bold",
-    )
-    fig.text(
-        0.02,
-        0.40,
-        "Test Source",
-        va="center",
-        rotation="vertical",
-        fontsize=12,
-        weight="bold",
-    )
-    fig.text(
-        0.02,
-        0.24,
-        "Test Input",
-        va="center",
-        rotation="vertical",
-        fontsize=12,
-        weight="bold",
-    )
-    fig.text(
-        0.02,
-        0.08,
-        "Test Recon.",
-        va="center",
-        rotation="vertical",
-        fontsize=12,
-        weight="bold",
-    )
+    def plot_and_save_histories(
+        self, histories: dict[str, list[float]], save_always: bool = False
+    ):
+        if not self.use_wandb or save_always:
+            hist_fig = plot_histories(histories)
+            self.save_figure("", "histories", hist_fig)
+            plt.close(hist_fig)
 
-    plt.tight_layout()
-    return fig
+    def save_summary(self, brain: Brain):
+        summary = brain.scan()
+        filepath = self.run_dir / "brain_summary.txt"
+        filepath.write_text(summary)
 
+        if self.use_wandb:
+            wandb.save(str(filepath), base_path=self.run_dir, policy="now")
 
-def _plot_receptive_fields(ax: Axes, rf: FloatArray):
-    """Plot full-color receptive field and individual color channels for CIFAR-10 range (-1 to 1)."""
-    # Clear the main axes
-    ax.clear()
-    ax.axis("off")
-
-    # Create a GridSpec within the given axes
-    gs = gridspec.GridSpecFromSubplotSpec(2, 2, subplot_spec=ax.get_subplotspec())
-
-    rf_full = np.moveaxis(rf, 0, -1)  # Move channel axis to the last dimension
-    rf_min = rf_full.min()
-    rf_max = rf_full.max()
-    rf_full = (rf_full - rf_min) / (rf_max - rf_min)
-    # Full-color receptive field
-
-    ax_full = ax.figure.add_subplot(gs[0, 0])
-    ax_full.imshow(rf_full)
-    ax_full.set_title("Full Color")
-    ax_full.axis("off")
-
-    # Individual color channels
-    channels = ["Red", "Green", "Blue"]
-    cmaps = ["RdGy_r", "RdYlGn", "PuOr"]  # Diverging colormaps centered at 0
-    positions = [(0, 1), (1, 0), (1, 1)]  # Correct positions for a 2x2 grid
-    for i in range(3):
-        row, col = positions[i]
-        ax_channel = ax.figure.add_subplot(gs[row, col])
-        im = ax_channel.imshow(rf[i], cmap=cmaps[i], vmin=rf_min, vmax=rf_max)
-        ax_channel.set_title(channels[i])
-        ax_channel.axis("off")
-        plt.colorbar(im, ax=ax_channel, fraction=0.046, pad=0.04)
-
-    # Add min and max values as text
-    ax.text(
-        0.5,
-        -0.05,
-        f"Min: {rf.min():.2f}, Max: {rf.max():.2f}",
-        horizontalalignment="center",
-        verticalalignment="center",
-        transform=ax.transAxes,
-    )
-
-
-def layer_receptive_field_plots(lyr_rfs: FloatArray, max_cols: int = 8) -> Figure:
-    """Plot the receptive fields of a convolutional layer."""
-    ochns, _, _, _ = lyr_rfs.shape
-
-    # Calculate the number of rows needed based on max_cols
-    cols = min(ochns, max_cols)
-    rows = ochns // cols + (1 if ochns % cols > 0 else 0)
-
-    fig, axs0 = plt.subplots(
-        rows,
-        cols,
-        figsize=(cols * 2, 1.6 * rows),
-        squeeze=False,
-    )
-
-    axs = axs0.flat
-
-    for i in range(ochns):
-        ax = axs[i]
-        data = np.moveaxis(lyr_rfs[i], 0, -1)  # Move channel axis to the last dimension
-        data_min = data.min()
-        data_max = data.max()
-        data = (data - data_min) / (data_max - data_min)
-        ax.imshow(data)
-
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.spines["top"].set_visible(True)
-        ax.spines["right"].set_visible(True)
-        ax.set_title(f"Channel {i+1}")
-
-    fig.tight_layout()  # Adjust layout to fit color bars
-    return fig
+    def save_dict(
+        self, path: Path, store_dict: dict[str, Any], compressed: bool = True
+    ):
+        if compressed:
+            compressed_dict: dict[str, Any] = {}
+            for key, value in store_dict.items():
+                if isinstance(value, np.ndarray):
+                    compressed_dict[key] = rescale_range(
+                        value, center_zero=True, out_max=255
+                    ).astype(np.uint8)
+                elif isinstance(value, list) and all(
+                    isinstance(item, np.ndarray) for item in value
+                ):
+                    compressed_dict[key] = [
+                        rescale_range(item, center_zero=True, out_max=255).astype(
+                            np.uint8
+                        )
+                        for item in value
+                    ]
+                else:
+                    compressed_dict[key] = value
+            np.savez_compressed(path, **compressed_dict)
+        else:
+            with open(path, "w") as f:
+                json.dump(store_dict, f, cls=NumpyEncoder)

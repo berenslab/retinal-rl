@@ -47,13 +47,15 @@ def cleanup(config: DictConfig):
 @pytest.fixture
 def classification_config() -> Generator[DictConfig, None, None]:
     _config = config("classification")
+    _config.logging.use_wandb = False  # disable wandb for tests
     yield _config
     cleanup(_config)
 
 
 @pytest.fixture
 def rl_config() -> Generator[DictConfig, None, None]:
-    _config = config("gathering-apples")
+    _config = config("decoding-rl")
+    _config.logging.use_wandb = False  # disable wandb for tests
     yield _config
     cleanup(_config)
 

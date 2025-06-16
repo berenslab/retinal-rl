@@ -69,7 +69,7 @@ class Loss(LoggingStatistic[ContextT]):
     def __init__(
         self,
         target_circuits: Optional[List[str]] = None,
-        weights: Optional[List[float]] = None,
+        weights: Optional[List[float] | float | int] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
     ):
@@ -77,7 +77,11 @@ class Loss(LoggingStatistic[ContextT]):
         if target_circuits is None:
             target_circuits = []
         if weights is None:
-            weights = [1]
+            weights = [1.0] * len(target_circuits)
+        elif isinstance(weights, float):
+            weights = [weights]
+        elif isinstance(weights, int):
+            weights = [float(weights)] * len(target_circuits)
 
         self.target_circuits = target_circuits
         self.weights = weights
@@ -111,11 +115,13 @@ class ReconstructionLoss(Loss[ContextT]):
         weights: Optional[List[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
+        normalize: bool = False,
     ):
         """Initialize the reconstruction loss loss."""
         super().__init__(target_circuits, weights, min_epoch, max_epoch)
         self.loss_fn = nn.MSELoss(reduction="mean")
         self.target_decoder = target_decoder
+        self.normalize = normalize
 
     def compute_value(self, context: ContextT) -> Tensor:
         """Compute the mean squared error between inputs and reconstructions."""
@@ -126,6 +132,15 @@ class ReconstructionLoss(Loss[ContextT]):
             raise ValueError(
                 f"Shape mismatch: sources {sources.shape}, reconstructions {reconstructions.shape}"
             )
+
+        if self.normalize:
+            sources = (
+                sources - sources.mean(dim=[1, 2, 3])[:, None, None, None]
+            ) / sources.std(dim=[1, 2, 3])[:, None, None, None]
+            reconstructions = (
+                reconstructions
+                - reconstructions.mean(dim=[1, 2, 3])[:, None, None, None]
+            ) / reconstructions.std(dim=[1, 2, 3])[:, None, None, None]
 
         return self.loss_fn(reconstructions, sources)
 

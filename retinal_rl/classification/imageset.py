@@ -71,12 +71,16 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
         return transformed_data
 
     def to_tensor(self, img: Image.Image) -> Tensor:
-        """Convert a PIL image to a PyTorch tensor and apply normalization if needed."""
+        """Convert a PIL image to a PyTorch tensor"""
         tensor: Tensor = tf.to_tensor(img)
+        return tensor
+
+    def normalize_maybe(self, img: Tensor) -> Tensor:
+        """Normalize the image tensor if needed"""
         if self.apply_normalization:
             mean, std = self.normalization_stats
-            tensor = tf.normalize(tensor, mean, std)
-        return tensor
+            img = tf.normalize(img, mean, std)
+        return img
 
     def epoch_len(self) -> int:
         """Get the length of the dataset for one epoch. For fixed transformations, this is the base length times the multiplier. For on-the-fly transformations, this is the length of the base dataset."""
@@ -94,13 +98,15 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
         # For on-the-fly transformations
         img, label = self.base_dataset[idx]
 
-        # Apply source transformations
-        source_img = self.source_transforms(img)
-        noisy_img = self.noise_transforms(source_img)
+        # Convert to Tensor
+        img_tensor = self.to_tensor(img)
 
-        # Convert to tensor and normalize
-        source_tensor = self.to_tensor(source_img)
-        noisy_tensor = self.to_tensor(noisy_img)
+        # Apply source transformations
+        source_tensor = self.source_transforms(img_tensor)
+        noisy_tensor = self.normalize_maybe(
+            self.noise_transforms(source_tensor.clone())
+        )
+        source_tensor = self.normalize_maybe(source_tensor)
 
         return source_tensor, noisy_tensor, label
 

@@ -1,6 +1,0 @@
-name: rl-apples
-
-env_name: gathering-apples
-vision_width: 160
-vision_height:  120
-input_satiety: true

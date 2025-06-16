@@ -14,7 +14,7 @@ defaults:
 command: scan
 
 # Default run name format, using current date and time
-run_name: 'run_${now:%Y-%m-%d-%H-%M-%S}'
+run_name: 'run_${now:%Y-%m-%d-%H-%M-%S-%f}'
 
 # General simulation settings
 system:

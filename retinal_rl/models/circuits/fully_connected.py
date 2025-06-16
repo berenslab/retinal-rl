@@ -1,7 +1,7 @@
 """Fully connected neural circuits for encoding and decoding data."""
 
 from collections import OrderedDict
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import torch
 from torch import Tensor, nn
@@ -25,7 +25,7 @@ class FullyConnected(NeuralCircuit):
         self,
         input_shape: List[int],
         output_shape: List[int],
-        activation: str,
+        activation: Optional[str],
         hidden_units: List[int] = [],
     ):
         super().__init__(input_shape)
@@ -50,9 +50,10 @@ class FullyConnected(NeuralCircuit):
                     nn.Linear(input_size, output_size),
                 )
             )
-            fc_layers.append(
-                (self.activation + str(i), self.str_to_activation(self.activation))
-            )
+            if self.activation is not None:
+                fc_layers.append(
+                    (self.activation + str(i), self.str_to_activation(self.activation))
+                )
             input_size = output_size
 
         self.fc_head = nn.Sequential(OrderedDict(fc_layers))

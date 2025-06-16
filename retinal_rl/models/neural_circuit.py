@@ -60,6 +60,10 @@ class NeuralCircuit(nn.Module, ABC):
 
     @abstractmethod
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # TODO: some neural circuits need more than one input, e.g. RNNs
+        # Since also the output signature changes, best way might be to either use Protocols
+        # or two subclasses of NeuralCircut: StatefulCircuit and StatelessCircuit
+        # When fixing this, also the "rnn" key checks in the Brain class should be updated.
         """Forward pass of the neural circuit."""
         raise NotImplementedError(
             "Each subclass must implement its own forward method."
