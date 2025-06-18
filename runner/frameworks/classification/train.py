@@ -109,7 +109,6 @@ def train(
         )
         analyze(
             ana_cfg,
-            ana_cfg,
             device,
             brain,
             objective,
