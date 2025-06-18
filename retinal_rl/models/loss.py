@@ -1,7 +1,7 @@
 """Losses for training models, and the context required to evaluate them."""
 
 from abc import abstractmethod
-from typing import Dict, Generic, List, Optional, TypeVar
+from typing import Generic, Optional, TypeVar
 
 import torch
 from torch import Tensor, nn
@@ -18,7 +18,7 @@ class BaseContext:
 
     Attributes
     ----------
-        responses (Dict[str, Tensor]): The outputs from various parts of the brain model.
+        responses (dict[str, Tensor]): The outputs from various parts of the brain model.
         epoch (int): The current training epoch.
 
     """
@@ -27,7 +27,7 @@ class BaseContext:
         self,
         sources: Tensor,
         inputs: Tensor,
-        responses: Dict[str, Tensor],
+        responses: dict[str, Tensor],
         epoch: int,
     ):
         """Initialize the context object with responses, and the current epoch."""
@@ -59,8 +59,8 @@ class Loss(LoggingStatistic[ContextT]):
 
     Attributes
     ----------
-        target_circuits (List[str]): The target circuits for the loss. If '__all__', will target all circuits
-        weights (List[float]): The weights for the loss.
+        target_circuits (list[str]): The target circuits for the loss. If '__all__', will target all circuits
+        weights (list[float]): The weights for the loss.
         min_epoch (int): The minimum epoch to start training the loss.
         max_epoch (int): The maximum epoch to train the loss. Unbounded if < 0.
 
@@ -68,8 +68,8 @@ class Loss(LoggingStatistic[ContextT]):
 
     def __init__(
         self,
-        target_circuits: Optional[List[str]] = None,
-        weights: Optional[List[float] | float | int] = None,
+        target_circuits: Optional[list[str]] = None,
+        weights: Optional[list[float] | float | int] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
     ):
@@ -111,8 +111,8 @@ class ReconstructionLoss(Loss[ContextT]):
     def __init__(
         self,
         target_decoder: str,
-        target_circuits: Optional[List[str]] = None,
-        weights: Optional[List[float]] = None,
+        target_circuits: Optional[list[str]] = None,
+        weights: Optional[list[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
         normalize: bool = False,
@@ -156,8 +156,8 @@ class L1Sparsity(Loss[ContextT]):
     def __init__(
         self,
         target_response: str,
-        target_circuits: Optional[List[str]] = None,
-        weights: Optional[List[float]] = None,
+        target_circuits: Optional[list[str]] = None,
+        weights: Optional[list[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
     ):
@@ -187,8 +187,8 @@ class KLDivergenceSparsity(Loss[ContextT]):
         self,
         target_response: str,
         target_sparsity: float = 0.05,
-        target_circuits: Optional[List[str]] = None,
-        weights: Optional[List[float]] = None,
+        target_circuits: Optional[list[str]] = None,
+        weights: Optional[list[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
     ):
@@ -211,3 +211,74 @@ class KLDivergenceSparsity(Loss[ContextT]):
             (1 - self.target_sparsity) / (1 - avg_activation + 1e-8)
         )
         return torch.mean(kl_div)
+
+
+class KLDivergenceLoss(Loss[ContextT]):
+    """
+    KL divergence loss between learned posterior q(z|x) and prior p(z).
+
+    Assumes standard normal prior N(0, I). Gets distribution parameters
+    from the VariationalBottleneck circuit output.
+
+    Args:
+        target_bottleneck: Name of the VariationalBottleneck circuit
+        beta: Weight for KL term (beta-VAE parameter, default=1.0)
+        target_circuits: Circuits to optimize with this loss
+        weights: Weights for each circuit
+        min_epoch: Minimum epoch to start applying this loss
+        max_epoch: Maximum epoch to stop applying this loss
+    """
+
+    def __init__(
+        self,
+        target_bottleneck: str,
+        beta: float = 1.0,
+        target_circuits: Optional[list[str]] = None,
+        weights: Optional[list[float]] = None,
+        min_epoch: Optional[int] = None,
+        max_epoch: Optional[int] = None,
+    ) -> None:
+        super().__init__(target_circuits, weights, min_epoch, max_epoch)
+
+        self.target_bottleneck = target_bottleneck
+        self.beta = beta
+
+    def compute_value(self, context: ContextT) -> Tensor:
+        """
+        Compute KL divergence loss.
+
+        KL(q(z|x) || p(z)) = -0.5 * sum(1 + log_var - mu^2 - exp(log_var))
+
+        Args:
+            context: Training context containing brain and responses
+
+        Returns:
+            KL divergence loss value
+        """
+        # Get the bottleneck output
+        if self.target_bottleneck not in context.responses:
+            raise ValueError(
+                f"Target bottleneck '{self.target_bottleneck}' not found in responses. "
+                "Make sure it's connected in the brain's connectome."
+            )
+
+        bottleneck_output = context.responses[self.target_bottleneck]
+
+        # Split concatenated mu and log_var
+        latent_dim = bottleneck_output.size(1) // 2
+        mu, log_var = torch.split(bottleneck_output, latent_dim, dim=1)
+
+        # Compute KL divergence
+        # KL = -0.5 * sum(1 + log_var - mu^2 - exp(log_var))
+        kl_elementwise = -0.5 * (1 + log_var - mu.pow(2) - log_var.exp())
+
+        # Sum over latent dimensions, mean over batch
+        kl = kl_elementwise.sum(dim=1).mean()
+
+        # Apply beta weighting
+        return self.beta * kl
+
+    @property
+    def key_name(self) -> str:
+        """Return a user-friendly name for the loss."""
+        return f"kl_divergence_{self.target_bottleneck}"

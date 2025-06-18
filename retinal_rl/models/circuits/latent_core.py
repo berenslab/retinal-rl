@@ -1,5 +1,4 @@
 import warnings
-from typing import List
 
 import torch
 from torch import nn
@@ -8,7 +7,7 @@ from retinal_rl.models.neural_circuit import NeuralCircuit
 
 
 class LatentRNN(NeuralCircuit):
-    def __init__(self, input_shape: List[int], rnn_size: int, rnn_num_layers: int):
+    def __init__(self, input_shape: list[int], rnn_size: int, rnn_num_layers: int):
         super().__init__(input_shape)
         self.input_size = int(torch.prod(torch.tensor(input_shape)))
         self.core = nn.GRU(self.input_size, rnn_size, rnn_num_layers)
@@ -75,7 +74,7 @@ class LatentRNN(NeuralCircuit):
 
 
 class LatentFFN(NeuralCircuit):
-    def __init__(self, input_shape: List[int]):
+    def __init__(self, input_shape: list[int]):
         super().__init__(input_shape)
         self.core_output_size = input_shape
 
@@ -85,12 +84,12 @@ class LatentFFN(NeuralCircuit):
         return torch.tanh(head_output)  # , fake_rnn_states
 
     @NeuralCircuit.output_shape.getter
-    def output_shape(self) -> List[int]:  # TODO: fake_rnn_states?
+    def output_shape(self) -> list[int]:  # TODO: fake_rnn_states?
         return self.core_output_size
 
 
 class LatentIdentity(NeuralCircuit):
-    def __init__(self, input_shape: List[int]):
+    def __init__(self, input_shape: list[int]):
         super().__init__(input_shape)
         self.core_output_size = input_shape
 
@@ -99,5 +98,5 @@ class LatentIdentity(NeuralCircuit):
         return head_output  # , fake_rnn_states
 
     @NeuralCircuit.output_shape.getter
-    def output_shape(self) -> List[int]:
+    def output_shape(self) -> list[int]:
         return self.core_output_size

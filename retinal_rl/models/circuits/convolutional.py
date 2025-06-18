@@ -2,7 +2,6 @@
 
 import logging
 from collections import OrderedDict
-from typing import List, Optional, Tuple, Union
 
 import torch
 from torch import Tensor, nn
@@ -28,26 +27,26 @@ class ConvolutionalEncoder(NeuralCircuit):
 
     Args:
     ----
-        input_shape (List[int]): The shape of the input tensor (e.g., [channels, height, width]).
+        input_shape (list[int]): The shape of the input tensor (e.g., [channels, height, width]).
         num_layers (int): The number of convolutional layers. Default is 3.
-        num_channels (List[int]): The number of channels for each layer. Default is 16.
-        kernel_size (Union[int, List[int]]): The size of the convolutional kernels. Default is 3.
-        stride (Union[int, List[int]]): The stride for the convolutional layers. Default is 1.
+        num_channels (list[int]): The number of channels for each layer. Default is 16.
+        kernel_size (Union[int, list[int]]): The size of the convolutional kernels. Default is 3.
+        stride (Union[int, list[int]]): The stride for the convolutional layers. Default is 1.
         activation (str): The name of the activation function to use. Default is "relu".
 
     """
 
     def __init__(
         self,
-        input_shape: List[int],
+        input_shape: list[int],
         num_layers: int,
-        num_channels: Union[int, List[int]],
-        kernel_size: Union[int, List[int]],
-        stride: Union[int, List[int]],
-        activation: Union[str, List[str]],
+        num_channels: int | list[int],
+        kernel_size: int | list[int],
+        stride: int | list[int],
+        activation: str | list[str],
         layer_norm: bool = False,
         affine_norm: bool = True,
-        layer_names: Optional[List[str]] = None,
+        layer_names: list[str] | None = None,
     ):
         super().__init__(input_shape)
         self.num_layers = num_layers
@@ -56,10 +55,10 @@ class ConvolutionalEncoder(NeuralCircuit):
         self.stride = assert_list(stride, self.num_layers)
         self.activation = assert_list(activation, self.num_layers)
 
-        self.padding: List[int] = []
+        self.padding: list[int] = []
         for i in range(num_layers):
             self.padding.append(_calculate_padding(self.kernel_size[i], self.stride[i]))
-        conv_layers: List[Tuple[str, nn.Module]] = []
+        conv_layers: list[tuple[str, nn.Module]] = []
         # Define convolutional layers
         for i in range(num_layers):
             in_channels = self.input_shape[0] if i == 0 else self.num_channels[i - 1]
@@ -106,15 +105,15 @@ class ConvolutionalDecoder(NeuralCircuit):
 
     def __init__(
         self,
-        input_shape: List[int],
+        input_shape: list[int],
         num_layers: int,
-        num_channels: Union[int, List[int]],
-        kernel_size: Union[int, List[int]],
-        stride: Union[int, List[int]],
-        activation: Union[str, List[str]],
+        num_channels: int | list[int],
+        kernel_size: int | list[int],
+        stride: int | list[int],
+        activation: str | list[str],
         layer_norm: bool = False,
         affine_norm: bool = True,
-        layer_names: Optional[List[str]] = None,
+        layer_names: list[str] | None = None,
     ):
         # add parameters to model and apply changes for internal use
         super().__init__(input_shape)
@@ -125,11 +124,11 @@ class ConvolutionalDecoder(NeuralCircuit):
         self.stride = assert_list(stride, self.num_layers)
         self.activation = assert_list(activation, self.num_layers)
 
-        self.padding: List[int] = []
+        self.padding: list[int] = []
         for i in range(num_layers):
             self.padding.append(_calculate_padding(self.kernel_size[i], self.stride[i]))
 
-        deconv_layers: List[Tuple[str, nn.Module]] = []
+        deconv_layers: list[tuple[str, nn.Module]] = []
         # Define deconvolutional layers
         for i in range(num_layers):
             in_channels = self.input_shape[0] if i == 0 else self.num_channels[i - 1]

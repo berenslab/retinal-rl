@@ -2,7 +2,7 @@
 
 import inspect
 from abc import ABC, abstractmethod
-from typing import Any, List, Type, get_type_hints
+from typing import Any, Type, get_type_hints
 
 import torch
 from torch import nn
@@ -15,13 +15,13 @@ class NeuralCircuit(nn.Module, ABC):
 
     def __init__(
         self,
-        input_shape: List[int],
+        input_shape: list[int],
     ) -> None:
         """Initialize the base model.
 
         Args:
         ----
-        input_shape (List[int]): Shape of the input tensor.
+        input_shape (list[int]): Shape of the input tensor.
 
         """
         super().__init__()
@@ -53,9 +53,9 @@ class NeuralCircuit(nn.Module, ABC):
 
         # Ensure that input_shape has the correct types
         hints = get_type_hints(init)
-        if hints.get("input_shape") != List[int]:
+        if hints.get("input_shape") != list[int]:
             raise TypeError(
-                f"Parameter 'input_shape' in class {cls.__name__} must have type 'List[int]'"
+                f"Parameter 'input_shape' in class {cls.__name__} must have type 'list[int]'"
             )
 
     @abstractmethod
@@ -70,12 +70,12 @@ class NeuralCircuit(nn.Module, ABC):
         )
 
     @property
-    def input_shape(self) -> List[int]:
+    def input_shape(self) -> list[int]:
         """Return the shape of the input tensor."""
         return self._input_shape
 
     @property
-    def output_shape(self) -> List[int]:
+    def output_shape(self) -> list[int]:
         """Return the shape of the output tensor."""
         device = next(self.parameters()).device
         with torch.no_grad():

@@ -1,0 +1,112 @@
+# Configuration for a VAE-based retinal classifier neural network
+
+# Define the input sensor
+sensors:
+  vision: # Vision is a list of 3 elements
+    - 3  # Number of color channels
+    - ${vision_height}  # Height of the input image
+    - ${vision_width}  # Width of the input image
+
+# Define how the various NeuralCircuits are connected to each other
+connections:
+  # Encoder path
+  - ["vision", "retina"]  # Input to retina
+  - ["retina", "thalamus"]  # Retina to thalamus
+  - ["thalamus", "visual_cortex"]  # Thalamus to visual cortex
+  
+  # VAE bottleneck
+  - ["visual_cortex", "vae_bottleneck"]  # Visual cortex to VAE bottleneck
+  - ["vae_bottleneck", "latent_sampler"]  # Bottleneck to sampler
+  
+  # Task path
+  - ["latent_sampler", "prefrontal"]  # Latent to prefrontal cortex
+  - ["prefrontal", "classifier"]  # Prefrontal cortex to classifier
+  
+  # Reconstruction path
+  - ["latent_sampler", "v1_decoder"]  # Latent to decoder
+
+# Define the individual nodes (neural circuits) of the network
+circuits:
+  # Retina: initial processing of visual input
+  retina:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 2
+    num_channels: [16, 32]  # Two layers with 16 and 32 channels
+    kernel_size: 
+      - ${bp_kernel_size}
+      - ${rgc_kernel_size}
+    stride: ${generic_stride}
+    activation: ${activation}
+    layer_names: ["bipolar", "retinal_ganglion"]  # Names inspired by retinal cell types
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
+
+  # Thalamus: relay and processing station
+  thalamus:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 1
+    num_channels: 64
+    kernel_size: ${lgn_kernel_size}
+    stride: ${bottleneck_stride}
+    activation: ${activation}
+    layer_names: ["lgn"]  # Lateral Geniculate Nucleus
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
+
+  # Visual Cortex: higher-level visual processing
+  visual_cortex:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 1
+    num_channels: 64
+    kernel_size: ${v1_kernel_size}
+    stride: ${generic_stride}
+    activation: ${activation}
+    layer_names: ["v1"]  # Primary Visual Cortex
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
+
+  # VAE Bottleneck: produces distribution parameters
+  vae_bottleneck:
+    _target_: retinal_rl.models.circuits.variational.VariationalBottleneck
+    latent_dim: ${latent_dim}
+
+  # Latent Sampler: reparameterization trick
+  latent_sampler:
+    _target_: retinal_rl.models.circuits.variational.ReparameterizationSampler
+
+  # Prefrontal Cortex: high-level cognitive processing
+  prefrontal:
+    _target_: retinal_rl.models.circuits.fully_connected.FullyConnected
+    output_shape:
+      - 64  # Size of the latent representation
+    hidden_units: 
+      - 64  # Number of hidden units
+    activation: ${activation}
+
+  # Classifier: for categorizing the input into classes
+  classifier:
+    _target_: retinal_rl.models.circuits.task_head.linear_classifier.LinearClassifier
+    num_classes: 10  # Number of output classes (10 for CIFAR10)
+
+  # Decoder: for reconstructing the input from the latent representation
+  v1_decoder:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
+    num_layers: 4
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
+    num_channels: [64, 32, 16, 3]  # Reverse of encoder channels
+    kernel_size: 
+      - ${v1_kernel_size}
+      - ${lgn_kernel_size}
+      - ${rgc_kernel_size}
+      - ${bp_kernel_size}
+    stride:
+      - ${generic_stride}
+      - ${bottleneck_stride}
+      - ${generic_stride}
+      - ${generic_stride}
+    activation:
+      - ${activation}
+      - ${activation}
+      - ${activation}
+      - "tanh"  # Output activation for normalized images

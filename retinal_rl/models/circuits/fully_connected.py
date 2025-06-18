@@ -1,7 +1,6 @@
 """Fully connected neural circuits for encoding and decoding data."""
 
 from collections import OrderedDict
-from typing import List, Optional, Tuple
 
 import torch
 from torch import Tensor, nn
@@ -14,19 +13,19 @@ class FullyConnected(NeuralCircuit):
 
     Args:
     ----
-        input_shape (List[int]): The shape of the input tensor (e.g., [channels, height, width]).
-        output_shape (List[int]): The shape of the output tensor.
-        hidden_units (Union[int, List[int]]): The number of hidden units for each layer. Default is 128.
+        input_shape (list[int]): The shape of the input tensor (e.g., [channels, height, width]).
+        output_shape (list[int]): The shape of the output tensor.
+        hidden_units (Union[int, list[int]]): The number of hidden units for each layer. Default is 128.
         activation (str): The name of the activation function to use. Default is "relu".
 
     """
 
     def __init__(
         self,
-        input_shape: List[int],
-        output_shape: List[int],
-        activation: Optional[str],
-        hidden_units: List[int] = [],
+        input_shape: list[int],
+        output_shape: list[int],
+        activation: str | None,
+        hidden_units: list[int] = [],
     ):
         super().__init__(input_shape)
 
@@ -36,7 +35,7 @@ class FullyConnected(NeuralCircuit):
 
         num_layers = len(hidden_units) + 1
 
-        fc_layers: List[Tuple[str, nn.Module]] = []
+        fc_layers: list[tuple[str, nn.Module]] = []
         input_size = int(torch.prod(torch.tensor(input_shape)))
         for i in range(num_layers):
             output_size = (
@@ -59,7 +58,7 @@ class FullyConnected(NeuralCircuit):
         self.fc_head = nn.Sequential(OrderedDict(fc_layers))
 
     @property
-    def output_shape(self) -> List[int]:
+    def output_shape(self) -> list[int]:
         """Return the shape of the output tensor."""
         return self._output_shape
 
