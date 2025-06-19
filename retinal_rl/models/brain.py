@@ -1,6 +1,5 @@
 """Provides the Brain class, which combines multiple NeuralCircuit instances into a single model by specifying a graph of connections between them."""
 
-import inspect
 import logging
 from collections import OrderedDict
 from io import StringIO
@@ -45,26 +44,17 @@ class Brain(nn.Module):
         for sensor in sensors:
             self.sensors[sensor] = tuple(sensors[sensor])
 
-    def forward(self, stimuli: dict[str, Tensor]) -> dict[str, Tensor]:
+    def forward(self, stimuli: dict[str, Tensor]) -> dict[str, tuple[Tensor, ...]]:
         """Forward pass of the brain. Computed by following the connectome from sensors through the circuits."""
-        responses: dict[str, Tensor] = {}
+        responses: dict[str, tuple[Tensor, ...]] = {}
 
         for node in nx.topological_sort(self.connectome):
             if node in self.sensors:
-                responses[node] = stimuli[node]
+                responses[node] = (stimuli[node],)  # Wrap sensor inputs as tuples
             else:
-                n_forward_params = len(
-                    inspect.signature(self.circuits[node].forward).parameters
-                )
-                input = assemble_inputs(
-                    node, n_forward_params, self.connectome, responses
-                )
-                if node == "rnn":
-                    out, rnn_state = self.circuits[node](*input)
-                    responses[node] = out
-                    responses["rnn_state"] = rnn_state
-                else:
-                    responses[node] = self.circuits[node](*input)
+                input_tuple = assemble_inputs(node, self.connectome, responses)
+                output_tuple = self.circuits[node](input_tuple)
+                responses[node] = output_tuple  # Store full output tuple
         return responses
 
     def scan(self) -> str:
@@ -95,14 +85,15 @@ class Brain(nn.Module):
             output.write(
                 f"\n\nCircuit Name: {circuit_name}"
                 f"\nClass: {circuit.__class__.__name__}"
-                f"\nInput Shape: {circuit.input_shape}"
-                f"\nOutput Shape: {circuit.output_shape}\n"
+                f"\nInput Shapes: {circuit.input_shapes}"
+                f"\nOutput Shapes: {circuit.output_shapes}\n"
             )
 
-            inp_shape = (1, *tuple(circuit.input_shape))
-            if circuit_name == "rnn":
-                inp_shape = circuit.input_shape
-            circuit_stats = summary(circuit, inp_shape, verbose=0)
+            # Create dummy input tuple for torchinfo
+            dummy_inputs = tuple(
+                torch.zeros(1, *shape, device=device) for shape in circuit.input_shapes
+            )
+            circuit_stats = summary(circuit, input_data=[dummy_inputs], verbose=0)
             output.write(str(circuit_stats))
 
         # Get the complete output as a string
@@ -158,26 +149,18 @@ def get_cnn_circuit(
 
 def assemble_inputs(
     node: str,
-    n_input_params: int,
-    connectome: DiGraph[str],
-    responses: dict[str, torch.Tensor],
-) -> torch.Tensor:
-    """Assemble the inputs to a given node by concatenating the responses of its predecessors."""
-    inputs: list[torch.Tensor] = []
+    connectome: DiGraph,  # type: ignore
+    responses: dict[str, tuple[Tensor, ...]],
+) -> tuple[Tensor, ...]:
+    """Assemble the inputs to a given node from responses of its predecessors."""
+    inputs: list[Tensor] = []
     for pred in connectome.predecessors(node):
         if pred in responses:
-            inputs.append(responses[pred])
+            # Take the first (primary) output from each predecessor
+            inputs.append(responses[pred][0])
         else:
             raise ValueError(f"Input node {pred} to node {node} does not (yet) exist")
     if len(inputs) == 0:
         raise ValueError(f"No inputs to node {node}")
 
-    # Check whether module takes more than 1 input
-    if n_input_params == 1 and len(inputs) > 1:
-        # Flatten the inputs
-        inputs = [torch.cat([inp.view(inp.size(0), -1) for inp in inputs], dim=1)]
-    else:
-        assert n_input_params == len(inputs), (
-            f"Number of inputs does not match number of forward parameters for {node}!"
-        )
-    return inputs
+    return tuple(inputs)

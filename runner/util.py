@@ -2,7 +2,6 @@
 
 ### Imports ###
 
-import inspect
 import logging
 import os
 import shutil
@@ -13,7 +12,7 @@ import networkx as nx
 import torch
 from hydra.utils import instantiate
 from networkx.classes import DiGraph
-from omegaconf import OmegaConf, dictConfig
+from omegaconf import DictConfig, OmegaConf
 from torch import nn
 from torch.optim.optimizer import Optimizer
 
@@ -104,7 +103,7 @@ def delete_results(run_dir: Path) -> None:
         print("Deletion cancelled.")
 
 
-def create_brain(brain_cfg: dictConfig) -> Brain:
+def create_brain(brain_cfg: DictConfig) -> Brain:
     sensors = OmegaConf.to_container(brain_cfg.sensors, resolve=True)
     sensors = cast(dict[str, list[int]], sensors)
 
@@ -129,19 +128,20 @@ def import_class(import_path):  # TODO: Move to more general utils
 
 def _create_dummy_responses(
     sensor_shapes: dict[str, tuple[int, ...]],
-) -> dict[str, torch.Tensor]:
+) -> dict[str, tuple[torch.Tensor, ...]]:
     # Create dummy responses to help calculate the input shape for each neural circuit
+    # Now returns tuples to match our new Brain.forward() interface
     dummy_responses = {
-        sensor: torch.rand((1, *sensor_shapes[sensor])) for sensor in sensor_shapes
+        sensor: (torch.rand((1, *sensor_shapes[sensor])),) for sensor in sensor_shapes
     }
     if "rnn_state" in sensor_shapes:
         shape = (1, *sensor_shapes["rnn_state"])
-        dummy_responses["rnn_state"] = torch.rand(shape)
+        dummy_responses["rnn_state"] = (torch.rand(shape),)
     return dummy_responses
 
 
 def assemble_neural_circuits(
-    circuits: dictConfig,
+    circuits: DictConfig,
     sensors: dict[str, list[int]],
     connections: list[list[str]],
 ) -> tuple[DiGraph[str], dict[str, NeuralCircuit]]:
@@ -180,14 +180,12 @@ def assemble_neural_circuits(
         circuit_config = OmegaConf.select(circuits, node)
 
         _circuit_class = import_class(circuit_config._target_)
-        n_forward_params = (
-            len(inspect.signature(_circuit_class.forward).parameters) - 1
-        )  # -1 for self
-        inputs = assemble_inputs(node, n_forward_params, connectome, dummy_responses)
+        inputs = assemble_inputs(node, connectome, dummy_responses)
 
-        # The default forward input tensor is always in position 0
+        # Convert input shapes to new tuple format expected by circuits
         # TODO: automatic retrieval of all input shapes?
-        input_shape = list(inputs[0].shape[1:])
+        input_shapes = tuple(tuple(int(dim) for dim in inp.shape[1:]) for inp in inputs)
+        
 
         # Check for an explicit output_shape key
         if "output_shape" in circuit_config:
@@ -196,24 +194,20 @@ def assemble_neural_circuits(
                 output_shape = _resolve_output_shape(output_shape, assembled_circuits)
             circuit = instantiate(
                 circuit_config,
-                input_shape=input_shape,
+                input_shapes=input_shapes,
                 output_shape=output_shape,
                 _convert_="partial",
             )
         else:
             circuit = instantiate(
                 circuit_config,
-                input_shape=input_shape,
+                input_shapes=input_shapes,
                 _convert_="partial",
             )
 
-        # Update dummy responses
-        if node == "rnn":  # TODO: Code duplicate from brain forward function, refactor
-            out, rnn_state = circuit(*inputs)
-            dummy_responses[node] = out
-            dummy_responses["rnn_state"] = rnn_state
-        else:
-            dummy_responses[node] = circuit(*inputs)
+        # Update dummy responses with tuple interface
+        output_tuple = circuit(inputs)
+        dummy_responses[node] = output_tuple
         # TODO: Review: Order of inputs might not be correct, at least there are no guarantees
         # perhaps implicitly defined through the connectome config (also not a nice way though)
 
@@ -235,12 +229,12 @@ def _resolve_output_shape(
     )
 
 
-def search_conf(config: dictConfig | dict, search_str: str) -> list:
+def search_conf(config: DictConfig | dict, search_str: str) -> list:
     """
-    Recursively search for strings in a dictConfig.
+    Recursively search for strings in a DictConfig.
 
     Args:
-        config (omegaconf.dictConfig): The configuration to search.
+        config (omegaconf.DictConfig): The configuration to search.
 
     Returns:
         list: A list of all values containing the string.
@@ -249,7 +243,7 @@ def search_conf(config: dictConfig | dict, search_str: str) -> list:
 
     def traverse_config(cfg):
         for key, value in cfg.items():
-            if isinstance(value, (dict, dictConfig)):
+            if isinstance(value, (dict, DictConfig)):
                 traverse_config(value)
             elif isinstance(value, str) and search_str in value:
                 found_values.append(value)

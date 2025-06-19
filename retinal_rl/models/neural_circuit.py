@@ -1,11 +1,10 @@
 """Defines the base class for neural circuits."""
 
-import inspect
 from abc import ABC, abstractmethod
-from typing import Any, Type, get_type_hints
 
 import torch
-from torch import nn
+from beartype import beartype
+from torch import Tensor, nn
 
 from retinal_rl.util import Activation
 
@@ -15,73 +14,66 @@ class NeuralCircuit(nn.Module, ABC):
 
     def __init__(
         self,
-        input_shape: list[int],
+        input_shapes: list[list[int]],
     ) -> None:
-        """Initialize the base model.
+        """Initialize the base neural circuit.
+
+        Design Decision: Hybrid Tuple/List Approach
+        ------------------------------------------
+        - Shape specifications: list[list[int]] for readability and Hydra compatibility
+        - Runtime tensors: tuple[Tensor, ...] for Python conventions and external tool compatibility
+        
+        This gives us:
+        - Clean, readable type hints: list[list[int]] vs tuple[tuple[int, ...], ...]
+        - Natural Hydra integration without custom resolvers
+        - Standard Python tuple returns for multiple outputs
+        - Compatibility with external tools (captum, torchinfo)
 
         Args:
         ----
-        input_shape (list[int]): Shape of the input tensor.
+        input_shapes: List of input tensor shapes for this circuit.
+                     Each inner list represents the shape of one input tensor.
+                     Example: [[3, 32, 32]] for single RGB image input
+                             [[3, 32, 32], [128]] for image + state inputs
 
         """
         super().__init__()
 
-        self._input_shape = input_shape
+        # Convert to tuple format for internal consistency
+        self._input_shapes = tuple(tuple(shape) for shape in input_shapes)
 
-    def __init_subclass__(cls: Type[Any], **kwargs: Any) -> None:
-        """Enforces that subclasses have specific parameters in their constructors.
+    @abstractmethod
+    @beartype
+    def forward(self, inputs: tuple[Tensor, ...]) -> tuple[Tensor, ...]:
+        """Forward pass of the neural circuit.
 
         Args:
         ----
-        **kwargs: Additional keyword arguments.
+        inputs: Tuple of input tensors
 
+        Returns:
+        -------
+        Tuple of output tensors
         """
-        super().__init_subclass__(**kwargs)
-
-        # Ensure that the __init__ method includes input_shape
-        init = cls.__init__
-        if not inspect.isfunction(init):
-            raise TypeError(
-                f"Class {cls.__name__} does not have a valid __init__ method"
-            )
-
-        params = inspect.signature(init).parameters
-        if "input_shape" not in params:
-            raise TypeError(
-                f"Class {cls.__name__} must have 'input_shape' parameters in its __init__ method"
-            )
-
-        # Ensure that input_shape has the correct types
-        hints = get_type_hints(init)
-        if hints.get("input_shape") != list[int]:
-            raise TypeError(
-                f"Parameter 'input_shape' in class {cls.__name__} must have type 'list[int]'"
-            )
-
-    @abstractmethod
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # TODO: some neural circuits need more than one input, e.g. RNNs
-        # Since also the output signature changes, best way might be to either use Protocols
-        # or two subclasses of NeuralCircut: StatefulCircuit and StatelessCircuit
-        # When fixing this, also the "rnn" key checks in the Brain class should be updated.
-        """Forward pass of the neural circuit."""
         raise NotImplementedError(
             "Each subclass must implement its own forward method."
         )
 
     @property
-    def input_shape(self) -> list[int]:
-        """Return the shape of the input tensor."""
-        return self._input_shape
+    def input_shapes(self) -> tuple[tuple[int, ...], ...]:
+        """Return the shapes of the input tensors."""
+        return self._input_shapes
 
     @property
-    def output_shape(self) -> list[int]:
-        """Return the shape of the output tensor."""
+    def output_shapes(self) -> tuple[tuple[int, ...], ...]:
+        """Return the shapes of the output tensors."""
         device = next(self.parameters()).device
         with torch.no_grad():
-            return list(
-                self.forward(torch.zeros(1, *self.input_shape).to(device)).shape[1:]
+            dummy_inputs = tuple(
+                torch.zeros(1, *shape).to(device) for shape in self.input_shapes
             )
+            outputs = self.forward(dummy_inputs)
+            return tuple(tuple(output.shape[1:]) for output in outputs)
 
     @staticmethod
     def str_to_activation(act: str) -> nn.Module:
@@ -98,3 +90,17 @@ class NeuralCircuit(nn.Module, ABC):
         """
         act = str.lower(act)
         return Activation[act]()
+
+
+class SimpleNeuralCircuit(NeuralCircuit):
+    """Base class for neural circuits with single primary input and output."""
+
+    @property
+    def input_shape(self) -> tuple[int, ...]:
+        """Return the primary input shape for convenience."""
+        return self.input_shapes[0]
+
+    @property
+    def output_shape(self) -> tuple[int, ...]:
+        """Return the primary output shape for convenience."""
+        return self.output_shapes[0]
