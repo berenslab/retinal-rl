@@ -7,13 +7,13 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, cast
+from typing import Any, cast
 
 import networkx as nx
 import torch
 from hydra.utils import instantiate
 from networkx.classes import DiGraph
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import OmegaConf, dictConfig
 from torch import nn
 from torch.optim.optimizer import Optimizer
 
@@ -32,13 +32,13 @@ def save_checkpoint(
     max_checkpoints: int,
     brain: nn.Module,
     optimizer: Optimizer,
-    histories: dict[str, List[float]],
+    histories: dict[str, list[float]],
     completed_epochs: int,
 ) -> None:
     """Save a checkpoint of the model and optimizer state."""
     current_file = data_dir / "current_checkpoint.pt"
     checkpoint_file = checkpoint_dir / f"epoch_{completed_epochs}.pt"
-    checkpoint_dict: Dict[str, Any] = {
+    checkpoint_dict: dict[str, Any] = {
         "completed_epochs": completed_epochs,
         "brain_state_dict": brain.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
@@ -104,12 +104,12 @@ def delete_results(run_dir: Path) -> None:
         print("Deletion cancelled.")
 
 
-def create_brain(brain_cfg: DictConfig) -> Brain:
+def create_brain(brain_cfg: dictConfig) -> Brain:
     sensors = OmegaConf.to_container(brain_cfg.sensors, resolve=True)
-    sensors = cast(Dict[str, List[int]], sensors)
+    sensors = cast(dict[str, list[int]], sensors)
 
     connections = OmegaConf.to_container(brain_cfg.connections, resolve=True)
-    connections = cast(List[List[str]], connections)
+    connections = cast(list[list[str]], connections)
 
     connectome, circuits = assemble_neural_circuits(
         brain_cfg.circuits, sensors, connections
@@ -128,8 +128,8 @@ def import_class(import_path):  # TODO: Move to more general utils
 
 
 def _create_dummy_responses(
-    sensor_shapes: Dict[str, Tuple[int, ...]],
-) -> Dict[str, torch.Tensor]:
+    sensor_shapes: dict[str, tuple[int, ...]],
+) -> dict[str, torch.Tensor]:
     # Create dummy responses to help calculate the input shape for each neural circuit
     dummy_responses = {
         sensor: torch.rand((1, *sensor_shapes[sensor])) for sensor in sensor_shapes
@@ -141,16 +141,16 @@ def _create_dummy_responses(
 
 
 def assemble_neural_circuits(
-    circuits: DictConfig,
-    sensors: Dict[str, List[int]],
-    connections: List[List[str]],
-) -> Tuple[DiGraph[str], Dict[str, NeuralCircuit]]:
+    circuits: dictConfig,
+    sensors: dict[str, list[int]],
+    connections: list[list[str]],
+) -> tuple[DiGraph[str], dict[str, NeuralCircuit]]:
     """
     Assemble a dictionary of neural circuits based on the provided configurations.
     """
-    assembled_circuits: Dict[str, NeuralCircuit] = {}
+    assembled_circuits: dict[str, NeuralCircuit] = {}
     connectome: DiGraph[str] = nx.DiGraph()
-    sensor_shapes: Dict[str, Tuple[int, ...]] = {
+    sensor_shapes: dict[str, tuple[int, ...]] = {
         sensor: tuple(sensors[sensor]) for sensor in sensors
     }
     # get unique names in connections without sensors
@@ -223,8 +223,8 @@ def assemble_neural_circuits(
 
 
 def _resolve_output_shape(
-    output_shape: str, circuits: Dict[str, "NeuralCircuit"]
-) -> Tuple[int, ...]:
+    output_shape: str, circuits: dict[str, "NeuralCircuit"]
+) -> tuple[int, ...]:
     """Resolve the output shape from a string reference."""
     parts = output_shape.split(".")
     if len(parts) == 2 and parts[0] in circuits:
@@ -235,12 +235,12 @@ def _resolve_output_shape(
     )
 
 
-def search_conf(config: DictConfig | dict, search_str: str) -> List:
+def search_conf(config: dictConfig | dict, search_str: str) -> list:
     """
-    Recursively search for strings in a DictConfig.
+    Recursively search for strings in a dictConfig.
 
     Args:
-        config (omegaconf.DictConfig): The configuration to search.
+        config (omegaconf.dictConfig): The configuration to search.
 
     Returns:
         list: A list of all values containing the string.
@@ -249,7 +249,7 @@ def search_conf(config: DictConfig | dict, search_str: str) -> List:
 
     def traverse_config(cfg):
         for key, value in cfg.items():
-            if isinstance(value, (dict, DictConfig)):
+            if isinstance(value, (dict, dictConfig)):
                 traverse_config(value)
             elif isinstance(value, str) and search_str in value:
                 found_values.append(value)

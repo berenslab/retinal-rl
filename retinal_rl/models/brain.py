@@ -2,8 +2,8 @@
 
 import inspect
 import logging
+from collections import OrderedDict
 from io import StringIO
-from typing import Dict, List, OrderedDict, Tuple
 
 import networkx as nx
 import torch
@@ -22,8 +22,8 @@ class Brain(nn.Module):
 
     def __init__(
         self,
-        circuits: Dict[str, NeuralCircuit],
-        sensors: Dict[str, List[int]],
+        circuits: dict[str, NeuralCircuit],
+        sensors: dict[str, list[int]],
         connectome: DiGraph,  # type: ignore
     ) -> None:
         """Initialize the brain with a set of circuits, sensors, and connections.
@@ -38,16 +38,16 @@ class Brain(nn.Module):
         super().__init__()
 
         # Initialize attributes
-        self.circuits: Dict[str, NeuralCircuit] = circuits
+        self.circuits: dict[str, NeuralCircuit] = circuits
         self._module_dict: nn.ModuleDict = nn.ModuleDict(circuits)
         self.connectome: DiGraph[str] = connectome
-        self.sensors: Dict[str, Tuple[int, ...]] = {}
+        self.sensors: dict[str, tuple[int, ...]] = {}
         for sensor in sensors:
             self.sensors[sensor] = tuple(sensors[sensor])
 
-    def forward(self, stimuli: Dict[str, Tensor]) -> Dict[str, Tensor]:
+    def forward(self, stimuli: dict[str, Tensor]) -> dict[str, Tensor]:
         """Forward pass of the brain. Computed by following the connectome from sensors through the circuits."""
-        responses: Dict[str, Tensor] = {}
+        responses: dict[str, Tensor] = {}
 
         for node in nx.topological_sort(self.connectome):
             if node in self.sensors:
@@ -78,7 +78,7 @@ class Brain(nn.Module):
         device = next(self.parameters()).device
 
         # Create dummy stimulus
-        dummy_stimulus: Dict[str, Tensor] = {
+        dummy_stimulus: dict[str, Tensor] = {
             sensor: torch.rand((1, *self.sensors[sensor]), device=device)
             for sensor in self.sensors
         }
@@ -114,12 +114,12 @@ class Brain(nn.Module):
 
 def get_cnn_circuit(
     brain: Brain,
-) -> Tuple[Tuple[int, ...], OrderedDict[str, nn.Module]]:
+) -> tuple[tuple[int, ...], OrderedDict[str, nn.Module]]:
     """Find the longest path starting from a sensor, along a path of ConvolutionalEncoders. This likely won't work very well for particularly complex graphs."""
-    cnn_paths: List[List[str]] = []
+    cnn_paths: list[list[str]] = []
 
     # Create for the subgraph of sensors and cnns
-    cnn_dict: Dict[str, ConvolutionalEncoder] = {}
+    cnn_dict: dict[str, ConvolutionalEncoder] = {}
     for node, circuit in brain.circuits.items():
         if isinstance(circuit, ConvolutionalEncoder):
             cnn_dict[node] = circuit
@@ -129,7 +129,7 @@ def get_cnn_circuit(
     subgraph: nx.DiGraph[str] = nx.DiGraph(
         nx.subgraph(brain.connectome, cnn_nodes + sensor_nodes)
     )
-    end_nodes: List[str] = [
+    end_nodes: list[str] = [
         node for node in cnn_nodes if not list(subgraph.successors(node))
     ]
 
@@ -145,9 +145,9 @@ def get_cnn_circuit(
     # Split off the sensor node
     sensor, *path = path
     # collect list of cnns
-    cnn_circuits: List[ConvolutionalEncoder] = [cnn_dict[node] for node in path]
+    cnn_circuits: list[ConvolutionalEncoder] = [cnn_dict[node] for node in path]
     # Combine all cnn layers
-    tuples: List[Tuple[str, nn.Module]] = []
+    tuples: list[tuple[str, nn.Module]] = []
     for circuit in cnn_circuits:
         for name, module in circuit.conv_head.named_children():
             tuples.extend([(name, module)])
@@ -159,11 +159,11 @@ def get_cnn_circuit(
 def assemble_inputs(
     node: str,
     n_input_params: int,
-    connectome,  #: DiGraph[str],
-    responses: Dict[str, torch.Tensor],
+    connectome: DiGraph[str],
+    responses: dict[str, torch.Tensor],
 ) -> torch.Tensor:
     """Assemble the inputs to a given node by concatenating the responses of its predecessors."""
-    inputs: List[torch.Tensor] = []
+    inputs: list[torch.Tensor] = []
     for pred in connectome.predecessors(node):
         if pred in responses:
             inputs.append(responses[pred])
@@ -177,7 +177,7 @@ def assemble_inputs(
         # Flatten the inputs
         inputs = [torch.cat([inp.view(inp.size(0), -1) for inp in inputs], dim=1)]
     else:
-        assert n_input_params == len(
-            inputs
-        ), f"Number of inputs does not match number of forward parameters for {node}!"
+        assert n_input_params == len(inputs), (
+            f"Number of inputs does not match number of forward parameters for {node}!"
+        )
     return inputs
