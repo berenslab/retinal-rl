@@ -26,7 +26,7 @@ class ClassificationContext(BaseContext):
         sources: Tensor,
         inputs: Tensor,
         classes: Tensor,
-        responses: Dict[str, Tensor],
+        responses: Dict[str, tuple[Tensor, ...]],
         epoch: int,
     ):
         """Initialize the classification context object."""
@@ -43,14 +43,20 @@ class ClassificationLoss(Loss[ClassificationContext]):
         weights: Optional[List[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
+        classifier_output_index: int = 0,
     ):
-        """Initialize the classification loss."""
+        """Initialize the classification loss.
+        
+        Args:
+            classifier_output_index: Which output index to use from classifier circuit tuple (default: 0)
+        """
         super().__init__(target_circuits, weights, min_epoch, max_epoch)
         self.loss_fn = nn.CrossEntropyLoss()
+        self.classifier_output_index = classifier_output_index
 
     def compute_value(self, context: ClassificationContext) -> Tensor:
         """Compute the cross entropy loss between the predictions and the targets."""
-        predictions = context.responses["classifier"]
+        predictions = context.responses["classifier"][self.classifier_output_index]
         classes = context.classes
 
         if predictions.shape[0] != classes.shape[0]:
@@ -64,9 +70,17 @@ class ClassificationLoss(Loss[ClassificationContext]):
 class PercentCorrect(LoggingStatistic[ClassificationContext]):
     """(Inverse) Loss for computing the percent correct classification."""
 
+    def __init__(self, classifier_output_index: int = 0):
+        """Initialize the percent correct statistic.
+        
+        Args:
+            classifier_output_index: Which output index to use from classifier circuit tuple (default: 0)
+        """
+        self.classifier_output_index = classifier_output_index
+
     def compute_value(self, context: ClassificationContext) -> Tensor:
         """Compute the percent correct classification."""
-        predictions = context.responses["classifier"]
+        predictions = context.responses["classifier"][self.classifier_output_index]
         classes = context.classes
         if predictions.shape[0] != classes.shape[0]:
             raise ValueError(

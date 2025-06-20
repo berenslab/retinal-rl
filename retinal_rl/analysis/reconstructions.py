@@ -91,6 +91,8 @@ def reconstruct_images(
     test_set: Imageset,
     train_set: Imageset,
     sample_size: int,
+    decoder_output_index: int = 0,
+    classifier_output_index: int = 0,
 ) -> ReconstructionStatistics:
     """Compute reconstructions of a set of training and test images using a Brain model."""
     brain.eval()  # Set the model to evaluation mode
@@ -111,9 +113,9 @@ def reconstruct_images(
                 img = img.to(device)
                 stimulus = {"vision": img.unsqueeze(0)}
                 response = brain(stimulus)
-                rec_img = response[decoder].squeeze(0)
+                rec_img = response[decoder][decoder_output_index].squeeze(0)
                 if "classifier" in response:
-                    pred_k = response["classifier"].argmax().item()
+                    pred_k = response["classifier"][classifier_output_index].argmax().item()
                 else:
                     pred_k = 0  # FIXME: Reconstructions without classifier prediction?!
                 source_subset.append((src.cpu().numpy(), k))

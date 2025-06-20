@@ -27,7 +27,7 @@ class BaseContext:
         self,
         sources: Tensor,
         inputs: Tensor,
-        responses: dict[str, Tensor],
+        responses: dict[str, tuple[Tensor, ...]],
         epoch: int,
     ):
         """Initialize the context object with responses, and the current epoch."""
@@ -116,17 +116,23 @@ class ReconstructionLoss(Loss[ContextT]):
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
         normalize: bool = False,
+        decoder_output_index: int = 0,
     ):
-        """Initialize the reconstruction loss loss."""
+        """Initialize the reconstruction loss loss.
+        
+        Args:
+            decoder_output_index: Which output index to use from decoder circuit tuple (default: 0)
+        """
         super().__init__(target_circuits, weights, min_epoch, max_epoch)
         self.loss_fn = nn.MSELoss(reduction="mean")
         self.target_decoder = target_decoder
         self.normalize = normalize
+        self.decoder_output_index = decoder_output_index
 
     def compute_value(self, context: ContextT) -> Tensor:
         """Compute the mean squared error between inputs and reconstructions."""
         sources = context.sources
-        reconstructions = context.responses[self.target_decoder]
+        reconstructions = context.responses[self.target_decoder][self.decoder_output_index]
 
         if sources.shape != reconstructions.shape:
             raise ValueError(
@@ -160,18 +166,24 @@ class L1Sparsity(Loss[ContextT]):
         weights: Optional[list[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
+        response_output_index: int = 0,
     ):
-        """Initialize the reconstruction loss loss."""
+        """Initialize the L1 sparsity loss.
+        
+        Args:
+            response_output_index: Which output index to use from target response circuit tuple (default: 0)
+        """
         super().__init__(target_circuits, weights, min_epoch, max_epoch)
 
         self.target_response = target_response
+        self.response_output_index = response_output_index
 
     def compute_value(self, context: ContextT) -> Tensor:
         """Compute the L1 sparsity of activations."""
         responses = context.responses
         if self.target_response not in responses:
             raise ValueError(f"Target {self.target_response} not found in responses")
-        activation = responses[self.target_response]
+        activation = responses[self.target_response][self.response_output_index]
         return torch.mean(activation.abs().mean())
 
     @property
@@ -191,18 +203,24 @@ class KLDivergenceSparsity(Loss[ContextT]):
         weights: Optional[list[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
+        response_output_index: int = 0,
     ):
-        """Initialize the KL divergence sparsity loss."""
+        """Initialize the KL divergence sparsity loss.
+        
+        Args:
+            response_output_index: Which output index to use from target response circuit tuple (default: 0)
+        """
         super().__init__(target_circuits, weights, min_epoch, max_epoch)
         self.target_response = target_response
         self.target_sparsity = target_sparsity
+        self.response_output_index = response_output_index
 
     def compute_value(self, context: ContextT) -> torch.Tensor:
         """Compute the KL divergence sparsity of activations."""
         responses = context.responses
         if self.target_response not in responses:
             raise ValueError(f"Target {self.target_response} not found in responses")
-        activation = responses[self.target_response]
+        activation = responses[self.target_response][self.response_output_index]
 
         avg_activation = torch.mean(activation, dim=0)
         kl_div = self.target_sparsity * torch.log(
@@ -237,11 +255,17 @@ class KLDivergenceLoss(Loss[ContextT]):
         weights: Optional[list[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
+        bottleneck_output_index: int = 0,
     ) -> None:
+        """
+        Args:
+            bottleneck_output_index: Which output index to use from bottleneck circuit tuple (default: 0)
+        """
         super().__init__(target_circuits, weights, min_epoch, max_epoch)
 
         self.target_bottleneck = target_bottleneck
         self.beta = beta
+        self.bottleneck_output_index = bottleneck_output_index
 
     def compute_value(self, context: ContextT) -> Tensor:
         """
@@ -262,7 +286,7 @@ class KLDivergenceLoss(Loss[ContextT]):
                 "Make sure it's connected in the brain's connectome."
             )
 
-        bottleneck_output = context.responses[self.target_bottleneck]
+        bottleneck_output = context.responses[self.target_bottleneck][self.bottleneck_output_index]
 
         # Split concatenated mu and log_var
         latent_dim = bottleneck_output.size(1) // 2
