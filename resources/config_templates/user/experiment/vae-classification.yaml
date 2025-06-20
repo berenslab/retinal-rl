@@ -52,6 +52,12 @@ recon_weight_cortex: 0.9
 bottleneck_chans: 8
 bottleneck_stride: 1
 
+# Data augmentation settings
+shot_noise_transform: True
+contrast_noise_transform: True
+brightness_noise_transform: True
+blur_noise_transform: True
+
 
 # Normalization settings
 layer_norm: True

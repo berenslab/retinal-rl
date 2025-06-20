@@ -1,11 +1,11 @@
-"""Minimal variational neural circuits for VAE implementation."""
+"""Variational neural circuits for VAE implementation."""
 
 import logging
 
 import torch
-from torch import Tensor, nn
+from beartype import beartype
+from torch import Tensor
 
-# Assuming this import from your framework
 from retinal_rl.models.neural_circuit import NeuralCircuit
 
 logger = logging.getLogger(__name__)
@@ -13,95 +13,49 @@ logger = logging.getLogger(__name__)
 
 class VariationalBottleneck(NeuralCircuit):
     """
-    Variational bottleneck that produces distribution parameters for VAE.
+    Variational bottleneck that samples from latent distribution using reparameterization trick.
 
-    Takes encoder output and produces mean (mu) and log-variance (log_var)
-    parameters for the latent distribution, concatenated for compatibility
-    with single-output circuit design.
+    Takes two inputs (mu and log_var from separate circuits) and produces sampled latent codes.
+    Works with both fully connected (1D) and convolutional (multi-dimensional) latent spaces.
 
     Args:
-        input_shape: Shape of input tensor from encoder
-        latent_dim: Dimensionality of the latent space
+        input_shapes: List containing [mu_shape, log_var_shape] - should be identical
     """
 
     def __init__(
         self,
-        input_shape: list[int],
-        latent_dim: int,
+        input_shapes: list[list[int]],
     ) -> None:
-        super().__init__(input_shape)
+        super().__init__(input_shapes)
 
-        self.latent_dim = latent_dim
-
-        # Calculate flattened input size
-        self.input_size = int(torch.prod(torch.tensor(input_shape)))
-
-        # Separate heads for mean and log-variance
-        self.fc_mu = nn.Linear(self.input_size, latent_dim)
-        self.fc_log_var = nn.Linear(self.input_size, latent_dim)
-
-    def forward(self, x: Tensor) -> Tensor:
-        """
-        Forward pass producing concatenated [mu, log_var].
-
-        Args:
-            x: Input tensor [batch_size, *input_shape]
-
-        Returns:
-            Concatenated [batch_size, 2 * latent_dim] containing [mu, log_var]
-        """
-        # Flatten input
-        x = x.view(x.size(0), -1)
-
-        # Compute distribution parameters
-        mu = self.fc_mu(x)
-        log_var = self.fc_log_var(x)
-
-        # Concatenate for single output
-        return torch.cat([mu, log_var], dim=1)
-
-    @property
-    def output_shape(self) -> list[int]:
-        """Output shape is [2 * latent_dim]."""
-        return [2 * self.latent_dim]
-
-
-class ReparameterizationSampler(NeuralCircuit):
-    """
-    Samples from latent distribution using reparameterization trick.
-
-    Takes concatenated distribution parameters and samples latent codes.
-
-    Args:
-        input_shape: Should be [2 * latent_dim] from VariationalBottleneck
-    """
-
-    def __init__(
-        self,
-        input_shape: list[int],
-    ) -> None:
-        super().__init__(input_shape)
-
-        if len(input_shape) != 1 or input_shape[0] % 2 != 0:
+        if len(input_shapes) != 2:
             raise ValueError(
-                f"ReparameterizationSampler expects input_shape [2*latent_dim], "
-                f"got {input_shape}"
+                f"VariationalBottleneck expects 2 inputs (mu, log_var), "
+                f"got {len(input_shapes)}"
             )
 
-        self.latent_dim = input_shape[0] // 2
+        if input_shapes[0] != input_shapes[1]:
+            raise ValueError(
+                f"mu and log_var must have same shape, got {input_shapes[0]} and {input_shapes[1]}"
+            )
 
-    def forward(self, x: Tensor) -> Tensor:
+        self.latent_shape = input_shapes[0]
+
+    @beartype
+    def forward(self, inputs: tuple[Tensor, ...]) -> tuple[Tensor, ...]:
         """
         Sample from latent distribution using reparameterization trick.
 
         Args:
-            x: Concatenated parameters [batch_size, 2 * latent_dim]
+            inputs: Tuple containing (mu, log_var) tensors with identical shapes
 
         Returns:
-            Sampled latent codes [batch_size, latent_dim]
+            Tuple containing sampled latent codes with same shape as inputs
         """
-        # Split concatenated parameters
-        mu, log_var = torch.split(x, self.latent_dim, dim=1)
+        if len(inputs) != 2:
+            raise ValueError(f"Expected 2 inputs (mu, log_var), got {len(inputs)}")
+
+        mu, log_var = inputs
 
         if self.training:
             # Reparameterization trick: z = mu + sigma * epsilon
@@ -112,9 +66,9 @@ class ReparameterizationSampler(NeuralCircuit):
             # During evaluation, use mean
             z = mu
 
-        return z
+        return (z,)
 
     @property
-    def output_shape(self) -> list[int]:
-        """Output shape is [latent_dim]."""
-        return [self.latent_dim]
+    def output_shapes(self) -> tuple[tuple[int, ...], ...]:
+        """Output shape matches the input latent shape."""
+        return (tuple(self.latent_shape),)

@@ -14,16 +14,20 @@ connections:
   - ["retina", "thalamus"]  # Retina to thalamus
   - ["thalamus", "visual_cortex"]  # Thalamus to visual cortex
   
-  # VAE bottleneck
-  - ["visual_cortex", "vae_bottleneck"]  # Visual cortex to VAE bottleneck
-  - ["vae_bottleneck", "latent_sampler"]  # Bottleneck to sampler
+  # VAE distribution parameters (keeping spatial structure)
+  - ["visual_cortex", "mu_head"]  # Visual cortex to mu
+  - ["visual_cortex", "logvar_head"]  # Visual cortex to log variance
   
-  # Task path
-  - ["latent_sampler", "prefrontal"]  # Latent to prefrontal cortex
+  # VAE sampling
+  - ["mu_head", "vae_bottleneck"]  # Mu to bottleneck
+  - ["logvar_head", "vae_bottleneck"]  # Log var to bottleneck
+  
+  # Task path (via fully connected layers)
+  - ["vae_bottleneck", "prefrontal"]  # Latent to prefrontal cortex
   - ["prefrontal", "classifier"]  # Prefrontal cortex to classifier
   
-  # Reconstruction path
-  - ["latent_sampler", "v1_decoder"]  # Latent to decoder
+  # Reconstruction path (direct from VAE, maintaining spatial structure)
+  - ["vae_bottleneck", "v1_decoder"]  # VAE output to decoder
 
 # Define the individual nodes (neural circuits) of the network
 circuits:
@@ -65,20 +69,39 @@ circuits:
     layer_norm: ${layer_norm}
     affine_norm: ${affine_norm}
 
-  # VAE Bottleneck: produces distribution parameters
+  # Mu head: produces mean parameters for VAE (convolutional, maintains spatial structure)
+  mu_head:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 1
+    num_channels: 64  # Same as visual_cortex output
+    kernel_size: 1  # 1x1 conv to maintain spatial dimensions
+    stride: 1
+    activation: ${activation}
+    layer_names: ["mu"]
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
+
+  # Log variance head: produces log variance parameters for VAE (convolutional)
+  logvar_head:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 1
+    num_channels: 64  # Same as visual_cortex output
+    kernel_size: 1  # 1x1 conv to maintain spatial dimensions
+    stride: 1
+    activation: ${activation}
+    layer_names: ["logvar"]
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
+
+  # VAE Bottleneck: samples from latent distribution (maintains spatial structure)
   vae_bottleneck:
     _target_: retinal_rl.models.circuits.variational.VariationalBottleneck
-    latent_dim: ${latent_dim}
 
-  # Latent Sampler: reparameterization trick
-  latent_sampler:
-    _target_: retinal_rl.models.circuits.variational.ReparameterizationSampler
-
-  # Prefrontal Cortex: high-level cognitive processing
+  # Prefrontal Cortex: high-level cognitive processing (flattens spatial VAE output)
   prefrontal:
     _target_: retinal_rl.models.circuits.fully_connected.FullyConnected
     output_shape:
-      - 64  # Size of the latent representation
+      - 128  # Size of the latent representation (matches shallow-autoencoder)
     hidden_units: 
       - 64  # Number of hidden units
     activation: ${activation}
@@ -88,13 +111,17 @@ circuits:
     _target_: retinal_rl.models.circuits.task_head.linear_classifier.LinearClassifier
     num_classes: 10  # Number of output classes (10 for CIFAR10)
 
-  # Decoder: for reconstructing the input from the latent representation
+  # Decoder: for reconstructing the input from the latent representation (matches shallow-autoencoder)
   v1_decoder:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
     num_layers: 4
     layer_norm: ${layer_norm}
     affine_norm: ${affine_norm}
-    num_channels: [64, 32, 16, 3]  # Reverse of encoder channels
+    num_channels: 
+      - ${bottleneck_chans}  # Match shallow-autoencoder exactly
+      - 32
+      - 16
+      - 3
     kernel_size: 
       - ${v1_kernel_size}
       - ${lgn_kernel_size}
@@ -109,4 +136,4 @@ circuits:
       - ${activation}
       - ${activation}
       - ${activation}
-      - "tanh"  # Output activation for normalized images
+      - "tanh"

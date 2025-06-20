@@ -236,36 +236,44 @@ class KLDivergenceLoss(Loss[ContextT]):
     KL divergence loss between learned posterior q(z|x) and prior p(z).
 
     Assumes standard normal prior N(0, I). Gets distribution parameters
-    from the VariationalBottleneck circuit output.
+    from separate mu and log_var circuit outputs.
 
     Args:
-        target_bottleneck: Name of the VariationalBottleneck circuit
+        target_mu: Name of the circuit producing mu values
+        target_logvar: Name of the circuit producing log_var values  
         beta: Weight for KL term (beta-VAE parameter, default=1.0)
         target_circuits: Circuits to optimize with this loss
         weights: Weights for each circuit
         min_epoch: Minimum epoch to start applying this loss
         max_epoch: Maximum epoch to stop applying this loss
+        mu_output_index: Which output index to use from mu circuit tuple (default: 0)
+        logvar_output_index: Which output index to use from log_var circuit tuple (default: 0)
     """
 
     def __init__(
         self,
-        target_bottleneck: str,
+        target_mu: str,
+        target_logvar: str,
         beta: float = 1.0,
         target_circuits: Optional[list[str]] = None,
         weights: Optional[list[float]] = None,
         min_epoch: Optional[int] = None,
         max_epoch: Optional[int] = None,
-        bottleneck_output_index: int = 0,
+        mu_output_index: int = 0,
+        logvar_output_index: int = 0,
     ) -> None:
         """
         Args:
-            bottleneck_output_index: Which output index to use from bottleneck circuit tuple (default: 0)
+            mu_output_index: Which output index to use from mu circuit tuple (default: 0)
+            logvar_output_index: Which output index to use from logvar circuit tuple (default: 0)
         """
         super().__init__(target_circuits, weights, min_epoch, max_epoch)
 
-        self.target_bottleneck = target_bottleneck
+        self.target_mu = target_mu
+        self.target_logvar = target_logvar
         self.beta = beta
-        self.bottleneck_output_index = bottleneck_output_index
+        self.mu_output_index = mu_output_index
+        self.logvar_output_index = logvar_output_index
 
     def compute_value(self, context: ContextT) -> Tensor:
         """
@@ -279,18 +287,20 @@ class KLDivergenceLoss(Loss[ContextT]):
         Returns:
             KL divergence loss value
         """
-        # Get the bottleneck output
-        if self.target_bottleneck not in context.responses:
+        # Get mu and log_var outputs from separate circuits
+        if self.target_mu not in context.responses:
             raise ValueError(
-                f"Target bottleneck '{self.target_bottleneck}' not found in responses. "
+                f"Target mu circuit '{self.target_mu}' not found in responses. "
+                "Make sure it's connected in the brain's connectome."
+            )
+        if self.target_logvar not in context.responses:
+            raise ValueError(
+                f"Target logvar circuit '{self.target_logvar}' not found in responses. "
                 "Make sure it's connected in the brain's connectome."
             )
 
-        bottleneck_output = context.responses[self.target_bottleneck][self.bottleneck_output_index]
-
-        # Split concatenated mu and log_var
-        latent_dim = bottleneck_output.size(1) // 2
-        mu, log_var = torch.split(bottleneck_output, latent_dim, dim=1)
+        mu = context.responses[self.target_mu][self.mu_output_index]
+        log_var = context.responses[self.target_logvar][self.logvar_output_index]
 
         # Compute KL divergence
         # KL = -0.5 * sum(1 + log_var - mu^2 - exp(log_var))
@@ -305,4 +315,4 @@ class KLDivergenceLoss(Loss[ContextT]):
     @property
     def key_name(self) -> str:
         """Return a user-friendly name for the loss."""
-        return f"kl_divergence_{self.target_bottleneck}"
+        return f"kl_divergence_{self.target_mu}_{self.target_logvar}"
