@@ -1,0 +1,60 @@
+
+# @package _global_
+defaults:
+  - _self_
+  - override /dataset: cifar10
+  - override /brain: ae-classifier
+  - override /optimizer: classification
+
+# This is the main entry point for control of a retinal-rl experiment. Variables
+# created here will be top-level, and defaults can be set for the various parts
+# of an experiment (NB: do not add comments above the defaults list or it will
+# break the config system.)
+
+framework: classification
+
+### Interpolation Parameters ###
+
+# This is a free list of parameters that can be interpolated by the subconfigs
+# in sweep, dataset, brain, and optimizer. A major use for this is interpolating
+# values in the subconfigs, and then looping over them in a sweep.
+
+# Derived parameters
+vision_size: 256
+
+image_rescale_range: [1, 8]
+vision_height: "${vision_size}"
+vision_width: "${vision_size}"
+
+weight_decay: 0.0001
+
+activation: "gelu"
+
+bottleneck_chans: 8
+bottleneck_stride: 1
+
+# Stride configuration
+bp_stride: 4
+rgc_stride: 2
+thalamus_stride: 1
+v1_stride: 2
+
+# Kernel sizes
+bp_kernel_size: 18
+rgc_kernel_size: 10
+lgn_kernel_size: 3
+v1_kernel_size: 6
+
+recon_weight_retina: 0.999
+recon_weight_thalamus: 0.99
+recon_weight_cortex: 0.9
+
+shot_noise_transform: True
+contrast_noise_transform: True
+brightness_noise_transform: True
+blur_noise_transform: True
+
+layer_norm: True
+affine_norm: True
+
+

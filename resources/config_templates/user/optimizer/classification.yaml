@@ -1,5 +1,5 @@
 # Number of training epochs
-num_epochs: 200
+num_epochs: 50
 
 # The optimizer to use
 optimizer: # torch.optim Class and parameters
@@ -42,17 +42,5 @@ objective:
         - ${recon_weight_cortex}
         - 1
         - 1
-    - _target_: retinal_rl.models.loss.L1Sparsity
-      target_response: "visual_cortex"
-      target_circuits:
-        - retina
-        - thalamus
-        - visual_cortex
-        - inferotemporal
-      weights:
-        - ${sparsity_weight}
-        - ${sparsity_weight}
-        - ${sparsity_weight}
-        - ${sparsity_weight}
   logging_statistics:
     - _target_: retinal_rl.classification.loss.PercentCorrect
