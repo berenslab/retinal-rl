@@ -6,6 +6,7 @@ It includes:
 """
 
 import logging
+import time
 from typing import List, Sequence, Tuple
 
 import torchvision.transforms.functional as tf
@@ -52,9 +53,8 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
         self.normalization_stats = (normalization_mean, normalization_std)
         self.fixed_transformation = fixed_transformation
         self.multiplier = multiplier if fixed_transformation else 1
-        self.base_len = 0
-        for _ in self.base_dataset:
-            self.base_len += 1
+        # Use len() instead of iterating through entire dataset
+        self.base_len = len(self.base_dataset)
 
         if fixed_transformation:
             self.transformed_dataset = self._create_fixed_dataset()
@@ -92,23 +92,42 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
         return self.epoch_len()
 
     def __getitem__(self, idx: int) -> Tuple[Tensor, Tensor, int]:
+        # Add global timing tracking
+        if not hasattr(self, '_getitem_times'):
+            self._getitem_times = []
+            self._getitem_count = 0
+        
+        start_time = time.time()
+        
         if self.fixed_transformation:
-            return self.transformed_dataset[idx]
+            result = self.transformed_dataset[idx]
+        else:
+            # For on-the-fly transformations
+            img, label = self.base_dataset[idx]
 
-        # For on-the-fly transformations
-        img, label = self.base_dataset[idx]
+            # Convert to Tensor
+            img_tensor = self.to_tensor(img)
 
-        # Convert to Tensor
-        img_tensor = self.to_tensor(img)
+            # Apply source transformations
+            source_tensor = self.source_transforms(img_tensor)
+            noisy_tensor = self.normalize_maybe(
+                self.noise_transforms(source_tensor.clone())
+            )
+            source_tensor = self.normalize_maybe(source_tensor)
 
-        # Apply source transformations
-        source_tensor = self.source_transforms(img_tensor)
-        noisy_tensor = self.normalize_maybe(
-            self.noise_transforms(source_tensor.clone())
-        )
-        source_tensor = self.normalize_maybe(source_tensor)
-
-        return source_tensor, noisy_tensor, label
+            result = source_tensor, noisy_tensor, label
+        
+        # Track timing
+        elapsed = time.time() - start_time
+        self._getitem_times.append(elapsed)
+        self._getitem_count += 1
+        
+        # Print summary periodically
+        if self._getitem_count % 1000 == 0:
+            avg_time = sum(self._getitem_times[-1000:]) / min(1000, len(self._getitem_times))
+            print(f"  __getitem__ avg time (last 1000): {avg_time:.6f}s")
+        
+        return result
 
 
 class ImageSubset(Subset[Tuple[Tensor, Tensor, int]]):

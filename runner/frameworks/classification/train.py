@@ -14,6 +14,8 @@ from torch.utils.data import DataLoader
 from retinal_rl.classification.imageset import Imageset
 from retinal_rl.classification.loss import ClassificationContext
 from retinal_rl.classification.training import process_dataset, run_epoch
+from retinal_rl.classification.gpu_transforms import GPUBatchTransforms
+from retinal_rl.classification.fast_dataset import FastCIFAR10
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.objective import Objective
 from runner.frameworks.classification.analyze import AnalysesCfg, analyze
@@ -60,16 +62,77 @@ def train(
     num_epochs = cfg.optimizer.num_epochs
     num_workers = cfg.system.num_workers
 
-    trainloader = DataLoader(
-        train_set, batch_size=64, shuffle=True, num_workers=num_workers
-    )
-    testloader = DataLoader(
-        test_set, batch_size=64, shuffle=False, num_workers=num_workers
-    )
+    # Use configurable batch size with fallback to 64
+    batch_size = getattr(cfg, 'batch_size', 64)
+    
+    # Initialize batch transforms if enabled (but not if using cached transforms)
+    use_cached_transforms = getattr(cfg, 'use_cached_transforms', False)
+    use_batch_transforms = getattr(cfg, 'use_batch_transforms', False) and not use_cached_transforms
+    batch_transforms = None
+    if use_batch_transforms:
+        from retinal_rl.classification.batch_transforms import BatchGPUTransforms
+        # Calculate scale factor range for batch transforms
+        # Match the config's scale range or default to fixed scaling
+        if hasattr(cfg.dataset.imageset.source_transforms[0], 'image_rescale_range'):
+            scale_range = tuple(cfg.dataset.imageset.source_transforms[0].image_rescale_range)
+        else:
+            # Default to fixed scaling based on vision size
+            scale_factor = cfg.vision_width / 32.0  # For 81x81: 81/32 = 2.53
+            scale_range = (scale_factor, scale_factor)
+        
+        batch_transforms = BatchGPUTransforms(
+            vision_width=cfg.vision_width,
+            vision_height=cfg.vision_height,
+            scale_factor_range=scale_range,
+            enable_noise=True,  # Enable comprehensive noise transforms
+            shot_noise_range=(0.05, 0.1),
+            contrast_range=(0.8, 1.2),
+            brightness_range=(-0.1, 0.1),
+            blur_range=(0.1, 0.5),
+            blur_kernel_size=3,
+            enable_random_shifts=True  # Enable spatial diversity
+        )
+    
+    # Initialize GPU transforms if enabled
+    use_gpu_transforms = getattr(cfg, 'use_gpu_transforms', False)
+    gpu_transforms = None
+    if use_gpu_transforms:
+        gpu_transforms = GPUBatchTransforms(
+            target_width=cfg.vision_width,
+            target_height=cfg.vision_height,
+            scale_factor=2.5
+        )
+    
+    # Check if we need optimized data loaders for batch-native iteration
+    use_optimized_live_transforms = getattr(cfg, 'use_optimized_live_transforms', False)
+    if use_optimized_live_transforms and hasattr(train_set, 'get_batch_iterator'):
+        from retinal_rl.classification.optimized_live_transforms import OptimizedDataLoader
+        trainloader = OptimizedDataLoader(train_set, shuffle=True)
+        testloader = OptimizedDataLoader(test_set, shuffle=False)
+    # Check if we need custom collate function for live vectorized transforms
+    elif getattr(cfg, 'use_live_vectorized_transforms', False) and hasattr(train_set, 'collate_fn'):
+        trainloader = DataLoader(
+            train_set, batch_size=batch_size, shuffle=True, num_workers=num_workers,
+            collate_fn=train_set.collate_fn
+        )
+        testloader = DataLoader(
+            test_set, batch_size=batch_size, shuffle=False, num_workers=num_workers,
+            collate_fn=test_set.collate_fn
+        )
+    else:
+        trainloader = DataLoader(
+            train_set, batch_size=batch_size, shuffle=True, num_workers=num_workers
+        )
+        testloader = DataLoader(
+            test_set, batch_size=batch_size, shuffle=False, num_workers=num_workers
+        )
 
     wall_time = time.time()
 
-    if initial_epoch == 0:
+    # Skip initial evaluation if configured for fast iteration
+    skip_initial = getattr(cfg.logging, 'skip_initial_eval', False)
+    
+    if initial_epoch == 0 and not skip_initial:
         brain.train()
         train_losses = process_dataset(
             device,
@@ -79,6 +142,8 @@ def train(
             initial_epoch,
             trainloader,
             is_training=False,
+            gpu_transforms=gpu_transforms,
+            batch_transforms=batch_transforms,
         )
         brain.eval()
         test_losses = process_dataset(
@@ -89,6 +154,8 @@ def train(
             initial_epoch,
             testloader,
             is_training=False,
+            gpu_transforms=gpu_transforms,
+            batch_transforms=batch_transforms,
         )
 
         # Initialize the history
@@ -98,15 +165,24 @@ def train(
             history[f"train_{key}"] = [value]
         for key, value in test_losses.items():
             history[f"test_{key}"] = [value]
-        ana_cfg = AnalysesCfg(
-            Path(cfg.path.run_dir),
-            Path(cfg.path.plot_dir),
-            Path(cfg.path.checkpoint_plot_dir),
-            Path(cfg.path.data_dir),
-            cfg.logging.use_wandb,
-            cfg.logging.channel_analysis,
-            cfg.logging.plot_sample_size,
-        )
+    else:
+        # Initialize empty history when skipping initial eval
+        logger.info("Skipping initial evaluation for faster startup")
+        history = {}
+        
+    # Analysis configuration (common for both paths)
+    ana_cfg = AnalysesCfg(
+        Path(cfg.path.run_dir),
+        Path(cfg.path.plot_dir),
+        Path(cfg.path.checkpoint_plot_dir),
+        Path(cfg.path.data_dir),
+        cfg.logging.use_wandb,
+        cfg.logging.channel_analysis,
+        cfg.logging.plot_sample_size,
+    )
+    
+    # Only run analysis if not skipping initial eval
+    if initial_epoch == 0 and not skip_initial:
         analyze(
             ana_cfg,
             device,
@@ -133,6 +209,10 @@ def train(
         )
 
     for epoch in range(initial_epoch + 1, num_epochs + 1):
+        epoch_start = time.time()
+        print(f"=== EPOCH {epoch} DETAILED TIMING ===")
+        
+        run_epoch_start = time.time()
         brain, history = run_epoch(
             device,
             brain,
@@ -142,11 +222,21 @@ def train(
             epoch,
             trainloader,
             testloader,
+            gpu_transforms,
+            batch_transforms,
         )
+        run_epoch_time = time.time() - run_epoch_start
+        print(f"run_epoch() call: {run_epoch_time:.3f}s")
 
         new_wall_time = time.time()
         epoch_wall_time = new_wall_time - wall_time
         wall_time = new_wall_time
+        
+        epoch_total_time = time.time() - epoch_start
+        unaccounted_time = epoch_total_time - run_epoch_time
+        print(f"Total epoch time: {epoch_total_time:.3f}s")
+        print(f"Unaccounted overhead: {unaccounted_time:.3f}s ({100*unaccounted_time/epoch_total_time:.1f}%)")
+        
         logger.info(f"Epoch {epoch} complete. Wall Time: {epoch_wall_time:.2f}s.")
 
         if epoch % checkpoint_step == 0:

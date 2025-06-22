@@ -97,6 +97,8 @@ def get_classification_context(
     brain: Brain,
     batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
     epoch: int,
+    gpu_transforms=None,
+    batch_transforms=None,
 ) -> ClassificationContext:
     """Calculate the loss dictionary for a single batch.
 
@@ -118,6 +120,14 @@ def get_classification_context(
     """
     sources, inputs, classes = batch
     sources, inputs, classes = sources.to(device), inputs.to(device), classes.to(device)
+
+    # Apply batch transforms if provided (fastest option!)
+    if batch_transforms is not None:
+        sources, inputs = batch_transforms(sources)  # Returns (sources, inputs) tuple
+    # Apply GPU transforms if provided (much faster than CPU transforms!)
+    elif gpu_transforms is not None:
+        sources = gpu_transforms(sources)
+        inputs = gpu_transforms(inputs)
 
     stimuli = {"vision": inputs}
     responses = brain(stimuli)

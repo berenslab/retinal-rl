@@ -166,7 +166,7 @@ class ScaleShiftTransform(ContinuousTransform):
             int(img.shape[1] * trans_factor),
             int(img.shape[2] * trans_factor),
         )
-        img = tv_transforms.Resize(scaled_size)(img)
+        img = tv_functional.resize(img, scaled_size)
 
         # Create a black background
         background = torch.zeros(
