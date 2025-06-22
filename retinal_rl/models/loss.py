@@ -18,7 +18,9 @@ class BaseContext:
 
     Attributes
     ----------
-        responses (dict[str, Tensor]): The outputs from various parts of the brain model.
+        responses (dict[str, tuple[Tensor, ...]]): The outputs from various parts of the brain model.
+        sources (Tensor): The original source data before any transformations.
+        inputs (Tensor): The processed input data fed to the model.
         epoch (int): The current training epoch.
 
     """
@@ -45,7 +47,7 @@ class LoggingStatistic(Generic[ContextT]):
 
     @abstractmethod
     def compute_value(self, context: ContextT) -> Tensor:
-        """Compute the value for this losses The context dictionary contains the necessary information to compute the loss."""
+        """Compute the value for this statistic. The context contains the necessary information to compute the value."""
         pass
 
     @property
@@ -118,8 +120,8 @@ class ReconstructionLoss(Loss[ContextT]):
         normalize: bool = False,
         decoder_output_index: int = 0,
     ):
-        """Initialize the reconstruction loss loss.
-        
+        """Initialize the reconstruction loss.
+
         Args:
             decoder_output_index: Which output index to use from decoder circuit tuple (default: 0)
         """
@@ -132,7 +134,9 @@ class ReconstructionLoss(Loss[ContextT]):
     def compute_value(self, context: ContextT) -> Tensor:
         """Compute the mean squared error between inputs and reconstructions."""
         sources = context.sources
-        reconstructions = context.responses[self.target_decoder][self.decoder_output_index]
+        reconstructions = context.responses[self.target_decoder][
+            self.decoder_output_index
+        ]
 
         if sources.shape != reconstructions.shape:
             raise ValueError(
@@ -169,7 +173,7 @@ class L1Sparsity(Loss[ContextT]):
         response_output_index: int = 0,
     ):
         """Initialize the L1 sparsity loss.
-        
+
         Args:
             response_output_index: Which output index to use from target response circuit tuple (default: 0)
         """
@@ -206,7 +210,7 @@ class KLDivergenceSparsity(Loss[ContextT]):
         response_output_index: int = 0,
     ):
         """Initialize the KL divergence sparsity loss.
-        
+
         Args:
             response_output_index: Which output index to use from target response circuit tuple (default: 0)
         """
@@ -230,6 +234,11 @@ class KLDivergenceSparsity(Loss[ContextT]):
         )
         return torch.mean(kl_div)
 
+    @property
+    def key_name(self) -> str:
+        """Return a user-friendly name for the loss, including the target response."""
+        return f"kl_divergence_sparsity_{self.target_response.lower()}"
+
 
 class KLDivergenceLoss(Loss[ContextT]):
     """
@@ -238,12 +247,14 @@ class KLDivergenceLoss(Loss[ContextT]):
     Assumes standard normal prior N(0, I). Gets distribution parameters
     from separate mu and log_var circuit outputs.
 
+    Uses the unified weighting system - set weights parameter for KL term scaling
+    (equivalent to beta-VAE parameter in literature).
+
     Args:
         target_mu: Name of the circuit producing mu values
-        target_logvar: Name of the circuit producing log_var values  
-        beta: Weight for KL term (beta-VAE parameter, default=1.0)
+        target_logvar: Name of the circuit producing log_var values
         target_circuits: Circuits to optimize with this loss
-        weights: Weights for each circuit
+        weights: Weights for each circuit (controls KL term strength)
         min_epoch: Minimum epoch to start applying this loss
         max_epoch: Maximum epoch to stop applying this loss
         mu_output_index: Which output index to use from mu circuit tuple (default: 0)
@@ -254,7 +265,6 @@ class KLDivergenceLoss(Loss[ContextT]):
         self,
         target_mu: str,
         target_logvar: str,
-        beta: float = 1.0,
         target_circuits: Optional[list[str]] = None,
         weights: Optional[list[float]] = None,
         min_epoch: Optional[int] = None,
@@ -263,7 +273,15 @@ class KLDivergenceLoss(Loss[ContextT]):
         logvar_output_index: int = 0,
     ) -> None:
         """
+        Initialize KL divergence loss with unified weighting system.
+
         Args:
+            target_mu: Name of circuit producing mu values
+            target_logvar: Name of circuit producing log_var values
+            target_circuits: Circuits to optimize with this loss
+            weights: Loss weights for each circuit (controls KL strength, replaces beta)
+            min_epoch: Minimum epoch to start applying this loss
+            max_epoch: Maximum epoch to stop applying this loss
             mu_output_index: Which output index to use from mu circuit tuple (default: 0)
             logvar_output_index: Which output index to use from logvar circuit tuple (default: 0)
         """
@@ -271,7 +289,6 @@ class KLDivergenceLoss(Loss[ContextT]):
 
         self.target_mu = target_mu
         self.target_logvar = target_logvar
-        self.beta = beta
         self.mu_output_index = mu_output_index
         self.logvar_output_index = logvar_output_index
 
@@ -307,10 +324,7 @@ class KLDivergenceLoss(Loss[ContextT]):
         kl_elementwise = -0.5 * (1 + log_var - mu.pow(2) - log_var.exp())
 
         # Sum over latent dimensions, mean over batch
-        kl = kl_elementwise.sum(dim=1).mean()
-
-        # Apply beta weighting
-        return self.beta * kl
+        return kl_elementwise.sum(dim=1).mean()
 
     @property
     def key_name(self) -> str:

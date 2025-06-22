@@ -1,0 +1,77 @@
+# Optimizer configuration for VAE classification with dual-stream architecture
+
+# Number of training epochs
+num_epochs: 50
+
+# The optimizer to use
+optimizer: # torch.optim Class and parameters
+  _target_: torch.optim.AdamW
+  lr: 0.0003
+  weight_decay: ${weight_decay}
+
+# The multi-objective function for VAE
+objective:
+  _target_: retinal_rl.models.objective.Objective
+  losses:
+    # Task loss: Classification
+    - _target_: retinal_rl.classification.loss.ClassificationLoss
+      target_circuits: # All circuits involved in the classification forward pass
+        - retina
+        - retina_logvar
+        - thalamus
+        - thalamus_logvar
+        - visual_cortex
+        - visual_cortex_logvar
+        - prefrontal
+        - classifier
+      weights:
+        - ${class_weight_retina}   # Retina mu
+        - ${class_weight_retina}   # Retina logvar
+        - ${class_weight_thalamus} # Thalamus mu
+        - ${class_weight_thalamus} # Thalamus logvar
+        - ${class_weight_cortex}   # Visual cortex mu
+        - ${class_weight_cortex}   # Visual cortex logvar
+        - 1  # Prefrontal
+        - 1  # Classifier
+    
+    # Reconstruction loss
+    - _target_: retinal_rl.models.loss.ReconstructionLoss
+      target_decoder: "v1_decoder"
+      target_circuits: # Circuits involved in reconstruction
+        - retina
+        - retina_logvar
+        - thalamus
+        - thalamus_logvar
+        - visual_cortex
+        - visual_cortex_logvar
+        - v1_decoder
+      weights:
+        - ${recon_weight}  # Retina mu
+        - ${recon_weight}  # Retina logvar
+        - ${recon_weight}  # Thalamus mu
+        - ${recon_weight}  # Thalamus logvar
+        - ${recon_weight}  # Visual cortex mu
+        - ${recon_weight}  # Visual cortex logvar
+        - 1  # Decoder
+    
+    # KL divergence loss (Information Bottleneck) - uses dual streams
+    - _target_: retinal_rl.models.loss.KLDivergenceLoss
+      target_mu: "visual_cortex"
+      target_logvar: "visual_cortex_logvar"
+      target_circuits:
+        - retina
+        - retina_logvar
+        - thalamus
+        - thalamus_logvar
+        - visual_cortex
+        - visual_cortex_logvar
+      weights:
+        - ${bottle_weight}  # Information bottleneck weight - affects entire visual pathway
+        - ${bottle_weight}
+        - ${bottle_weight}
+        - ${bottle_weight}
+        - ${bottle_weight}
+        - ${bottle_weight}
+        
+  logging_statistics:
+    - _target_: retinal_rl.classification.loss.PercentCorrect

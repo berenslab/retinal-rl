@@ -12,35 +12,29 @@ objective:
   _target_: retinal_rl.models.objective.Objective
   losses:
     - _target_: retinal_rl.classification.loss.ClassificationLoss
-      target_circuits: # Circuit parameters to optimize with this optimizer.  We train the retina and the decoder exclusively to maximize reconstruction
+      target_circuits: # Core circuits present in both AE and VAE architectures
         - retina
         - thalamus
         - visual_cortex
-        - inferotemporal
         - prefrontal
         - classifier
       weights:
-        - ${eval:'1-${recon_weight_retina}'}
-        - ${eval:'1-${recon_weight_thalamus}'}
-        - ${eval:'1-${recon_weight_cortex}'}
-        - 1
+        - ${class_weight_retina}
+        - ${class_weight_thalamus}
+        - ${class_weight_cortex}
         - 1
         - 1
     - _target_: retinal_rl.models.loss.ReconstructionLoss
       target_decoder: "v1_decoder"
-      target_circuits: # Circuit parameters to optimize with this optimizer.  We train the retina and the decoder exclusively to maximize reconstruction
+      target_circuits: # Core circuits for reconstruction loss
         - retina
         - thalamus
         - visual_cortex
-        - inferotemporal
-        - it_decoder
         - v1_decoder
       weights:
-        - ${recon_weight_retina}
-        - ${recon_weight_thalamus}
-        - ${recon_weight_cortex}
-        - ${recon_weight_cortex}
-        - 1
+        - ${recon_weight}
+        - ${recon_weight}
+        - ${recon_weight}
         - 1
   logging_statistics:
     - _target_: retinal_rl.classification.loss.PercentCorrect

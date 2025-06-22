@@ -1,4 +1,4 @@
-# Configuration for a retinal classifier neural network
+# Configuration for a VAE-based retinal classifier neural network
 
 # Define the input sensor
 sensors:
@@ -9,17 +9,29 @@ sensors:
 
 # Define how the various NeuralCircuits are connected to each other
 connections:
+  # Mu encoder stream (original path)
   - ["vision", "retina"]  # Input to retina
-  - ["retina","thalamus"]  # Retina to thalamus
-  - ["thalamus","visual_cortex"]  # Thalamus to visual cortex
-  - ["visual_cortex", "prefrontal"]  # Visual cortex to prefrontal cortex
+  - ["retina", "thalamus"]  # Retina to thalamus
+  - ["thalamus", "visual_cortex"]  # Thalamus to visual cortex
+  
+  # Logvar encoder stream (parallel path)
+  - ["vision", "retina_logvar"]  # Input to retina logvar
+  - ["retina_logvar", "thalamus_logvar"]  # Retina logvar to thalamus logvar
+  - ["thalamus_logvar", "visual_cortex_logvar"]  # Thalamus logvar to visual cortex logvar
+  
+  # VAE bottleneck (combines mu and logvar streams)
+  - ["visual_cortex", "vae_bottleneck"]  # Mu to bottleneck
+  - ["visual_cortex_logvar", "vae_bottleneck"]  # Logvar to bottleneck
+  
+  # Output paths from VAE bottleneck
+  - ["vae_bottleneck", "prefrontal"]  # VAE output to prefrontal cortex
   - ["prefrontal", "classifier"]  # Prefrontal cortex to classifier
-  - ["visual_cortex", "v1_decoder"]  # v1 to decoder (for reconstruction)
+  - ["vae_bottleneck", "v1_decoder"]  # VAE output to decoder (for reconstruction)
 
 # Define the individual nodes (neural circuits) of the network. Many circuit
 # parameters are interpolated from the experiment config.
 circuits:
-  # Retina: initial processing of visual input
+  # Retina: initial processing of visual input (mu stream)
   retina:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 2
@@ -35,7 +47,23 @@ circuits:
     layer_norm: ${layer_norm}
     affine_norm: ${affine_norm}
 
-  # Thalamus: relay and processing station
+  # Retina logvar: parallel processing for variance estimation
+  retina_logvar:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 2
+    num_channels: [16, 32]  # Same structure as retina
+    kernel_size: 
+      - ${bp_kernel_size}
+      - ${rgc_kernel_size}
+    stride: 
+      - ${bp_stride}
+      - ${rgc_stride}
+    activation: ${activation}
+    layer_names: ["bipolar_logvar", "retinal_ganglion_logvar"]
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
+
+  # Thalamus: relay and processing station (mu stream)
   thalamus:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 1
@@ -47,7 +75,19 @@ circuits:
     layer_norm: ${layer_norm}
     affine_norm: ${affine_norm}
 
-  # Visual Cortex: higher-level visual processing
+  # Thalamus logvar: parallel processing for variance estimation
+  thalamus_logvar:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 1
+    num_channels: ${bottleneck_chans}  # Same structure as thalamus
+    kernel_size: ${lgn_kernel_size}
+    stride: ${thalamus_stride}
+    activation: ${activation}
+    layer_names: ["lgn_logvar"]
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
+
+  # Visual Cortex: higher-level visual processing (mu stream)
   visual_cortex:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 1
@@ -58,6 +98,22 @@ circuits:
     layer_names: ["v1"]  # Primary Visual Cortex
     layer_norm: ${layer_norm}
     affine_norm: ${affine_norm}
+
+  # Visual Cortex logvar: parallel processing for variance estimation
+  visual_cortex_logvar:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 1
+    num_channels: 64  # Same structure as visual_cortex
+    kernel_size: ${v1_kernel_size}
+    stride: ${v1_stride}
+    activation: ${activation}
+    layer_names: ["v1_logvar"]
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
+
+  # VAE Bottleneck: samples from latent distribution using reparameterization trick
+  vae_bottleneck:
+    _target_: retinal_rl.models.circuits.variational.VariationalBottleneck
 
   # Prefrontal Cortex: high-level cognitive processing
   prefrontal:
