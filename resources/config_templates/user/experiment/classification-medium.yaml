@@ -3,7 +3,7 @@ defaults:
   - _self_
   - override /dataset: cifar10
   - override /brain: ae-classifier
-  - override /optimizer: classification
+  - override /optimizer: ae-classification
 
 # This is the main entry point for control of a retinal-rl experiment. Variables
 # created here will be top-level, and defaults can be set for the various parts
@@ -29,7 +29,7 @@ weight_decay: 0.0001
 
 activation: "gelu"
 
-bottleneck_chans: 8
+bottleneck_chans: 32
 bottleneck_stride: 1
 
 # Stride configuration
@@ -49,16 +49,15 @@ layer_norm: True
 affine_norm: True
 
 # Noise transforms
-shot_noise_transform: True
-contrast_noise_transform: True
-brightness_noise_transform: True
-blur_noise_transform: True
+shot_noise_transform: False
+contrast_noise_transform: False
+brightness_noise_transform: False
+blur_noise_transform: False
 
 # Loss Weights
-class_weight_retina: 0.001
-class_weight_thalamus: 0.01
-class_weight_cortex: 0.1
+class_weight_retina: 1
+class_weight_thalamus: 1
+class_weight_cortex: 1
 
-recon_weight: 1
-bottle_weight: 0.001
-
+recon_weight: 0
+bottle_weight: 0

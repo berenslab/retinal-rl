@@ -21,7 +21,7 @@ dependencies = [
 [tool.pyright]
 include = ["retinal_rl"]
 typeCheckingMode = "strict"
-venvPath = ".."
+venvPath = "../.."
 venv = ".venv"
 reportMissingTypeStubs = "warning"
 reportUnknownVariableType = "warning"
