@@ -57,11 +57,6 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
             obs_clone[k + "_raw"] = obs[k]
         return obs_clone
 
-    def wrap_rnns(self):
-        for circuit_name in self.brain.circuits:
-            if isinstance(self.brain.circuits[circuit_name], LatentRNN):
-                decorate_forward(self.brain.circuits[circuit_name])
-
     def set_brain(self, brain: Brain):
         """
         method to set weights / brain.
@@ -69,7 +64,6 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         Decide which part of the brain is head/core/tail or creates Identity transforms if needed.
         """
         self.brain = brain
-        self.wrap_rnns()
 
     @staticmethod
     def check_brain_config(config: DictConfig):
