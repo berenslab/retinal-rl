@@ -268,16 +268,15 @@ def build_context(
     # actual forward pass
     responses = actor_critic.brain(brain_inp)
 
-    minibatch_size: int = responses["vision"].size(0)
+    minibatch_size: int = responses["vision"][0].size(0) #TODO: Also here just accessing 0 is a bit hacky
     num_trajectories = minibatch_size // recurrence
-    # TODO: This might be related to the problem?!
 
     with timing.add_time("tail"):
-        values = responses["critic"].squeeze()
+        values = responses["critic"][0].squeeze()
 
         # Get Action Distribution from actor output
         action_distribution = get_action_distribution(
-            actor_critic.action_space, raw_logits=responses["actor"]
+            actor_critic.action_space, raw_logits=responses["actor"][0]
         )
         log_prob_actions = action_distribution.log_prob(mb.actions)
         ratio = torch.exp(log_prob_actions - mb.log_prob_actions)  # pi / pi_old

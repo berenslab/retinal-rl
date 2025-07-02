@@ -93,17 +93,17 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         # TODO: this dict entry is bound to the config -> bad!
 
         # Create Sample Factory result dict
-        result = TensorDict(values=responses["critic"].squeeze())
+        result = TensorDict(values=responses["critic"][0].squeeze()) # TODO: Just accessing 0 is a bit hacky
         # if values_only: TODO: Not needed, right?
         #     return result
 
         # `action_logits` is not the best name here, better would be "action distribution parameters"
-        result["action_logits"] = responses["actor"]
+        result["action_logits"] = responses["actor"][0]
 
         # Create distribution object based on the prediction of the action parameters
         # NOTE: Only Discrete action spaces are supported
         self.last_action_distribution = get_action_distribution(
-            self.action_space, raw_logits=responses["actor"], action_mask=action_mask
+            self.action_space, raw_logits=responses["actor"][0], action_mask=action_mask
         )
         #  TODO: Check: would be nice to get rid of self.last_action_distribution & self.action_distribution()
 
@@ -111,7 +111,7 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
 
         # TODO: hack piping the rnn_state through the result dict
         if "rnn_state" in responses:
-            core_out = responses["rnn_state"]
+            core_out = responses["rnn_state"][0]
             result["new_rnn_states"] = core_out
             result["latent_states"] = core_out
         else:
