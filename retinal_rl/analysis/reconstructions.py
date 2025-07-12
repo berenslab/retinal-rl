@@ -115,7 +115,9 @@ def reconstruct_images(
                 response = brain(stimulus)
                 rec_img = response[decoder][decoder_output_index].squeeze(0)
                 if "classifier" in response:
-                    pred_k = response["classifier"][classifier_output_index].argmax().item()
+                    pred_k = (
+                        response["classifier"][classifier_output_index].argmax().item()
+                    )
                 else:
                     pred_k = 0  # FIXME: Reconstructions without classifier prediction?!
                 source_subset.append((src.cpu().numpy(), k))

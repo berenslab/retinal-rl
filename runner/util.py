@@ -185,7 +185,6 @@ def assemble_neural_circuits(
         # Convert input shapes to new tuple format expected by circuits
         # TODO: automatic retrieval of all input shapes?
         input_shapes = tuple(tuple(int(dim) for dim in inp.shape[1:]) for inp in inputs)
-        
 
         # Check for an explicit output_shape key
         if "output_shape" in circuit_config:

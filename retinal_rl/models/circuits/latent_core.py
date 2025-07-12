@@ -1,15 +1,14 @@
 import warnings
+
 import torch
 from beartype import beartype
-from torch import Tensor, nn
-
-from retinal_rl.models.neural_circuit import NeuralCircuit, SimpleNeuralCircuit
-import warnings
-
 from sample_factory.algo.learning.rnn_utils import (
     build_core_out_from_seq,
     build_rnn_inputs,
 )
+from torch import Tensor, nn
+
+from retinal_rl.models.neural_circuit import NeuralCircuit, SimpleNeuralCircuit
 
 
 class LatentRNN(NeuralCircuit):
@@ -47,7 +46,7 @@ class LatentRNN(NeuralCircuit):
         # TODO: Double check state might not be used here or also readjusted
         return (output, state)
 
-    #@beartype remove strict typing for compatibility with samplefactory
+    # @beartype remove strict typing for compatibility with samplefactory
     def core_forward(self, inputs: tuple[Tensor, ...]) -> tuple[Tensor, ...]:
         """
         Forward pass with tuple interface: (input_data, rnn_states) -> (output, new_rnn_states).

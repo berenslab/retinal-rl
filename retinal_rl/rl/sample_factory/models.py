@@ -13,8 +13,6 @@ from sample_factory.utils.typing import ActionSpace, Config, ObsSpace
 from torch import Tensor
 
 from retinal_rl.models.brain import Brain
-from retinal_rl.models.circuits.latent_core import LatentRNN
-from retinal_rl.rl.sample_factory.rnn_decorator import decorate_forward
 from retinal_rl.rl.sample_factory.sf_interfaces import ActorCriticProtocol
 from runner.util import create_brain  # TODO: Remove runner reference!
 
@@ -87,7 +85,9 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         # TODO: this dict entry is bound to the config -> bad!
 
         # Create Sample Factory result dict
-        result = TensorDict(values=responses["critic"][0].squeeze()) # TODO: Just accessing 0 is a bit hacky
+        result = TensorDict(
+            values=responses["critic"][0].squeeze()
+        )  # TODO: Just accessing 0 is a bit hacky
         # if values_only: TODO: Not needed, right?
         #     return result
 

@@ -268,7 +268,9 @@ def build_context(
     # actual forward pass
     responses = actor_critic.brain(brain_inp)
 
-    minibatch_size: int = responses["vision"][0].size(0) #TODO: Also here just accessing 0 is a bit hacky
+    minibatch_size: int = responses["vision"][0].size(
+        0
+    )  # TODO: Also here just accessing 0 is a bit hacky
     num_trajectories = minibatch_size // recurrence
 
     with timing.add_time("tail"):

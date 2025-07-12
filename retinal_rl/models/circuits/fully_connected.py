@@ -59,7 +59,6 @@ class FullyConnected(SimpleNeuralCircuit):
 
         self.fc_head = nn.Sequential(OrderedDict(fc_layers))
 
-
     @beartype
     def forward(self, inputs: tuple[Tensor, ...]) -> tuple[Tensor, ...]:
         (x,) = inputs  # Unpack single input

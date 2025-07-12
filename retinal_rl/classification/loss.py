@@ -46,7 +46,7 @@ class ClassificationLoss(Loss[ClassificationContext]):
         classifier_output_index: int = 0,
     ):
         """Initialize the classification loss.
-        
+
         Args:
             classifier_output_index: Which output index to use from classifier circuit tuple (default: 0)
         """
@@ -72,7 +72,7 @@ class PercentCorrect(LoggingStatistic[ClassificationContext]):
 
     def __init__(self, classifier_output_index: int = 0):
         """Initialize the percent correct statistic.
-        
+
         Args:
             classifier_output_index: Which output index to use from classifier circuit tuple (default: 0)
         """
