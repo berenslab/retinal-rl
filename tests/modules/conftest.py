@@ -46,7 +46,7 @@ def cleanup(config: DictConfig):
 
 @pytest.fixture
 def classification_config() -> Generator[DictConfig, None, None]:
-    _config = config("classification")
+    _config = config("classification-large")
     _config.logging.use_wandb = False  # disable wandb for tests
     yield _config
     cleanup(_config)
@@ -59,6 +59,12 @@ def rl_config() -> Generator[DictConfig, None, None]:
     yield _config
     cleanup(_config)
 
+@pytest.fixture
+def vae_config() -> Generator[DictConfig, None, None]:
+    _config = config("hierarchical-vae-classification")
+    _config.logging.use_wandb = False  # disable wandb for tests
+    yield _config
+    cleanup(_config)
 
 @pytest.fixture
 def data_root() -> str:
