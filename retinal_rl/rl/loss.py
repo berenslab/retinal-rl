@@ -134,7 +134,7 @@ class ExplorationLoss(Loss[RLContext]):
 
 
 class KlLoss(Loss[RLContext]):
-    """TODO: Doc"""
+    """TODO: Check if this can be (partially) merged with / associated to retinal_rl.models.loss.KLDivergenceLoss"""
 
     def __init__(
         self,

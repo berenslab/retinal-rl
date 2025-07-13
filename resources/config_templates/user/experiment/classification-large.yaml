@@ -3,7 +3,7 @@ defaults:
   - _self_
   - override /dataset: cifar10
   - override /brain: ae-classifier
-  - override /optimizer: classification
+  - override /optimizer: ae-classification
 
 # This is the main entry point for control of a retinal-rl experiment. Variables
 # created here will be top-level, and defaults can be set for the various parts
