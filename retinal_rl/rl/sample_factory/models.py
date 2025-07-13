@@ -29,7 +29,7 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         # Attention: make_actor_critic passes [cfg, obs_space, action_space], but ActorCritic takes the reversed order of arguments [obs_space, action_space, cfg]
         super().__init__(obs_space, action_space, cfg)
 
-        self.check_brain_config(DictConfig(cfg.brain))  # TODO: Use this
+        self.check_brain_config(DictConfig(cfg.brain))
 
         self.set_brain(create_brain(DictConfig(cfg.brain)))
         # TODO: Find way to instantiate brain outside
@@ -78,6 +78,9 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         rnn_states: Tensor,
         values_only: bool = False,
         action_mask: Optional[Tensor] = None,
+        value_response_index: int = 0,
+        actor_response_index: int = 0,
+        rnn_state_index: int = 0,
     ) -> TensorDict:
         responses = self.brain(
             {"vision": normalized_obs_dict["obs"], "rnn_state": rnn_states}
@@ -85,19 +88,19 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         # TODO: this dict entry is bound to the config -> bad!
 
         # Create Sample Factory result dict
-        result = TensorDict(
-            values=responses["critic"][0].squeeze()
-        )  # TODO: Just accessing 0 is a bit hacky
+        result = TensorDict(values=responses["critic"][value_response_index].squeeze())
         # if values_only: TODO: Not needed, right?
         #     return result
 
         # `action_logits` is not the best name here, better would be "action distribution parameters"
-        result["action_logits"] = responses["actor"][0]
+        result["action_logits"] = responses["actor"][actor_response_index]
 
         # Create distribution object based on the prediction of the action parameters
         # NOTE: Only Discrete action spaces are supported
         self.last_action_distribution = get_action_distribution(
-            self.action_space, raw_logits=responses["actor"][0], action_mask=action_mask
+            self.action_space,
+            raw_logits=responses["actor"][actor_response_index],
+            action_mask=action_mask,
         )
         #  TODO: Check: would be nice to get rid of self.last_action_distribution & self.action_distribution()
 
@@ -105,7 +108,7 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
 
         # TODO: hack piping the rnn_state through the result dict
         if "rnn_state" in responses:
-            core_out = responses["rnn_state"][0]
+            core_out = responses["rnn_state"][rnn_state_index]
             result["new_rnn_states"] = core_out
             result["latent_states"] = core_out
         else:
