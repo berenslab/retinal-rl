@@ -256,7 +256,8 @@ def plot_histories(histories: dict[str, list[float]]) -> Figure:
     fig, axs = plt.subplots(
         num_rows, 2, figsize=(15, 5 * num_rows), constrained_layout=True
     )
-    axs = axs.flatten() if num_rows > 1 else [axs]
+    # Always flatten axs to handle both single and multiple subplot cases
+    axs = axs.flatten() if isinstance(axs, np.ndarray) else [axs]
 
     for idx, metric in enumerate(metrics):
         ax: Axes = axs[idx]

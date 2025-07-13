@@ -1,0 +1,40 @@
+# Number of training epochs
+num_epochs: 50
+
+# The optimizer to use
+optimizer: # torch.optim Class and parameters
+  _target_: torch.optim.AdamW
+  lr: 0.0003
+  weight_decay: ${weight_decay}
+
+# The objective function
+objective:
+  _target_: retinal_rl.models.objective.Objective
+  losses:
+    - _target_: retinal_rl.classification.loss.ClassificationLoss
+      target_circuits: # Core circuits present in both AE and VAE architectures
+        - retina
+        - thalamus
+        - visual_cortex
+        - prefrontal
+        - classifier
+      weights:
+        - ${class_weight_retina}
+        - ${class_weight_thalamus}
+        - ${class_weight_cortex}
+        - 1
+        - 1
+    - _target_: retinal_rl.models.loss.ReconstructionLoss
+      target_decoder: "v1_decoder"
+      target_circuits: # Core circuits for reconstruction loss
+        # - retina
+        # - thalamus
+        # - visual_cortex
+        - v1_decoder
+      weights:
+        # - ${recon_weight}
+        # - ${recon_weight}
+        # - ${recon_weight}
+        - 1
+  logging_statistics:
+    - _target_: retinal_rl.classification.loss.PercentCorrect

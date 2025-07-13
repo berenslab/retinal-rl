@@ -2,12 +2,11 @@
 
 ### Imports ###
 
-import inspect
 import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, cast
+from typing import Any, cast
 
 import networkx as nx
 import torch
@@ -32,13 +31,13 @@ def save_checkpoint(
     max_checkpoints: int,
     brain: nn.Module,
     optimizer: Optimizer,
-    histories: dict[str, List[float]],
+    histories: dict[str, list[float]],
     completed_epochs: int,
 ) -> None:
     """Save a checkpoint of the model and optimizer state."""
     current_file = data_dir / "current_checkpoint.pt"
     checkpoint_file = checkpoint_dir / f"epoch_{completed_epochs}.pt"
-    checkpoint_dict: Dict[str, Any] = {
+    checkpoint_dict: dict[str, Any] = {
         "completed_epochs": completed_epochs,
         "brain_state_dict": brain.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
@@ -106,10 +105,10 @@ def delete_results(run_dir: Path) -> None:
 
 def create_brain(brain_cfg: DictConfig) -> Brain:
     sensors = OmegaConf.to_container(brain_cfg.sensors, resolve=True)
-    sensors = cast(Dict[str, List[int]], sensors)
+    sensors = cast(dict[str, list[int]], sensors)
 
     connections = OmegaConf.to_container(brain_cfg.connections, resolve=True)
-    connections = cast(List[List[str]], connections)
+    connections = cast(list[list[str]], connections)
 
     connectome, circuits = assemble_neural_circuits(
         brain_cfg.circuits, sensors, connections
@@ -128,29 +127,30 @@ def import_class(import_path):  # TODO: Move to more general utils
 
 
 def _create_dummy_responses(
-    sensor_shapes: Dict[str, Tuple[int, ...]],
-) -> Dict[str, torch.Tensor]:
+    sensor_shapes: dict[str, tuple[int, ...]],
+) -> dict[str, tuple[torch.Tensor, ...]]:
     # Create dummy responses to help calculate the input shape for each neural circuit
+    # Now returns tuples to match our new Brain.forward() interface
     dummy_responses = {
-        sensor: torch.rand((1, *sensor_shapes[sensor])) for sensor in sensor_shapes
+        sensor: (torch.rand((1, *sensor_shapes[sensor])),) for sensor in sensor_shapes
     }
     if "rnn_state" in sensor_shapes:
         shape = (1, *sensor_shapes["rnn_state"])
-        dummy_responses["rnn_state"] = torch.rand(shape)
+        dummy_responses["rnn_state"] = (torch.rand(shape),)
     return dummy_responses
 
 
 def assemble_neural_circuits(
     circuits: DictConfig,
-    sensors: Dict[str, List[int]],
-    connections: List[List[str]],
-) -> Tuple[DiGraph[str], Dict[str, NeuralCircuit]]:
+    sensors: dict[str, list[int]],
+    connections: list[list[str]],
+) -> tuple[DiGraph[str], dict[str, NeuralCircuit]]:
     """
     Assemble a dictionary of neural circuits based on the provided configurations.
     """
-    assembled_circuits: Dict[str, NeuralCircuit] = {}
+    assembled_circuits: dict[str, NeuralCircuit] = {}
     connectome: DiGraph[str] = nx.DiGraph()
-    sensor_shapes: Dict[str, Tuple[int, ...]] = {
+    sensor_shapes: dict[str, tuple[int, ...]] = {
         sensor: tuple(sensors[sensor]) for sensor in sensors
     }
     # get unique names in connections without sensors
@@ -180,14 +180,11 @@ def assemble_neural_circuits(
         circuit_config = OmegaConf.select(circuits, node)
 
         _circuit_class = import_class(circuit_config._target_)
-        n_forward_params = (
-            len(inspect.signature(_circuit_class.forward).parameters) - 1
-        )  # -1 for self
-        inputs = assemble_inputs(node, n_forward_params, connectome, dummy_responses)
+        inputs = assemble_inputs(node, connectome, dummy_responses)
 
-        # The default forward input tensor is always in position 0
+        # Convert input shapes to new tuple format expected by circuits
         # TODO: automatic retrieval of all input shapes?
-        input_shape = list(inputs[0].shape[1:])
+        input_shapes = tuple(tuple(int(dim) for dim in inp.shape[1:]) for inp in inputs)
 
         # Check for an explicit output_shape key
         if "output_shape" in circuit_config:
@@ -196,24 +193,20 @@ def assemble_neural_circuits(
                 output_shape = _resolve_output_shape(output_shape, assembled_circuits)
             circuit = instantiate(
                 circuit_config,
-                input_shape=input_shape,
+                input_shapes=input_shapes,
                 output_shape=output_shape,
                 _convert_="partial",
             )
         else:
             circuit = instantiate(
                 circuit_config,
-                input_shape=input_shape,
+                input_shapes=input_shapes,
                 _convert_="partial",
             )
 
-        # Update dummy responses
-        if node == "rnn":  # TODO: Code duplicate from brain forward function, refactor
-            out, rnn_state = circuit(*inputs)
-            dummy_responses[node] = out
-            dummy_responses["rnn_state"] = rnn_state
-        else:
-            dummy_responses[node] = circuit(*inputs)
+        # Update dummy responses with tuple interface
+        output_tuple = circuit(inputs)
+        dummy_responses[node] = output_tuple
         # TODO: Review: Order of inputs might not be correct, at least there are no guarantees
         # perhaps implicitly defined through the connectome config (also not a nice way though)
 
@@ -223,8 +216,8 @@ def assemble_neural_circuits(
 
 
 def _resolve_output_shape(
-    output_shape: str, circuits: Dict[str, "NeuralCircuit"]
-) -> Tuple[int, ...]:
+    output_shape: str, circuits: dict[str, "NeuralCircuit"]
+) -> tuple[int, ...]:
     """Resolve the output shape from a string reference."""
     parts = output_shape.split(".")
     if len(parts) == 2 and parts[0] in circuits:
@@ -235,7 +228,7 @@ def _resolve_output_shape(
     )
 
 
-def search_conf(config: DictConfig | dict, search_str: str) -> List:
+def search_conf(config: DictConfig | dict, search_str: str) -> list:
     """
     Recursively search for strings in a DictConfig.
 

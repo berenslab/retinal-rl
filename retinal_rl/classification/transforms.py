@@ -9,7 +9,6 @@ It includes various image transformations:
 """
 
 from abc import ABC, abstractmethod
-from typing import Tuple
 
 import numpy as np
 import torch
@@ -21,10 +20,10 @@ from torch import nn
 class ContinuousTransform(nn.Module, ABC):
     """Base class for continuous image transformations."""
 
-    def __init__(self, trans_range: Tuple[float, float]) -> None:
+    def __init__(self, trans_range: tuple[float, float]) -> None:
         """Initialize the ContinuousTransform."""
         super().__init__()
-        self.trans_range: Tuple[float, float] = trans_range
+        self.trans_range: tuple[float, float] = trans_range
 
     @property
     def name(self) -> str:
@@ -70,12 +69,12 @@ class ContinuousTransform(nn.Module, ABC):
 class IlluminationTransform(ContinuousTransform):
     """Apply random illumination (brightness) adjustment to the input image."""
 
-    def __init__(self, brightness_range: Tuple[float, float]) -> None:
+    def __init__(self, brightness_range: tuple[float, float]) -> None:
         """Initialize the IlluminationTransform.
 
         Args:
         ----
-            brightness_range (Tuple[float, float]): Range of brightness adjustment factors. For an identity transform, set the range to (1, 1).
+            brightness_range (tuple[float, float]): Range of brightness adjustment factors. For an identity transform, set the range to (1, 1).
 
         """
         super().__init__(brightness_range)
@@ -99,36 +98,26 @@ class IlluminationTransform(ContinuousTransform):
 class BlurTransform(ContinuousTransform):
     """Apply random Gaussian blur to the input image."""
 
-    def __init__(
-        self, blur_range: Tuple[float, float], kernel_size: list[int] = 3
-    ) -> None:
+    def __init__(self, blur_range: tuple[float, float], kernel_size: int = 3) -> None:
         """Initialize the BlurTransform.
 
         Args:
         ----
-            blur_range (Tuple[float, float]): Range of blur radii. For an identity transform, set the range to (0, 0).
+            blur_range (tuple[float, float]): Range of blur radii. For an identity transform, set the range to (0, 0).
 
         """
         super().__init__(blur_range)
         self.kernel_size = kernel_size
 
     def transform(self, img: torch.Tensor, trans_factor: float) -> torch.Tensor:
-        """Apply random Gaussian blur to the input image.
+        if trans_factor <= 0:
+            return img  # No blur for zero values
 
-        Args:
-        ----
-            img (torch.Tensor): The input image tensor to transform.
-            trans_factor (float): The transformation factor to apply.
-
-        Returns:
-        -------
-            torch.Tensor: The transformed image tensor with applied blur.
-
-        """
+        # Fixed kernel size, variable sigma based on trans_factor
         blur_transform = tv_transforms.GaussianBlur(
-            kernel_size=int(trans_factor), sigma=(0.1, 2.0)
+            kernel_size=self.kernel_size,
+            sigma=trans_factor,  # Variable blur intensity
         )
-        tv_functional.gaussian_blur(img, kernel_size=5)
         return blur_transform(img)
 
 
@@ -139,7 +128,7 @@ class ScaleShiftTransform(ContinuousTransform):
         self,
         vision_width: int,
         vision_height: int,
-        image_rescale_range: Tuple[float, float],
+        image_rescale_range: tuple[float, float],
     ) -> None:
         """Initialize the ScaleShiftTransform.
 
@@ -147,7 +136,7 @@ class ScaleShiftTransform(ContinuousTransform):
         ----
             vision_width (int): The width of the visual field.
             vision_height (int): The height of the visual field.
-            image_rescale_range (Tuple[float, float]): Range of image rescaling factors. For an identity transform, set the range to (1, 1).
+            image_rescale_range (tuple[float, float]): Range of image rescaling factors. For an identity transform, set the range to (1, 1).
 
 
         TODO: readd the following parameters (lost in merge)
@@ -215,12 +204,12 @@ class ScaleShiftTransform(ContinuousTransform):
 class ShotNoiseTransform(ContinuousTransform):
     """Apply random shot noise to the input image."""
 
-    def __init__(self, lambda_range: Tuple[float, float]) -> None:
+    def __init__(self, lambda_range: tuple[float, float]) -> None:
         """Initialize the ShotNoiseTransform.
 
         Args:
         ----
-            lambda_range (Tuple[float, float]): Range of shot noise intensity factors. For an identity transform, set the range to (0, 0) to disable the shot noise.
+            lambda_range (tuple[float, float]): Range of shot noise intensity factors. For an identity transform, set the range to (0, 0) to disable the shot noise.
 
         """
         super().__init__(lambda_range)
@@ -249,12 +238,12 @@ class ShotNoiseTransform(ContinuousTransform):
 class ContrastTransform(ContinuousTransform):
     """Apply random contrast adjustment to the input image."""
 
-    def __init__(self, contrast_range: Tuple[float, float]) -> None:
+    def __init__(self, contrast_range: tuple[float, float]) -> None:
         """Initialize the ContrastTransform.
 
         Args:
         ----
-            contrast_range (Tuple[float, float]): Range of contrast adjustment factors. For an identity transform, set the range to (1, 1).
+            contrast_range (tuple[float, float]): Range of contrast adjustment factors. For an identity transform, set the range to (1, 1).
 
         """
         super().__init__(contrast_range)

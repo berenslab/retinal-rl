@@ -1,10 +1,33 @@
+[project]
+name = "retinal_rl"
+version="0.0.1"
+dependencies = [
+    "gymnasium",
+    "torch",
+    "torchvision", 
+    "matplotlib",
+    "opencv-python",
+    "hydra-core",
+    "networkx",
+    "ruff",
+    "mypy",
+    "pyright",
+    "captum",
+    "sample-factory",
+    "vizdoom",
+    "beartype",
+    ]
+
 [tool.pyright]
-# include = ["retinal_rl*"]
+include = ["retinal_rl"]
 typeCheckingMode = "strict"
+venvPath = "../.."
+venv = ".venv"
 reportMissingTypeStubs = "warning"
 reportUnknownVariableType = "warning"
 reportUnknownMemberType = "warning"
 reportUnknownArgumentType = "warning"
+
 
 [tool.ruff]
 output-format="concise"
@@ -38,10 +61,6 @@ lint.ignore = [
 docstring-code-format = true
 
 [tool.setuptools]
-
-[project]
-name = "retinal_rl"
-version="0.0.1"
 
 [tool.setuptools.packages.find]
 include =["retinal_rl*"]

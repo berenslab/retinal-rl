@@ -5,10 +5,10 @@ It merges YAML files from a specified directory into a scenario specification an
 subsequently compiles the scenario defined through those yaml files.
 
 Usage:
-    python -m exec.compile-scenario [options] [yaml_files...]
+    python -m doom_creator.compile-scenario [options] [yaml_files...]
 
 Example:
-    python -m exec.compile-scenario gathering apples"""
+    python -m doom_creator.compile-scenario gathering apples"""
 
 import argparse
 import os
