@@ -104,11 +104,14 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
         self._maybe_sample_actions(True, result)
 
         # TODO: hack piping the rnn_state through the result dict
-        if "rnn_state" in responses:
-            core_out = responses["rnn_state"][0]
+        
+        rnn_node = [node for node in self.brain.connectome.successors("rnn_state")]
+        assert len(rnn_node) <= 1, "RNN state should have exactly one successor"
+        if len(rnn_node) == 1:
+            core_out = responses[rnn_node[0]][1] # TODO: indexing 1 here is hacky again
             result["new_rnn_states"] = core_out
             result["latent_states"] = core_out
-        else:
+        elif len(rnn_node) == 0:
             result["new_rnn_states"] = torch.full_like(rnn_states, 999999)
             # Sample Factory always needs "new_rnn_states" in the output - #TODO: Trace down the usage
         return result
