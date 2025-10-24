@@ -80,20 +80,20 @@ def parse_args(argv: list[str] | None = None) -> tuple[Path, list[VideoType], bo
     parser_args = parser.parse_args(argv)
     return parser_args.experiment_path, parser_args.type, parser_args.actor_frame_rate
 
-def get_checkpoint_name(cfg) -> str:
-    policy_id = cfg.policy_index
-    name_prefix = dict(latest="checkpoint", best="best")[cfg.load_checkpoint_kind]
-    checkpoints = Learner.get_checkpoints(Learner.checkpoint_dir(cfg, policy_id), f"{name_prefix}_*")
+def get_checkpoint_name(experiment_cfg) -> str:
+    policy_id = experiment_cfg.policy_index
+    name_prefix = dict(latest="checkpoint", best="best")[experiment_cfg.load_checkpoint_kind]
+    checkpoints = Learner.get_checkpoints(Learner.checkpoint_dir(experiment_cfg, policy_id), f"{name_prefix}_*")
     return checkpoints[-1]
 
 def create_video(experiment_path: Path):
     # Load the config file
-    cfg = OmegaConf.load(experiment_path / "config" / "config.yaml")
-    cfg.path.run_dir = experiment_path
+    experiment_cfg = OmegaConf.load(experiment_path / "config" / "config.yaml")
+    experiment_cfg.path.run_dir = experiment_path
 
-    cfg.logging.use_wandb = False
+    experiment_cfg.logging.use_wandb = False
 
-    framework = SFFramework(cfg, "cache")
+    framework = SFFramework(experiment_cfg, "cache")
     custom_enjoy(framework.sf_cfg)
 
 
@@ -106,42 +106,42 @@ def _rescale_zero_one(x, min: Optional[float] = None, max: Optional[float] = Non
 
 
 def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
-    cfg: Config,
+    experiment_cfg: Config,
 ) -> tuple[StatusCode, float]:
     verbose = False
 
-    cfg = load_from_checkpoint(cfg)
+    experiment_cfg = load_from_checkpoint(experiment_cfg)
 
     eval_env_frameskip: int = (
-        cfg.env_frameskip if cfg.eval_env_frameskip is None else cfg.eval_env_frameskip
+        experiment_cfg.env_frameskip if experiment_cfg.eval_env_frameskip is None else experiment_cfg.eval_env_frameskip
     )
     assert (
-        cfg.env_frameskip % eval_env_frameskip == 0
-    ), f"{cfg.env_frameskip=} must be divisible by {eval_env_frameskip=}"
-    render_action_repeat: int = cfg.env_frameskip // eval_env_frameskip
-    cfg.env_frameskip = cfg.eval_env_frameskip = eval_env_frameskip
+        experiment_cfg.env_frameskip % eval_env_frameskip == 0
+    ), f"{experiment_cfg.env_frameskip=} must be divisible by {eval_env_frameskip=}"
+    render_action_repeat: int = experiment_cfg.env_frameskip // eval_env_frameskip
+    experiment_cfg.env_frameskip = experiment_cfg.eval_env_frameskip = eval_env_frameskip
     log.debug(
-        f"Using frameskip {cfg.env_frameskip} and {render_action_repeat=} for evaluation"
+        f"Using frameskip {experiment_cfg.env_frameskip} and {render_action_repeat=} for evaluation"
     )
 
-    cfg.num_envs = 1
+    experiment_cfg.num_envs = 1
 
     render_mode = "rgb_array"
 
-    env = make_env(cfg, render_mode=render_mode)
-    env_info = extract_env_info(env, cfg)
+    env = make_env(experiment_cfg, render_mode=render_mode)
+    env_info = extract_env_info(env, experiment_cfg)
 
     if hasattr(env.unwrapped, "reset_on_init"):
         # reset call ruins the demo recording for VizDoom
         env.unwrapped.reset_on_init = False
 
-    actor_critic = create_actor_critic(cfg, env.observation_space, env.action_space)
+    actor_critic = create_actor_critic(experiment_cfg, env.observation_space, env.action_space)
     actor_critic.eval()
 
-    device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
+    device = torch.device("cpu" if experiment_cfg.device == "cpu" else "cuda")
     actor_critic.model_to_device(device)
 
-    load_state_dict(cfg, actor_critic, device)
+    load_state_dict(experiment_cfg, actor_critic, device)
 
     episode_rewards = [deque([], maxlen=100) for _ in range(env.num_agents)]
     true_objectives = [deque([], maxlen=100) for _ in range(env.num_agents)]
@@ -150,14 +150,14 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
     last_render_start = time.time()
 
     def max_frames_reached(frames: int) -> bool:
-        return cfg.max_num_frames is not None and frames > cfg.max_num_frames
+        return experiment_cfg.max_num_frames is not None and frames > experiment_cfg.max_num_frames
 
     reward_list = []
 
     obs, infos = env.reset()
     action_mask = obs.pop("action_mask").to(device) if "action_mask" in obs else None
     rnn_states = torch.zeros(
-        [env.num_agents, get_rnn_size(cfg)], dtype=torch.float32, device=device
+        [env.num_agents, get_rnn_size(experiment_cfg)], dtype=torch.float32, device=device
     )
     episode_reward = None
     finished_episode = [False for _ in range(env.num_agents)]
@@ -176,7 +176,7 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
             # sample actions from the distribution by default
             actions = policy_outputs["actions"]
 
-            if cfg.eval_deterministic:
+            if experiment_cfg.eval_deterministic:
                 action_distribution = actor_critic.action_distribution()
                 actions = argmax_actions(action_distribution)
 
@@ -191,8 +191,8 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
                 obs, rew, terminated, truncated, infos = env.step(actions)
 
                 need_video_frame = (
-                    len(video_frames) < cfg.video_frames
-                    or cfg.video_frames < 0
+                    len(video_frames) < experiment_cfg.video_frames
+                    or experiment_cfg.video_frames < 0
                     and num_episodes == 0
                 )
                 if need_video_frame:
@@ -239,11 +239,11 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
                                 true_objectives[agent_i][-1],
                             )
                         rnn_states[agent_i] = torch.zeros(
-                            [get_rnn_size(cfg)], dtype=torch.float32, device=device
+                            [get_rnn_size(experiment_cfg)], dtype=torch.float32, device=device
                         )
                         episode_reward[agent_i] = 0
 
-                        if cfg.use_record_episode_statistics:
+                        if experiment_cfg.use_record_episode_statistics:
                             # we want the scores from the full episode not a single agent death (due to EpisodicLifeEnv wrapper)
                             if "episode" in infos[agent_i]:
                                 num_episodes += 1
@@ -255,7 +255,7 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
                 # if episode terminated synchronously for all agents, pause a bit before starting a new one
                 if all(dones):
                     render_frame(
-                        cfg, env, video_frames, num_episodes, last_render_start
+                        experiment_cfg, env, video_frames, num_episodes, last_render_start
                     )
                     time.sleep(0.05)
 
@@ -290,12 +290,12 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
                         ),
                     )
 
-            if num_episodes >= cfg.max_num_episodes:
+            if num_episodes >= experiment_cfg.max_num_episodes:
                 break
 
     env.close()
 
-    fps = cfg.fps if cfg.fps > 0 else 30
+    fps = experiment_cfg.fps if experiment_cfg.fps > 0 else 30
 
     # assert frames are in the right range (0-255) to produce the video
     shape = video_frames[0].shape
@@ -307,20 +307,20 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
     )
     vid_path = experiment_path / "data" / "video"
     vid_path.mkdir(parents=True, exist_ok=True)
-    cfg.video_name = Path(get_checkpoint_name(cfg)).name[:-4]+".mp4"
-    generate_replay_video(str(vid_path), video_frames, fps, cfg)
+    experiment_cfg.video_name = Path(get_checkpoint_name(experiment_cfg)).name[:-4]+".mp4"
+    generate_replay_video(str(vid_path), video_frames, fps, experiment_cfg)
 
-    if cfg.push_to_hub:
+    if experiment_cfg.push_to_hub:
         generate_model_card(
-            experiment_dir(cfg=cfg),
-            cfg.algo,
-            cfg.env,
-            cfg.hf_repository,
+            experiment_dir(cfg=experiment_cfg),
+            experiment_cfg.algo,
+            experiment_cfg.env,
+            experiment_cfg.hf_repository,
             reward_list,
-            cfg.enjoy_script,
-            cfg.train_script,
+            experiment_cfg.enjoy_script,
+            experiment_cfg.train_script,
         )
-        push_to_hf(experiment_dir(cfg=cfg), cfg.hf_repository)
+        push_to_hf(experiment_dir(cfg=experiment_cfg), experiment_cfg.hf_repository)
 
     return ExperimentStatus.SUCCESS, sum(
         [sum(episode_rewards[i]) for i in range(env.num_agents)]
