@@ -1,8 +1,10 @@
+import argparse
+from enum import Enum
 import sys
 import time
 from collections import deque
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import torch
@@ -29,11 +31,60 @@ from sample_factory.model.actor_critic import create_actor_critic
 from sample_factory.model.model_utils import get_rnn_size
 from sample_factory.utils.typing import Config, StatusCode
 from sample_factory.utils.utils import experiment_dir, log
+from sample_factory.algo.learning.learner import Learner
 
 from runner.frameworks.rl.sf_framework import SFFramework
 
 OmegaConf.register_new_resolver("eval", eval)
 
+class VideoType(str, Enum):
+    RAW = "RAW"
+    AUGMENTED = "AUGMENTED"
+    DECODED = "DECODED"
+    VALUE_MASK = "VALUE_MASK"
+
+def video_type(value: str) -> VideoType:
+    try:
+        return VideoType(value)
+    except ValueError:
+        allowed = ", ".join([e.value for e in VideoType])
+        raise argparse.ArgumentTypeError(f"invalid choice: {value!r} (choose from: {allowed})")
+
+def parse_args(argv: list[str] | None = None) -> tuple[Path, list[VideoType], bool]:
+    parser = argparse.ArgumentParser(
+        description="Select zero or more VideoTypes and a boolean flag."
+    )
+
+    parser.add_argument(
+        "-e", "--experiment_path",
+        type=Path,
+        help="Path to the experiment directory."
+    )
+
+    parser.add_argument(
+        "-t", "--type",
+        metavar="VIDTYPE",
+        type=video_type,
+        nargs="+",
+        default=["RAW"],
+        help="Zero or more video types. Allowed: " + ", ".join([e.value for e in VideoType])
+    )
+
+    # Single boolean flag: present -> True, absent -> False
+    parser.add_argument(
+        "--actor_frame_rate",
+        action="store_true",
+        help="Produce videos at the frame rate the actor operates at (will display only the frames the actor actually sees, typically 1/4 of the original frame rate)."
+    )
+
+    parser_args = parser.parse_args(argv)
+    return parser_args.experiment_path, parser_args.type, parser_args.actor_frame_rate
+
+def get_checkpoint_name(cfg) -> str:
+    policy_id = cfg.policy_index
+    name_prefix = dict(latest="checkpoint", best="best")[cfg.load_checkpoint_kind]
+    checkpoints = Learner.get_checkpoints(Learner.checkpoint_dir(cfg, policy_id), f"{name_prefix}_*")
+    return checkpoints[-1]
 
 def create_video(experiment_path: Path):
     # Load the config file
@@ -41,8 +92,6 @@ def create_video(experiment_path: Path):
     cfg.path.run_dir = experiment_path
 
     cfg.logging.use_wandb = False
-    cfg.samplefactory.save_video = True
-    cfg.samplefactory.no_render = True
 
     framework = SFFramework(cfg, "cache")
     custom_enjoy(framework.sf_cfg)
@@ -58,7 +107,7 @@ def _rescale_zero_one(x, min: Optional[float] = None, max: Optional[float] = Non
 
 def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
     cfg: Config,
-) -> Tuple[StatusCode, float]:
+) -> tuple[StatusCode, float]:
     verbose = False
 
     cfg = load_from_checkpoint(cfg)
@@ -77,11 +126,7 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
 
     cfg.num_envs = 1
 
-    render_mode = "human"
-    if cfg.save_video:
-        render_mode = "rgb_array"
-    elif cfg.no_render:
-        render_mode = None
+    render_mode = "rgb_array"
 
     env = make_env(cfg, render_mode=render_mode)
     env_info = extract_env_info(env, cfg)
@@ -124,8 +169,6 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
         while not max_frames_reached(num_frames):
             normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
 
-            if not cfg.no_render:
-                visualize_policy_inputs(normalized_obs)
             policy_outputs = actor_critic(
                 normalized_obs, rnn_states, action_mask=action_mask
             )
@@ -252,14 +295,20 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
 
     env.close()
 
-    if cfg.save_video:
-        fps = cfg.fps if cfg.fps > 0 else 30
+    fps = cfg.fps if cfg.fps > 0 else 30
 
-        # assert frames are in the right range (0-255) to produce the video
-        video_frames = (_rescale_zero_one(np.array(video_frames)) * 255).astype(
-            np.uint8
-        )
-        generate_replay_video(experiment_dir(cfg=cfg), video_frames, fps, cfg)
+    # assert frames are in the right range (0-255) to produce the video
+    shape = video_frames[0].shape
+    for i, frame in enumerate(video_frames):
+        if frame.shape != shape:
+            video_frames[i] = np.zeros(shape, dtype=np.uint8)
+    video_frames = (_rescale_zero_one(np.stack(video_frames)) * 255).astype(
+        np.uint8
+    )
+    vid_path = experiment_path / "data" / "video"
+    vid_path.mkdir(parents=True, exist_ok=True)
+    cfg.video_name = Path(get_checkpoint_name(cfg)).name[:-4]+".mp4"
+    generate_replay_video(str(vid_path), video_frames, fps, cfg)
 
     if cfg.push_to_hub:
         generate_model_card(
@@ -278,7 +327,6 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
     ) / max(1, sum([len(episode_rewards[i]) for i in range(env.num_agents)]))
 
 
-experiment_path = Path(sys.argv[1])
-
 if __name__ == "__main__":
+    experiment_path, video_types, actor_frame_rate = parse_args()
     create_video(experiment_path)
