@@ -86,7 +86,7 @@ def get_checkpoint_name(experiment_cfg) -> str:
     checkpoints = Learner.get_checkpoints(Learner.checkpoint_dir(experiment_cfg, policy_id), f"{name_prefix}_*")
     return checkpoints[-1]
 
-def create_video(experiment_path: Path):
+def create_video(experiment_path: Path, video_types: list[VideoType], actor_frame_rate: bool):
     # Load the config file
     experiment_cfg = OmegaConf.load(experiment_path / "config" / "config.yaml")
     experiment_cfg.path.run_dir = experiment_path
@@ -94,7 +94,7 @@ def create_video(experiment_path: Path):
     experiment_cfg.logging.use_wandb = False
 
     framework = SFFramework(experiment_cfg, "cache")
-    custom_enjoy(framework.sf_cfg)
+    custom_enjoy(framework.sf_cfg, video_types, actor_frame_rate)
 
 
 def _rescale_zero_one(x, min: Optional[float] = None, max: Optional[float] = None):
@@ -107,6 +107,8 @@ def _rescale_zero_one(x, min: Optional[float] = None, max: Optional[float] = Non
 
 def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
     experiment_cfg: Config,
+    video_types: list[VideoType],
+    actor_frame_rate: bool,
 ) -> tuple[StatusCode, float]:
     verbose = False
 
@@ -187,7 +189,7 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
 
             rnn_states = policy_outputs["new_rnn_states"]
 
-            for _ in range(render_action_repeat):
+            for _i_repeat in range(render_action_repeat):
                 obs, rew, terminated, truncated, infos = env.step(actions)
 
                 need_video_frame = (
@@ -197,8 +199,9 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
                 )
                 if need_video_frame:
                     # frame = env.render()
-                    normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
-                    frame = normalized_obs["obs"]
+                    if not actor_frame_rate or _i_repeat == 0:
+                        normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
+                        frame = normalized_obs["obs"]
                     video_frames.append(frame[0].movedim(0, -1).cpu().numpy())
 
                 action_mask = (
@@ -307,7 +310,8 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
     )
     vid_path = experiment_path / "data" / "video"
     vid_path.mkdir(parents=True, exist_ok=True)
-    experiment_cfg.video_name = Path(get_checkpoint_name(experiment_cfg)).name[:-4]+".mp4"
+    actor_frame_rate_str = "_actor_frame_rate" if actor_frame_rate else ""
+    experiment_cfg.video_name = Path(get_checkpoint_name(experiment_cfg)).name[:-4] + actor_frame_rate_str + ".mp4"
     generate_replay_video(str(vid_path), video_frames, fps, experiment_cfg)
 
     if experiment_cfg.push_to_hub:
@@ -329,4 +333,4 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
 
 if __name__ == "__main__":
     experiment_path, video_types, actor_frame_rate = parse_args()
-    create_video(experiment_path)
+    create_video(experiment_path, video_types, actor_frame_rate)
