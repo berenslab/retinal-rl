@@ -116,7 +116,7 @@ def get_frames(actor_critic: SampleFactoryBrain, obs, rnn_states) -> dict[VideoT
     cur_frames: dict[VideoType, torch.Tensor] = {
         VideoType.RAW: obs["obs"],
         VideoType.AUGMENTED: normalized_obs["obs"],
-        VideoType.DECODED: responses.get("v1_decoder", None), # TODO: automatically detect decoder name
+        VideoType.DECODED: responses["v1_decoder"][0] if "v1_decoder" in responses else None,  # TODO: automatically detect decoder name
         VideoType.VALUE_MASK: None,
     }
     return cur_frames
