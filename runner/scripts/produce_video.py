@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
+from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
 import torch
 from omegaconf import OmegaConf
 from sample_factory.algo.sampling.batched_sampling import preprocess_actions
@@ -105,6 +106,21 @@ def _rescale_zero_one(x, min: Optional[float] = None, max: Optional[float] = Non
     return (x - min) / (max - min)
 
 
+def get_frames(actor_critic: SampleFactoryBrain, obs, rnn_states) -> dict[VideoType, torch.Tensor]:
+    normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
+
+    responses = actor_critic.brain(
+        {"vision": normalized_obs["obs"], "rnn_state": rnn_states}
+    )
+
+    cur_frames: dict[VideoType, torch.Tensor] = {
+        VideoType.RAW: obs["obs"],
+        VideoType.AUGMENTED: normalized_obs["obs"],
+        VideoType.DECODED: responses.get("v1_decoder", None), # TODO: automatically detect decoder name
+        VideoType.VALUE_MASK: None,
+    }
+    return cur_frames
+
 def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
     experiment_cfg: Config,
     video_types: list[VideoType],
@@ -171,6 +187,7 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
         while not max_frames_reached(num_frames):
             normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
 
+            cur_frames: dict[VideoType, torch.Tensor] = get_frames(actor_critic, obs, rnn_states)
             policy_outputs = actor_critic(
                 normalized_obs, rnn_states, action_mask=action_mask
             )
@@ -199,14 +216,8 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
                 )
                 if need_video_frame:
                     # frame = env.render()
-                    if not actor_frame_rate or _i_repeat == 0:
-                        normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
-                        cur_frames: dict[VideoType, torch.Tensor] = {
-                            VideoType.RAW: obs["obs"],
-                            VideoType.AUGMENTED: normalized_obs["obs"],
-                            VideoType.DECODED: None,
-                            VideoType.VALUE_MASK: None,
-                        }
+                    if not actor_frame_rate and _i_repeat > 0:
+                        cur_frames = get_frames(actor_critic, obs, rnn_states)
 
                     for _vid_type in video_types:
                         video_frames[_vid_type].append(cur_frames[_vid_type][0].movedim(0, -1).cpu().numpy())
