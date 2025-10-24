@@ -25,6 +25,8 @@ class CoreMode(Enum):
 
 
 class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
+    MISSING_RNN_STATE_VALUE = 999999  # Placeholder for missing RNN states
+
     def __init__(self, cfg: Config, obs_space: ObsSpace, action_space: ActionSpace):
         # Attention: make_actor_critic passes [cfg, obs_space, action_space], but ActorCritic takes the reversed order of arguments [obs_space, action_space, cfg]
         super().__init__(obs_space, action_space, cfg)
@@ -106,14 +108,21 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
 
         self._maybe_sample_actions(True, result)
 
-        # TODO: hack piping the rnn_state through the result dict
-        if "rnn_state" in responses:
-            core_out = responses["rnn_state"][rnn_state_index]
+        # pipe rnn states through result dict for sample factory
+        # TODO: Support for multiple RNN nodes?
+        rnn_node = [node for node in self.brain.connectome.successors("rnn_state")]
+        if len(rnn_node) == 1:
+            core_out = responses[rnn_node[0]][rnn_state_index]
             result["new_rnn_states"] = core_out
             result["latent_states"] = core_out
-        else:
-            result["new_rnn_states"] = torch.full_like(rnn_states, 999999)
+        elif len(rnn_node) == 0:
+            # Use a large constant as a placeholder for missing RNN states.
+            result["new_rnn_states"] = torch.full_like(
+                rnn_states, self.MISSING_RNN_STATE_VALUE
+            )
             # Sample Factory always needs "new_rnn_states" in the output - #TODO: Trace down the usage
+        else:
+            raise ValueError(f"RNN state should have exactly one successor if present, but found {len(rnn_node)}.")
         return result
 
     def get_brain(self) -> Brain:
