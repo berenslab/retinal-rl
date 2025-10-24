@@ -164,7 +164,7 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
     episode_reward = None
     finished_episode = [False for _ in range(env.num_agents)]
 
-    video_frames = []
+    video_frames = {vid_type: [] for vid_type in video_types}
     num_episodes = 0
 
     with torch.no_grad():
@@ -193,7 +193,7 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
                 obs, rew, terminated, truncated, infos = env.step(actions)
 
                 need_video_frame = (
-                    len(video_frames) < experiment_cfg.video_frames
+                    len(next(iter(video_frames.items()))) < experiment_cfg.video_frames
                     or experiment_cfg.video_frames < 0
                     and num_episodes == 0
                 )
@@ -201,8 +201,15 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
                     # frame = env.render()
                     if not actor_frame_rate or _i_repeat == 0:
                         normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
-                        frame = normalized_obs["obs"]
-                    video_frames.append(frame[0].movedim(0, -1).cpu().numpy())
+                        cur_frames: dict[VideoType, torch.Tensor] = {
+                            VideoType.RAW: obs["obs"],
+                            VideoType.AUGMENTED: normalized_obs["obs"],
+                            VideoType.DECODED: None,
+                            VideoType.VALUE_MASK: None,
+                        }
+
+                    for _vid_type in video_types:
+                        video_frames[_vid_type].append(cur_frames[_vid_type][0].movedim(0, -1).cpu().numpy())
 
                 action_mask = (
                     obs.pop("action_mask").to(device) if "action_mask" in obs else None
@@ -258,7 +265,7 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
                 # if episode terminated synchronously for all agents, pause a bit before starting a new one
                 if all(dones):
                     render_frame(
-                        experiment_cfg, env, video_frames, num_episodes, last_render_start
+                        experiment_cfg, env, video_frames[VideoType.RAW], num_episodes, last_render_start
                     )
                     time.sleep(0.05)
 
@@ -300,31 +307,25 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
 
     fps = experiment_cfg.fps if experiment_cfg.fps > 0 else 30
 
-    # assert frames are in the right range (0-255) to produce the video
-    shape = video_frames[0].shape
-    for i, frame in enumerate(video_frames):
-        if frame.shape != shape:
-            video_frames[i] = np.zeros(shape, dtype=np.uint8)
-    video_frames = (_rescale_zero_one(np.stack(video_frames)) * 255).astype(
-        np.uint8
-    )
-    vid_path = experiment_path / "data" / "video"
-    vid_path.mkdir(parents=True, exist_ok=True)
-    actor_frame_rate_str = "_actor_frame_rate" if actor_frame_rate else ""
-    experiment_cfg.video_name = Path(get_checkpoint_name(experiment_cfg)).name[:-4] + actor_frame_rate_str + ".mp4"
-    generate_replay_video(str(vid_path), video_frames, fps, experiment_cfg)
-
-    if experiment_cfg.push_to_hub:
-        generate_model_card(
-            experiment_dir(cfg=experiment_cfg),
-            experiment_cfg.algo,
-            experiment_cfg.env,
-            experiment_cfg.hf_repository,
-            reward_list,
-            experiment_cfg.enjoy_script,
-            experiment_cfg.train_script,
+    for _vid_type in video_types:
+        # assert frames are in the right range (0-255) to produce the video
+        shape = video_frames[_vid_type][0].shape
+        for i, frame in enumerate(video_frames[_vid_type]):
+            if frame.shape != shape:
+                video_frames[_vid_type][i] = np.zeros(shape, dtype=np.uint8)
+        video_frames[_vid_type] = (_rescale_zero_one(np.stack(video_frames[_vid_type])) * 255).astype(
+            np.uint8
         )
-        push_to_hf(experiment_dir(cfg=experiment_cfg), experiment_cfg.hf_repository)
+        vid_path = experiment_path / "data" / "video"
+        vid_path.mkdir(parents=True, exist_ok=True)
+
+        ckpt_str = Path(get_checkpoint_name(experiment_cfg)).name[:-4]
+        vid_type_str = f"_{_vid_type.value}"
+        frame_rate_str = "_actor_frame_rate" if actor_frame_rate else ""
+        experiment_cfg.video_name = ckpt_str + vid_type_str + frame_rate_str + ".mp4"
+        generate_replay_video(
+            str(vid_path), video_frames[_vid_type], fps, experiment_cfg
+        )
 
     return ExperimentStatus.SUCCESS, sum(
         [sum(episode_rewards[i]) for i in range(env.num_agents)]
