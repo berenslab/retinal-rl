@@ -22,7 +22,7 @@ class NeuralCircuit(nn.Module, ABC):
         ------------------------------------------
         - Shape specifications: list[list[int]] for readability and Hydra compatibility
         - Runtime tensors: tuple[Tensor, ...] for Python conventions and external tool compatibility
-        
+
         This gives us:
         - Clean, readable type hints: list[list[int]] vs tuple[tuple[int, ...], ...]
         - Natural Hydra integration without custom resolvers

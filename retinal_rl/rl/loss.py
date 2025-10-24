@@ -134,7 +134,7 @@ class ExplorationLoss(Loss[RLContext]):
 
 
 class KlLoss(Loss[RLContext]):
-    """TODO: Doc"""
+    """TODO: Check if this can be (partially) merged with / associated to retinal_rl.models.loss.KLDivergenceLoss"""
 
     def __init__(
         self,
@@ -170,7 +170,7 @@ class KlLoss(Loss[RLContext]):
         return kl_old, kl_loss
 
     def compute_value(self, context):
-        # TODO: this theoretically returns kl_loss, kl_loss_old
+        # TODO: this theoretically returns kl_loss_old, kl_loss
         return self._kl_loss(
             self.action_space,
             context.action_distribution_parameter,
@@ -243,6 +243,9 @@ def build_context(
     use_rnn: bool,
     vtrace_params: VTraceParams,
     device: torch.device,
+    vision_response_index: int = 0,
+    actor_response_index: int = 0,
+    value_response_index: int = 0,
 ) -> RLContext:
     # FIXME: IMPROVISED FOR ENABLING THE MULTI-OBJECTIVE
     # build brain input
@@ -268,15 +271,16 @@ def build_context(
     # actual forward pass
     responses = actor_critic.brain(brain_inp)
 
-    minibatch_size: int = responses["vision"][0].size(0) #TODO: Also here just accessing 0 is a bit hacky
+    minibatch_size: int = responses["vision"][vision_response_index].size(0)
     num_trajectories = minibatch_size // recurrence
 
     with timing.add_time("tail"):
-        values = responses["critic"][0].squeeze()
+        values = responses["critic"][value_response_index].squeeze()
 
         # Get Action Distribution from actor output
         action_distribution = get_action_distribution(
-            actor_critic.action_space, raw_logits=responses["actor"][0]
+            actor_critic.action_space,
+            raw_logits=responses["actor"][actor_response_index],
         )
         log_prob_actions = action_distribution.log_prob(mb.actions)
         ratio = torch.exp(log_prob_actions - mb.log_prob_actions)  # pi / pi_old
