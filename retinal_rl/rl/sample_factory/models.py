@@ -110,7 +110,9 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
 
         # pipe rnn states through result dict for sample factory
         # TODO: Support for multiple RNN nodes?
-        rnn_node = [node for node in self.brain.connectome.successors("rnn_state")]
+        rnn_node = []
+        if "rnn_state" in self.brain.connectome.nodes:
+            rnn_node = [node for node in self.brain.connectome.successors("rnn_state")]
         if len(rnn_node) == 1:
             core_out = responses[rnn_node[0]][rnn_state_index]
             result["new_rnn_states"] = core_out
