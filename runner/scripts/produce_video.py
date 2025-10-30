@@ -286,9 +286,9 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
 
                 # if episode terminated synchronously for all agents, pause a bit before starting a new one
                 if all(dones):
-                    render_frame(
-                        experiment_cfg, env, video_frames[VideoType.RAW], num_episodes, last_render_start
-                    )
+                    # render_frame(
+                    #     experiment_cfg, env, video_frames[VideoType.RAW], num_episodes, last_render_start
+                    # ) # I don't think this is too important - if, find a solution with VideoType.RAW
                     time.sleep(0.05)
 
                 if all(finished_episode):
