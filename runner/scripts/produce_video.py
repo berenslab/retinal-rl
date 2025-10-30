@@ -35,6 +35,7 @@ from sample_factory.utils.typing import Config, StatusCode
 from sample_factory.utils.utils import experiment_dir, log
 from sample_factory.algo.learning.learner import Learner
 
+from retinal_rl.util import rescale_zero_one
 from runner.frameworks.rl.sf_framework import SFFramework
 
 OmegaConf.register_new_resolver("eval", eval)
@@ -97,14 +98,6 @@ def create_video(experiment_path: Path, video_types: list[VideoType], actor_fram
 
     framework = SFFramework(experiment_cfg, "cache")
     custom_enjoy(framework.sf_cfg, video_types, actor_frame_rate)
-
-
-def _rescale_zero_one(x, min: Optional[float] = None, max: Optional[float] = None):
-    if min is None:
-        min = np.min(x)
-    if max is None:
-        max = np.max(x)
-    return (x - min) / (max - min)
 
 
 def get_frames(actor_critic: SampleFactoryBrain, obs, rnn_states) -> dict[VideoType, torch.Tensor]:
@@ -342,7 +335,7 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
         for i, frame in enumerate(video_frames[_vid_type]):
             if frame.shape != shape:
                 video_frames[_vid_type][i] = np.zeros(shape, dtype=np.uint8)
-        video_frames[_vid_type] = (_rescale_zero_one(np.stack(video_frames[_vid_type])) * 255).astype(
+        video_frames[_vid_type] = (rescale_zero_one(np.stack(video_frames[_vid_type])) * 255).astype(
             np.uint8
         )
         vid_path = experiment_path / "data" / "video"
