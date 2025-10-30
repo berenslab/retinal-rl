@@ -3,11 +3,12 @@ import logging
 import re
 from enum import Enum
 from math import ceil, floor
-from typing import Any, List, Tuple, TypeVar, Union, cast
+from typing import Any, List, Optional, Tuple, TypeVar, Union, cast
 
 import numpy as np
 from numpy.typing import NDArray
 from torch import nn
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -183,3 +184,11 @@ def _double_up(x: Union[int, Tuple[int, ...]]):
     if isinstance(x, int):
         return (x, x)
     return x
+
+ArrayLike = TypeVar("ArrayLike", np.ndarray, torch.Tensor)
+def rescale_zero_one(x: ArrayLike, min: Optional[float] = None, max: Optional[float] = None) -> ArrayLike:
+    if min is None:
+        min = np.min(x) if isinstance(x, np.ndarray) else torch.min(x).item()
+    if max is None:
+        max = np.max(x) if isinstance(x, np.ndarray) else torch.max(x).item()
+    return (x - min) / (max - min + 1e-8)

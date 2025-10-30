@@ -2,6 +2,7 @@ import torch
 from captum.attr import InputXGradient
 
 from retinal_rl.models.brain import Brain
+from retinal_rl.util import rescale_zero_one
 
 
 def l1_attribution(
@@ -43,11 +44,6 @@ def captum_attribution(
         input_grads[key] = value_grad.detach().cpu()
     return input_grads
 
-def _rescale_zero_one(x: torch.Tensor) -> torch.Tensor:
-    _min = torch.min(x)
-    _max = torch.max(x)
-    return (x - _min) / (_max - _min)
-
 def analyze(
     brain: Brain,
     stimuli: dict[str, torch.Tensor],
@@ -85,7 +81,7 @@ def analyze(
     if rescale_per_frame:
         for key, grad in input_grads.items():
             for frame in range(grad.shape[0]):
-                input_grads[key][frame] = _rescale_zero_one(input_grads[key][frame])
+                input_grads[key][frame] = rescale_zero_one(input_grads[key][frame])
 
     if not is_training:
         brain.requires_grad_(True)
