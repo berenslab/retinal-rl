@@ -8,6 +8,7 @@ from typing import Optional
 
 import numpy as np
 from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
+from retinal_rl.analysis.attribution import analyze as attribution_analyze
 import torch
 from omegaconf import OmegaConf
 from sample_factory.algo.sampling.batched_sampling import preprocess_actions
@@ -33,7 +34,6 @@ from sample_factory.model.model_utils import get_rnn_size
 from sample_factory.utils.typing import Config, StatusCode
 from sample_factory.utils.utils import experiment_dir, log
 from sample_factory.algo.learning.learner import Learner
-from captum.attr import InputXGradient
 
 from runner.frameworks.rl.sf_framework import SFFramework
 
@@ -110,10 +110,6 @@ def _rescale_zero_one(x, min: Optional[float] = None, max: Optional[float] = Non
 def get_frames(actor_critic: SampleFactoryBrain, obs, rnn_states) -> dict[VideoType, torch.Tensor]:
     normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
 
-    # torch.set_grad_enabled(True)
-    # actor_critic.train()
-    # actor_critic.requires_grad_(False)
-
     responses = actor_critic.brain(
         {"vision": normalized_obs["obs"], "rnn_state": rnn_states}
     )
@@ -129,30 +125,19 @@ def get_frames(actor_critic: SampleFactoryBrain, obs, rnn_states) -> dict[VideoT
     cur_frames: dict[VideoType, torch.Tensor] = {
         VideoType.RAW: obs["obs"].detach(),
         VideoType.AUGMENTED: normalized_obs["obs"].detach(),
-        VideoType.DECODED: responses[decoder_key][0].detach() if decoder_key is not None else None,
-        VideoType.VALUE_MASK: value_mask(actor_critic.brain, normalized_obs["obs"], rnn_states),
+        VideoType.DECODED: responses[decoder_key][0].detach()
+        if decoder_key is not None
+        else None,
+        VideoType.VALUE_MASK: attribution_analyze(
+            actor_critic.brain,
+            {"vision": normalized_obs["obs"], "rnn_state": rnn_states},
+            target_circuit="critic",
+            method="l1",
+            sum_channels=True,
+            rescale_per_frame=False,
+        )["vision"],
     }
-    # actor_critic.eval()
     return cur_frames
-
-def value_mask(brain: torch.nn.Module, input_img: torch.Tensor, rnn_states:torch.Tensor) -> torch.Tensor:
-    is_training = brain.training
-    if not is_training:
-        brain.train()
-        brain.requires_grad_(False)
-    # use InputXGradient to get gradients
-    _forward = lambda x : brain({"vision": x, "rnn_state": rnn_states})['critic'][0]
-    value_grad_calculator = InputXGradient(_forward)
-    value_grads = value_grad_calculator.attribute(
-        input_img
-    )
-    # sum channels to get a single-channel mask, but keep number of channels for video saving
-    value_grads = torch.sum(torch.abs(value_grads), dim=1, keepdim=True).cpu().numpy()
-    if not is_training:
-        brain.requires_grad_(True)
-        brain.eval()
-    return torch.tensor(value_grads)
-
 
 def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
     experiment_cfg: Config,
