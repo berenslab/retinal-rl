@@ -27,10 +27,8 @@ def reshape_images(
 ):
     n, _, w, h = arr.shape
     whitespace_pix = np.round(whitespace * max(w, h)).astype(int)
-    if n_rows is None and n_cols is None:
-        n_rows = 1
     if n_rows is None:
-        n_rows = (n + n_cols - 1) // n_cols
+        n_rows = (n + n_cols - 1) // n_cols if n_cols is not None else 1
     if n_cols is None:
         n_cols = (n + n_rows - 1) // n_rows
 
