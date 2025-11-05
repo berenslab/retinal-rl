@@ -33,10 +33,10 @@ jobs:
   ensure_container: # main cache should provide the container if def file not changed
     name: Rebuild container
     needs: check_def_changed
-    if: needs.check_def_changed.outputs.changed == 'true'
+    if: always()
     uses: ./.github/workflows/update_cache.yml
     with:
-      build: true
+      build: ${{ needs.check_def_changed.outputs.changed == 'true' }}
 
   checks:
     name: Code Checks
