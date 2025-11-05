@@ -108,4 +108,4 @@ circuits:
 
   actor:
     _target_: retinal_rl.models.circuits.actor_critic.Actor
-    num_actions: [6]
+    num_actions: 6
