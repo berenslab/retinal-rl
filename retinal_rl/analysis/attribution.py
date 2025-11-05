@@ -29,10 +29,7 @@ def captum_attribution(
     input_grads: dict[str, torch.Tensor] = {}
 
     stimuli_keys = list(stimuli.keys()) # create list to preserve order
-    print(stimuli_keys)
     def _forward(*args: tuple[torch.Tensor]) -> torch.Tensor:
-        print(len(args))
-        print([type(a) for a in args])
         assert len(args) == len(stimuli_keys)
         return brain({k: v for k, v in zip(stimuli_keys, args)})[
             target_circuit
