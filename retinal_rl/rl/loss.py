@@ -15,6 +15,7 @@ from sample_factory.utils.timing import Timing
 from sample_factory.utils.utils import log
 from torch import Tensor
 
+from retinal_rl.models.circuits.actor_critic import Actor, Critic
 from retinal_rl.models.loss import BaseContext, Loss
 
 
@@ -275,12 +276,14 @@ def build_context(
     num_trajectories = minibatch_size // recurrence
 
     with timing.add_time("tail"):
-        values = responses["critic"][value_response_index].squeeze()
+        actor_circuit = actor_critic.brain.get_circuit_by_type(Actor)[0]
+        critic_circuit = actor_critic.brain.get_circuit_by_type(Critic)[0]
+        values = responses[critic_circuit][value_response_index].squeeze()
 
         # Get Action Distribution from actor output
         action_distribution = get_action_distribution(
             actor_critic.action_space,
-            raw_logits=responses["actor"][actor_response_index],
+            raw_logits=responses[actor_circuit][actor_response_index],
         )
         log_prob_actions = action_distribution.log_prob(mb.actions)
         ratio = torch.exp(log_prob_actions - mb.log_prob_actions)  # pi / pi_old

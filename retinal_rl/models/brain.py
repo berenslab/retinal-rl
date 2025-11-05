@@ -102,6 +102,14 @@ class Brain(nn.Module):
 
         return result
 
+    def get_circuit_by_type(self, circuit_type: type[nn.Module]) -> list[str]:
+        """Get all circuits of a specific type."""
+        return [
+            name
+            for name, circuit in self.circuits.items()
+            if isinstance(circuit, circuit_type)
+        ]
+
 
 def get_cnn_circuit(
     brain: Brain,

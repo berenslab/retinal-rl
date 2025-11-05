@@ -32,7 +32,6 @@ from sample_factory.utils.typing import (
 )
 
 from retinal_rl.models.brain import Brain
-from retinal_rl.models.circuits.actor_critic import Actor, Critic
 from retinal_rl.models.loss import ContextT
 from retinal_rl.models.objective import Objective
 from retinal_rl.rl.sample_factory.arguments import (
@@ -65,35 +64,11 @@ class SFFramework(TrainingFramework):
             self.sf_cfg.allow_backwards,
         )
 
-        actor_target = f"{Actor.__module__}.{Actor.__name__}"
-        critic_target = f"{Critic.__module__}.{Critic.__name__}"
-        # Check if actor and critic circuits are present in cfg based on their class
-        actor_circuit = None
-        critic_circuit = None
-        for circuit_name, circuit in cfg.brain.circuits.items():
-            assert isinstance(
-                circuit, DictConfig
-            ), "Circuit config must be a DictConfig"
-            assert "_target_" in circuit, "Circuit config must specify a _target_"
-            if circuit._target_ == actor_target:
-                actor_circuit = circuit_name
-            if circuit._target_ == critic_target:
-                critic_circuit = circuit_name
-        assert (
-            actor_circuit is not None
-        ), "Actor circuit is required in RL configurations"
-        assert (
-            critic_circuit is not None
-        ), "Critic circuit is required in RL configurations"
-
-
-        env_info = obtain_env_info_in_a_separate_process(self.sf_cfg)
-        num_action_outputs = calc_num_action_parameters(env_info.action_space)
-        assert cfg.brain.circuits[actor_circuit].num_actions == [
-            int(num_action_outputs)
-        ], "Output shape of actor doesn't match action space"
-
         self.cfg = cfg
+
+        # Validate brain configuration - not needed here, but useful to fail early
+        env_info = obtain_env_info_in_a_separate_process(self.sf_cfg)
+        SampleFactoryBrain.check_actor_critic(DictConfig(cfg.brain), env_info.action_space)
 
         global_model_factory().register_actor_critic_factory(SampleFactoryBrain)
         global_learner_factory().register_learner_factory(RetinalLearner)
