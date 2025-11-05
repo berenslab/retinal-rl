@@ -1,16 +1,13 @@
 import argparse
-from enum import Enum
-import sys
 import time
 from collections import deque
+from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
-from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
-from retinal_rl.analysis.attribution import analyze as attribution_analyze
 import torch
 from omegaconf import OmegaConf
+from sample_factory.algo.learning.learner import Learner
 from sample_factory.algo.sampling.batched_sampling import preprocess_actions
 from sample_factory.algo.utils.action_distributions import argmax_actions
 from sample_factory.algo.utils.env_info import extract_env_info
@@ -21,24 +18,22 @@ from sample_factory.cfg.arguments import load_from_checkpoint
 from sample_factory.enjoy import (
     load_state_dict,
     make_env,
-    render_frame,
-    visualize_policy_inputs,
 )
 from sample_factory.huggingface.huggingface_utils import (
-    generate_model_card,
     generate_replay_video,
-    push_to_hf,
 )
 from sample_factory.model.actor_critic import create_actor_critic
 from sample_factory.model.model_utils import get_rnn_size
 from sample_factory.utils.typing import Config, StatusCode
-from sample_factory.utils.utils import experiment_dir, log
-from sample_factory.algo.learning.learner import Learner
+from sample_factory.utils.utils import log
 
+from retinal_rl.analysis.attribution import analyze as attribution_analyze
+from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
 from retinal_rl.util import rescale_zero_one
 from runner.frameworks.rl.sf_framework import SFFramework
 
 OmegaConf.register_new_resolver("eval", eval)
+
 
 class VideoType(str, Enum):
     RAW = "RAW"
@@ -46,12 +41,16 @@ class VideoType(str, Enum):
     DECODED = "DECODED"
     VALUE_MASK = "VALUE_MASK"
 
+
 def video_type(value: str) -> VideoType:
     try:
         return VideoType(value)
     except ValueError:
         allowed = ", ".join([e.value for e in VideoType])
-        raise argparse.ArgumentTypeError(f"invalid choice: {value!r} (choose from: {allowed})")
+        raise argparse.ArgumentTypeError(
+            f"invalid choice: {value!r} (choose from: {allowed})"
+        )
+
 
 def parse_args(argv: list[str] | None = None) -> tuple[Path, list[VideoType], bool]:
     parser = argparse.ArgumentParser(
@@ -59,37 +58,45 @@ def parse_args(argv: list[str] | None = None) -> tuple[Path, list[VideoType], bo
     )
 
     parser.add_argument(
-        "-e", "--experiment_path",
-        type=Path,
-        help="Path to the experiment directory."
+        "-e", "--experiment_path", type=Path, help="Path to the experiment directory."
     )
 
     parser.add_argument(
-        "-t", "--type",
+        "-t",
+        "--type",
         metavar="VIDTYPE",
         type=video_type,
         nargs="+",
         default=["RAW"],
-        help="Zero or more video types. Allowed: " + ", ".join([e.value for e in VideoType])
+        help="Zero or more video types. Allowed: "
+        + ", ".join([e.value for e in VideoType]),
     )
 
     # Single boolean flag: present -> True, absent -> False
     parser.add_argument(
         "--actor_frame_rate",
         action="store_true",
-        help="Produce videos at the frame rate the actor operates at (will display only the frames the actor actually sees, typically 1/4 of the original frame rate)."
+        help="Produce videos at the frame rate the actor operates at (will display only the frames the actor actually sees, typically 1/4 of the original frame rate).",
     )
 
     parser_args = parser.parse_args(argv)
     return parser_args.experiment_path, parser_args.type, parser_args.actor_frame_rate
 
+
 def get_checkpoint_name(experiment_cfg) -> str:
     policy_id = experiment_cfg.policy_index
-    name_prefix = dict(latest="checkpoint", best="best")[experiment_cfg.load_checkpoint_kind]
-    checkpoints = Learner.get_checkpoints(Learner.checkpoint_dir(experiment_cfg, policy_id), f"{name_prefix}_*")
+    name_prefix = dict(latest="checkpoint", best="best")[
+        experiment_cfg.load_checkpoint_kind
+    ]
+    checkpoints = Learner.get_checkpoints(
+        Learner.checkpoint_dir(experiment_cfg, policy_id), f"{name_prefix}_*"
+    )
     return checkpoints[-1]
 
-def create_video(experiment_path: Path, video_types: list[VideoType], actor_frame_rate: bool):
+
+def create_video(
+    experiment_path: Path, video_types: list[VideoType], actor_frame_rate: bool
+):
     # Load the config file
     experiment_cfg = OmegaConf.load(experiment_path / "config" / "config.yaml")
     experiment_cfg.path.run_dir = experiment_path
@@ -100,7 +107,9 @@ def create_video(experiment_path: Path, video_types: list[VideoType], actor_fram
     custom_enjoy(framework.sf_cfg, video_types, actor_frame_rate)
 
 
-def get_frames(actor_critic: SampleFactoryBrain, obs, rnn_states) -> dict[VideoType, torch.Tensor]:
+def get_frames(
+    actor_critic: SampleFactoryBrain, obs, rnn_states
+) -> dict[VideoType, torch.Tensor]:
     normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
 
     responses = actor_critic.brain(
@@ -111,7 +120,7 @@ def get_frames(actor_critic: SampleFactoryBrain, obs, rnn_states) -> dict[VideoT
     # TODO: Use loss definition instead and pass the key to the function
     decoder_key = None
     for response_key, response in responses.items():
-        if response[0].shape == obs["obs"].shape:
+        if response[0].shape == obs["obs"].shape and response_key != "vision":
             decoder_key = response_key
             break
 
@@ -132,6 +141,7 @@ def get_frames(actor_critic: SampleFactoryBrain, obs, rnn_states) -> dict[VideoT
     }
     return cur_frames
 
+
 def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
     experiment_cfg: Config,
     video_types: list[VideoType],
@@ -142,13 +152,17 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
     experiment_cfg = load_from_checkpoint(experiment_cfg)
 
     eval_env_frameskip: int = (
-        experiment_cfg.env_frameskip if experiment_cfg.eval_env_frameskip is None else experiment_cfg.eval_env_frameskip
+        experiment_cfg.env_frameskip
+        if experiment_cfg.eval_env_frameskip is None
+        else experiment_cfg.eval_env_frameskip
     )
     assert (
         experiment_cfg.env_frameskip % eval_env_frameskip == 0
     ), f"{experiment_cfg.env_frameskip=} must be divisible by {eval_env_frameskip=}"
     render_action_repeat: int = experiment_cfg.env_frameskip // eval_env_frameskip
-    experiment_cfg.env_frameskip = experiment_cfg.eval_env_frameskip = eval_env_frameskip
+    experiment_cfg.env_frameskip = experiment_cfg.eval_env_frameskip = (
+        eval_env_frameskip
+    )
     log.debug(
         f"Using frameskip {experiment_cfg.env_frameskip} and {render_action_repeat=} for evaluation"
     )
@@ -164,7 +178,9 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
         # reset call ruins the demo recording for VizDoom
         env.unwrapped.reset_on_init = False
 
-    actor_critic = create_actor_critic(experiment_cfg, env.observation_space, env.action_space)
+    actor_critic = create_actor_critic(
+        experiment_cfg, env.observation_space, env.action_space
+    )
     actor_critic.eval()
 
     device = torch.device("cpu" if experiment_cfg.device == "cpu" else "cuda")
@@ -179,14 +195,19 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
     last_render_start = time.time()
 
     def max_frames_reached(frames: int) -> bool:
-        return experiment_cfg.max_num_frames is not None and frames > experiment_cfg.max_num_frames
+        return (
+            experiment_cfg.max_num_frames is not None
+            and frames > experiment_cfg.max_num_frames
+        )
 
     reward_list = []
 
     obs, infos = env.reset()
     action_mask = obs.pop("action_mask").to(device) if "action_mask" in obs else None
     rnn_states = torch.zeros(
-        [env.num_agents, get_rnn_size(experiment_cfg)], dtype=torch.float32, device=device
+        [env.num_agents, get_rnn_size(experiment_cfg)],
+        dtype=torch.float32,
+        device=device,
     )
     episode_reward = None
     finished_episode = [False for _ in range(env.num_agents)]
@@ -198,7 +219,9 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
         while not max_frames_reached(num_frames):
             normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
 
-            cur_frames: dict[VideoType, torch.Tensor] = get_frames(actor_critic, obs, rnn_states)
+            cur_frames: dict[VideoType, torch.Tensor] = get_frames(
+                actor_critic, obs, rnn_states
+            )
             policy_outputs = actor_critic(
                 normalized_obs, rnn_states, action_mask=action_mask
             )
@@ -231,7 +254,9 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
                         cur_frames = get_frames(actor_critic, obs, rnn_states)
 
                     for _vid_type in video_types:
-                        video_frames[_vid_type].append(cur_frames[_vid_type][0].movedim(0, -1).cpu().numpy())
+                        video_frames[_vid_type].append(
+                            cur_frames[_vid_type][0].movedim(0, -1).cpu().numpy()
+                        )
 
                 action_mask = (
                     obs.pop("action_mask").to(device) if "action_mask" in obs else None
@@ -271,7 +296,9 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
                                 true_objectives[agent_i][-1],
                             )
                         rnn_states[agent_i] = torch.zeros(
-                            [get_rnn_size(experiment_cfg)], dtype=torch.float32, device=device
+                            [get_rnn_size(experiment_cfg)],
+                            dtype=torch.float32,
+                            device=device,
                         )
                         episode_reward[agent_i] = 0
 
@@ -335,9 +362,9 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
         for i, frame in enumerate(video_frames[_vid_type]):
             if frame.shape != shape:
                 video_frames[_vid_type][i] = np.zeros(shape, dtype=np.uint8)
-        video_frames[_vid_type] = (rescale_zero_one(np.stack(video_frames[_vid_type])) * 255).astype(
-            np.uint8
-        )
+        video_frames[_vid_type] = (
+            rescale_zero_one(np.stack(video_frames[_vid_type])) * 255
+        ).astype(np.uint8)
         vid_path = experiment_path / "data" / "video"
         vid_path.mkdir(parents=True, exist_ok=True)
 
