@@ -163,9 +163,7 @@ class SFFramework(TrainingFramework):
         # Using this function is necessary to make sure that the parameters are not overwritten when sample_factory loads a checkpoint
 
         if hasattr(cfg.dataset, "warp_exp") and cfg.dataset.warp_exp is not None:
-            SFFramework._set_cfg_cli_argument(
-                sf_cfg, "warp_exp", cfg.dataset.warp_exp
-            )
+            SFFramework._set_cfg_cli_argument(sf_cfg, "warp_exp", cfg.dataset.warp_exp)
             SFFramework._set_cfg_cli_argument(
                 sf_cfg, "warp_h", cfg.dataset.vision_height
             )
@@ -173,7 +171,9 @@ class SFFramework(TrainingFramework):
                 sf_cfg, "warp_w", cfg.dataset.vision_width
             )
         else:
-            SFFramework._set_cfg_cli_argument(sf_cfg, "res_h", cfg.dataset.vision_height)
+            SFFramework._set_cfg_cli_argument(
+                sf_cfg, "res_h", cfg.dataset.vision_height
+            )
             SFFramework._set_cfg_cli_argument(sf_cfg, "res_w", cfg.dataset.vision_width)
         SFFramework._set_cfg_cli_argument(sf_cfg, "env", cfg.dataset.env_name)
         SFFramework._set_cfg_cli_argument(
