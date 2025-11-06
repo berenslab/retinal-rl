@@ -192,8 +192,6 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
     true_objectives = [deque([], maxlen=100) for _ in range(env.num_agents)]
     num_frames = 0
 
-    last_render_start = time.time()
-
     def max_frames_reached(frames: int) -> bool:
         return (
             experiment_cfg.max_num_frames is not None

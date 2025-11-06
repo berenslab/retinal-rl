@@ -70,8 +70,8 @@ def init_plot(
 ):
     # Init figure
     if cur_file.endswith(".json"):
-        with open (rf_dir / cur_file) as f:
-                rf = json.load(f)
+        with open(rf_dir / cur_file) as f:
+            rf = json.load(f)
     else:
         rf = np.load(rf_dir / cur_file, allow_pickle=True)
 
