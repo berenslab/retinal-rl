@@ -1,0 +1,76 @@
+# Number of training epochs
+num_epochs: 200
+
+# The optimizer to use
+optimizer: # torch.optim Class and parameters
+  _target_: torch.optim.Adam
+  lr: ${learning_rate}
+  weight_decay: ${weight_decay}
+
+# The objective function
+objective:
+  _target_: retinal_rl.models.objective.Objective
+  losses:
+    - _target_: retinal_rl.rl.loss.PolicyLoss
+      target_circuits:
+        - retina
+        - thalamus
+        - visual_cortex
+        - prefrontal
+        - rnn
+        - actor
+        - critic
+      weights:
+        - ${eval:'(1-${recon_weight_retina})*${policy_factor}'}
+        - ${eval:'(1-${recon_weight_thalamus})*${policy_factor}'}
+        - ${policy_factor}
+        - ${policy_factor}
+        - ${policy_factor}
+        - ${policy_factor}
+        - ${policy_factor}
+      clip_ratio: 1.1
+    - _target_: retinal_rl.rl.loss.ExplorationLoss
+      target_circuits:
+        - retina
+        - thalamus
+        - visual_cortex
+        - prefrontal
+        - rnn
+        - actor
+        - critic
+      weights:
+        - ${eval:'(1-${recon_weight_retina})*${exploration_factor}'}
+        - ${eval:'(1-${recon_weight_thalamus})*${exploration_factor}'}
+        - ${exploration_factor}
+        - ${exploration_factor}
+        - ${exploration_factor}
+        - ${exploration_factor}
+    - _target_: retinal_rl.rl.loss.KlLoss
+    - _target_: retinal_rl.rl.loss.ValueLoss
+      target_circuits:
+        - retina
+        - thalamus
+        - visual_cortex
+        - prefrontal
+        - rnn
+        - actor
+        - critic
+      weights:
+        - ${eval:'(1-${recon_weight_retina})*${value_factor}'}
+        - ${eval:'(1-${recon_weight_thalamus})*${value_factor}'}
+        - ${value_factor}
+        - ${value_factor}
+        - ${value_factor}
+        - ${value_factor}
+        - ${value_factor}
+    - _target_: retinal_rl.models.loss.ReconstructionLoss
+      target_decoder: "decoder"
+      target_circuits: # Circuit parameters to optimize with this optimizer.  We train the retina and the decoder exclusively to maximize reconstruction
+        - retina
+        - thalamus
+        - decoder
+      weights:
+        - ${eval:'${recon_weight_retina}*${reconstruction_factor}'}
+        - ${eval:'${recon_weight_thalamus}*${reconstruction_factor}'}
+        - ${eval:'${recon_weight_cortex}*${reconstruction_factor}'}
+        - ${reconstruction_factor} # For consistency also use 0.001 here
