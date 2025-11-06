@@ -4,11 +4,11 @@ from typing import Optional
 import hydra
 import torch
 from omegaconf import DictConfig
-from sample_factory.algo.utils.tensor_dict import TensorDict
-from sample_factory.model.action_parameterization import get_action_distribution
 from sample_factory.algo.utils.action_distributions import (
     calc_num_action_parameters,
 )
+from sample_factory.algo.utils.tensor_dict import TensorDict
+from sample_factory.model.action_parameterization import get_action_distribution
 from sample_factory.model.actor_critic import ActorCritic
 from sample_factory.model.model_utils import model_device
 from sample_factory.utils.normalize import ObservationNormalizer
