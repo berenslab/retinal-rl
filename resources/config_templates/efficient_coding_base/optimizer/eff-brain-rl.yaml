@@ -72,5 +72,4 @@ objective:
       weights:
         - ${eval:'${recon_weight_retina}*${reconstruction_factor}'}
         - ${eval:'${recon_weight_thalamus}*${reconstruction_factor}'}
-        - ${eval:'${recon_weight_cortex}*${reconstruction_factor}'}
         - ${reconstruction_factor} # For consistency also use 0.001 here
