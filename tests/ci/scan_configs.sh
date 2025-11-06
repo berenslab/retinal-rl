@@ -15,8 +15,13 @@
 #   - YAML configuration files in correct directory
 #===============================================================================
 
+if [ "$1" == "" ]; then
+    SINGULARITY_PREFIX=""
+else
+    SINGULARITY_PREFIX="singularity exec $1"
+fi
+
 for file in config/user/experiment/*.yaml; do
     experiment=$(basename "$file" .yaml)
-    singularity exec "$1" \
-    python main.py +experiment="$experiment" command=scan system.device=cpu
+    $SINGULARITY_PREFIX python main.py +experiment="$experiment" command=scan system.device=cpu
 done

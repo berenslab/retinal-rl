@@ -10,4 +10,10 @@
 #   (run from top level directory!)
 #===============================================================================
 
-singularity exec "$1" python -m doom_creator.compile_scenario gathering apples
+if [ "$1" == "" ]; then
+    SINGULARITY_PREFIX=""
+else
+    SINGULARITY_PREFIX="singularity exec $1"
+fi
+
+$SINGULARITY_PREFIX python -m doom_creator.compile_scenario gathering apples
