@@ -41,10 +41,6 @@ rnn_size: 128
 prefrontal_out: 128
 prefrontal_hidden: [128]
 
-bp_kernel_size: 15
-rgc_kernel_size: 11
-lgn_kernel_size: 3
-v1_kernel_size: 9
 layer_norm: True
 affine_norm: True
 

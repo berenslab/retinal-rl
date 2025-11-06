@@ -18,6 +18,7 @@ __pycache__/
 # Training Results (Don't belong in repo)
 _vizdoom.ini
 experiments
+logs
 # Nohup log (when running in background on compute servers)
 nohup*.out
 log_train*.out

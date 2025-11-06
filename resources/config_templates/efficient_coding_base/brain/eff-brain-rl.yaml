@@ -85,7 +85,7 @@ circuits:
   # Decoder: for reconstructing the input from the latent representation
   decoder:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
-    num_layers: 4
+    num_layers: 3
     layer_norm: ${layer_norm}
     affine_norm: ${affine_norm}
     num_channels:
