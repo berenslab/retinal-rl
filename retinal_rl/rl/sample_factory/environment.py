@@ -45,7 +45,7 @@ class WarpResizeWrapper(gym.core.Wrapper):
     """Resize observation frames to specified (w,h) and convert to grayscale."""
 
     def __init__(self, env, h: int, w: int, warp_exp: float = 2.0):
-        super(WarpResizeWrapper, self).__init__(env)
+        super().__init__(env)
 
         self.w = w
         self.h = h
@@ -91,11 +91,11 @@ class WarpResizeWrapper(gym.core.Wrapper):
         col_even = out_shape[1] % 2
         row_idx = np.round(
             (np.arange(0, out_shape_half[0]) / (out_shape_half[0] - 1)) ** exp
-            * (center[0] - (1+row_even))
+            * (center[0] - (1 + row_even))
         ).astype(int)  # Generate indices for rows and columns
         col_idx = np.round(
             (np.arange(0, out_shape_half[1]) / (out_shape_half[1] - 1)) ** exp
-            * (center[1] - (1+col_even))
+            * (center[1] - (1 + col_even))
         ).astype(int)
 
         # ensure difference is at least 1 pixel
@@ -104,12 +104,12 @@ class WarpResizeWrapper(gym.core.Wrapper):
         row_idx[row_idx < row_inc] = row_inc[row_idx < row_inc]
         col_idx[col_idx < col_inc] = col_inc[col_idx < col_inc]
 
-        h = center[0] - row_idx[::-1] - 1 -row_even
-        w = center[1] - col_idx[::-1] - 1 -col_even
+        h = center[0] - row_idx[::-1] - 1 - row_even
+        w = center[1] - col_idx[::-1] - 1 - col_even
         if row_even:
-            h = np.hstack([h, center[0]-1])
+            h = np.hstack([h, center[0] - 1])
         if col_even:
-            w = np.hstack([w, center[1]-1])
+            w = np.hstack([w, center[1] - 1])
         h = np.hstack([h, row_idx + center[0]])
         w = np.hstack([w, col_idx + center[1]])
         if channel_last:
@@ -122,8 +122,9 @@ class WarpResizeWrapper(gym.core.Wrapper):
         if obs is None:
             return obs
 
-        obs = self.center_warp_image(obs, out_shape=(self.h, self.w), exp=self.warp_exp)
-        return obs
+        return self.center_warp_image(
+            obs, out_shape=(self.h, self.w), exp=self.warp_exp
+        )
 
     def _observation(self, obs):
         if isinstance(obs, dict):
@@ -131,8 +132,7 @@ class WarpResizeWrapper(gym.core.Wrapper):
             for key, value in obs.items():
                 new_obs[key] = self._convert_obs(value)
             return new_obs
-        else:
-            return self._convert_obs(obs)
+        return self._convert_obs(obs)
 
     def reset(self, **kwargs):
         obs, info = self.env.reset(**kwargs)
