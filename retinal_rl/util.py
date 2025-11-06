@@ -6,9 +6,9 @@ from math import ceil, floor
 from typing import Any, List, Optional, Tuple, TypeVar, Union, cast
 
 import numpy as np
+import torch
 from numpy.typing import NDArray
 from torch import nn
-import torch
 
 logger = logging.getLogger(__name__)
 
@@ -185,8 +185,13 @@ def _double_up(x: Union[int, Tuple[int, ...]]):
         return (x, x)
     return x
 
+
 ArrayLike = TypeVar("ArrayLike", np.ndarray, torch.Tensor)
-def rescale_zero_one(x: ArrayLike, min: Optional[float] = None, max: Optional[float] = None) -> ArrayLike:
+
+
+def rescale_zero_one(
+    x: ArrayLike, min: Optional[float] = None, max: Optional[float] = None
+) -> ArrayLike:
     if min is None:
         min = np.min(x) if isinstance(x, np.ndarray) else torch.min(x).item()
     if max is None:

@@ -28,18 +28,25 @@ def captum_attribution(
 ) -> dict[str, torch.Tensor]:
     input_grads: dict[str, torch.Tensor] = {}
 
-    stimuli_keys = list(stimuli.keys()) # create list to preserve order
+    stimuli_keys = list(stimuli.keys())  # create list to preserve order
+
     def _forward(*args: tuple[torch.Tensor]) -> torch.Tensor:
         assert len(args) == len(stimuli_keys)
-        return brain({k: v for k, v in zip(stimuli_keys, args)})[
-            target_circuit
-        ][target_output_index]
+        return brain({k: v for k, v in zip(stimuli_keys, args)})[target_circuit][
+            target_output_index
+        ]
 
     value_grad_calculator = InputXGradient(_forward)
-    value_grads = value_grad_calculator.attribute(tuple(stimuli[k] for k in stimuli_keys))
+    value_grads = value_grad_calculator.attribute(
+        tuple(stimuli[k] for k in stimuli_keys)
+    )
     for key, value_grad in zip(stimuli_keys, value_grads):
         input_grads[key] = value_grad.detach().cpu()
     return input_grads
+
+
+ATTRIBUTION_METHODS = {"l1": l1_attribution, "attribution": captum_attribution}
+
 
 def analyze(
     brain: Brain,
@@ -50,27 +57,24 @@ def analyze(
     sum_channels: bool = True,
     rescale_per_frame: bool = False,
 ) -> dict[str, torch.Tensor]:
-    is_training = brain.training
+    assert method in ATTRIBUTION_METHODS, f"Unknown attribution method: {method}"
 
+    is_training = brain.training
+    required_grad = next(brain.parameters()).requires_grad
     grad_enabled = torch.is_grad_enabled()
-    if not grad_enabled:
-        torch.set_grad_enabled(True)
-    if not is_training:
-        brain.train()
-        brain.requires_grad_(False)
+
+    # this is required to compute gradients
+    torch.set_grad_enabled(True)
+    brain.train()
+    brain.requires_grad_(False)
 
     for key, value in stimuli.items():
         stimuli[key] = value.requires_grad_(True)
 
     input_grads: dict[str, torch.Tensor] = {}
-    if method == "l1":
-        input_grads = l1_attribution(
-            brain, stimuli, target_circuit, target_output_index
-        )
-    elif method == "attribution":
-        input_grads = captum_attribution(
-            brain, stimuli, target_circuit, target_output_index
-        )
+    input_grads = ATTRIBUTION_METHODS[method](
+        brain, stimuli, target_circuit, target_output_index
+    )
 
     if sum_channels:
         for key, grad in input_grads.items():
@@ -80,14 +84,13 @@ def analyze(
             for frame in range(grad.shape[0]):
                 input_grads[key][frame] = rescale_zero_one(input_grads[key][frame])
 
-    if not is_training:
-        brain.requires_grad_(True)
-        brain.eval()
-    if not grad_enabled:
-        torch.set_grad_enabled(False)
+    # restore original state of training / grad_enabled
+    brain.requires_grad_(required_grad)
+    brain.train(is_training)
+    torch.set_grad_enabled(grad_enabled)
     return input_grads
 
 
 def plot():  # -> Figure:
     # TODO: Implement plotting logic
-    pass
+    raise NotImplementedError
