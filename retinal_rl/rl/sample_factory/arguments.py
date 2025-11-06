@@ -4,6 +4,7 @@ retina_rl library
 """
 
 from typing import Optional
+
 from sample_factory.utils.utils import str2bool
 from sf_examples.vizdoom.doom.doom_params import (
     add_doom_env_args,
