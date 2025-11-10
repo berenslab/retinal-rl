@@ -21,9 +21,14 @@
 # - Container must have ruff installed
 #===============================================================================
 
-# Store the container path
-CONTAINER="$1"
-shift
+
+# Helper to consume first arg as container if it doesn't start with '-'
+if [ $# -gt 0 ] && [[ $1 != -* ]]; then
+    SINGULARITY_PREFIX="singularity exec $1"
+    shift
+else
+    SINGULARITY_PREFIX=""
+fi
 
 # Check or fix
 check="--check"
@@ -43,9 +48,9 @@ fi
 
 if [ -n "$changed_files" ]; then
     # Format
-    singularity exec "$CONTAINER" ruff format $changed_files $check
+    $SINGULARITY_PREFIX ruff format $changed_files $check
     # Run ruff on changed files with any remaining arguments
-    singularity exec "$CONTAINER" ruff check $changed_files "$@"
+    $SINGULARITY_PREFIX ruff check $changed_files "$@"
 else
     echo "No .py files changed"
 fi
