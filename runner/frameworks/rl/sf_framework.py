@@ -12,9 +12,6 @@ from omegaconf import DictConfig
 from omegaconf.omegaconf import OmegaConf
 from sample_factory.algo.learning.learner_factory import global_learner_factory
 from sample_factory.algo.runners.runner import Runner
-from sample_factory.algo.utils.action_distributions import (
-    calc_num_action_parameters,
-)
 from sample_factory.algo.utils.context import global_model_factory
 from sample_factory.algo.utils.env_info import (
     obtain_env_info_in_a_separate_process,
@@ -64,13 +61,13 @@ class SFFramework(TrainingFramework):
             self.sf_cfg.allow_backwards,
         )
 
-        if hasattr(cfg.brain.circuits, "actor"):
-            env_info = obtain_env_info_in_a_separate_process(self.sf_cfg)
-            num_action_outputs = calc_num_action_parameters(env_info.action_space)
-            assert cfg.brain.circuits.actor.output_shape == [
-                int(num_action_outputs)
-            ], "Output shape of actor doesn't match action space"
         self.cfg = cfg
+
+        # Validate brain configuration - not needed here, but useful to fail early
+        env_info = obtain_env_info_in_a_separate_process(self.sf_cfg)
+        SampleFactoryBrain.check_actor_critic(
+            DictConfig(cfg.brain), env_info.action_space
+        )
 
         global_model_factory().register_actor_critic_factory(SampleFactoryBrain)
         global_learner_factory().register_learner_factory(RetinalLearner)

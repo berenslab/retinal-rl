@@ -104,13 +104,8 @@ circuits:
       - "tanh"
   
   critic:
-    _target_: retinal_rl.models.circuits.fully_connected.FullyConnected
-    output_shape: [1] # TODO: Output shape for Critic and Actor should be automatically determined
-    hidden_units: []
-    activation: null
+    _target_: retinal_rl.models.circuits.actor_critic.Critic
 
   actor:
-    _target_: retinal_rl.models.circuits.fully_connected.FullyConnected
-    output_shape: [6]
-    hidden_units: []
-    activation: null
+    _target_: retinal_rl.models.circuits.actor_critic.Actor
+    num_actions: 6
