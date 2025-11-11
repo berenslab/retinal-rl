@@ -20,6 +20,7 @@ logging:
 env_name: gathering-apples
 dataset.vision_height: 120
 dataset.vision_width: 160
+dataset.allow_backwards: False
 vision_height: ${dataset.vision_height}
 vision_width: ${dataset.vision_width}
 
@@ -47,4 +48,4 @@ samplefactory:
   analysis_freq_start: 5000000
   analysis_freq_end: 1000000000
   use_rnn: True
-  rnn_size: ${rnn_size}
+  rnn_size: ${n_fully_connected}
