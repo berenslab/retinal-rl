@@ -1,0 +1,50 @@
+# @package _global_
+defaults:
+  - _self_
+  - override /dataset: rl-base
+  - override /brain: arxiv2024
+  - override /optimizer: arxiv2024
+
+framework: rl
+
+logging:
+  use_wandb: True
+
+### Interpolation Parameters ###
+
+# This is a free list of parameters that can be interpolated by the subconfigs
+# in sweep, dataset, brain, and optimizer. A major use for this is interpolating
+# values in the subconfigs, and then looping over them in a sweep.
+
+### INPUT SETTINGS
+env_name: gathering-apples
+dataset.vision_height: 120
+dataset.vision_width: 160
+vision_height: ${dataset.vision_height}
+vision_width: ${dataset.vision_width}
+
+
+### BRAIN SETTINGS
+
+bipolar_channels: 16
+lgn_channels: 32
+n_fully_connected: 128
+layer_norm: True
+affine_norm: True
+
+### LOSS/OPTIMIZER SETTINGS
+learning_rate: 0.0001
+weight_decay: 0.00001
+
+policy_factor: 1
+exploration_factor: 0.001
+value_factor: 0.5
+
+
+samplefactory:
+  num_workers: 14
+  num_envs_per_worker: 32
+  analysis_freq_start: 5000000
+  analysis_freq_end: 1000000000
+  use_rnn: True
+  rnn_size: ${rnn_size}
