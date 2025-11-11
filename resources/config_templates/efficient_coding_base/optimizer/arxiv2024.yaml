@@ -1,0 +1,42 @@
+# Number of training epochs
+num_epochs: 200
+
+# The optimizer to use
+optimizer: # torch.optim Class and parameters
+  _target_: torch.optim.Adam
+  lr: ${learning_rate}
+  weight_decay: ${weight_decay}
+
+# The objective function
+objective:
+  _target_: retinal_rl.models.objective.Objective
+  losses:
+    - _target_: retinal_rl.rl.loss.PolicyLoss
+      target_circuits:
+        - vision_model
+        - fcs
+        - rnn
+        - actor
+        - critic
+      weights:
+        - ${policy_factor}
+      clip_ratio: 1.1
+    - _target_: retinal_rl.rl.loss.ExplorationLoss
+      target_circuits:
+        - vision_model
+        - fcs
+        - rnn
+        - actor
+        - critic
+      weights:
+        - ${exploration_factor}
+    - _target_: retinal_rl.rl.loss.KlLoss
+    - _target_: retinal_rl.rl.loss.ValueLoss
+      target_circuits:
+        - vision_model
+        - fcs
+        - rnn
+        - actor
+        - critic
+      weights:
+        - ${value_factor}
