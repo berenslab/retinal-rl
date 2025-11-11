@@ -7,7 +7,7 @@ sensors:
     - ${vision_height}  # Height of the input image
     - ${vision_width}  # Width of the input image
   rnn_state:
-    - ${rnn_size}  # Size of the RNN state
+    - ${n_fully_connected}  # Size of the RNN state
 
 # Define how the various NeuralCircuits are connected to each other
 connections:
@@ -28,9 +28,9 @@ circuits:
     num_layers: 4
     num_channels:
       - ${bipolar_channels}
-      - ${bipolar_channels}*2
+      - ${eval:'2*${bipolar_channels}'}
       - ${lgn_channels}
-      - ${bipolar_channels}*4
+      - ${eval:'4*${bipolar_channels}'}
     kernel_size: [3,3,1,4]
     stride: [3,3,1,4] # Difference: preprint used pooling
     activation: "elu"
@@ -42,9 +42,8 @@ circuits:
   fcs:
     _target_: retinal_rl.models.circuits.fully_connected.FullyConnected
     output_shape:
-      - ${prefrontal_out}  # Size of the latent representation
+      - ${n_fully_connected}  # Size of the latent representation
     hidden_units: 
-      - ${n_fully_connected}
       - ${n_fully_connected}
       - ${n_fully_connected}
     activation: "elu"
