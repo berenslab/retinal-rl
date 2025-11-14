@@ -9,14 +9,16 @@ from sample_factory.algo.utils.action_distributions import (
     is_continuous_action_space,
 )
 from sample_factory.algo.utils.torch_utils import masked_select
-from sample_factory.model.actor_critic import ActorCritic
 from sample_factory.utils.attr_dict import AttrDict
 from sample_factory.utils.timing import Timing
 from sample_factory.utils.utils import log
 from torch import Tensor
+from torchvision.transforms import v2
+import torch.nn.functional as F
 
 from retinal_rl.models.circuits.actor_critic import Actor, Critic
 from retinal_rl.models.loss import BaseContext, Loss
+from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
 
 
 class RLContext(BaseContext):
@@ -38,6 +40,10 @@ class RLContext(BaseContext):
         values,
         old_values,
         targets,
+        actor_circuit: str,
+        critic_circuit: str,
+        drac_responses_actor: Tensor | None = None,
+        drac_responses_critic: Tensor | None = None,
     ):
         super().__init__(sources, inputs, responses, epoch)
         self.num_invalids = num_invalids
@@ -52,6 +58,10 @@ class RLContext(BaseContext):
         self.values = values
         self.old_values = old_values
         self.targets = targets
+        self.actor_circuit = actor_circuit
+        self.critic_circuit = critic_circuit
+        self.drac_responses_actor = drac_responses_actor
+        self.drac_responses_critic = drac_responses_critic
 
 
 class PolicyLoss(Loss[RLContext]):
@@ -225,6 +235,41 @@ class ValueLoss(Loss[RLContext]):
         )
 
 
+class DrACLoss(Loss[RLContext]):
+    """Implements DrAC Loss from the paper"""
+
+    def __init__(
+        self,
+        target_circuits: List[str] = [],
+        weights: List[float] = [],
+        min_epoch: Optional[int] = None,
+        max_epoch: Optional[int] = None,
+        transforms: List[v2.Transform] = [],
+        actor_response_index: int = 0,
+        value_response_index: int = 0,
+    ):
+        super().__init__(target_circuits, weights, min_epoch, max_epoch)
+        self.transforms = transforms
+        self.actor_response_index = actor_response_index
+        self.value_response_index = value_response_index
+
+    def compute_value(self, context: RLContext):
+        if context.drac_responses_actor is None or context.drac_responses_critic is None:
+            if self.weights == [0.0] * len(self.weights):
+                return torch.tensor(0.0)
+            raise ValueError("No DrAC responses, cannot compute DrAC loss")
+
+        true_actor = context.responses[context.actor_circuit][self.actor_response_index]
+        actor_regularization = torch.mean(torch.tensor([F.kl_div(augm_actor, true_actor) for augm_actor in context.drac_responses_actor]))
+        
+        true_critic = context.responses[context.critic_circuit][self.value_response_index]
+        value_regularization = torch.mean(torch.tensor([F.mse_loss(augm_critic, true_critic) for augm_critic in context.drac_responses_critic]))
+
+        actor_regularization /= len(context.drac_responses_actor)
+        value_regularization /= len(context.drac_responses_critic)
+        return actor_regularization + value_regularization
+
+
 @dataclass
 class VTraceParams:
     with_vtrace: bool
@@ -234,7 +279,7 @@ class VTraceParams:
 
 
 def build_context(
-    actor_critic: ActorCritic,
+    actor_critic: SampleFactoryBrain,
     mb: AttrDict,
     num_invalids: int,
     epoch: int,
@@ -244,11 +289,14 @@ def build_context(
     use_rnn: bool,
     vtrace_params: VTraceParams,
     device: torch.device,
+    drac_transforms: List[v2.Transform] = [],
     vision_response_index: int = 0,
     actor_response_index: int = 0,
     value_response_index: int = 0,
 ) -> RLContext:
-    # FIXME: IMPROVISED FOR ENABLING THE MULTI-OBJECTIVE
+    actor_circuit = actor_critic.brain.get_circuit_by_type(Actor)[0]
+    critic_circuit = actor_critic.brain.get_circuit_by_type(Critic)[0]
+
     # build brain input
     brain_inp = {"vision": mb.normalized_obs["obs"]}
 
@@ -272,12 +320,26 @@ def build_context(
     # actual forward pass
     responses = actor_critic.brain(brain_inp)
 
+    use_drac = len(drac_transforms) > 0
+    if use_drac:
+        drac_responses_actor = torch.empty(
+            (len(drac_transforms), responses[actor_circuit][actor_response_index].shape)
+        )
+        drac_responses_critic = torch.empty(
+            (len(drac_transforms), responses[critic_circuit][value_response_index].shape)
+        )
+        for i, transform in enumerate(drac_transforms):
+            transform: v2.Transform
+            augmented_input = brain_inp.copy()
+            augmented_input["vision"] = transform(augmented_input["vision"])
+            augmented_response = actor_critic.brain(augmented_input)
+            drac_responses_actor[i] = augmented_response[actor_circuit][actor_response_index]
+            drac_responses_critic[i] = augmented_response[critic_circuit][value_response_index]
+
     minibatch_size: int = responses["vision"][vision_response_index].size(0)
     num_trajectories = minibatch_size // recurrence
 
     with timing.add_time("tail"):
-        actor_circuit = actor_critic.brain.get_circuit_by_type(Actor)[0]
-        critic_circuit = actor_critic.brain.get_circuit_by_type(Critic)[0]
         values = responses[critic_circuit][value_response_index].squeeze()
 
         # Get Action Distribution from actor output
@@ -372,4 +434,8 @@ def build_context(
         values,
         mb.values,
         targets,
+        actor_circuit=actor_circuit,
+        critic_circuit=critic_circuit,
+        drac_responses_actor=drac_responses_actor if use_drac else None,
+        drac_responses_critic=drac_responses_critic if use_drac else None,
     )

@@ -21,6 +21,7 @@ class LatentRNN(NeuralCircuit):
         self.core = nn.GRU(self.input_size, rnn_size, rnn_num_layers)
 
     def forward(self, inputs: tuple[Tensor, ...]) -> tuple[Tensor, ...]:
+        # TODO: How to allow passing an rnn state for every frame? (needed for DrAC)
         input, rnn_states = inputs
         if not self.training or isinstance(rnn_states, torch.Tensor):
             warnings.warn(

@@ -43,7 +43,7 @@ from sample_factory.utils.utils import log
 from torch import Tensor
 
 from retinal_rl.models.objective import Objective
-from retinal_rl.rl.loss import KlLoss, RLContext, VTraceParams, build_context
+from retinal_rl.rl.loss import DrACLoss, KlLoss, RLContext, VTraceParams, build_context
 from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
 
 logger = logging.getLogger(__name__)
@@ -166,10 +166,13 @@ class RetinalLearner(Learner):
         )  # for now let's just assert that
         self.objective = instantiate(self.cfg.objective, brain=self.actor_critic.brain)
 
-        # Hotfix: inject action space to kl_loss TODO: Fix this
+        # Hotfix: inject action space to kl_loss TODO: Fix this, same for drac_transforms
+        self.drac_transforms = []
         for loss in self.objective.losses:
             if isinstance(loss, KlLoss):
                 loss.action_space = self.env_info.action_space
+            if isinstance(loss, DrACLoss):
+                self.drac_transforms = loss.transforms
 
         self.load_from_checkpoint(self.policy_id)
         self.param_server.init(self.actor_critic, self.train_step, self.device)
@@ -286,6 +289,7 @@ class RetinalLearner(Learner):
                     self.cfg.use_rnn,
                     vtrace_params,
                     self.device,
+                    drac_transforms=self.drac_transforms,
                 )  # TODO: transform mb to inputs & sources!
 
                 with torch.no_grad(), timing.add_time("kl_divergence"):

@@ -1,0 +1,126 @@
+# Number of training epochs
+num_epochs: 200
+
+# The optimizer to use
+optimizer: # torch.optim Class and parameters
+  _target_: torch.optim.Adam
+  lr: ${learning_rate}
+  weight_decay: ${weight_decay}
+
+# The objective function
+objective:
+  _target_: retinal_rl.models.objective.Objective
+  losses:
+    - _target_: retinal_rl.rl.loss.PolicyLoss
+      target_circuits:
+        - retina
+        - thalamus
+        - visual_cortex
+        - inferotemporal
+        - prefrontal
+        - rnn
+        - actor
+        - critic # I don't think this is needed here
+      weights:
+        - ${eval:'(1-${recon_weight_retina})*${policy_factor}'}
+        - ${eval:'(1-${recon_weight_thalamus})*${policy_factor}'}
+        - ${eval:'(1-${recon_weight_cortex})*${policy_factor}'}
+        - ${policy_factor}
+        - ${policy_factor}
+        - ${policy_factor}
+        - ${policy_factor}
+        - ${policy_factor}
+      clip_ratio: 1.1
+    - _target_: retinal_rl.rl.loss.ExplorationLoss
+      target_circuits:
+        - retina
+        - thalamus
+        - visual_cortex
+        - inferotemporal
+        - prefrontal
+        - rnn
+        - actor  # TODO: does exploration loss use actor and critic heads?
+        - critic
+      weights:
+        - ${eval:'(1-${recon_weight_retina})*${exploration_factor}'}
+        - ${eval:'(1-${recon_weight_thalamus})*${exploration_factor}'}
+        - ${eval:'(1-${recon_weight_cortex})*${exploration_factor}'}
+        - ${exploration_factor}
+        - ${exploration_factor}
+        - ${exploration_factor}
+        - ${exploration_factor}
+        - ${exploration_factor}
+    - _target_: retinal_rl.rl.loss.KlLoss
+    - _target_: retinal_rl.rl.loss.ValueLoss
+      target_circuits:
+        - retina
+        - thalamus
+        - visual_cortex
+        - inferotemporal
+        - prefrontal
+        - rnn
+        - actor # I don't think this is needed here
+        - critic
+      weights:
+        - ${eval:'(1-${recon_weight_retina})*${value_factor}'}
+        - ${eval:'(1-${recon_weight_thalamus})*${value_factor}'}
+        - ${eval:'(1-${recon_weight_cortex})*${value_factor}'}
+        - ${value_factor}
+        - ${value_factor}
+        - ${value_factor}
+        - ${value_factor}
+        - ${value_factor}
+  
+    - _target_: retinal_rl.rl.loss.DrACLoss
+      target_circuits:
+        - retina
+        - thalamus
+        - visual_cortex
+        - inferotemporal
+        - prefrontal
+        - rnn
+        - actor
+        - critic
+      weights:
+        - ${drac_factor}
+        - ${drac_factor}
+        - ${drac_factor}
+        - ${drac_factor}
+        - ${drac_factor}
+        - ${drac_factor}
+        - ${drac_factor}
+        - ${drac_factor}
+      transforms:
+        - _target_: retinal_rl.datasets.transforms.ShotNoiseTransform
+          lambda_range: [0.5, 1.5]
+        - _target_: retinal_rl.datasets.transforms.ContrastTransform
+          contrast_range: [0.01, 1.2]
+  
+    - _target_: retinal_rl.models.loss.ReconstructionLoss
+      target_decoder: "v1_decoder"
+      target_circuits: # Circuit parameters to optimize with this optimizer.  We train the retina and the decoder exclusively to maximize reconstruction
+        - retina
+        - thalamus
+        - visual_cortex
+        - inferotemporal
+        - it_decoder
+        - v1_decoder
+      weights:
+        - ${eval:'${recon_weight_retina}*${reconstruction_factor}'}
+        - ${eval:'${recon_weight_thalamus}*${reconstruction_factor}'}
+        - ${eval:'${recon_weight_cortex}*${reconstruction_factor}'}
+        - ${reconstruction_factor}
+        - ${reconstruction_factor} # For consistency also use 0.001 here
+        - ${reconstruction_factor}
+    - _target_: retinal_rl.models.loss.L1Sparsity
+      target_response: "visual_cortex"
+      target_circuits:
+        - retina
+        - thalamus
+        - visual_cortex
+        - inferotemporal
+      weights:
+        - ${sparsity_weight}
+        - ${sparsity_weight}
+        - ${sparsity_weight}
+        - ${sparsity_weight}
