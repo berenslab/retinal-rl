@@ -260,10 +260,10 @@ class DrACLoss(Loss[RLContext]):
             raise ValueError("No DrAC responses, cannot compute DrAC loss")
 
         true_actor = context.responses[context.actor_circuit][self.actor_response_index]
-        actor_regularization = torch.mean(torch.tensor([F.kl_div(augm_actor, true_actor) for augm_actor in context.drac_responses_actor]))
-        
+        actor_regularization = torch.stack([F.kl_div(augm_actor, true_actor) for augm_actor in context.drac_responses_actor]).mean()
+
         true_critic = context.responses[context.critic_circuit][self.value_response_index]
-        value_regularization = torch.mean(torch.tensor([F.mse_loss(augm_critic, true_critic) for augm_critic in context.drac_responses_critic]))
+        value_regularization = torch.stack([F.mse_loss(augm_critic, true_critic) for augm_critic in context.drac_responses_critic]).mean()
 
         actor_regularization /= len(context.drac_responses_actor)
         value_regularization /= len(context.drac_responses_critic)
@@ -317,24 +317,24 @@ def build_context(
             }
         )
 
-    # actual forward pass
-    responses = actor_critic.brain(brain_inp)
-
+    # TODO: DrAC should use true rnn states for every timestep.
+    # TODO: DrAC manipulates the model, eg last_action_distribution, that's why it's calculated first here -> check if needed
     use_drac = len(drac_transforms) > 0
     if use_drac:
-        drac_responses_actor = torch.empty(
-            (len(drac_transforms), responses[actor_circuit][actor_response_index].shape)
-        )
-        drac_responses_critic = torch.empty(
-            (len(drac_transforms), responses[critic_circuit][value_response_index].shape)
-        )
+        drac_responses_actor = []
+        drac_responses_critic = []
         for i, transform in enumerate(drac_transforms):
             transform: v2.Transform
             augmented_input = brain_inp.copy()
             augmented_input["vision"] = transform(augmented_input["vision"])
             augmented_response = actor_critic.brain(augmented_input)
-            drac_responses_actor[i] = augmented_response[actor_circuit][actor_response_index]
-            drac_responses_critic[i] = augmented_response[critic_circuit][value_response_index]
+            drac_responses_actor.append(augmented_response[actor_circuit][actor_response_index])
+            drac_responses_critic.append(augmented_response[critic_circuit][value_response_index])
+        drac_responses_actor = torch.stack(drac_responses_actor)
+        drac_responses_critic = torch.stack(drac_responses_critic)
+
+    # actual forward pass
+    responses = actor_critic.brain(brain_inp)
 
     minibatch_size: int = responses["vision"][vision_response_index].size(0)
     num_trajectories = minibatch_size // recurrence

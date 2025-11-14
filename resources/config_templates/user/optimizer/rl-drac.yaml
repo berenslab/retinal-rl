@@ -91,10 +91,19 @@ objective:
         - ${drac_factor}
         - ${drac_factor}
       transforms:
-        - _target_: retinal_rl.datasets.transforms.ShotNoiseTransform
-          lambda_range: [0.5, 1.5]
-        - _target_: retinal_rl.datasets.transforms.ContrastTransform
-          contrast_range: [0.01, 1.2]
+        - _target_: torchvision.transforms.v2.GaussianNoise
+          mean: 0.0
+          sigma: 0.01
+        - _target_: torchvision.transforms.ColorJitter
+          brightness: 0.01
+          contrast: 0.01
+          saturation: 0.01
+          hue: 0.01
+        - _target_: torchvision.transforms.GaussianBlur
+          kernel_size: 3
+          sigma:
+            - 0.01
+            - 0.02
   
     - _target_: retinal_rl.models.loss.ReconstructionLoss
       target_decoder: "v1_decoder"
