@@ -104,7 +104,6 @@ objective:
           sigma:
             - 0.01
             - 0.02
-  
     - _target_: retinal_rl.models.loss.ReconstructionLoss
       target_decoder: "v1_decoder"
       target_circuits: # Circuit parameters to optimize with this optimizer.  We train the retina and the decoder exclusively to maximize reconstruction
