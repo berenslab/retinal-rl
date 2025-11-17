@@ -264,11 +264,11 @@ class DrACLoss(Loss[RLContext]):
 
         true_actor_prob = F.softmax(context.responses[context.actor_circuit][self.actor_response_index], dim=-1)
         # TODO: Compare with KLDivLoss implementation in sample-factory
-        log_probs = [F.log_softmax(augm_actor, dim=-1) for augm_actor in context.drac_responses_actor]
-        actor_regularization = torch.stack([self.actor_loss(log_prob, true_actor_prob) for log_prob in log_probs]).sum(dim=-1)
+        log_probs = F.log_softmax(context.drac_responses_actor, dim=-1)
+        actor_regularization = self.actor_loss(log_probs, true_actor_prob).sum(dim=-1)
 
         true_critic = context.responses[context.critic_circuit][self.value_response_index]
-        value_regularization = torch.stack([self.value_loss(augm_critic, true_critic) for augm_critic in context.drac_responses_critic]).sum(dim=-1)
+        value_regularization = self.value_loss(context.drac_responses_critic, true_critic).sum(dim=-1)
 
         actor_regularization = masked_select(actor_regularization, context.valids, context.num_invalids)
         value_regularization = masked_select(value_regularization, context.valids, context.num_invalids)
@@ -326,20 +326,13 @@ def build_context(
         )
 
     # TODO: DrAC should use true rnn states for every timestep.
-    # TODO: DrAC manipulates the model, eg last_action_distribution, that's why it's calculated first here -> check if needed
     use_drac = len(drac_transforms) > 0
     if use_drac:
-        drac_responses_actor = []
-        drac_responses_critic = []
-        for i, transform in enumerate(drac_transforms):
-            transform: v2.Transform
-            augmented_input = brain_inp.copy()
-            augmented_input["vision"] = transform(augmented_input["vision"])
-            augmented_response = actor_critic.brain(augmented_input)
-            drac_responses_actor.append(augmented_response[actor_circuit][actor_response_index])
-            drac_responses_critic.append(augmented_response[critic_circuit][value_response_index])
-        drac_responses_actor = torch.stack(drac_responses_actor)
-        drac_responses_critic = torch.stack(drac_responses_critic)
+        augmented_input = brain_inp.copy()
+        augmented_input["vision"] = torch.nn.Sequential(*drac_transforms)(augmented_input["vision"])
+        augmented_response = actor_critic.brain(augmented_input)
+        drac_responses_actor = augmented_response[actor_circuit][actor_response_index]
+        drac_responses_critic = augmented_response[critic_circuit][value_response_index]
 
     # actual forward pass
     responses = actor_critic.brain(brain_inp)
