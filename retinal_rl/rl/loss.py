@@ -253,21 +253,29 @@ class DrACLoss(Loss[RLContext]):
         self.actor_response_index = actor_response_index
         self.value_response_index = value_response_index
 
+        self.actor_loss = torch.nn.KLDivLoss(reduction="none")
+        self.value_loss = torch.nn.MSELoss(reduction="none")
+
     def compute_value(self, context: RLContext):
         if context.drac_responses_actor is None or context.drac_responses_critic is None:
             if self.weights == [0.0] * len(self.weights):
                 return torch.tensor(0.0)
             raise ValueError("No DrAC responses, cannot compute DrAC loss")
 
-        true_actor = context.responses[context.actor_circuit][self.actor_response_index]
-        actor_regularization = torch.stack([F.kl_div(augm_actor, true_actor) for augm_actor in context.drac_responses_actor]).mean()
+        true_actor_prob = F.softmax(context.responses[context.actor_circuit][self.actor_response_index], dim=-1)
+        # TODO: Compare with KLDivLoss implementation in sample-factory
+        log_probs = [F.log_softmax(augm_actor, dim=-1) for augm_actor in context.drac_responses_actor]
+        actor_regularization = torch.stack([self.actor_loss(log_prob, true_actor_prob) for log_prob in log_probs]).sum(dim=-1)
 
         true_critic = context.responses[context.critic_circuit][self.value_response_index]
-        value_regularization = torch.stack([F.mse_loss(augm_critic, true_critic) for augm_critic in context.drac_responses_critic]).mean()
+        value_regularization = torch.stack([self.value_loss(augm_critic, true_critic) for augm_critic in context.drac_responses_critic]).sum(dim=-1)
+
+        actor_regularization = masked_select(actor_regularization, context.valids, context.num_invalids)
+        value_regularization = masked_select(value_regularization, context.valids, context.num_invalids)
 
         actor_regularization /= len(context.drac_responses_actor)
         value_regularization /= len(context.drac_responses_critic)
-        return actor_regularization + value_regularization
+        return actor_regularization.mean() + value_regularization.mean()
 
 
 @dataclass
