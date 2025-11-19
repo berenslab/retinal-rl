@@ -1,0 +1,52 @@
+# Configuration for a retinal classifier neural network
+
+# Define the input sensor
+sensors:
+  vision: # Vision is a list of 3 elements
+    - 3  # Number of color channels
+    - ${vision_height}  # Height of the input image
+    - ${vision_width}  # Width of the input image
+  rnn_state:
+    - ${n_fully_connected}  # Size of the RNN state
+
+# Define how the various NeuralCircuits are connected to each other
+connections:
+  - ["vision", "vision_model"]  # Input to retina
+  - ["vision_model", "fcs"]  # Retina to thalamus
+  - ["fcs", "rnn"]  # Prefrontal cortex to recurrent network
+  - ["rnn_state", "rnn"]  # recurrent input to rnn
+  - ["rnn", "actor"]  # recurrent to actor
+  - ["rnn", "critic"]  # recurrent to critic
+
+
+# Define the individual nodes (neural circuits) of the network. Many circuit
+# parameters are interpolated from the experiment config.
+circuits:
+  # Retina: initial processing of visual input
+  vision_model:
+    _target_: retinal_rl.models.circuits.retinal_deprecated.RetinalEncoder
+    bp_channels: 16
+    act_name: "elu"
+
+  # Prefrontal Cortex: high-level cognitive processing
+  fcs:
+    _target_: retinal_rl.models.circuits.fully_connected.FullyConnected
+    output_shape:
+      - ${n_fully_connected}  # Size of the latent representation
+    hidden_units: 
+      - ${n_fully_connected}
+      - ${n_fully_connected}
+    activation: "elu"
+  
+  rnn:
+    _target_: retinal_rl.models.circuits.latent_core.LatentRNN
+    rnn_size: ${n_fully_connected}
+    rnn_num_layers: 1
+
+  critic:
+    _target_: retinal_rl.models.circuits.actor_critic.Critic
+
+  actor:
+    _target_: retinal_rl.models.circuits.actor_critic.Actor
+    num_actions: 5
+
