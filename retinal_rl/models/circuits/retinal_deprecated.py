@@ -1,28 +1,26 @@
-from typing import List, OrderedDict
+from typing import OrderedDict
 
 import torch
-from torch.nn import AvgPool2d, Conv2d, Flatten, Linear, MaxPool2d, Sequential
+from torch.nn import AvgPool2d, Conv2d, MaxPool2d, Sequential
 
-from retinal_rl.models.neural_circuit import NeuralCircuit
+from retinal_rl.models.neural_circuit import SimpleNeuralCircuit
 
 
-class RetinalEncoder(NeuralCircuit):
+class RetinalEncoder(SimpleNeuralCircuit):
     """TODO: Description"""
 
     def __init__(
-        self, input_shape: List[int], bp_channels: int, act_name: str, out_shape: int
+        self, input_shapes: list[list[int]], bp_channels: int, act_name: str
     ):
-        super().__init__(input_shape)
+        super().__init__(input_shapes)
 
         # Activation function
         self.act_name = act_name
-        self.nl_fc = self.str_to_activation(self.act_name)
 
         # Saving parameters
         self.bp_channels = bp_channels
         self.rgc_chans = self.bp_channels * 2
         self.v1_chans = self.rgc_chans * 2
-        self.out_shpe = out_shape
 
         btl_chans = None
         if btl_chans is not None:
@@ -62,11 +60,6 @@ class RetinalEncoder(NeuralCircuit):
         ]
 
         self.conv_head = Sequential(OrderedDict(layers))
-        self.flatten = Flatten()
-        _test_inp = torch.empty(1, *self.input_shape)
-        _test_out = self.flatten(self.conv_head(_test_inp))
-        self.fc = Linear(_test_out.shape[1], out_shape)
 
-    def forward(self, x: torch.Tensor):
-        x = self.flatten(self.conv_head(x))
-        return self.nl_fc(self.fc(x))
+    def forward(self, inputs: tuple[torch.Tensor, ...]) -> tuple[torch.Tensor, ...]:
+        return (self.conv_head(inputs[0]),)
