@@ -19,7 +19,7 @@ connections:
   - ["rnn_state", "rnn"]  # recurrent input to rnn
   - ["rnn", "actor"]  # recurrent to actor
   - ["rnn", "critic"]  # recurrent to critic
-  - ["thalamus", "decoder"]  # v1 to decoder (for reconstruction)
+  - ["thalamus", "decoder"]  # thalamus to decoder (for reconstruction)
 
 # Define the individual nodes (neural circuits) of the network. Many circuit
 # parameters are interpolated from the experiment config.
@@ -28,10 +28,12 @@ circuits:
   retina:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 2
-    num_channels: [16,32]  # Two layers with 16 and 32 channels
+    num_channels: 
+      - 16
+      - ${rgc_channels}
     kernel_size: 
-      - ${bp_kernel_size}
-      - ${rgc_kernel_size}
+      - 15
+      - 7
     stride: ${generic_stride}
     activation: ${activation}
     layer_names: ["bipolar", "retinal_ganglion"]  # Names inspired by retinal cell types
@@ -42,9 +44,9 @@ circuits:
   thalamus:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 1
-    num_channels: ${bottleneck_chans}
-    kernel_size: ${lgn_kernel_size}
-    stride: ${bottleneck_stride}
+    num_channels: ${lgn_channels}
+    kernel_size: 1
+    stride: 1
     activation: ${activation}
     layer_names: ["lgn"]  # Lateral Geniculate Nucleus
     layer_norm: ${layer_norm}
@@ -55,7 +57,7 @@ circuits:
     _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
     num_layers: 1
     num_channels: 64
-    kernel_size: ${v1_kernel_size}
+    kernel_size: 7
     stride: ${generic_stride}
     activation: ${activation}
     layer_names: ["v1"]  # Primary Visual Cortex
@@ -89,19 +91,19 @@ circuits:
     layer_norm: ${layer_norm}
     affine_norm: ${affine_norm}
     num_channels:
-      - 32
-      - 16
+      - ${brain.circuits.retina.num_channels[1]}
+      - ${brain.circuits.retina.num_channels[0]}
       - 3  # For a symmetric encoder, this should be the reverse of the num_channels in the CNN layers up to the point of decoding (in this case, the thalamus)
     kernel_size: 
-      - ${lgn_kernel_size}
-      - ${rgc_kernel_size}
-      - ${bp_kernel_size}
+      - ${brain.circuits.thalamus.kernel_size}
+      - ${brain.circuits.retina.kernel_size[1]}
+      - ${brain.circuits.retina.kernel_size[0]}
     stride:
-      - ${bottleneck_stride}
-      - ${generic_stride}
-      - ${generic_stride}
+      - ${brain.circuits.thalamus.stride}
+      - ${brain.circuits.retina.stride}
+      - ${brain.circuits.retina.stride}
     activation:
-      - ${activation}
-      - ${activation}
+      - ${brain.circuits.retina.activation}
+      - ${brain.circuits.retina.activation}
       - "tanh"
 
