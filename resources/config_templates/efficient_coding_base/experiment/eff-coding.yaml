@@ -23,28 +23,25 @@ vision_width: ${dataset.vision_width}
 
 
 ### BRAIN SETTINGS
+rgc_channels: 32
+lgn_channels: ${rgc_channels}
 activation: "gelu"
-hidden_dim: [512]
 
 generic_stride: 3
-
-bp_kernel_size: 15
-rgc_kernel_size: 11
-lgn_kernel_size: 3
-v1_kernel_size: 9
-
-bottleneck_chans: 8
-bottleneck_stride: 1
+generic_kernel_size: 11
 
 rnn_size: 128
-
 prefrontal_out: 128
 prefrontal_hidden: [128]
 
-layer_norm: True
-affine_norm: True
+layer_norm: False
+affine_norm: False
 
 ### LOSS/OPTIMIZER SETTINGS
+
+recon_weight: 0
+sparsity_weight: 0
+
 learning_rate: 0.0001
 weight_decay: 0.00001
 
@@ -52,7 +49,6 @@ policy_factor: 1
 exploration_factor: 0.001
 value_factor: 0.5
 reconstruction_factor: 0.001 # factor calculated through expected value of 0.4 and sum of rl losses being approximately 0.005
-recon_weight: 0
 recon_weight_retina: ${recon_weight}
 recon_weight_thalamus: ${recon_weight}
 
