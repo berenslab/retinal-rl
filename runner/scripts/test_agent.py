@@ -20,14 +20,20 @@ from sample_factory.utils.utils import log
 
 from runner.frameworks.rl.sf_framework import SFFramework
 
+"""
+Allows to run a trained agent in an evironment that can be specified to test how well it survives in that.
+Usage: python -m runner.scripts.test_agent {path_to_experiment} {env_name} {num_repeats}
+Stores the results as a list in data/analyses/survival_durations_{env_name}.csv
+"""
+
+
 OmegaConf.register_new_resolver("eval", eval)
 
 
-def test_survival_duration(  # noqa: C901 # TODO: Properly implement this anyway
+def test_survival_duration(  # TODO: Properly implement this anyway
     cfg: Config,
     num_repeats: int = 10,
 ) -> tuple[StatusCode, float]:
-
     cfg = load_from_checkpoint(cfg)
 
     eval_env_frameskip: int = (
@@ -43,7 +49,6 @@ def test_survival_duration(  # noqa: C901 # TODO: Properly implement this anyway
     )
 
     cfg.num_envs = 1
-
 
     env = make_env(cfg)
 
@@ -66,10 +71,11 @@ def test_survival_duration(  # noqa: C901 # TODO: Properly implement this anyway
     epoch_durations = []
     with torch.no_grad():
         for epoch in range(num_repeats):
-
             num_frames = 0
             obs, infos = env.reset()
-            action_mask = obs.pop("action_mask").to(device) if "action_mask" in obs else None
+            action_mask = (
+                obs.pop("action_mask").to(device) if "action_mask" in obs else None
+            )
             rnn_states = torch.zeros(
                 [1, get_rnn_size(cfg)], dtype=torch.float32, device=device
             )
@@ -100,7 +106,9 @@ def test_survival_duration(  # noqa: C901 # TODO: Properly implement this anyway
                     obs, rew, terminated, truncated, infos = env.step(actions)
 
                     action_mask = (
-                        obs.pop("action_mask").to(device) if "action_mask" in obs else None
+                        obs.pop("action_mask").to(device)
+                        if "action_mask" in obs
+                        else None
                     )
                     dones = make_dones(terminated, truncated)
 
@@ -118,6 +126,7 @@ def test_survival_duration(  # noqa: C901 # TODO: Properly implement this anyway
     env.close()
     return epoch_durations
 
+
 experiment_path = Path(sys.argv[1])
 env_name = sys.argv[2]
 num_repeats = int(sys.argv[3])
@@ -128,14 +137,19 @@ if __name__ == "__main__":
     cfg.path.run_dir = experiment_path
 
     cfg.dataset.env_name = env_name
-    
+
     cfg.logging.use_wandb = False
     cfg.samplefactory.save_video = True
     cfg.samplefactory.no_render = True
 
     framework = SFFramework(cfg, "cache")
-    survival_durations = test_survival_duration(framework.sf_cfg, num_repeats=num_repeats)
+    survival_durations = test_survival_duration(
+        framework.sf_cfg, num_repeats=num_repeats
+    )
 
-    with open(experiment_path / "data" / "analyses" /f"survival_durations_{env_name}.csv", "w") as f:
+    with open(
+        experiment_path / "data" / "analyses" / f"survival_durations_{env_name}.csv",
+        "w",
+    ) as f:
         for duration in survival_durations:
             f.write(f"{duration}\n")
