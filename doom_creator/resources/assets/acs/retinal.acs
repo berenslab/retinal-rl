@@ -109,6 +109,33 @@ function void SpawnActor(int oid) {
     }
 }
 
+
+function void SpawnDistractor(int oid) {
+
+    int tid = UniqueTID();
+    str act = actor_names[oid];
+
+    str texture_num = random(0,actor_num_textures[oid] - 1);
+    str texture = StrParam(s:"Texture",d:texture_num);
+
+    int spawn_x = random(0, spawn_range*2) - spawn_range;
+    int spawn_y = random(0, spawn_range*2) - spawn_range;
+
+
+    int actor_x = GetActorX(0) >> 16;
+    int actor_y = GetActorY(0) >> 16;
+    int diff_x = (actor_x-spawn_x);
+    int diff_y = (actor_y-spawn_y);
+    int sq_dist = diff_x*diff_x + diff_y*diff_y;
+    int min_spawn_dist = 100;
+    if (sq_dist > (min_spawn_dist * min_spawn_dist))
+    {
+        Spawn(act, spawn_x*1.0, spawn_y*1.0, 20.0, tid);
+        SetActorState(tid, texture);
+    }
+}
+
+
 // Random object generation
 function void randomNourishment(void) {
     int oid = random(0,nourishment_unique-1);
@@ -132,7 +159,7 @@ function void randomObstacle(void) {
 function void randomDistractor(void) {
     int distractor_offset = nourishment_unique + poison_unique + obstacle_unique;
     int oid = random(0,distractor_unique-1);
-    SpawnActor(oid+distractor_offset);
+    SpawnDistractor(oid+distractor_offset);
 }
 
 // Environment behaviour

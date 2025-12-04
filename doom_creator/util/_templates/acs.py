@@ -28,8 +28,7 @@ script "Load Config Information" OPEN {{
     spawn_relative = {str(spawn_relative).lower()};
     spawn_range = {spawn_range};
     grid_size = {grid_size};
-    {""
-    "".join([f"free_positions[{i}]=1;" for i in range(grid_size**2)])};
+    {"".join([f"free_positions[{i}]=1;" for i in range(grid_size**2)])}
     objects_left_to_spawn = {grid_size**2};
 
     // Object Variables
