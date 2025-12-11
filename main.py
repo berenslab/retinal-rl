@@ -1,6 +1,7 @@
 """Main entry point for the retinal RL project."""
 
 import os
+from pathlib import Path
 import sys
 import warnings
 
@@ -77,7 +78,19 @@ def _program(cfg: DictConfig):
 
     # Load brain weights if specified - TODO: same for optimizer? framework specific loading?
     if hasattr(cfg, "init_weights_path"):
-        load_brain_weights(brain, cfg.init_weights_path)
+        init_weights_path = Path(cfg.init_weights_path)
+        if init_weights_path.is_dir():
+            init_weights_dir = init_weights_path / "train_dir"/"default_experiment"/"checkpoint_p0"
+            # find checkpoint starting with 'best'
+            ckpt_files = [
+                f for f in os.listdir(init_weights_dir) if f.startswith("best")
+            ]
+            if len(ckpt_files) != 1:
+                raise ValueError(
+                    f"Expected exactly one best checkpoint, found {len(ckpt_files)}"
+                )
+            init_weights_path = init_weights_dir / ckpt_files[0]
+        load_brain_weights(brain, init_weights_path.as_posix())
 
     if cfg.command == "train":
         framework.train(device, brain, optimizer, objective)
