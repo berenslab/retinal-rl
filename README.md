@@ -33,7 +33,13 @@ model, use the `train` command:
 apptainer exec retinal-rl.sif python main.py +experiment="{experiment}" command=train
 ```
 
+**Note:To use the analyze command**
+
+To ensure `command=analyze` works, you need to first specify which run to analyse, only then it can analyse that specific run, else it will fail. By default it will try to analyse the previous run, and if your previous run was not train, which includes analyse function, then it won't work. To enable analysis of a previous file, it can be mentioned in the /retinal-rl/config/user/experiment/****.yaml file. So, whichever experiment yaml file you have, there you can mention the run name to analyse and by default it is set to be run_[current date and time] 
+
 `apptainer` commands can typically be replaced with `singularity` if the latter is rather used.
+
+
 
 ## Hydra Configuration
 
@@ -88,3 +94,4 @@ apptainer exec retinal-rl.sif python main.py +experiment="{experiment}" +sweep="
 ```
 
 Typically the only command line arguments that need a `+` prefix will be `+experiment` and `+sweep`. Also note that `.yaml` extensions are dropped at the command line.
+
