@@ -112,6 +112,10 @@ def analyze(
             device,
         )
 
+        #TODO: this 1 and, call the DoG fitting analysis and log the results. This function gets called when command="analyze" in main.py & during training after on.
+        #2. Also add a flag in the config file to enable/disable this analysis.
+        #3. Save fitted parameters, and metrics. Especially make a plot of Rsquared for each layer across epochs.
+
     log.plot_and_save_histories(histories, save_always=True)
 
 
