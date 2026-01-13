@@ -3,6 +3,7 @@ import time
 from collections import deque
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import torch
@@ -28,6 +29,11 @@ from sample_factory.utils.typing import Config, StatusCode
 from sample_factory.utils.utils import log
 
 from retinal_rl.analysis.attribution import analyze as attribution_analyze
+from retinal_rl.analysis.output_pca import analyze as output_pca_analyze
+from retinal_rl.analysis.activity_recording import (
+    analyze as activity_analyze,
+    raster_plot as activity_raster_plot,
+)
 from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
 from retinal_rl.util import rescale_zero_one
 from runner.frameworks.rl.sf_framework import SFFramework
@@ -40,6 +46,8 @@ class VideoType(str, Enum):
     AUGMENTED = "AUGMENTED"
     DECODED = "DECODED"
     VALUE_MASK = "VALUE_MASK"
+    OUTPUT_PCA = "OUTPUT_PCA"
+    ACTIVITY_RASTER = "ACTIVITY_RASTER"
 
 
 def video_type(value: str) -> VideoType:
@@ -109,7 +117,7 @@ def create_video(
 
 def get_frames(
     actor_critic: SampleFactoryBrain, obs, rnn_states
-) -> dict[VideoType, torch.Tensor]:
+) -> dict[VideoType, Any]:
     normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
 
     responses = actor_critic.brain(
@@ -124,7 +132,7 @@ def get_frames(
             decoder_key = response_key
             break
 
-    cur_frames: dict[VideoType, torch.Tensor] = {
+    cur_frames: dict[VideoType, Any] = {
         VideoType.RAW: obs["obs"].detach(),
         VideoType.AUGMENTED: normalized_obs["obs"].detach(),
         VideoType.DECODED: responses[decoder_key][0].detach()
@@ -138,8 +146,52 @@ def get_frames(
             sum_channels=True,
             rescale_per_frame=False,
         )["vision"],
+        VideoType.ACTIVITY_RASTER: activity_analyze(
+            actor_critic.brain,
+            {"vision": normalized_obs["obs"], "rnn_state": rnn_states},
+            circuit_name="rnn",
+            output_only=True,
+        ),
     }
+
+    pca_frames = output_pca_analyze(
+        actor_critic.brain,
+        {"vision": normalized_obs["obs"], "rnn_state": rnn_states},
+        num_pcs=3,  # make rgb
+        rescale_per_frame=False,
+    )
+
+    cur_frames[VideoType.OUTPUT_PCA] = pca_frames["retina"]
     return cur_frames
+
+
+def video_data_to_frames(
+    video_data: dict[VideoType, Any],
+) -> dict[VideoType, torch.Tensor]:
+    frames: dict[VideoType, torch.Tensor] = {}
+    for vid_type, vid_data in video_data.items():
+        if vid_type == VideoType.ACTIVITY_RASTER:
+            activity_frames = []
+            for cur_frame, frame_activations in enumerate(vid_data):
+                torch_frame = (
+                    activity_raster_plot(
+                        {
+                            "vision": video_data[VideoType.RAW][cur_frame],
+                            "rnn_state": None,
+                        },
+                        vid_data,
+                        cur_frame=cur_frame,
+                        num_frames=len(vid_data),
+                        return_image=True,
+                    )
+                    .swapaxes(2, 0)
+                    .swapaxes(2, 1)[None]
+                )
+                activity_frames.append(torch_frame)
+            frames[vid_type] = np.concatenate(activity_frames, axis=0)
+        else:
+            frames[vid_type] = vid_data[0].movedim(0, -1).cpu().numpy()
+    return frames
 
 
 def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
@@ -217,7 +269,7 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
         while not max_frames_reached(num_frames):
             normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
 
-            cur_frames: dict[VideoType, torch.Tensor] = get_frames(
+            cur_frames: dict[VideoType, Any] = get_frames(
                 actor_critic, obs, rnn_states
             )
             policy_outputs = actor_critic(
@@ -251,10 +303,10 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
                     if not actor_frame_rate and _i_repeat > 0:
                         cur_frames = get_frames(actor_critic, obs, rnn_states)
 
-                    for _vid_type in video_types:
-                        video_frames[_vid_type].append(
-                            cur_frames[_vid_type][0].movedim(0, -1).cpu().numpy()
-                        )
+                    for _vid_type in cur_frames:
+                        if _vid_type not in video_frames:
+                            video_frames[_vid_type] = []
+                        video_frames[_vid_type].append(cur_frames[_vid_type])
 
                 action_mask = (
                     obs.pop("action_mask").to(device) if "action_mask" in obs else None
@@ -353,6 +405,8 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
     env.close()
 
     fps = experiment_cfg.fps if experiment_cfg.fps > 0 else 30
+
+    video_frames = video_data_to_frames(video_frames)
 
     for _vid_type in video_types:
         # assert frames are in the right range (0-255) to produce the video
