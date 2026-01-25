@@ -1,8 +1,24 @@
 """Main entry point for the retinal RL project."""
 
+# main.py - PUT THIS AT THE VERY TOP
+
+import os
+os.environ['REQUESTS_CA_BUNDLE'] = '/etc/ssl/certs/ca-bundle.crt'
+os.environ['SSL_CERT_FILE'] = '/etc/ssl/certs/ca-bundle.crt'
+os.environ['SSL_CERT_DIR'] = '/etc/ssl/certs'
+
+# Patch certifi before importing wandb
+import certifi
+certifi.where = lambda: '/etc/ssl/certs/ca-bundle.crt'
+
+# Multiprocessing fix
+import multiprocessing
+multiprocessing.set_start_method('spawn', force=True)
+
 import os
 import sys
 import warnings
+
 
 import hydra
 import torch
@@ -16,6 +32,7 @@ from runner.frameworks.framework_interface import TrainingFramework
 from runner.frameworks.rl.sf_framework import SFFramework
 from runner.sweep import launch_sweep
 from runner.util import create_brain, delete_results, load_brain_weights
+
 
 # Load the eval resolver for OmegaConf
 OmegaConf.register_new_resolver("eval", eval)

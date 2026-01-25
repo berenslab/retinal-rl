@@ -106,6 +106,10 @@ def train(
             cfg.logging.use_wandb,
             cfg.logging.channel_analysis,
             cfg.logging.plot_sample_size,
+            cfg.logging.get("dog_analysis", False),
+            cfg.logging.get("dog_blur_sigma", 0.5),
+            cfg.logging.get("gabor_analysis", False),
+            cfg.logging.get("gabor_blur_sigma", 0.5)
         )
         analyze(
             ana_cfg,
@@ -150,7 +154,7 @@ def train(
         logger.info(f"Epoch {epoch} complete. Wall Time: {epoch_wall_time:.2f}s.")
 
         if epoch % checkpoint_step == 0:
-            logger.info("Saving checkpoint and plots.")
+            logger.info("Saving checkpoint.")
 
             save_checkpoint(
                 data_dir,
@@ -162,28 +166,32 @@ def train(
                 epoch,
             )
 
-            ana_cfg = AnalysesCfg(
-                Path(cfg.path.run_dir),
-                Path(cfg.path.plot_dir),
-                Path(cfg.path.checkpoint_plot_dir),
-                Path(cfg.path.data_dir),
-                cfg.logging.use_wandb,
-                cfg.logging.channel_analysis,
-                cfg.logging.plot_sample_size,
-            )
+        ana_cfg = AnalysesCfg(
+            Path(cfg.path.run_dir),
+            Path(cfg.path.plot_dir),
+            Path(cfg.path.checkpoint_plot_dir),
+            Path(cfg.path.data_dir),
+            cfg.logging.use_wandb,
+            cfg.logging.channel_analysis,
+            cfg.logging.plot_sample_size,
+            cfg.logging.get("dog_analysis", False),
+            cfg.logging.get("dog_blur_sigma", 0.5),
+            cfg.logging.get("gabor_analysis", False),
+            cfg.logging.get("gabor_blur_sigma", 0.5),
+        )
 
-            analyze(
-                ana_cfg,
-                device,
-                brain,
-                objective,
-                history,
-                train_set,
-                test_set,
-                epoch,
-                True,
-            )
-            logger.info("Analysis complete.")
+        analyze(
+            ana_cfg,
+            device,
+            brain,
+            objective,
+            history,
+            train_set,
+            test_set,
+            epoch,
+            epoch % checkpoint_step == 0,
+        )
+        logger.info("Analysis complete.")
 
         if use_wandb:
             _wandb_log_statistics(epoch, epoch_wall_time, history)

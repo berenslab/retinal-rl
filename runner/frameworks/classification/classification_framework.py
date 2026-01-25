@@ -53,6 +53,7 @@ class ClassificationFramework(TrainingFramework):
         brain: Brain,
         objective: Optional[Objective[ContextT]] = None,
     ):
+        
         cfg = AnalysesCfg(
             Path(self.cfg.path.run_dir),
             Path(self.cfg.path.plot_dir),
@@ -60,6 +61,7 @@ class ClassificationFramework(TrainingFramework):
             Path(self.cfg.path.data_dir),
             self.cfg.logging.use_wandb,
             self.cfg.logging.channel_analysis,
+            self.cfg.logging.dog_analysis, # Added for DoG analysis
             self.cfg.logging.plot_sample_size,
         )
         analyze(

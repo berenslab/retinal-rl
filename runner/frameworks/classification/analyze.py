@@ -6,6 +6,8 @@ import torch
 
 from retinal_rl.analysis import channel_analysis as channel_ana
 from retinal_rl.analysis import default as default_ana
+from retinal_rl.analysis import DoG_fit_analysis as dog_ana
+from retinal_rl.analysis import gabor_fit_analysis as gabor_ana
 from retinal_rl.analysis import receptive_fields
 from retinal_rl.analysis import reconstructions as recon_ana
 from retinal_rl.analysis import transforms_analysis as transf_ana
@@ -26,6 +28,10 @@ class AnalysesCfg:
     use_wandb: bool
     channel_analysis: bool
     plot_sample_size: int
+    dog_analysis: bool = False
+    dog_blur_sigma: float = 0.5
+    gabor_analysis: bool = False
+    gabor_blur_sigma: float = 0.5
 
     def __post_init__(self):
         self.analyses_dir = Path(self.data_dir) / "analyses"
@@ -66,6 +72,28 @@ def analyze(
         copy_checkpoint,
     )
     log.save_dict(cfg.analyses_dir / f"receptive_fields_epoch_{epoch}.npz", rf_result)
+
+    # DoG analysis (optional)
+    if cfg.dog_analysis:
+        dog_results = dog_ana.analyze_all_layers(rf_result, blur_sigma=cfg.dog_blur_sigma)
+        dog_npz = dog_ana.to_npz_dict(dog_results)
+        log.save_dict(cfg.analyses_dir / f"dog_fits_epoch_{epoch}.npz", dog_npz)
+        
+        r2_history_path = cfg.analyses_dir / "dog_r2_history.npz"
+        r2_history = dog_ana.update_and_save_r2_history(r2_history_path, dog_results, epoch)
+        
+        dog_ana.plot(log, rf_result, dog_results, epoch, copy_checkpoint, r2_history)
+        
+    # Gabor analysis (optional)
+    if cfg.gabor_analysis:
+        gabor_results = gabor_ana.analyze_all_layers(rf_result, blur_sigma=cfg.gabor_blur_sigma)
+        gabor_npz = gabor_ana.to_npz_dict(gabor_results)
+        log.save_dict(cfg.analyses_dir / f"gabor_fits_epoch_{epoch}.npz", gabor_npz)
+
+        r2_history_path = cfg.analyses_dir / "gabor_r2_history.npz"
+        r2_history = gabor_ana.update_and_save_r2_history(r2_history_path, gabor_results, epoch)
+
+        gabor_ana.plot(log, rf_result, gabor_results, epoch, copy_checkpoint, r2_history)
 
     if cfg.channel_analysis:
         # Prepare dataset
@@ -111,10 +139,6 @@ def analyze(
             cfg.plot_sample_size,
             device,
         )
-
-        #TODO: this 1 and, call the DoG fitting analysis and log the results. This function gets called when command="analyze" in main.py & during training after on.
-        #2. Also add a flag in the config file to enable/disable this analysis.
-        #3. Save fitted parameters, and metrics. Especially make a plot of Rsquared for each layer across epochs.
 
     log.plot_and_save_histories(histories, save_always=True)
 

@@ -287,7 +287,8 @@ def layer_channel_plots(
 
     # Autocorrelation plots
     # Plot average 2D autocorrelation and variance
-    autocorr = fft.fftshift(spectral.mean_autocorr[channel])
+    
+    autocorr = fft.fftshift(torch.tensor(spectral.mean_autocorr[channel])) #np shift here
     h, w = autocorr.shape
     extent = [-w // 2, w // 2, -h // 2, h // 2]
     im = axs[0, 1].imshow(
@@ -299,7 +300,7 @@ def layer_channel_plots(
     fig.colorbar(im, ax=axs[0, 1])
     set_integer_ticks(axs[0, 1])
 
-    autocorr_sd = fft.fftshift(np.sqrt(spectral.var_autocorr[channel]))
+    autocorr_sd = fft.fftshift(torch.sqrt(torch.tensor(spectral.var_autocorr[channel]))) #np shift here
     im = axs[0, 2].imshow(
         autocorr_sd, cmap="inferno", origin="lower", extent=extent, vmin=0
     )
@@ -310,7 +311,7 @@ def layer_channel_plots(
     set_integer_ticks(axs[0, 2])
 
     # Plot average 2D power spectrum
-    log_power_spectrum = fft.fftshift(np.log1p(spectral.mean_power_spectrum[channel]))
+    log_power_spectrum = fft.fftshift(torch.log1p(torch.tensor(spectral.mean_power_spectrum[channel])))
     h, w = log_power_spectrum.shape
 
     im = axs[1, 1].imshow(
@@ -323,7 +324,7 @@ def layer_channel_plots(
     set_integer_ticks(axs[1, 1])
 
     log_power_spectrum_sd = fft.fftshift(
-        np.log1p(np.sqrt(spectral.var_power_spectrum[channel]))
+        torch.log1p(torch.sqrt(torch.tensor(spectral.var_power_spectrum[channel])))
     )
     im = axs[1, 2].imshow(
         log_power_spectrum_sd,
