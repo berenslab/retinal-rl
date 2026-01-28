@@ -427,17 +427,19 @@ def plot_layer_overlays(
         # Add orientation line
         params = res.params
         theta = params["theta"]
+        theta_edge = theta + np.pi/2
         x0, y0 = params["x0"], params["y0"]
         length = 2 * max(params["sigma_x"], params["sigma_y"])
-        dx = length * np.cos(theta)
-        dy = length * np.sin(theta)
+        dx = length * np.cos(theta_edge)
+        dy = length * np.sin(theta_edge)
         ax.plot([x0 - dx, x0 + dx], [y0 - dy, y0 + dy], 
                'y-', linewidth=2, alpha=0.7)
         
         # Title with key parameters
+        edge_angle = np.degrees(theta + np.pi/2) % 180  # Convert to edge orientation
         ax.set_title(
             f"Ch {idx} | R²={res.r2:.2f}\n"
-            f"θ={np.degrees(theta):.0f}° f={params['freq']:.3f}",
+            f"Edge θ={edge_angle:.0f}° f={params['freq']:.3f}",
             fontsize=9
         )
         ax.axis("off")
