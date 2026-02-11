@@ -190,7 +190,8 @@ def video_data_to_frames(
                 activity_frames.append(torch_frame)
             frames[vid_type] = np.concatenate(activity_frames, axis=0)
         else:
-            frames[vid_type] = vid_data[0].movedim(0, -1).cpu().numpy()
+            all_frames = torch.cat(vid_data, dim=0)
+            frames[vid_type] = all_frames.movedim(1, -1).cpu().numpy() # move color channel to the end for video generation
     return frames
 
 
