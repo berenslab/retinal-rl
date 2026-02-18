@@ -35,7 +35,7 @@ apptainer exec retinal-rl.sif python main.py +experiment="{experiment}" command=
 
 **Note:To use the analyze command**
 
-To ensure `command=analyze` works, you need to first specify which run to analyse, only then it can analyse that specific run, else it will fail. By default it will try to analyse the previous run, and if your previous run was not train, which includes analyse function, then it won't work. To enable analysis of a previous file, it can be mentioned in the /retinal-rl/config/user/experiment/****.yaml file. So, whichever experiment yaml file you have, there you can mention the run name to analyse and by default it is set to be run_[current date and time] 
+To ensure `command=analyze` works, you need to first specify which run to analyse, only then it can analyse that specific run, else it will fail. By default it will try to analyse the run of current time and date and there will be no run in current time and date to analyze. To enable analysis of a previous file, it can be mentioned in the /retinal-rl/config/user/experiment/****.yaml file. So, whichever experiment yaml file you have, there you can mention the run name to analyse and by default it is set to be run_[current date and time] . Can also mention it as a command line argument
 
 `apptainer` commands can typically be replaced with `singularity` if the latter is rather used.
 
