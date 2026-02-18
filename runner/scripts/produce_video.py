@@ -27,6 +27,7 @@ from sample_factory.model.actor_critic import create_actor_critic
 from sample_factory.model.model_utils import get_rnn_size
 from sample_factory.utils.typing import Config, StatusCode
 from sample_factory.utils.utils import log
+from tqdm import tqdm
 
 from retinal_rl.analysis.attribution import analyze as attribution_analyze
 from retinal_rl.analysis.output_pca import analyze as output_pca_analyze
@@ -48,6 +49,7 @@ class VideoType(str, Enum):
     VALUE_MASK = "VALUE_MASK"
     OUTPUT_PCA = "OUTPUT_PCA"
     ACTIVITY_RASTER = "ACTIVITY_RASTER"
+    FULL = "FULL"
 
 
 def video_type(value: str) -> VideoType:
@@ -144,12 +146,12 @@ def get_frames(
             target_circuit="critic",
             method="l1",
             sum_channels=True,
-            rescale_per_frame=False,
+            rescale_per_frame=True,
         )["vision"],
         VideoType.ACTIVITY_RASTER: activity_analyze(
             actor_critic.brain,
             {"vision": normalized_obs["obs"], "rnn_state": rnn_states},
-            circuit_name="rnn",
+            circuit_names=["visual_cortex", "prefrontal", "rnn"],
             output_only=True,
         ),
     }
@@ -167,12 +169,14 @@ def get_frames(
 
 def video_data_to_frames(
     video_data: dict[VideoType, Any],
+    requested_types: list[VideoType],
 ) -> dict[VideoType, torch.Tensor]:
     frames: dict[VideoType, torch.Tensor] = {}
-    for vid_type, vid_data in video_data.items():
+    for vid_type in requested_types:
+        vid_data = video_data[vid_type]
         if vid_type == VideoType.ACTIVITY_RASTER:
             activity_frames = []
-            for cur_frame, frame_activations in enumerate(vid_data):
+            for cur_frame in tqdm(range(len(video_data[VideoType.RAW])), "Processing frames for ACTIVITY_RASTER video..."):
                 torch_frame = (
                     activity_raster_plot(
                         {
@@ -180,6 +184,8 @@ def video_data_to_frames(
                             "rnn_state": None,
                         },
                         vid_data,
+                        flatten_activity=False,
+                        sort_activity="pca",
                         cur_frame=cur_frame,
                         num_frames=len(vid_data),
                         return_image=True,
@@ -189,9 +195,40 @@ def video_data_to_frames(
                 )
                 activity_frames.append(torch_frame)
             frames[vid_type] = np.concatenate(activity_frames, axis=0)
+        elif vid_type == VideoType.FULL:
+            additional_videos = [
+                VideoType.DECODED,
+                VideoType.AUGMENTED,
+                VideoType.OUTPUT_PCA,
+                VideoType.VALUE_MASK,
+            ]
+            activity_frames = []
+            for cur_frame in tqdm(range(len(video_data[VideoType.RAW])), "Processing frames for FULL video..."):
+                torch_frame = (
+                    activity_raster_plot(
+                        {
+                            "vision": video_data[VideoType.RAW][cur_frame],
+                            "rnn_state": None,
+                        },
+                        video_data[VideoType.ACTIVITY_RASTER],
+                        additional_images=[
+                            video_data[_t][cur_frame] for _t in additional_videos
+                        ],
+                        additional_titles=["Reconstruction", "Normalized Input", "PCA of Retina Output", "Value Attribution"],
+                        cur_frame=cur_frame,
+                        num_frames=len(video_data[VideoType.RAW]),
+                        return_image=True,
+                    )
+                    .swapaxes(2, 0)
+                    .swapaxes(2, 1)[None]
+                )
+                activity_frames.append(torch_frame)
+            frames[vid_type] = np.concatenate(activity_frames, axis=0)
         else:
             all_frames = torch.cat(vid_data, dim=0)
-            frames[vid_type] = all_frames.movedim(1, -1).cpu().numpy() # move color channel to the end for video generation
+            frames[vid_type] = (
+                all_frames.movedim(1, -1).cpu().numpy()
+            )  # move color channel to the end for video generation
     return frames
 
 
@@ -263,16 +300,14 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
     episode_reward = None
     finished_episode = [False for _ in range(env.num_agents)]
 
-    video_frames = {vid_type: [] for vid_type in video_types}
+    video_frames = {vid_type: [] for vid_type in list(VideoType.__members__.keys())}
     num_episodes = 0
 
     with torch.no_grad():
         while not max_frames_reached(num_frames):
             normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
 
-            cur_frames: dict[VideoType, Any] = get_frames(
-                actor_critic, obs, rnn_states
-            )
+            cur_frames: dict[VideoType, Any] = get_frames(actor_critic, obs, rnn_states)
             policy_outputs = actor_critic(
                 normalized_obs, rnn_states, action_mask=action_mask
             )
@@ -305,8 +340,6 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
                         cur_frames = get_frames(actor_critic, obs, rnn_states)
 
                     for _vid_type in cur_frames:
-                        if _vid_type not in video_frames:
-                            video_frames[_vid_type] = []
                         video_frames[_vid_type].append(cur_frames[_vid_type])
 
                 action_mask = (
@@ -407,7 +440,7 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
 
     fps = experiment_cfg.fps if experiment_cfg.fps > 0 else 30
 
-    video_frames = video_data_to_frames(video_frames)
+    video_frames = video_data_to_frames(video_frames, requested_types=video_types)
 
     for _vid_type in video_types:
         # assert frames are in the right range (0-255) to produce the video
