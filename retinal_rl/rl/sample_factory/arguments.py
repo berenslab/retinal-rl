@@ -3,6 +3,8 @@ retina_rl library
 
 """
 
+from typing import Optional
+
 from sample_factory.utils.utils import str2bool
 from sf_examples.vizdoom.doom.doom_params import (
     add_doom_env_args,
@@ -77,6 +79,25 @@ def add_retinal_env_args(parser):
         default=False,
         type=str2bool,
         help="Only perform a dry run of the config and network analysis, without training or evaluation",
+    )
+
+    parser.add_argument(
+        "--warp_exp",
+        type=Optional[float],
+        default=None,
+        help="If and how much to warp the input image. If None, no warping is applied. The higher the closer to a center crop the warping is.",
+    )
+    parser.add_argument(
+        "--warp_h",
+        type=int,
+        default=60,
+        help="height after warping",
+    )
+    parser.add_argument(
+        "--warp_w",
+        type=int,
+        default=80,
+        help="width after warping",
     )
 
 
