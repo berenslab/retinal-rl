@@ -6,10 +6,14 @@ import torch
 
 from retinal_rl.analysis import channel_analysis as channel_ana
 from retinal_rl.analysis import default as default_ana
+from retinal_rl.analysis import fit_analysis
 from retinal_rl.analysis import receptive_fields
 from retinal_rl.analysis import reconstructions as recon_ana
 from retinal_rl.analysis import transforms_analysis as transf_ana
+from retinal_rl.analysis.dog_fit_analysis import dog_map_from_params, fit_dog_2d
+from retinal_rl.analysis.gabor_fit_analysis import gabor_map_from_params, fit_gabor_2d
 from retinal_rl.analysis.plot import FigureLogger
+from retinal_rl.math_utils import FloatArray
 from retinal_rl.classification.imageset import Imageset
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.objective import ContextT, Objective
@@ -26,6 +30,8 @@ class AnalysesCfg:
     use_wandb: bool
     channel_analysis: bool
     plot_sample_size: int
+    fit_analysis: bool = False
+    fit_blur_sigma: float = 0.5
 
     def __post_init__(self):
         self.analyses_dir = Path(self.data_dir) / "analyses"
@@ -66,6 +72,13 @@ def analyze(
         copy_checkpoint,
     )
     log.save_dict(cfg.analyses_dir / f"receptive_fields_epoch_{epoch}.npz", rf_result)
+
+    # Fit analysis (DoG + Gabor)
+    if cfg.fit_analysis:
+        run_fit_analysis(
+            log, rf_result, cfg.analyses_dir, epoch, copy_checkpoint,
+            blur_sigma=cfg.fit_blur_sigma,
+        )
 
     if cfg.channel_analysis:
         # Prepare dataset
@@ -151,3 +164,25 @@ def _extended_initialization_plots(
             histogram_result,
             default_ana.INIT_DIR,
         )
+
+def run_fit_analysis(
+    log: FigureLogger,
+    rf_result: dict[str, FloatArray],
+    analyses_dir: Path,
+    epoch: int,
+    copy_checkpoint: bool,
+    blur_sigma: float = 0.5,
+) -> None:
+    """Run both DoG and Gabor fit analysis."""
+    for key, display_name, fit_2d_fn, map_fn in [
+        ("dog", "DoG", fit_dog_2d, dog_map_from_params),
+        ("gabor", "Gabor", fit_gabor_2d, gabor_map_from_params),
+    ]:
+        results = fit_analysis.analyze_all_layers(rf_result, fit_2d_fn, map_fn, blur_sigma)
+        npz = fit_analysis.prepare_npz_dict(results)
+        log.save_dict(analyses_dir / f"{key}_fits_epoch_{epoch}.npz", npz)
+
+        r2_history_path = analyses_dir / f"{key}_r2_history.npz"
+        r2_history = fit_analysis.update_and_save_r2_history(r2_history_path, results, epoch)
+
+        fit_analysis.plot(log, rf_result, results, epoch, copy_checkpoint, r2_history, display_name)

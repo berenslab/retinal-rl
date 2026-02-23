@@ -7,17 +7,25 @@ from numpy.typing import NDArray
 from torch import Tensor
 
 
+
 def rescale_range(
     input: NDArray[np.float64],
     center_zero: bool = False,
     out_min: float = 0,
     out_max: float = 1,
 ) -> NDArray[np.float64]:
+    # input = np.asarray(input, dtype=np.float64) # Convert input to float64 to avoid type errors
+    # import pdb; pdb.set_trace()
+    input = np.asarray(input, dtype=np.float64)
+
     _max = np.max(input)
     _min = np.min(input)
+    
+    
     if center_zero:
         _max = max(abs(_max), abs(_min))
         _min = -_max
+        
     return (input - _min) / (_max - _min) * (out_max - out_min) + out_min
 
 

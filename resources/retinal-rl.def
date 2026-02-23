@@ -15,6 +15,7 @@ From: ubuntu:22.04
   # Update
   apt -qy update
 
+
   # Python
   apt -y install python3 python3-all-dev pip
 
@@ -66,6 +67,7 @@ From: ubuntu:22.04
     torch==2.4.0 torchvision==0.19.0 \
     vizdoom==1.2.4  \
     matplotlib==3.9.1 \
+    scipy==1.13.1 \
     opentsne==1.0.2 \
     opencv-python==4.10.0.84 \
     pygame==2.6.1 \
