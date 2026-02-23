@@ -173,3 +173,5 @@ data/MNIST*
 results
 *.gif
 *.mp4
+
+bash_scripts/
