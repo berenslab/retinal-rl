@@ -40,7 +40,6 @@ To ensure `command=analyze` works, you need to first specify which run to analys
 `apptainer` commands can typically be replaced with `singularity` if the latter is rather used.
 
 
-
 ## Hydra Configuration
 
 The project uses [Hydra](https://hydra.cc/) for configuration management.

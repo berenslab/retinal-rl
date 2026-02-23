@@ -43,6 +43,9 @@ global int 19:num_poisons;
 // Spawn Behaviour
 global bool 20:spawn_relative;
 global int 21:spawn_range;
+global int 22:grid_size;
+global bool 23:free_positions[];
+global int 24:objects_left_to_spawn;
 
 // Spawning actor by index
 function void SpawnActor(int oid) {
@@ -53,22 +56,57 @@ function void SpawnActor(int oid) {
     str texture_num = random(0,actor_num_textures[oid] - 1);
     str texture = StrParam(s:"Texture",d:texture_num);
 
-    int spawn_x = random(-spawn_range+1.0, spawn_range-1.0);
-    int spawn_y = random(-spawn_range+1.0, spawn_range-1.0);
+    // find random free spawn position
+    if (objects_left_to_spawn > 0)
+    {
+        int nth_free_pos = random(0,grid_size*grid_size);
+        int object_pos_index = 0;
 
-    if (spawn_relative) {
-        // Get player position
-        int player_x = GetActorX(0);
-        int player_y = GetActorY(0);
-                
-        // Calculate spawn position
-        spawn_x = player_x + spawn_x;
-        spawn_y = player_y + spawn_y;
+        if (free_positions[nth_free_pos] == 1) {
+            object_pos_index = nth_free_pos;
+            int object_pos_x = object_pos_index / grid_size;
+            int object_pos_y = object_pos_index % grid_size;
+
+            int cell_width = spawn_range/grid_size * 2;
+
+            int spawn_x = object_pos_x * cell_width - spawn_range;
+            int spawn_y = object_pos_y * cell_width - spawn_range;
+            
+            // print(s:"x: ", i:object_pos_x, s:" y: ", i:object_pos_y);
+            // int spawn_x = random(-spawn_range+1.0, spawn_range-1.0);
+            // int spawn_y = random(-spawn_range+1.0, spawn_range-1.0);
+
+            // if (spawn_relative) {
+            //     // Get player position
+            //     int player_x = GetActorX(0);
+            //     int player_y = GetActorY(0);
+                        
+            //     // Calculate spawn position
+            //     spawn_x = player_x + spawn_x;
+            //     spawn_y = player_y + spawn_y;
+            // }
+
+            // print(s:act);
+
+            int actor_x = GetActorX(0) >> 16;
+            int actor_y = GetActorY(0) >> 16;
+            int diff_x = (actor_x-spawn_x);
+            int diff_y = (actor_y-spawn_y);
+            int sq_dist = diff_x*diff_x + diff_y*diff_y;
+            int min_spawn_dist = 100;
+            if (sq_dist > (min_spawn_dist * min_spawn_dist))
+            {
+                int position_jitter_x = random(-cell_width/4,cell_width/4);
+                spawn_x = spawn_x + position_jitter_x;
+                int position_jitter_y = random(-cell_width/4,cell_width/4);
+                spawn_y = spawn_y + position_jitter_y;
+                Spawn(act, spawn_x*1.0, spawn_y*1.0, 20.0, tid);
+                SetActorState(tid, texture);
+                free_positions[object_pos_index] = 0;
+                objects_left_to_spawn = objects_left_to_spawn - 1;
+            }
+        }
     }
-
-    // print(s:act);
-    Spawn(act, spawn_x, spawn_y, 20.0, tid);
-    SetActorState(tid, texture);
 }
 
 // Random object generation
@@ -182,7 +220,7 @@ script "Agent Initialization" ENTER {
         // print(i:reward);
         // print(i:health_gathered);
         delay(1);
-        // print(s:"Num Nourishments: ",i:num_nourishments, s:"; Num Poisons: ",i:num_poisons);
+        // print(s:"Left to Spawn: ",i:objects_left_to_spawn);
     }
 }
 

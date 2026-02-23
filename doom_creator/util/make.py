@@ -65,6 +65,7 @@ def make_scenario(
             pngs = get_pngs(osp.join(directories.CACHE_DIR, "textures"), png_pths)
             pngs = pngs[:min(len(pngs), max_sprites_per_class)]
             num_textures = len(pngs)
+            assert num_textures < 26**3, "Too many textures for actor: " + actor_name
 
             sprite_names = [actor_code(actor_idx, i) for i in range(num_textures)]
             # Add pngs as sprites
@@ -154,7 +155,7 @@ def make_acs(
     metabolic_delay: int,
     metabolic_damage: int,
     spawn_relative: bool = False,
-    spawn_range: float = 1000.0,
+    spawn_range: int = 1000,
 ):
     """Creates the acs script determining spawning and behaviour of all actors"""
     object_variables_acs = ""
