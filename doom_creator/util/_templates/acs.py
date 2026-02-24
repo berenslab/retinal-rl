@@ -52,11 +52,15 @@ def object_variables(typ: str, unique: int, init: int, delay: int):
 """
 
 
-def actor_function(actor_name: str, values: List[int], heal_or_damage: bool):
+def actor_function(actor_name: str, values: List[int], heal_or_damage: str):
     actor_name = actor_name.replace("-", "_")
     # Actor name will be used in function name, not possible with -
     num_values = len(values)
     values_string = ",".join([str(v) for v in values])
+
+
+    plus_minus = "+" if heal_or_damage == "Heal" else "-"
+    update_health_gathered = f"health_gathered = health_gathered {plus_minus} values_{actor_name}[i];"
 
     return f"""\
 int values_{actor_name}[{num_values}] = {{ {values_string} }};
@@ -66,14 +70,7 @@ script "func_{actor_name}" (void)
     {heal_or_damage}Thing(values_{actor_name}[i]);
 
     // Update health gathered for stats
-    if("{heal_or_damage}"=="Heal")
-    {{
-        health_gathered = health_gathered + values_{actor_name}[i];
-    }}
-    else
-    {{
-        health_gathered = health_gathered - values_{actor_name}[i];
-    }}
+    {update_health_gathered}
 
     // Free space for spawning
     int x = GetActorX(0) >> 16;
