@@ -37,7 +37,8 @@ available_buttons =
 	}}
 
 # Game variables that will be in the state
-available_game_variables = {{ HEALTH }}
+available_game_variables = {{ HEALTH USER17 USER18 USER19}}
+# USER17 = HEALTH_GATHERED, USER18 = NUM_NOURISHMENTS, USER19 = NUM_POISONS
 
 mode = PLAYER
 """

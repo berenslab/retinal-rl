@@ -64,6 +64,9 @@ script "func_{actor_name}" (void)
 {{
     int i = Random(0,{num_values}-1);
     {heal_or_damage}Thing(values_{actor_name}[i]);
+    
+    // Update health gathered for stats
+    health_gathered = health_gathered + values_{actor_name}[i];
 
     // Free space for spawning
     int x = GetActorX(0) >> 16;
