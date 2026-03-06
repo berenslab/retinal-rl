@@ -31,6 +31,8 @@ from tqdm import tqdm
 
 from retinal_rl.analysis.activity_recording import (
     full_plot as extended_activity_raster_plot,
+)
+from retinal_rl.analysis.activity_recording import (
     sort_activity,
 )
 from retinal_rl.analysis.attribution import analyze as attribution_analyze
@@ -115,14 +117,12 @@ def create_video(
     experiment_cfg.logging.use_wandb = False
 
     framework = SFFramework(experiment_cfg, "cache")
-    custom_enjoy(framework.sf_cfg, video_types, actor_frame_rate)
+    run_simulation(framework.sf_cfg, video_types, actor_frame_rate)
 
 
 def get_frames(
-    actor_critic: SampleFactoryBrain, obs, rnn_states
+    actor_critic: SampleFactoryBrain, normalized_obs, rnn_states
 ) -> dict[VideoType, Any]:
-    normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
-
     responses = actor_critic.brain(
         {"vision": normalized_obs["obs"], "rnn_state": rnn_states}
     )
@@ -131,12 +131,14 @@ def get_frames(
     # TODO: Use loss definition instead and pass the key to the function
     decoder_key = None
     for response_key, response in responses.items():
-        if response[0].shape == obs["obs"].shape and response_key != "vision":
+        if (
+            response[0].shape == normalized_obs["obs"].shape
+            and response_key != "vision"
+        ):
             decoder_key = response_key
             break
 
     cur_frames: dict[VideoType, Any] = {
-        VideoType.RAW: obs["obs"].detach().cpu(),
         VideoType.AUGMENTED: normalized_obs["obs"].detach().cpu(),
         VideoType.DECODED: responses[decoder_key][0].detach().cpu()
         if decoder_key is not None
@@ -149,14 +151,18 @@ def get_frames(
             sum_channels=True,
             rescale_per_frame=True,
         )["vision"],
-        VideoType.ACTIVITY_RASTER: {key: responses[key][0].flatten().detach().cpu() for key in responses if key != "vision"},
+        VideoType.ACTIVITY_RASTER: {
+            key: responses[key][0].flatten().detach().cpu()
+            for key in responses
+            if key != "vision"
+        },
     }
 
     pca_frames = output_pca_analyze(
         responses,
         num_pcs=3,  # make rgb
         rescale_per_frame=False,
-        circuit_names=["retina"]
+        circuit_names=["retina"],
     )
 
     cur_frames[VideoType.OUTPUT_PCA] = pca_frames["retina"]
@@ -170,8 +176,18 @@ def video_data_to_frames(
     frames: dict[VideoType, torch.Tensor] = {}
 
     # make activity data a dict of activity matrices
-    activity_dict: dict[str, torch.Tensor] = {key: torch.vstack([video_data[VideoType.ACTIVITY_RASTER][i][key] for i in range(len(video_data[VideoType.ACTIVITY_RASTER]))]) for key in video_data[VideoType.ACTIVITY_RASTER][0]}
-    sorted_activity: dict[str, torch.Tensor] = {key: sort_activity(activity_dict[key], 'pca')[0] for key in ["rnn"]} # we only want to plot rnn atm
+    activity_dict: dict[str, torch.Tensor] = {
+        key: torch.vstack(
+            [
+                video_data[VideoType.ACTIVITY_RASTER][i][key]
+                for i in range(len(video_data[VideoType.ACTIVITY_RASTER]))
+            ]
+        )
+        for key in video_data[VideoType.ACTIVITY_RASTER][0]
+    }
+    sorted_activity: dict[str, torch.Tensor] = {
+        key: sort_activity(activity_dict[key], "pca")[0] for key in ["rnn"]
+    }  # we only want to plot rnn atm
 
     fig, ax = None, None
     for vid_type in requested_types:
@@ -191,7 +207,7 @@ def video_data_to_frames(
                     flatten_activity=False,
                     cur_frame=cur_frame,
                     num_frames=len(vid_data),
-                    figure=(fig, ax) if fig else None
+                    figure=(fig, ax) if fig else None,
                 )
 
                 torch_frame = fig_to_rgb_image(fig).swapaxes(2, 0).swapaxes(2, 1)[None]
@@ -226,7 +242,7 @@ def video_data_to_frames(
                     ],
                     cur_frame=cur_frame,
                     num_frames=len(video_data[VideoType.RAW]),
-                    figure=(fig, ax) if fig else None
+                    figure=(fig, ax) if fig else None,
                 )
 
                 torch_frame = fig_to_rgb_image(fig).swapaxes(2, 0).swapaxes(2, 1)[None]
@@ -240,13 +256,9 @@ def video_data_to_frames(
     return frames
 
 
-def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
-    experiment_cfg: Config,
-    video_types: list[VideoType],
-    actor_frame_rate: bool,
-) -> tuple[StatusCode, float]:
-    verbose = False
-
+def run_simulation(  # noqa: C901 # TODO: Properly implement this anyway
+    experiment_cfg: Config, video_types: list[VideoType], actor_frame_rate: bool
+) -> StatusCode:
     experiment_cfg = load_from_checkpoint(experiment_cfg)
 
     eval_env_frameskip: int = (
@@ -267,9 +279,7 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
 
     experiment_cfg.num_envs = 1
 
-    render_mode = "rgb_array"
-
-    env = make_env(experiment_cfg, render_mode=render_mode)
+    env = make_env(experiment_cfg, render_mode="rgb_array")
     env_info = extract_env_info(env, experiment_cfg)
 
     if hasattr(env.unwrapped, "reset_on_init"):
@@ -286,163 +296,57 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
 
     load_state_dict(experiment_cfg, actor_critic, device)
 
-    episode_rewards = [deque([], maxlen=100) for _ in range(env.num_agents)]
-    true_objectives = [deque([], maxlen=100) for _ in range(env.num_agents)]
-    num_frames = 0
-
-    def max_frames_reached(frames: int) -> bool:
-        return (
-            experiment_cfg.max_num_frames is not None
-            and frames > experiment_cfg.max_num_frames
-        )
-
-    reward_list = []
-
-    obs, infos = env.reset()
-    action_mask = obs.pop("action_mask").to(device) if "action_mask" in obs else None
-    rnn_states = torch.zeros(
-        [env.num_agents, get_rnn_size(experiment_cfg)],
-        dtype=torch.float32,
-        device=device,
+    num_frames = (
+        1000 if experiment_cfg.max_num_frames is None else experiment_cfg.max_num_frames
     )
-    episode_reward = None
-    finished_episode = [False for _ in range(env.num_agents)]
 
     video_frames = {vid_type: [] for vid_type in list(VideoType.__members__.keys())}
-    num_episodes = 0
-
+    terminated = True
+    cur_frames = {}
     with torch.no_grad():
-        while not max_frames_reached(num_frames):
-            normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
-
-            cur_frames: dict[VideoType, Any] = get_frames(actor_critic, obs, rnn_states)
-            policy_outputs = actor_critic(
-                normalized_obs, rnn_states, action_mask=action_mask
-            )
-
-            # sample actions from the distribution by default
-            actions = policy_outputs["actions"]
-
-            if experiment_cfg.eval_deterministic:
-                action_distribution = actor_critic.action_distribution()
-                actions = argmax_actions(action_distribution)
-
-            # actions shape should be [num_agents, num_actions] even if it's [1, 1]
-            if actions.ndim == 1:
-                actions = unsqueeze_tensor(actions, dim=-1)
-            actions = preprocess_actions(env_info, actions)
-
-            rnn_states = policy_outputs["new_rnn_states"]
-
-            for _i_repeat in range(render_action_repeat):
-                obs, rew, terminated, truncated, infos = env.step(actions)
-
-                need_video_frame = (
-                    len(next(iter(video_frames.items()))) < experiment_cfg.video_frames
-                    or experiment_cfg.video_frames < 0
-                    and num_episodes == 0
-                )
-                if need_video_frame:
-                    # frame = env.render()
-                    if not actor_frame_rate and _i_repeat > 0:
-                        cur_frames = get_frames(actor_critic, obs, rnn_states)
-
-                    for _vid_type in cur_frames:
-                        video_frames[_vid_type].append(cur_frames[_vid_type])
-
+        for frame_no in tqdm(range(num_frames), "Generating video frames..."):
+            if terminated:
+                obs, _ = env.reset()
                 action_mask = (
                     obs.pop("action_mask").to(device) if "action_mask" in obs else None
                 )
-                dones = make_dones(terminated, truncated)
-                infos = (
-                    [{} for _ in range(env_info.num_agents)] if infos is None else infos
+                rnn_states = torch.zeros(
+                    [env.num_agents, get_rnn_size(experiment_cfg)],
+                    dtype=torch.float32,
+                    device=device,
                 )
 
-                if episode_reward is None:
-                    episode_reward = rew.float().clone()
-                else:
-                    episode_reward += rew.float()
+            cur_frames[VideoType.RAW] = obs["obs"].detach().cpu()
+            if frame_no % render_action_repeat == 0:
+                normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
+                policy_outputs = actor_critic(
+                    normalized_obs, rnn_states, action_mask=action_mask
+                )
 
-                num_frames += 1
-                if num_frames % 100 == 0:
-                    log.debug(f"Num frames {num_frames}...")
+                actions = policy_outputs["actions"]
 
-                dones = dones.cpu().numpy()
-                for agent_i, done_flag in enumerate(dones):
-                    if done_flag:
-                        finished_episode[agent_i] = True
-                        rew = episode_reward[agent_i].item()
-                        episode_rewards[agent_i].append(rew)
+                if experiment_cfg.eval_deterministic:
+                    action_distribution = actor_critic.action_distribution()
+                    actions = argmax_actions(action_distribution)
 
-                        true_objective = rew
-                        if isinstance(infos, (list, tuple)):
-                            true_objective = infos[agent_i].get("true_objective", rew)
-                        true_objectives[agent_i].append(true_objective)
+                # actions shape should be [num_agents, num_actions] even if it's [1, 1]
+                if actions.ndim == 1:
+                    actions = unsqueeze_tensor(actions, dim=-1)
+                actions = preprocess_actions(env_info, actions)
+                action_mask = (
+                    obs.pop("action_mask").to(device) if "action_mask" in obs else None
+                )
+                rnn_states = policy_outputs["new_rnn_states"]
+                cur_frames.update(get_frames(actor_critic, normalized_obs, rnn_states))
 
-                        if verbose:
-                            log.info(
-                                "Episode finished for agent %d at %d frames. Reward: %.3f, true_objective: %.3f",
-                                agent_i,
-                                num_frames,
-                                episode_reward[agent_i],
-                                true_objectives[agent_i][-1],
-                            )
-                        rnn_states[agent_i] = torch.zeros(
-                            [get_rnn_size(experiment_cfg)],
-                            dtype=torch.float32,
-                            device=device,
-                        )
-                        episode_reward[agent_i] = 0
+            if not actor_frame_rate:
+                normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
+                cur_frames.update(get_frames(actor_critic, normalized_obs, rnn_states))
 
-                        if experiment_cfg.use_record_episode_statistics:
-                            # we want the scores from the full episode not a single agent death (due to EpisodicLifeEnv wrapper)
-                            if "episode" in infos[agent_i]:
-                                num_episodes += 1
-                                reward_list.append(infos[agent_i]["episode"]["r"])
-                        else:
-                            num_episodes += 1
-                            reward_list.append(true_objective)
+            for _vid_type in cur_frames:
+                video_frames[_vid_type].append(cur_frames[_vid_type])
 
-                # if episode terminated synchronously for all agents, pause a bit before starting a new one
-                if all(dones):
-                    # render_frame(
-                    #     experiment_cfg, env, video_frames[VideoType.RAW], num_episodes, last_render_start
-                    # ) # I don't think this is too important - if, find a solution with VideoType.RAW
-                    time.sleep(0.05)
-
-                if all(finished_episode):
-                    finished_episode = [False] * env.num_agents
-                    avg_episode_rewards_str, avg_true_objective_str = "", ""
-                    for agent_i in range(env.num_agents):
-                        avg_rew = np.mean(episode_rewards[agent_i])
-                        avg_true_obj = np.mean(true_objectives[agent_i])
-
-                        if not np.isnan(avg_rew):
-                            if avg_episode_rewards_str:
-                                avg_episode_rewards_str += ", "
-                            avg_episode_rewards_str += f"#{agent_i}: {avg_rew:.3f}"
-                        if not np.isnan(avg_true_obj):
-                            if avg_true_objective_str:
-                                avg_true_objective_str += ", "
-                            avg_true_objective_str += f"#{agent_i}: {avg_true_obj:.3f}"
-
-                    log.info(
-                        "Avg episode rewards: %s, true rewards: %s",
-                        avg_episode_rewards_str,
-                        avg_true_objective_str,
-                    )
-                    log.info(
-                        "Avg episode reward: %.3f, avg true_objective: %.3f",
-                        np.mean(
-                            [np.mean(episode_rewards[i]) for i in range(env.num_agents)]
-                        ),
-                        np.mean(
-                            [np.mean(true_objectives[i]) for i in range(env.num_agents)]
-                        ),
-                    )
-
-            if num_episodes >= experiment_cfg.max_num_episodes:
-                break
+            obs, rew, terminated, truncated, infos = env.step(actions)
 
     env.close()
 
@@ -470,9 +374,7 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
             str(vid_path), video_frames[_vid_type], fps, experiment_cfg
         )
 
-    return ExperimentStatus.SUCCESS, sum(
-        [sum(episode_rewards[i]) for i in range(env.num_agents)]
-    ) / max(1, sum([len(episode_rewards[i]) for i in range(env.num_agents)]))
+    return ExperimentStatus.SUCCESS
 
 
 if __name__ == "__main__":
