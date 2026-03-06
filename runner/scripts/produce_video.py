@@ -29,12 +29,13 @@ from sample_factory.utils.typing import Config, StatusCode
 from sample_factory.utils.utils import log
 from tqdm import tqdm
 
+from retinal_rl.analysis.activity_recording import (
+    full_plot as extended_activity_raster_plot,
+    sort_activity,
+)
 from retinal_rl.analysis.attribution import analyze as attribution_analyze
 from retinal_rl.analysis.output_pca import analyze as output_pca_analyze
-from retinal_rl.analysis.activity_recording import (
-    analyze as activity_analyze,
-    raster_plot as activity_raster_plot,
-)
+from retinal_rl.analysis.plot import fig_to_rgb_image
 from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
 from retinal_rl.util import rescale_zero_one
 from runner.frameworks.rl.sf_framework import SFFramework
@@ -135,9 +136,9 @@ def get_frames(
             break
 
     cur_frames: dict[VideoType, Any] = {
-        VideoType.RAW: obs["obs"].detach(),
-        VideoType.AUGMENTED: normalized_obs["obs"].detach(),
-        VideoType.DECODED: responses[decoder_key][0].detach()
+        VideoType.RAW: obs["obs"].detach().cpu(),
+        VideoType.AUGMENTED: normalized_obs["obs"].detach().cpu(),
+        VideoType.DECODED: responses[decoder_key][0].detach().cpu()
         if decoder_key is not None
         else None,
         VideoType.VALUE_MASK: attribution_analyze(
@@ -148,19 +149,14 @@ def get_frames(
             sum_channels=True,
             rescale_per_frame=True,
         )["vision"],
-        VideoType.ACTIVITY_RASTER: activity_analyze(
-            actor_critic.brain,
-            {"vision": normalized_obs["obs"], "rnn_state": rnn_states},
-            circuit_names=["visual_cortex", "prefrontal", "rnn"],
-            output_only=True,
-        ),
+        VideoType.ACTIVITY_RASTER: {key: responses[key][0].flatten().detach().cpu() for key in responses if key != "vision"},
     }
 
     pca_frames = output_pca_analyze(
-        actor_critic.brain,
-        {"vision": normalized_obs["obs"], "rnn_state": rnn_states},
+        responses,
         num_pcs=3,  # make rgb
         rescale_per_frame=False,
+        circuit_names=["retina"]
     )
 
     cur_frames[VideoType.OUTPUT_PCA] = pca_frames["retina"]
@@ -172,27 +168,33 @@ def video_data_to_frames(
     requested_types: list[VideoType],
 ) -> dict[VideoType, torch.Tensor]:
     frames: dict[VideoType, torch.Tensor] = {}
+
+    # make activity data a dict of activity matrices
+    activity_dict: dict[str, torch.Tensor] = {key: torch.vstack([video_data[VideoType.ACTIVITY_RASTER][i][key] for i in range(len(video_data[VideoType.ACTIVITY_RASTER]))]) for key in video_data[VideoType.ACTIVITY_RASTER][0]}
+    sorted_activity: dict[str, torch.Tensor] = {key: sort_activity(activity_dict[key], 'pca')[0] for key in ["rnn"]} # we only want to plot rnn atm
+
+    fig, ax = None, None
     for vid_type in requested_types:
         vid_data = video_data[vid_type]
         if vid_type == VideoType.ACTIVITY_RASTER:
             activity_frames = []
-            for cur_frame in tqdm(range(len(video_data[VideoType.RAW])), "Processing frames for ACTIVITY_RASTER video..."):
-                torch_frame = (
-                    activity_raster_plot(
-                        {
-                            "vision": video_data[VideoType.RAW][cur_frame],
-                            "rnn_state": None,
-                        },
-                        vid_data,
-                        flatten_activity=False,
-                        sort_activity="pca",
-                        cur_frame=cur_frame,
-                        num_frames=len(vid_data),
-                        return_image=True,
-                    )
-                    .swapaxes(2, 0)
-                    .swapaxes(2, 1)[None]
+            for cur_frame in tqdm(
+                range(len(video_data[VideoType.RAW])),
+                "Processing frames for ACTIVITY_RASTER video...",
+            ):
+                fig, ax = extended_activity_raster_plot(
+                    {
+                        "vision": video_data[VideoType.RAW][cur_frame],
+                        "rnn_state": None,
+                    },
+                    sorted_activity,
+                    flatten_activity=False,
+                    cur_frame=cur_frame,
+                    num_frames=len(vid_data),
+                    figure=(fig, ax) if fig else None
                 )
+
+                torch_frame = fig_to_rgb_image(fig).swapaxes(2, 0).swapaxes(2, 1)[None]
                 activity_frames.append(torch_frame)
             frames[vid_type] = np.concatenate(activity_frames, axis=0)
         elif vid_type == VideoType.FULL:
@@ -203,25 +205,31 @@ def video_data_to_frames(
                 VideoType.VALUE_MASK,
             ]
             activity_frames = []
-            for cur_frame in tqdm(range(len(video_data[VideoType.RAW])), "Processing frames for FULL video..."):
-                torch_frame = (
-                    activity_raster_plot(
-                        {
-                            "vision": video_data[VideoType.RAW][cur_frame],
-                            "rnn_state": None,
-                        },
-                        video_data[VideoType.ACTIVITY_RASTER],
-                        additional_images=[
-                            video_data[_t][cur_frame] for _t in additional_videos
-                        ],
-                        additional_titles=["Reconstruction", "Normalized Input", "PCA of Retina Output", "Value Attribution"],
-                        cur_frame=cur_frame,
-                        num_frames=len(video_data[VideoType.RAW]),
-                        return_image=True,
-                    )
-                    .swapaxes(2, 0)
-                    .swapaxes(2, 1)[None]
+            for cur_frame in tqdm(
+                range(len(video_data[VideoType.RAW])),
+                "Processing frames for FULL video...",
+            ):
+                fig, ax = extended_activity_raster_plot(
+                    {
+                        "vision": video_data[VideoType.RAW][cur_frame],
+                        "rnn_state": None,
+                    },
+                    sorted_activity,
+                    additional_images=[
+                        video_data[_t][cur_frame] for _t in additional_videos
+                    ],
+                    additional_titles=[
+                        "Reconstruction",
+                        "Normalized Input",
+                        "PCA of Retina Output",
+                        "Value Attribution",
+                    ],
+                    cur_frame=cur_frame,
+                    num_frames=len(video_data[VideoType.RAW]),
+                    figure=(fig, ax) if fig else None
                 )
+
+                torch_frame = fig_to_rgb_image(fig).swapaxes(2, 0).swapaxes(2, 1)[None]
                 activity_frames.append(torch_frame)
             frames[vid_type] = np.concatenate(activity_frames, axis=0)
         else:

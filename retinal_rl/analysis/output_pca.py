@@ -1,30 +1,41 @@
-import torch
+import warnings
+
 import numpy as np
+import torch
+from sklearn.decomposition import PCA
 
 from retinal_rl.models.brain import Brain
 from retinal_rl.util import rescale_zero_one
-from sklearn.decomposition import PCA
 
 
 def analyze(
-    brain: Brain,
-    stimuli: dict[str, torch.Tensor],
+    outputs: dict[str, torch.Tensor],
     num_pcs: int = 3,
     rescale_per_frame: bool = False,
     pca: PCA | None = None,
+    circuit_names: list[str] | None = None,
 ) -> dict[str, torch.Tensor]:
     assert num_pcs > 0, "num_pcs must be positive"
 
-    outputs = brain(stimuli)
     reduced_outputs: dict[str, torch.Tensor] = {}
-    for key in outputs:
-        if key not in ["retina", "thalamus", "v1"]:
+    if not circuit_names:
+        circuit_names = list(outputs.keys())
+    for key in circuit_names:
+        assert key in outputs, f"Circuit {key} not found in outputs."
+        if len(outputs[key]) >1:
+            warnings.warn(f"Output for circuit {key} has more than one item in tuple, using first item. Make sure this is correct.")
+        output = outputs[key][0].detach().cpu()  # TODO: Use correct item in tuple
+
+        if len(output.size()) < 4:  # (frames, channels, height, width)
+            warnings.warn(f"PCA analysis assumes output of convolutional layer (frames, channels, height, width), but got: {output.size()}")
             continue
+
         # Reduce number of outputs via PCA along channel dimension, keep other dimensions
-        output = outputs[key][0].detach().cpu() # TODO: Use correct item in tuple
         num_channels = output.size(1)
         actual_num_pcs = min(num_pcs, num_channels)
-        reduced_outputs[key] = torch.empty(output.size(0), actual_num_pcs, *output.size()[2:])
+        reduced_outputs[key] = torch.empty(
+            output.size(0), actual_num_pcs, *output.size()[2:]
+        )
 
         pca = None
         for frame_no, frame in enumerate(output):
@@ -37,10 +48,13 @@ def analyze(
 
     return reduced_outputs
 
-def single_frame_pca(frame: torch.Tensor, num_pcs: int = 3, pca: PCA | None = None) -> np.ndarray:
+
+def single_frame_pca(
+    frame: torch.Tensor, num_pcs: int = 3, pca: PCA | None = None
+) -> np.ndarray:
     flattened = frame.view(frame.size(0), -1)  # (channels, height*width)
 
-    #Reduce number of channels to num_pcs via PCA
+    # Reduce number of channels to num_pcs via PCA
     if pca is None:
         pca = PCA(n_components=num_pcs)
         reduced = pca.fit_transform(flattened.T).T  # (num_pcs, height*width)
