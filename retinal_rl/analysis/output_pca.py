@@ -4,7 +4,6 @@ import numpy as np
 import torch
 from sklearn.decomposition import PCA
 
-from retinal_rl.models.brain import Brain
 from retinal_rl.util import rescale_zero_one
 
 
@@ -22,12 +21,16 @@ def analyze(
         circuit_names = list(outputs.keys())
     for key in circuit_names:
         assert key in outputs, f"Circuit {key} not found in outputs."
-        if len(outputs[key]) >1:
-            warnings.warn(f"Output for circuit {key} has more than one item in tuple, using first item. Make sure this is correct.")
+        if len(outputs[key]) > 1:
+            warnings.warn(
+                f"Output for circuit {key} has more than one item in tuple, using first item. Make sure this is correct."
+            )
         output = outputs[key][0].detach().cpu()  # TODO: Use correct item in tuple
 
         if len(output.size()) < 4:  # (frames, channels, height, width)
-            warnings.warn(f"PCA analysis assumes output of convolutional layer (frames, channels, height, width), but got: {output.size()}")
+            warnings.warn(
+                f"PCA analysis assumes output of convolutional layer (frames, channels, height, width), but got: {output.size()}"
+            )
             continue
 
         # Reduce number of outputs via PCA along channel dimension, keep other dimensions

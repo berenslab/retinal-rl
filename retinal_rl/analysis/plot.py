@@ -403,5 +403,4 @@ def fig_to_rgb_image(fig: Figure) -> FloatArray:
     """Convert a Matplotlib figure to a numpy array representing an RGB image."""
     fig.canvas.draw()
     data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-    data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-    return data
+    return data.reshape(fig.canvas.get_width_height()[::-1] + (3,))

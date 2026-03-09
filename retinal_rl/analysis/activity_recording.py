@@ -135,13 +135,13 @@ def single_raster_plot(
 ) -> plt.Axes:
     if ax is None:
         _, ax = plt.subplots(figsize=(5, 10))
-    
+
     # Initialize state attributes if not already present
     if not hasattr(ax, "_plot_im"):
         # Initial setup (only done once)
         img_data = rescale_zero_one(activity_matrix.T.cpu())
         ax._plot_im = ax.imshow(img_data, cmap="gray")
-        
+
         ax.set_yticks([])
         ax.set_xlabel("Time (frames)")
         ax.set_xlim(0, activity_matrix.size(0))
@@ -151,19 +151,20 @@ def single_raster_plot(
         ax.spines["left"].set_visible(False)
         if ylabel:
             ax.set_ylabel(ylabel)
-        
+
         ax._plot_vline = None
     elif update_activity:
         img_data = rescale_zero_one(activity_matrix.T.cpu())
         ax._plot_im.set_data(img_data)
-    
+
     # Update vertical line
     if cur_frame is not None:
         if ax._plot_vline is not None:
             ax._plot_vline.remove()
         ax._plot_vline = ax.axvline(x=cur_frame, color="red", linestyle="--")
-    
+
     return ax
+
 
 def raster_plot(
     activity: dict[str, torch.Tensor],
@@ -184,22 +185,24 @@ def raster_plot(
     if ax is None:
         _, ax = plt.subplots(nrows=n_plots, figsize=(5, n_plots * 2), sharex=True)
         ax = ax.flatten() if n_plots > 1 else [ax]
-    
+
     # Initialize state on first call
     if not hasattr(ax[0].figure, "_raster_state"):
         ax[0].figure._raster_state = {
             "activity_matrix": None,
             "flatten_activity": flatten_activity,
         }
-    
+
     state = ax[0].figure._raster_state
 
     if flatten_activity:
         # Cache the stacked activity matrix
         if state["activity_matrix"] is None or update_activity:
-            state["activity_matrix"] = torch.vstack([activity[key] for key in activity_keys])
+            state["activity_matrix"] = torch.vstack(
+                [activity[key] for key in activity_keys]
+            )
         activity_matrix = state["activity_matrix"]
-        
+
         # Single call instead of loop
         single_raster_plot(
             activity_matrix,
@@ -237,7 +240,7 @@ def full_plot(
 ) -> tuple[plt.Figure, dict]:
     """
     Plot stimuli and activity data.
-    
+
     Args:
         stimuli: Dictionary of stimulus tensors
         activity: Dictionary of activity tensors
@@ -247,11 +250,11 @@ def full_plot(
         cur_frame: Current frame index
         num_frames: Total number of frames
         figure: Optional tuple of (fig, ax_dict) to update existing figure instead of creating new one
-    
+
     Returns:
         Tuple of (fig, ax_dict) for potential future updates
     """
-    
+
     # Determine if we're creating a new figure or updating an existing one
     if figure is None:
         # Create new figure
@@ -265,7 +268,7 @@ def full_plot(
         fig, ax = fig_setup(
             activity, flatten_activity, additional_activity_plots, num_additional
         )
-        
+
         # Initialize state
         fig._plot_state = {
             "im_raw": None,
@@ -274,53 +277,53 @@ def full_plot(
     else:
         # Use existing figure and axes
         fig, ax = figure
-    
+
     state = fig._plot_state
-    
+
     # Update vision stimulus
     vision_data = rescale_zero_one(
         stimuli["vision"][0, :num_frames].permute(1, 2, 0).cpu()
     )
-    
+
     # Update or create the raw stimulus image
     if state["im_raw"] is None:
         state["im_raw"] = ax["raw"].imshow(vision_data)
     else:
         state["im_raw"].set_data(vision_data)
     ax["raw"].axis("off")
-    
+
     # Update activity plots
     additional_activity_plots = 0
     if not flatten_activity:
         num_circuits = len(activity)
         additional_activity_plots = num_circuits - 1
-    
+
     raster_plot(
         activity,
         ax=[ax[f"activations_{i}"] for i in range(additional_activity_plots + 1)],
         flatten_activity=flatten_activity,
         cur_frame=cur_frame,
     )
-    
+
     # Update additional images
     if additional_images:
         for i, img in enumerate(additional_images):
             img_data = rescale_zero_one(img[0].permute(1, 2, 0).cpu().numpy())
-            
+
             # Update or create image
             if f"im_additional_{i}" not in state:
                 state[f"im_additional_{i}"] = ax[f"additional_{i}"].imshow(img_data)
             else:
                 state[f"im_additional_{i}"].set_data(img_data)
-            
+
             ax[f"additional_{i}"].axis("off")
-            
+
             if additional_titles and len(additional_titles) > i:
                 ax[f"additional_{i}"].set_title(additional_titles[i])
-        
+
         # Hide unused subplots
-        if f"additional_{len(additional_images)}" in ax.keys():
+        if f"additional_{len(additional_images)}" in ax:
             ax[f"additional_{len(additional_images)}"].axis("off")
-    
+
     fig.tight_layout()
     return fig, ax

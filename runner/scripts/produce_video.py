@@ -1,6 +1,4 @@
 import argparse
-import time
-from collections import deque
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -13,7 +11,7 @@ from sample_factory.algo.sampling.batched_sampling import preprocess_actions
 from sample_factory.algo.utils.action_distributions import argmax_actions
 from sample_factory.algo.utils.env_info import extract_env_info
 from sample_factory.algo.utils.misc import ExperimentStatus
-from sample_factory.algo.utils.rl_utils import make_dones, prepare_and_normalize_obs
+from sample_factory.algo.utils.rl_utils import prepare_and_normalize_obs
 from sample_factory.algo.utils.tensor_utils import unsqueeze_tensor
 from sample_factory.cfg.arguments import load_from_checkpoint
 from sample_factory.enjoy import (
