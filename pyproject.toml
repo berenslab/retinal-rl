@@ -60,6 +60,9 @@ lint.ignore = [
 [tool.ruff.format]
 docstring-code-format = true
 
+[tool.ruff.lint.isort]
+known-third-party = ["wandb"]
+
 [tool.setuptools]
 
 [tool.setuptools.packages.find]
