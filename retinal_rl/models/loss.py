@@ -159,12 +159,12 @@ class ReconstructionLoss(Loss[ContextT]):
         """Return a user-friendly name for the loss, including the target decoder."""
         return f"reconstruction_loss_{self.target_decoder.lower()}"
 
-class LaplaceReconstructionLoss(Loss[ContextT]):
+class LaplaceReconstructionLoss(ReconstructionLoss[ContextT]):
     """L1 reconstruction loss for Laplace likelihood p(x|z).
-    
+
     Uses L1 (MAE) loss which is the negative log-likelihood of a Laplace distribution.
     This is more robust to outliers and preserves sharp edges compared to MSE.
-    
+
     Args:
         target_decoder: Name of the decoder circuit producing reconstructions
         target_circuits: Circuits to optimize with this loss
@@ -190,10 +190,10 @@ class LaplaceReconstructionLoss(Loss[ContextT]):
         scale_output_index: int = 1,
     ):
         """Initialize the Laplace reconstruction loss."""
-        super().__init__(target_circuits, weights, min_epoch, max_epoch)
-        self.target_decoder = target_decoder
-        self.normalize = normalize
-        self.decoder_output_index = decoder_output_index
+        super().__init__(
+            target_decoder, target_circuits, weights, min_epoch, max_epoch,
+            normalize, decoder_output_index,
+        )
         self.learn_scale = learn_scale
         self.scale_output_index = scale_output_index
 
@@ -247,8 +247,7 @@ class LaplaceReconstructionLoss(Loss[ContextT]):
     @property
     def key_name(self) -> str:
         """Return a user-friendly name for the loss."""
-        scale_str = "_learned_scale" if self.learn_scale else ""
-        return f"laplace_reconstruction_loss_{self.target_decoder.lower()}{scale_str}"
+        return f"reconstruction_loss_{self.target_decoder.lower()}"
 
 
 class L1Sparsity(Loss[ContextT]):
@@ -526,4 +525,4 @@ class LaplaceKLDivergenceLoss(Loss[ContextT]):
     @property
     def key_name(self) -> str:
         """Return a user-friendly name for the loss."""
-        return f"laplace_kl_divergence_{self.target_mu}_{self.target_log_b}"
+        return f"kl_divergence_{self.target_mu}_{self.target_log_b}"
