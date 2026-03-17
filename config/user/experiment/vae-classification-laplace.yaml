@@ -1,0 +1,77 @@
+# @package _global_
+defaults:
+  - _self_
+  - override /dataset: cifar10
+  - override /brain: vae-classifier-laplace
+  - override /optimizer: vae-classification-laplace
+
+framework: classification
+
+run_name: 'laplace-run_${now:%Y-%m-%d-%H-%M-%S-%f}'
+# run_name: 'run_2025-11-03-17-21-50-654350' #added for analysis to be removed later
+
+logging:
+  wandb_project: retinal-vae
+  wandb_entity: harinijg2001-university-of-tuebingen
+  use_wandb: true # Ensure WandB is enabled for this experiment
+  channel_analysis: true #added for analysis, to be removed later
+  fit_analysis: true # Enable DoG + Gabor fitting for receptive fields
+  fit_blur_sigma: 0.5 # Gaussian blur sigma before fitting DoG/Gabor (default: 0.5)
+
+
+### Interpolation Parameters ####-------
+
+
+# Derived parameters
+vision_size: 64
+
+image_rescale_range: [1, 2]
+vision_height: "${vision_size}"
+vision_width: "${vision_size}"
+# In vae-classification.yaml
+# ... other parameters ...
+
+shift_transform: True
+background_image_path: null
+
+# ... rest of the file ...
+
+
+weight_decay: 0.0001
+
+activation: "gelu"
+
+bottleneck_chans: 8
+bottleneck_stride: 1
+
+# Stride configuration
+bp_stride: 1
+rgc_stride: 1
+thalamus_stride: 1
+v1_stride: 1
+
+# Kernel sizes
+bp_kernel_size: 7
+rgc_kernel_size: 5
+lgn_kernel_size: 3
+v1_kernel_size: 5
+
+# Norms
+layer_norm: True
+affine_norm: True
+
+# Noise transforms
+shot_noise_transform: True
+contrast_noise_transform: True
+brightness_noise_transform: True
+blur_noise_transform: True
+
+# Loss Weights
+class_weight_retina: 0.001
+class_weight_thalamus: 0.01
+class_weight_cortex: 0.1
+
+recon_weight: 1  #--> alpha
+bottle_weight: 0.001  #--> beta=0.001 default in vae-classification 
+
+# run this command for laplace: apptainer run --nv --bind /etc/pki/tls/certs/ca-bundle.trust.crt:/etc/ssl/certs/ca-bundle.crt retinal-rl.sif python main.py +experiment="vae-classification-laplace" command=train

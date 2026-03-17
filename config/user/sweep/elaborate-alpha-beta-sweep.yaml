@@ -1,0 +1,39 @@
+# This is a standard template for a wandb sweep.
+# See: https://docs.wandb.ai/guides/sweeps/define-sweep-configuration
+#
+# Sweeps can be initialized with retinal-rl from the command line with:
+#
+# python main.py +experiment=vae-classification command=sweep +sweep=alpha-beta-sweep
+
+
+description: "Hybrid fine-grained sweep for receptive field analysis"
+program: main.py
+method: grid
+project: retinal-vae-classification
+parameters:
+  recon_weight:
+    values: [
+      # Low reconstruction emphasis
+      0.1, 0.25, 0.5,
+      # Standard range (fine-grained)
+      0.75, 1.0, 1.25, 1.5, 1.75, 2.0,
+      # High reconstruction emphasis
+      3.0, 5.0, 10.0
+    ]
+  
+  bottle_weight:
+    values: [
+      # No regularization
+      0,
+      # Very weak regularization (AE-like)
+      0.0001, 0.0005, 0.001,
+      # Weak regularization
+      0.005, 0.01, 0.025, 0.05,
+      # Standard VAE range (fine-grained)
+      0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0,
+      # β-VAE range
+      3.0, 5.0, 10.0, 20.0
+    ]
+  
+  logging.use_wandb:
+    value: True

@@ -1,0 +1,99 @@
+# Optimizer configuration for VAE classification with dual-stream architecture
+
+# Number of training epochs
+num_epochs: 50
+
+# The optimizer to use
+optimizer: # torch.optim Class and parameters
+  _target_: torch.optim.Adam
+  lr: ${learning_rate}
+  weight_decay: ${weight_decay}
+
+# The multi-objective function for VAE
+objective:
+  _target_: retinal_rl.models.objective.Objective
+  losses:
+    - _target_: retinal_rl.rl.loss.PolicyLoss
+      target_circuits:
+        - retina
+        - retina_logvar
+        - thalamus
+        - thalamus_logvar
+        - visual_cortex
+        - visual_cortex_logvar
+        - prefrontal
+        - actor
+        - critic # I don't think this is needed here
+      weights:
+        - ${eval:'(1-${recon_weight_retina})*${policy_factor}'}
+        - ${eval:'(1-${recon_weight_retina})*${policy_factor}'}
+        - ${eval:'(1-${recon_weight_thalamus})*${policy_factor}'}
+        - ${eval:'(1-${recon_weight_thalamus})*${policy_factor}'}
+        - ${eval:'(1-${recon_weight_cortex})*${policy_factor}'}
+        - ${eval:'(1-${recon_weight_cortex})*${policy_factor}'}
+        - ${policy_factor}
+        - ${policy_factor}
+        - ${policy_factor}
+      clip_ratio: 1.1
+    - _target_: retinal_rl.rl.loss.ExplorationLoss
+      target_circuits:
+        - retina
+        - retina_logvar
+        - thalamus
+        - thalamus_logvar
+        - visual_cortex
+        - visual_cortex_logvar
+        - prefrontal
+        - actor  # TODO: does exploration loss use actor and critic heads?
+        - critic
+      weights:
+        - ${eval:'(1-${recon_weight_retina})*${exploration_factor}'}
+        - ${eval:'(1-${recon_weight_retina})*${exploration_factor}'}
+        - ${eval:'(1-${recon_weight_thalamus})*${exploration_factor}'}
+        - ${eval:'(1-${recon_weight_thalamus})*${exploration_factor}'}
+        - ${eval:'(1-${recon_weight_cortex})*${exploration_factor}'}
+        - ${eval:'(1-${recon_weight_cortex})*${exploration_factor}'}
+        - ${exploration_factor}
+        - ${exploration_factor}
+        - ${exploration_factor}
+    - _target_: retinal_rl.rl.loss.KlLoss
+    - _target_: retinal_rl.rl.loss.ValueLoss
+    
+    # Reconstruction loss
+    - _target_: retinal_rl.models.loss.ReconstructionLoss
+      target_decoder: "v1_decoder"
+      target_circuits: # Circuits involved in reconstruction
+        - retina
+        - retina_logvar
+        - thalamus
+        - thalamus_logvar
+        - visual_cortex
+        - visual_cortex_logvar
+        - v1_decoder
+      weights:
+        - ${eval:'${recon_weight_retina}*${reconstruction_factor}'}
+        - ${eval:'${recon_weight_retina}*${reconstruction_factor}'}
+        - ${eval:'${recon_weight_thalamus}*${reconstruction_factor}'}
+        - ${eval:'${recon_weight_thalamus}*${reconstruction_factor}'}
+        - ${eval:'${recon_weight_cortex}*${reconstruction_factor}'}
+        - ${eval:'${recon_weight_cortex}*${reconstruction_factor}'}
+        - ${reconstruction_factor}
+    
+    # KL divergence loss (Information Bottleneck) - uses dual streams
+    - _target_: retinal_rl.models.loss.KLDivergenceLoss
+      target_mu: "visual_cortex"
+      target_logvar: "visual_cortex_logvar"
+      target_circuits:
+        - retina
+        - retina_logvar
+        - thalamus
+        - thalamus_logvar
+        - visual_cortex
+        - visual_cortex_logvar
+      weights:
+        - ${bottle_weight}  # Information bottleneck weight - affects entire visual pathway
+        - ${bottle_weight}
+        - ${bottle_weight}
+        - ${bottle_weight}
+        - ${bottle_weight}
+        - ${bottle_weight}

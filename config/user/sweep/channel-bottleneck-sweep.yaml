@@ -1,0 +1,19 @@
+# This is a standard template for a wandb sweep.
+# See: https://docs.wandb.ai/guides/sweeps/define-sweep-configuration
+#
+# Sweeps can be initialized with retinal-rl from the command line with:
+#
+# python main.py +experiment=vae-classification command=sweep +sweep=channel-bottleneck-sweep
+
+description: "Grid search over the channel bottleneck size for the vae-classification experiment."
+program: main.py
+method: grid
+project: retinal-vae-classification # Project name from vae-classification.yaml
+
+parameters:
+  bottleneck_chans:
+    values: [4, 8, 16, 32, 64]  # List of bottleneck channel sizes to sweep over
+
+  # Ensure wandb is enabled for all sweep runs.
+  logging.use_wandb:
+    value: True

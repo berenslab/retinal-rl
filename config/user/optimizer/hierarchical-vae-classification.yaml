@@ -1,0 +1,88 @@
+# Optimizer configuration for hierarchical VAE classification
+num_epochs: 100
+
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 0.0003
+  weight_decay: ${weight_decay}
+
+objective:
+  _target_: retinal_rl.models.objective.Objective
+  losses:
+    # Classification loss across all circuits
+    - _target_: retinal_rl.classification.loss.ClassificationLoss
+      target_circuits:
+        - retina
+        - retina_logvar
+        - thalamus
+        - thalamus_logvar
+        - visual_cortex
+        - visual_cortex_logvar
+        - classifier
+      weights:
+        - 1.0
+        - 1.0
+        - 1.0
+        - 1.0
+        - 1.0
+        - 1.0
+        - 1.0
+
+    # Reconstruction loss
+    - _target_: retinal_rl.models.loss.ReconstructionLoss
+      target_decoder: v1_decoder
+      target_circuits:
+        - retina
+        - retina_logvar
+        - thalamus
+        - thalamus_logvar
+        - visual_cortex
+        - visual_cortex_logvar
+        - v1_decoder
+      weights:
+        - ${recon_weight}
+        - ${recon_weight}
+        - ${recon_weight}
+        - ${recon_weight}
+        - ${recon_weight}
+        - ${recon_weight}
+        - 1.0
+
+    # KL divergence loss for optic nerve bottleneck
+    - _target_: retinal_rl.models.loss.KLDivergenceLoss
+      target_mu: retina
+      target_logvar: retina_logvar
+      target_circuits:
+        - retina
+        - retina_logvar
+      weights:
+        - ${optic_kl_weight}
+        - ${optic_kl_weight}
+      min_epoch: ${optic_kl_start_epoch}
+
+    # KL divergence loss for V1 bottleneck  
+    - _target_: retinal_rl.models.loss.KLDivergenceLoss
+      target_mu: thalamus
+      target_logvar: thalamus_logvar
+      target_circuits:
+        - thalamus
+        - thalamus_logvar
+      weights:
+        - ${v1_kl_weight}
+        - ${v1_kl_weight}
+      min_epoch: ${v1_kl_start_epoch}
+
+    # KL divergence loss for PFC bottleneck
+    - _target_: retinal_rl.models.loss.KLDivergenceLoss
+      target_mu: visual_cortex
+      target_logvar: visual_cortex_logvar
+      target_circuits:
+        - visual_cortex
+        - visual_cortex_logvar
+      weights:
+        - ${pfc_kl_weight}
+        - ${pfc_kl_weight}
+      min_epoch: ${pfc_kl_start_epoch}
+
+  logging_statistics:
+    - _target_: retinal_rl.classification.loss.PercentCorrect

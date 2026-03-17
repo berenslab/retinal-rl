@@ -1,0 +1,25 @@
+
+
+description: "Grid search over both recon_weight (alpha) and bottle_weight (beta) for the vae-classification experiment."
+program: main.py
+method: grid
+project: retinal-vae-classification # Project name from vae-classification.yaml
+
+parameters:
+  recon_weight:
+    values: [0.5, 1, 2.0]
+
+  bottle_weight:
+    values: [0.0001, 0.001, 0.01, 0.1, 1, 10.0]
+
+
+  # Ensure wandb is enabled for all sweep runs.
+  logging.use_wandb:
+    value: True
+
+# This is a standard template for a wandb sweep.
+# See: https://docs.wandb.ai/guides/sweeps/define-sweep-configuration
+#
+# Sweeps can be initialized with retinal-rl from the command line with:
+#
+# python main.py +experiment=vae-classification command=sweep +sweep=alpha-beta-sweep

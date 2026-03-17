@@ -1,0 +1,158 @@
+# Hierarchical VAE with bottlenecks at retina->thalamus, thalamus->visual_cortex, and visual_cortex->prefrontal
+sensors:
+  vision:
+    - 3
+    - ${vision_height}
+    - ${vision_width}
+
+connections:
+  # Level 1: Vision -> Retina streams -> Optic Nerve Bottleneck
+  - [vision, retina]
+  - [vision, retina_logvar]
+  - [retina, optic_nerve_bottleneck]
+  - [retina_logvar, optic_nerve_bottleneck]
+  
+  # Level 2: Optic Nerve -> Thalamus streams -> V1 Bottleneck
+  - [optic_nerve_bottleneck, thalamus]
+  - [optic_nerve_bottleneck, thalamus_logvar]  
+  - [thalamus, v1_bottleneck]
+  - [thalamus_logvar, v1_bottleneck]
+  
+  # Level 3: V1 -> Visual Cortex streams -> PFC Bottleneck
+  - [v1_bottleneck, visual_cortex]
+  - [v1_bottleneck, visual_cortex_logvar]
+  - [visual_cortex, pfc_bottleneck]
+  - [visual_cortex_logvar, pfc_bottleneck]
+  
+  # Final classification
+  - [pfc_bottleneck, classifier]
+  
+  # Decoder for reconstruction
+  - [visual_cortex, v1_decoder]
+
+circuits:
+  # Level 1: Retina processing (parallel mu/logvar streams)
+  retina:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 2
+    num_channels:
+      - 16
+      - 32
+    kernel_size:
+      - ${bp_kernel_size}
+      - ${rgc_kernel_size}
+    stride:
+      - ${bp_stride}
+      - ${rgc_stride}
+    activation: ${activation}
+    layer_names:
+      - bipolar
+      - retinal_ganglion
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
+    
+  retina_logvar:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 2
+    num_channels:
+      - 16
+      - 32
+    kernel_size:
+      - ${bp_kernel_size}
+      - ${rgc_kernel_size}
+    stride:
+      - ${bp_stride}
+      - ${rgc_stride}
+    activation: ${activation}
+    layer_names:
+      - bipolar_logvar
+      - retinal_ganglion_logvar
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
+    
+  optic_nerve_bottleneck:
+    _target_: retinal_rl.models.circuits.variational.VariationalBottleneck
+
+  # Level 2: Thalamus processing (parallel mu/logvar streams)
+  thalamus:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 1
+    num_channels: 64
+    kernel_size: ${lgn_kernel_size}
+    stride: ${thalamus_stride}
+    activation: ${activation}
+    layer_names: [lgn]
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
+    
+  thalamus_logvar:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 1
+    num_channels: 64
+    kernel_size: ${lgn_kernel_size}
+    stride: ${thalamus_stride}
+    activation: ${activation}
+    layer_names: [lgn_logvar]
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
+    
+  v1_bottleneck:
+    _target_: retinal_rl.models.circuits.variational.VariationalBottleneck
+
+  # Level 3: Visual Cortex processing (parallel mu/logvar streams)
+  visual_cortex:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 1
+    num_channels: 128
+    kernel_size: ${v1_kernel_size}
+    stride: ${v1_stride}
+    activation: ${activation}
+    layer_names: [v1]
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
+    
+  visual_cortex_logvar:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalEncoder
+    num_layers: 1
+    num_channels: 128
+    kernel_size: ${v1_kernel_size}
+    stride: ${v1_stride}
+    activation: ${activation}
+    layer_names: [v1_logvar]
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
+    
+  pfc_bottleneck:
+    _target_: retinal_rl.models.circuits.variational.VariationalBottleneck
+
+  # Final processing
+  classifier:
+    _target_: retinal_rl.models.circuits.task_head.linear_classifier.LinearClassifier
+    num_classes: 10
+
+  # Decoder for reconstruction loss
+  v1_decoder:
+    _target_: retinal_rl.models.circuits.convolutional.ConvolutionalDecoder
+    num_layers: 4
+    layer_norm: ${layer_norm}
+    affine_norm: ${affine_norm}
+    num_channels:
+      - 64
+      - 32
+      - 16
+      - 3
+    kernel_size:
+      - ${v1_kernel_size}
+      - ${lgn_kernel_size}
+      - ${rgc_kernel_size}
+      - ${bp_kernel_size}
+    stride:
+      - ${v1_stride}
+      - ${thalamus_stride}
+      - ${rgc_stride}
+      - ${bp_stride}
+    activation:
+      - ${activation}
+      - ${activation}
+      - ${activation}
+      - tanh
