@@ -64,6 +64,8 @@ class ClassificationFramework(TrainingFramework):
             plot_sample_size=self.cfg.logging.plot_sample_size,
             fit_analysis=self.cfg.logging.fit_analysis,
             fit_blur_sigma=self.cfg.logging.fit_blur_sigma,
+            latent_analysis=self.cfg.logging.latent_analysis,
+            latent_layer=self.cfg.logging.latent_layer,
         )
         analyze(
             cfg,

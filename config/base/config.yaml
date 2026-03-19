@@ -28,6 +28,8 @@ logging:
   channel_analysis: False # Whether to do in depth channel analysis
   fit_analysis: False # Whether to run DoG + Gabor fit analysis
   fit_blur_sigma: 0.5 # Blur sigma for fit analysis preprocessing
+  latent_analysis: False # Whether to visualize latent space with t-SNE
+  latent_layer: "visual_cortex" # Which layer's output to visualize
   plot_sample_size: 1000
   wandb_preempt: False  # Whether to enable Weights & Biases preemption
   wandb_project: miscellaneous # wandb project

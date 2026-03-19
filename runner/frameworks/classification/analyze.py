@@ -7,6 +7,7 @@ import torch
 from retinal_rl.analysis import channel_analysis as channel_ana
 from retinal_rl.analysis import default as default_ana
 from retinal_rl.analysis import fit_analysis
+from retinal_rl.analysis import latent_visualisation as latent_ana
 from retinal_rl.analysis import receptive_fields
 from retinal_rl.analysis import reconstructions as recon_ana
 from retinal_rl.analysis import transforms_analysis as transf_ana
@@ -32,6 +33,8 @@ class AnalysesCfg:
     plot_sample_size: int
     fit_analysis: bool = False
     fit_blur_sigma: float = 0.5
+    latent_analysis: bool = False
+    latent_layer: str = "visual_cortex"
 
     def __post_init__(self):
         self.analyses_dir = Path(self.data_dir) / "analyses"
@@ -101,6 +104,18 @@ def analyze(
         )
     else:
         spectral_result, histogram_result = None, None
+        
+    if cfg.latent_analysis:
+        tsne_results, labels = latent_ana.analyze(
+            device,
+            brain,
+            test_set,
+            layer_name=cfg.latent_layer,
+            max_samples=cfg.plot_sample_size,
+        )
+        if tsne_results is not None:
+            latent_ana.plot(log, tsne_results, labels, epoch, copy_checkpoint, cfg.latent_layer)
+
 
     res, means, stds = recon_ana.analyze(device, brain, objective, train_set, test_set)
     recon_ana.plot(
@@ -112,6 +127,7 @@ def analyze(
         epoch,
         copy_checkpoint,
     )
+
 
     if epoch == 0:
         default_ana.initialization_plots(log, brain, objective, input_shape, rf_result)

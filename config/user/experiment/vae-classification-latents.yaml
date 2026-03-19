@@ -1,22 +1,20 @@
-
-# @package _global_
 defaults:
   - _self_
   - override /dataset: cifar10
-  - override /brain: vae-classifier
-  - override /optimizer: vae-classification
+  - override /brain: vae-classifier-laplace
+  - override /optimizer: vae-classification-laplace
 
 framework: classification
 
-# run_name: 'run_${now:%Y-%m-%d-%H-%M-%S-%f}'
-run_name: 'run_2026-01-25-18-36-26-145177' #added for analysis to be removed later
+run_name: 'laplace-run_2026-03-18-17-22-03-813157'
+# run_name: 'run_2025-11-03-17-21-50-654350' #added for analysis to be removed later
 
 logging:
-  wandb_project: retinal-vae-classification # <--- Change this to your desired project name
-  use_wandb: true # Ensure WandB is enabled for this experiment
-  channel_analysis: true #added for analysis, to be removed later
-  fit_analysis: true # Enable DoG + Gabor (Difference of Gaussians) fitting for receptive fields
-  fit_blur_sigma: 0.5 # Gaussian blur sigma before fitting DoG/Gabor (default: 0.5)
+  wandb_project: retinal-vae
+  wandb_entity: harinijg2001-university-of-tuebingen
+  use_wandb: true # Disable WandB for analysis mode
+  latent_analysis: true # Enable analysis of latent space representations # Visualize the VAE latent space
+
 
 ### Interpolation Parameters ####-------
 
@@ -40,7 +38,7 @@ weight_decay: 0.0001
 
 activation: "gelu"
 
-bottleneck_chans: 16
+bottleneck_chans: 8
 bottleneck_stride: 1
 
 # Stride configuration
@@ -72,3 +70,5 @@ class_weight_cortex: 0.1
 
 recon_weight: 1  #--> alpha
 bottle_weight: 0.001  #--> beta=0.001 default in vae-classification 
+
+# run this command for laplace: apptainer run --nv --bind /etc/pki/tls/certs/ca-bundle.trust.crt:/etc/ssl/certs/ca-bundle.crt retinal-rl.sif python main.py +experiment="vae-classification-laplace" command=analyse
