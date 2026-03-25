@@ -20,8 +20,9 @@ def analyze(
     test_set: Imageset,
     layer_name: str,
     max_samples: int = 1000,
+    batch_size: int = 64,
     perplexity: int = 30,
-    n_iter: int = 1000,
+    n_iter: int = 300,
 ) -> tuple[Optional[np.ndarray], Optional[np.ndarray]]:
     """
     Analyze bottleneck layer with t-SNE.
@@ -32,6 +33,7 @@ def analyze(
         test_set: Imageset to visualize
         layer_name: Name of the layer to visualize (e.g. "visual_cortex")
         max_samples: Maximum samples to use
+        batch_size: Batch size for dataloader
         perplexity: t-SNE perplexity
         n_iter: Number of t-SNE iterations
 
@@ -49,7 +51,7 @@ def analyze(
         )
         return None, None
 
-    dataloader = DataLoader(test_set, batch_size=32, shuffle=False, num_workers=0)
+    dataloader = DataLoader(test_set, batch_size=batch_size, shuffle=False, num_workers=0)
 
     activations_list = []
     labels_list = []
@@ -83,10 +85,11 @@ def analyze(
     print(f"Computing t-SNE on {activations.shape[0]} samples...")
     tsne = TSNE(
         n_components=2,
-        perplexity=perplexity,
+        perplexity=min(perplexity, activations.shape[0] // 3),
         max_iter=n_iter,
         random_state=42,
         verbose=1,
+        n_jobs=-1,
     )
     tsne_results = tsne.fit_transform(activations)
 

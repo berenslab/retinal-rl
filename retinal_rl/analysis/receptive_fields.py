@@ -118,10 +118,11 @@ def _compute_receptive_fields(
     hrf_size = min(hrf_size, hght)
     wrf_size = min(wrf_size, wdth)
 
-    grads: list[Tensor] = []
+    # Compute Jacobian efficiently with a single batched backward pass
+    def _target(o):
+        return head_model(o)[0, :, hidx, widx]  # shape: (out_channels,)
 
-    for j in range(out_channels):
-        grad = torch.autograd.grad(x[0, j, hidx, widx], obs, retain_graph=True)[0]
-        grads.append(grad[0, :, hmn : hmn + hrf_size, wmn : wmn + wrf_size])
-
-    return torch.stack(grads).cpu().numpy()
+    jac = torch.autograd.functional.jacobian(_target, obs)
+    # jac shape: (out_channels, 1, nclrs, hght, wdth)
+    grads = jac[:, 0, :, hmn : hmn + hrf_size, wmn : wmn + wrf_size]
+    return grads.cpu().numpy()

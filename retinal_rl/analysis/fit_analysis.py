@@ -17,6 +17,7 @@ from typing import Any, Callable, Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+from joblib import Parallel, delayed
 from matplotlib import gridspec
 from matplotlib.figure import Figure
 
@@ -72,11 +73,12 @@ def analyze_layer(
     map_from_params: MapFromParamsFn,
     blur_sigma: float = 0.5,
 ) -> Dict[int, FitResult]:
-    """Fit every channel in a layer RF array (N, C, H, W)."""
-    return {
-        idx: fit_to_channel(rf_ch, fit_2d, map_from_params, blur_sigma)
-        for idx, rf_ch in enumerate(rf_layer)
-    }
+    """Fit every channel in a layer RF array (N, C, H, W) in parallel."""
+    results = Parallel(n_jobs=-1)(
+        delayed(fit_to_channel)(rf_ch, fit_2d, map_from_params, blur_sigma)
+        for rf_ch in rf_layer
+    )
+    return dict(enumerate(results))
 
 
 def analyze_all_layers(

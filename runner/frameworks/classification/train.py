@@ -58,13 +58,14 @@ def train(
     checkpoint_step = cfg.logging.checkpoint_step
 
     num_epochs = cfg.optimizer.num_epochs
+    batch_size = cfg.optimizer.batch_size
     num_workers = cfg.system.num_workers
 
     trainloader = DataLoader(
-        train_set, batch_size=64, shuffle=True, num_workers=num_workers
+        train_set, batch_size=batch_size, shuffle=True, num_workers=num_workers
     )
     testloader = DataLoader(
-        test_set, batch_size=64, shuffle=False, num_workers=num_workers
+        test_set, batch_size=batch_size, shuffle=False, num_workers=num_workers
     )
 
     wall_time = time.time()
@@ -106,6 +107,7 @@ def train(
             use_wandb=cfg.logging.use_wandb,
             channel_analysis=cfg.logging.channel_analysis,
             plot_sample_size=cfg.logging.plot_sample_size,
+            batch_size=cfg.optimizer.batch_size,
             fit_analysis=cfg.logging.get("fit_analysis", False),
             fit_blur_sigma=cfg.logging.get("fit_blur_sigma", 0.5),
         )
@@ -164,30 +166,33 @@ def train(
                 epoch,
             )
 
-        ana_cfg = AnalysesCfg(
-            run_dir=Path(cfg.path.run_dir),
-            plot_dir=Path(cfg.path.plot_dir),
-            checkpoint_plot_dir=Path(cfg.path.checkpoint_plot_dir),
-            data_dir=Path(cfg.path.data_dir),
-            use_wandb=cfg.logging.use_wandb,
-            channel_analysis=cfg.logging.channel_analysis,
-            plot_sample_size=cfg.logging.plot_sample_size,
-            fit_analysis=cfg.logging.get("fit_analysis", False),
-            fit_blur_sigma=cfg.logging.get("fit_blur_sigma", 0.5),
-        )
+        if epoch % checkpoint_step == 0:
+            ana_cfg = AnalysesCfg(
+                run_dir=Path(cfg.path.run_dir),
+                plot_dir=Path(cfg.path.plot_dir),
+                checkpoint_plot_dir=Path(cfg.path.checkpoint_plot_dir),
+                data_dir=Path(cfg.path.data_dir),
+                use_wandb=cfg.logging.use_wandb,
+                channel_analysis=cfg.logging.channel_analysis,
+                plot_sample_size=cfg.logging.plot_sample_size,
+                batch_size=cfg.optimizer.batch_size,
+                fit_analysis=cfg.logging.get("fit_analysis", False),
+                fit_blur_sigma=cfg.logging.get("fit_blur_sigma", 0.5),
+                latent_analysis=cfg.logging.get("latent_analysis", False),
+            )
 
-        analyze(
-            ana_cfg,
-            device,
-            brain,
-            objective,
-            history,
-            train_set,
-            test_set,
-            epoch,
-            epoch % checkpoint_step == 0,
-        )
-        logger.info("Analysis complete.")
+            analyze(
+                ana_cfg,
+                device,
+                brain,
+                objective,
+                history,
+                train_set,
+                test_set,
+                epoch,
+                True,
+            )
+            logger.info("Analysis complete.")
 
         if use_wandb:
             _wandb_log_statistics(epoch, epoch_wall_time, history)
