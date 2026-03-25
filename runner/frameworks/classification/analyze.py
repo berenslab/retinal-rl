@@ -1,5 +1,7 @@
 from dataclasses import asdict, dataclass
 from pathlib import Path
+import logging
+import time
 
 import numpy as np
 import torch
@@ -61,13 +63,17 @@ def analyze(
     epoch: int,
     copy_checkpoint: bool = False,
 ):
+    logger = logging.getLogger(__name__)
     log = FigureLogger(
         cfg.use_wandb, cfg.plot_dir, cfg.checkpoint_plot_dir, cfg.run_dir
     )
 
+    analysis_start_time = time.time()
+
     log.plot_and_save_histories(histories)
 
-    # perform different analyses, plot and log them
+    # ============ Receptive Fields ============
+    start_time = time.time()
     input_shape, rf_result = receptive_fields.analyze(brain, device)
     receptive_fields.plot(
         log,
@@ -76,15 +82,24 @@ def analyze(
         copy_checkpoint,
     )
     log.save_dict(cfg.analyses_dir / f"receptive_fields_epoch_{epoch}.npz", rf_result)
+    rf_time = time.time() - start_time
+    logger.info(f"Epoch {epoch} - Receptive fields: {rf_time:.2f}s")
 
-    # Fit analysis (DoG + Gabor)
+    # ============ Fit Analysis (DoG + Gabor) ============
+    fit_time = 0.0
     if cfg.fit_analysis:
+        start_time = time.time()
         run_fit_analysis(
             log, rf_result, cfg.analyses_dir, epoch, copy_checkpoint,
             blur_sigma=cfg.fit_blur_sigma,
         )
+        fit_time = time.time() - start_time
+        logger.info(f"Epoch {epoch} - Fit analysis (DoG + Gabor): {fit_time:.2f}s")
 
+    # ============ Channel Analysis (Spectral + Histogram) ============
+    channel_time = 0.0
     if cfg.channel_analysis:
+        start_time = time.time()
         # Prepare dataset
         dataloader = channel_ana.prepare_dataset(test_set, cfg.plot_sample_size, cfg.batch_size)
         spectral_result = channel_ana.spectral_analysis(device, dataloader, brain)
@@ -103,10 +118,15 @@ def analyze(
         log.save_dict(
             cfg.analyses_dir / f"histogram_stats_epoch_{epoch}.npz", spectral_result
         )
+        channel_time = time.time() - start_time
+        logger.info(f"Epoch {epoch} - Channel analysis (spectral + histogram): {channel_time:.2f}s")
     else:
         spectral_result, histogram_result = None, None
-        
+
+    # ============ Latent Analysis (t-SNE) ============
+    latent_time = 0.0
     if cfg.latent_analysis:
+        start_time = time.time()
         tsne_results, labels = latent_ana.analyze(
             device,
             brain,
@@ -117,8 +137,11 @@ def analyze(
         )
         if tsne_results is not None:
             latent_ana.plot(log, tsne_results, labels, epoch, copy_checkpoint, cfg.latent_layer)
+        latent_time = time.time() - start_time
+        logger.info(f"Epoch {epoch} - Latent analysis (t-SNE): {latent_time:.2f}s")
 
-
+    # ============ Reconstruction Analysis ============
+    start_time = time.time()
     res, means, stds = recon_ana.analyze(device, brain, objective, train_set, test_set)
     recon_ana.plot(
         log,
@@ -128,6 +151,19 @@ def analyze(
         stds,
         epoch,
         copy_checkpoint,
+    )
+    recon_time = time.time() - start_time
+    logger.info(f"Epoch {epoch} - Reconstruction analysis: {recon_time:.2f}s")
+
+    # ============ Summary ============
+    total_analysis_time = time.time() - analysis_start_time
+    logger.info(
+        f"Epoch {epoch} - ANALYSIS SUMMARY (total {total_analysis_time:.2f}s):\n"
+        f"  - Receptive fields:    {rf_time:6.2f}s ({100*rf_time/total_analysis_time:5.1f}%)\n"
+        f"  - Fit analysis:        {fit_time:6.2f}s ({100*fit_time/total_analysis_time:5.1f}%)\n"
+        f"  - Channel analysis:    {channel_time:6.2f}s ({100*channel_time/total_analysis_time:5.1f}%)\n"
+        f"  - Latent analysis:     {latent_time:6.2f}s ({100*latent_time/total_analysis_time:5.1f}%)\n"
+        f"  - Reconstruction:      {recon_time:6.2f}s ({100*recon_time/total_analysis_time:5.1f}%)"
     )
 
 
