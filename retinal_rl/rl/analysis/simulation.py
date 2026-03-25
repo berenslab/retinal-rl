@@ -17,7 +17,7 @@ from sample_factory.utils.typing import Config
 from sample_factory.utils.utils import log
 from tqdm.auto import tqdm
 
-from retinal_rl.util import from_float_to_rgb, obs_dict_to_tuple, obs_to_img
+from retinal_rl.rl.util import from_float_to_rgb, obs_dict_to_tuple, obs_to_img
 
 torch.backends.cudnn.enabled = False
 

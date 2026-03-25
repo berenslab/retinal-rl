@@ -137,7 +137,7 @@ class SFFramework(TrainingFramework):
     ) -> Brain:
         with open(os.path.join(config_path, "config.json")) as f:
             config = DictConfig(json.load(f))
-        checkpoint_dict = torch.load(weights_path)
+        checkpoint_dict = torch.load(weights_path, map_location=device)
         model_dict = checkpoint_dict["model"]
         brain_dict = {}
         for key in model_dict:
