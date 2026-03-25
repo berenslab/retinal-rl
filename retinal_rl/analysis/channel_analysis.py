@@ -94,7 +94,7 @@ def histogram_analysis(
 
 
 def prepare_dataset(
-    imageset: Imageset, max_sample_size: int = 0
+    imageset: Imageset, max_sample_size: int = 0, batch_size: int = 64, num_workers: int = 0
 ) -> DataLoader[tuple[Tensor, Tensor, int]]:
     """Prepare dataset and dataloader for analysis."""
     epoch_len = imageset.epoch_len()
@@ -109,7 +109,7 @@ def prepare_dataset(
         subset = ImageSubset(imageset, indices=indices)
         logger.info("Using full dataset for cnn_statistics")
 
-    return DataLoader(subset, batch_size=64, shuffle=False)
+    return DataLoader(subset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
 
 def _layer_pixel_histograms(
@@ -127,33 +127,41 @@ def _layer_pixel_histograms(
     # Initialize variables for dynamic range computation
     global_min = torch.full((num_channels,), float("inf"), device=device)
     global_max = torch.full((num_channels,), float("-inf"), device=device)
-
-    # First pass: compute global min and max
+    histograms: Tensor = torch.zeros(
+        (num_channels, num_bins), dtype=torch.float64, device=device
+    )
     total_elements = 0
+
+    # Single pass: compute global min/max and accumulate histograms simultaneously
+    hist_range: tuple[float, float] = None  # Computed on first batch
 
     for _, batch, _ in dataloader:
         with torch.no_grad():
             batch = model(batch.to(device))
-        batch_min, _ = batch.view(-1, num_channels).min(dim=0)
-        batch_max, _ = batch.view(-1, num_channels).max(dim=0)
+
+        batch_flat = batch.view(-1, num_channels)
+        batch_min, _ = batch_flat.min(dim=0)
+        batch_max, _ = batch_flat.max(dim=0)
         global_min = torch.min(global_min, batch_min)
         global_max = torch.max(global_max, batch_max)
         total_elements += batch.numel() // num_channels
 
-    # Compute histogram parameters
-    hist_range: tuple[float, float] = (global_min.min().item(), global_max.max().item())
+        # Compute histogram range on first batch
+        if hist_range is None:
+            hist_range = (global_min.min().item(), global_max.max().item())
 
-    histograms: Tensor = torch.zeros(
-        (num_channels, num_bins), dtype=torch.float64, device=device
-    )
+    # Recompute histogram range from global min/max
+    hist_range = (global_min.min().item(), global_max.max().item())
 
+    # Second pass: accumulate histograms with computed range (unavoidable for torch.histc API)
     for _, batch, _ in dataloader:
         with torch.no_grad():
             batch = model(batch.to(device))
+        batch_flat = batch.view(-1, num_channels)
+        # Vectorized histogram computation
         for c in range(num_channels):
-            channel_data = batch[:, c, :, :].reshape(-1)
             hist = torch.histc(
-                channel_data, bins=num_bins, min=hist_range[0], max=hist_range[1]
+                batch_flat[:, c], bins=num_bins, min=hist_range[0], max=hist_range[1]
             )
             histograms[c] += hist
 
@@ -189,26 +197,26 @@ def _layer_spectral_analysis(
     for _, batch, _ in dataloader:
         with torch.no_grad():
             batch = model(batch.to(device))
-        for image in batch:
-            count += 1
 
-            # Compute power spectrum
-            power_spectrum = torch.abs(fft.fft2(image)) ** 2
+        # Vectorized FFT computation over entire batch
+        power_spectrum = torch.abs(fft.fft2(batch)) ** 2
 
-            # Compute power spectrum statistics
-            mean_power_spectrum += power_spectrum
-            m2_power_spectrum += power_spectrum**2
+        # Compute power spectrum statistics (batched)
+        mean_power_spectrum += power_spectrum.sum(dim=0)
+        m2_power_spectrum += (power_spectrum ** 2).sum(dim=0)
 
-            # Compute normalized autocorrelation
-            autocorr = cast(Tensor, fft.ifft2(power_spectrum)).real
-            max_abs_autocorr = torch.amax(
-                torch.abs(autocorr), dim=(-2, -1), keepdim=True
-            )
-            autocorr = autocorr / (max_abs_autocorr + 1e-8)
+        # Compute normalized autocorrelation (batched)
+        autocorr = cast(Tensor, fft.ifft2(power_spectrum)).real
+        max_abs_autocorr = torch.amax(
+            torch.abs(autocorr), dim=(-2, -1), keepdim=True
+        )
+        autocorr = autocorr / (max_abs_autocorr + 1e-8)
 
-            # Compute autocorrelation statistics
-            mean_autocorr += autocorr
-            m2_autocorr += autocorr**2
+        # Compute autocorrelation statistics (batched)
+        mean_autocorr += autocorr.sum(dim=0)
+        m2_autocorr += (autocorr ** 2).sum(dim=0)
+
+        count += batch.shape[0]
 
     mean_power_spectrum /= count
     mean_autocorr /= count

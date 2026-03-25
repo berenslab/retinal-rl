@@ -31,6 +31,7 @@ class AnalysesCfg:
     use_wandb: bool
     channel_analysis: bool
     plot_sample_size: int
+    batch_size: int = 64
     fit_analysis: bool = False
     fit_blur_sigma: float = 0.5
     latent_analysis: bool = False
@@ -85,7 +86,7 @@ def analyze(
 
     if cfg.channel_analysis:
         # Prepare dataset
-        dataloader = channel_ana.prepare_dataset(test_set, cfg.plot_sample_size)
+        dataloader = channel_ana.prepare_dataset(test_set, cfg.plot_sample_size, cfg.batch_size)
         spectral_result = channel_ana.spectral_analysis(device, dataloader, brain)
         histogram_result = channel_ana.histogram_analysis(device, dataloader, brain)
         channel_ana.plot(
@@ -112,6 +113,7 @@ def analyze(
             test_set,
             layer_name=cfg.latent_layer,
             max_samples=cfg.plot_sample_size,
+            batch_size=cfg.batch_size,
         )
         if tsne_results is not None:
             latent_ana.plot(log, tsne_results, labels, epoch, copy_checkpoint, cfg.latent_layer)
@@ -138,6 +140,7 @@ def analyze(
             input_shape,
             train_set,
             cfg.plot_sample_size,
+            cfg.batch_size,
             device,
         )
 
@@ -151,6 +154,7 @@ def _extended_initialization_plots(
     input_shape: tuple[int, ...],
     train_set: Imageset,
     max_sample_size: int,
+    batch_size: int,
     device: torch.device,
 ):
     transforms = transf_ana.analyze(train_set, num_steps=5, num_images=2)
