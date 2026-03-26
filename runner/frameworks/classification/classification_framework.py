@@ -54,6 +54,7 @@ class ClassificationFramework(TrainingFramework):
         objective: Optional[Objective[ContextT]] = None,
     ):
         cfg = AnalysesCfg(
+<<<<<<< HEAD
             Path(self.cfg.path.run_dir),
             Path(self.cfg.path.plot_dir),
             Path(self.cfg.path.checkpoint_plot_dir),
@@ -61,6 +62,19 @@ class ClassificationFramework(TrainingFramework):
             self.cfg.logging.use_wandb,
             self.cfg.logging.channel_analysis,
             self.cfg.logging.plot_sample_size,
+=======
+            run_dir=Path(self.cfg.path.run_dir),
+            plot_dir=Path(self.cfg.path.plot_dir),
+            checkpoint_plot_dir=Path(self.cfg.path.checkpoint_plot_dir),
+            data_dir=Path(self.cfg.path.data_dir),
+            use_wandb=self.cfg.logging.use_wandb,
+            channel_analysis=self.cfg.logging.channel_analysis,
+            plot_sample_size=self.cfg.logging.plot_sample_size,
+            fit_analysis=self.cfg.logging.fit_analysis,
+            fit_blur_sigma=self.cfg.logging.fit_blur_sigma,
+            latent_analysis=self.cfg.logging.latent_analysis,
+            latent_layer=self.cfg.logging.latent_layer,
+>>>>>>> e684926 (tSNE visualisation of latent layer)
         )
         analyze(
             cfg,
