@@ -67,9 +67,6 @@ def _program(cfg: DictConfig):
         launch_sweep(cfg)
         sys.exit(0)
 
-    if cfg.command == "analyze":
-        cfg.logging.use_wandb = False
-
     device = torch.device(cfg.system.device)
 
     brain = create_brain(cfg.brain).to(device)

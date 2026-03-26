@@ -62,6 +62,7 @@ class ClassificationFramework(TrainingFramework):
             use_wandb=self.cfg.logging.use_wandb,
             channel_analysis=self.cfg.logging.channel_analysis,
             plot_sample_size=self.cfg.logging.plot_sample_size,
+            batch_size=self.cfg.optimizer.batch_size,
             fit_analysis=self.cfg.logging.fit_analysis,
             fit_blur_sigma=self.cfg.logging.fit_blur_sigma,
             latent_analysis=self.cfg.logging.latent_analysis,
@@ -76,4 +77,5 @@ class ClassificationFramework(TrainingFramework):
             self.train_set,
             self.test_set,
             self.completed_epochs,
+            is_final_epoch=True,
         )

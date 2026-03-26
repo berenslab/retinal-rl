@@ -167,6 +167,7 @@ def train(
             )
 
         if epoch % checkpoint_step == 0:
+            is_final_epoch = (epoch == num_epochs)
             ana_cfg = AnalysesCfg(
                 run_dir=Path(cfg.path.run_dir),
                 plot_dir=Path(cfg.path.plot_dir),
@@ -191,6 +192,7 @@ def train(
                 test_set,
                 epoch,
                 True,
+                is_final_epoch=is_final_epoch,
             )
             logger.info("Analysis complete.")
 
