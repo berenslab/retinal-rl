@@ -3,13 +3,14 @@ from pathlib import Path
 
 import torch
 from hydra.utils import instantiate
-from sample_factory.algo.runners.runner import AlgoObserver, Runner
-from sample_factory.utils.typing import Config
+from sample_factory.algo.runners.runner import AlgoObserver, Runner, SummaryWriter
+from sample_factory.utils.typing import Config, PolicyID
 from sample_factory.utils.utils import log
 
 from retinal_rl.models.objective import Objective
 from retinal_rl.rl.analyze import AnalysesCfg, analyze
 from retinal_rl.rl.loss import RLContext
+from retinal_rl.rl.sample_factory.retinal_stats_handler import retinal_stats_handler
 from retinal_rl.rl.sample_factory.util import load_brain_from_checkpoint
 
 multiprocessing.set_start_method(
@@ -80,7 +81,6 @@ class RetinalAlgoObserver(AlgoObserver):
         self, runner: Runner, training_iteration_since_resume: int
     ) -> None:  # TODO: deprecated and will be refactored anyway
         """Called after each training step."""
-        # TODO: Check and refactor
         total_env_steps = sum(runner.env_steps.values())
 
         if total_env_steps >= self.next_analysis_step:
@@ -94,3 +94,28 @@ class RetinalAlgoObserver(AlgoObserver):
                 self.cur_freq, self.end_freq
             )
             self.cur_freq = self.cur_freq * 2
+
+    # Use extra summaries for now TODO: unify with classification logging
+    def extra_summaries(
+        self,
+        runner: Runner,
+        policy_id: PolicyID,
+        summary_writer: SummaryWriter,
+        env_steps: int,
+    ) -> None:
+        # report pickup frequencies
+        if retinal_stats_handler.pickups:
+            summed_pickups = {
+                stat_key: sum(stat_values)
+                for stat_key, stat_values in retinal_stats_handler.pickups.items()
+            }
+            total_pickups = max(
+                sum(summed_pickups.values()), 1
+            )  # ensure no division by zero
+
+            for stat_key, stat_value in summed_pickups.items():
+                summary_writer.add_scalar(
+                    f"pickups/{stat_key}", stat_value / total_pickups, env_steps
+                )
+                # Clear the stats after logging
+                retinal_stats_handler.pickups[stat_key] = 0
