@@ -314,7 +314,6 @@ def plot(
     copy_checkpoint: bool,
     r2_history: Dict[str, Any],
     fit_name: str,
-    skip_r2_history: bool = False,
 ):
     """Top-level plotting: overlays per layer, R² statistics, and R² history."""
     tag = fit_name.lower()
@@ -326,9 +325,8 @@ def plot(
     stats_fig = plot_r2_statistics(fit_results, fit_name)
     log.log_figure(stats_fig, tag, f"{tag}_statistics", epoch, copy_checkpoint)
 
-    if not skip_r2_history:
-        r2_fig = plot_r2_history(r2_history, fit_name)
-        log.log_figure(r2_fig, tag, f"{tag}_r2_history", epoch, copy_checkpoint)
+    r2_fig = plot_r2_history(r2_history, fit_name)
+    log.log_figure(r2_fig, tag, f"{tag}_r2_history", epoch, copy_checkpoint)
 
 
 

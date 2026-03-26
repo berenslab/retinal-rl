@@ -62,7 +62,6 @@ def analyze(
     test_set: Imageset,
     epoch: int,
     copy_checkpoint: bool = False,
-    is_final_epoch: bool = False,
 ):
     logger = logging.getLogger(__name__)
     log = FigureLogger(
@@ -93,7 +92,6 @@ def analyze(
         run_fit_analysis(
             log, rf_result, cfg.analyses_dir, epoch, copy_checkpoint,
             blur_sigma=cfg.fit_blur_sigma,
-            is_final_epoch=is_final_epoch,
         )
         fit_time = time.time() - start_time
         logger.info(f"Epoch {epoch} - Fit analysis (DoG + Gabor): {fit_time:.2f}s")
@@ -230,7 +228,6 @@ def run_fit_analysis(
     epoch: int,
     copy_checkpoint: bool,
     blur_sigma: float = 0.5,
-    is_final_epoch: bool = False,
 ) -> None:
     """Run both DoG and Gabor fit analysis."""
     for key, display_name, fit_2d_fn, map_fn in [
@@ -244,4 +241,4 @@ def run_fit_analysis(
         r2_history_path = analyses_dir / f"{key}_r2_history.npz"
         r2_history = fit_analysis.update_and_save_r2_history(r2_history_path, results, epoch)
 
-        fit_analysis.plot(log, rf_result, results, epoch, copy_checkpoint, r2_history, display_name, skip_r2_history=not is_final_epoch)
+        fit_analysis.plot(log, rf_result, results, epoch, copy_checkpoint, r2_history, display_name)

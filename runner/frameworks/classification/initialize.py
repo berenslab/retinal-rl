@@ -200,7 +200,7 @@ def _initialize_reload(
             job_type=HydraConfig.get().runtime.choices.brain,
             name=cfg.run_name,
             id=cfg.run_name,
-            resume="must",
+            resume="allow",
             dir=cfg.wandb_dir,
         )
         if cfg.wandb_preempt:

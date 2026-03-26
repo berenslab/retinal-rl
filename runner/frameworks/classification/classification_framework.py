@@ -77,5 +77,4 @@ class ClassificationFramework(TrainingFramework):
             self.train_set,
             self.test_set,
             self.completed_epochs,
-            is_final_epoch=True,
         )
