@@ -92,16 +92,60 @@ class SatietyInput(gym.Wrapper):
         return obs_dict, rew, terminated, truncated, info
 
 
+class PickupTrackingWrapper(gym.Wrapper):
+    def __init__(self, env):
+        super().__init__(env)
+        # TODO: make object values configurable / get from environment
+        self.object_values = np.array([-25, -20, -15, -10, -5, 10, 20, 30, 40, 50])
+        self.pickup_counts = {str(object_value): 0 for object_value in self.object_values}
+        self.last_health = None
+
+    def reset(self, **kwargs):
+        obs, info = self.env.reset(**kwargs)
+        for object_value in self.pickup_counts:
+            self.pickup_counts[object_value] = 0
+        self.last_health = info.get("USER17")
+        return obs, info
+
+    def step(self, action):
+        obs, rew, terminated, truncated, info = self.env.step(action)
+
+        unbound_health = info.get("USER17")
+        diff = unbound_health - self.last_health if self.last_health is not None else 0
+        self.last_health = unbound_health
+        # Accept differences up to one (eg health decreases by 1 periodically, which can coincide with the pickup of an object)
+        picked_up_object = np.abs(diff - self.object_values) <= 1
+        if np.sum(picked_up_object) == 1:
+            for object_value in self.object_values[picked_up_object]:
+                self.pickup_counts[str(object_value)] += 1
+
+        if picked_up_object.sum() > 1 or (
+            picked_up_object.sum() == 0 and diff not in [0, -1]
+        ):
+            print(
+                f"Warning: Detected pickup of multiple objects or an object with an unexpected value. Diff: {diff}, Picked up objects: {self.object_values[picked_up_object]}"
+            )
+            # TODO: proper logging
+
+        if "episode_extra_stats" not in info:
+            info["episode_extra_stats"] = dict()
+        info["episode_extra_stats"]["pickup_counts"] = (
+            self.pickup_counts.copy()
+        )  # Add a copy of the pickup counts to the info dict
+
+        return obs, rew, terminated, truncated, info
+
+
 ### Retinal Environments ###
 
 
 def retinal_doomspec(
     scene_name: str, cfg_path: str, sat_in: bool, allow_backwards: bool
 ):
-    ewraps = []
+    ewraps = [(PickupTrackingWrapper, {})]
 
     if sat_in:
-        ewraps = [(SatietyInput, {})]
+        ewraps.append(SatietyInput, {})
 
     action_space = (
         doom_action_space_basic()
