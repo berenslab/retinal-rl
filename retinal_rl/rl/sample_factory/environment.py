@@ -102,9 +102,6 @@ class PickupTrackingWrapper(gym.Wrapper):
 
     def reset(self, **kwargs):
         obs, info = self.env.reset(**kwargs)
-        for object_value in self.pickup_counts:
-            self.pickup_counts[object_value] = 0
-        self.last_health = info.get("USER17")
         return obs, info
 
     def step(self, action):

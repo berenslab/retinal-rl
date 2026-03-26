@@ -105,17 +105,13 @@ class RetinalAlgoObserver(AlgoObserver):
     ) -> None:
         # report pickup frequencies
         if retinal_stats_handler.pickups:
-            summed_pickups = {
-                stat_key: sum(stat_values)
-                for stat_key, stat_values in retinal_stats_handler.pickups.items()
-            }
             total_pickups = max(
-                sum(summed_pickups.values()), 1
+                sum(retinal_stats_handler.pickups.values()), 1
             )  # ensure no division by zero
 
-            for stat_key, stat_value in summed_pickups.items():
+            for object_value, num_pickups in retinal_stats_handler.pickups.items():
                 summary_writer.add_scalar(
-                    f"pickups/{stat_key}", stat_value / total_pickups, env_steps
+                    f"pickups/{object_value}", num_pickups / total_pickups, env_steps
                 )
                 # Clear the stats after logging
-                retinal_stats_handler.pickups[stat_key] = 0
+                retinal_stats_handler.pickups[object_value] = 0
