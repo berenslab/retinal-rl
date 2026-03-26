@@ -67,6 +67,7 @@ class ClassificationFramework(TrainingFramework):
             fit_blur_sigma=self.cfg.logging.fit_blur_sigma,
             latent_analysis=self.cfg.logging.latent_analysis,
             latent_layer=self.cfg.logging.latent_layer,
+            channel_plot_epoch_step=self.cfg.logging.get("channel_plot_epoch_step", 5),
         )
         analyze(
             cfg,

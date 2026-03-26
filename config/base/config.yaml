@@ -26,6 +26,7 @@ logging:
   checkpoint_step: 5  # Save checkpoints every 5 steps
   max_checkpoints: 5  # Maximum number of checkpoints to keep
   channel_analysis: False # Whether to do in depth channel analysis
+  channel_plot_epoch_step: 5  # Generate channel figures every N epochs (0 = never)
   fit_analysis: False # Whether to run DoG + Gabor fit analysis
   fit_blur_sigma: 0.5 # Blur sigma for fit analysis preprocessing
   latent_analysis: False # Whether to visualize latent space with t-SNE

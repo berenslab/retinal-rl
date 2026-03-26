@@ -268,7 +268,7 @@ def layer_channel_plots(
 ) -> Figure:
     """Plot receptive fields, pixel histograms, and autocorrelation plots for a single channel in a layer."""
     axs: np.ndarray[Axes]
-    fig, axs = plt.subplots(2, 3, figsize=(20, 10))
+    fig, axs = plt.subplots(2, 2, figsize=(14, 10))
     fig.suptitle(f"Layer: {layer_name}, Channel: {channel}", fontsize=16)
 
     # Receptive Fields
@@ -293,59 +293,31 @@ def layer_channel_plots(
     axs[1, 0].set_xlabel("Value")
     axs[1, 0].set_ylabel("Empirical Probability")
 
-    # Autocorrelation plots
-    # Plot average 2D autocorrelation and variance
-    
+    # Autocorrelation plot (mean only, skip variance)
     autocorr = fft.fftshift(torch.tensor(spectral.mean_autocorr[channel])) #np shift here
     h, w = autocorr.shape
     extent = [-w // 2, w // 2, -h // 2, h // 2]
     im = axs[0, 1].imshow(
         autocorr, cmap="twilight", vmin=-1, vmax=1, origin="lower", extent=extent
     )
-    axs[0, 1].set_title("Average 2D Autocorrelation")
+    axs[0, 1].set_title("2D Autocorrelation")
     axs[0, 1].set_xlabel("Lag X")
     axs[0, 1].set_ylabel("Lag Y")
     fig.colorbar(im, ax=axs[0, 1])
     set_integer_ticks(axs[0, 1])
 
-    autocorr_sd = fft.fftshift(torch.sqrt(torch.tensor(spectral.var_autocorr[channel]))) #np shift here
-    im = axs[0, 2].imshow(
-        autocorr_sd, cmap="inferno", origin="lower", extent=extent, vmin=0
-    )
-    axs[0, 2].set_title("2D Autocorrelation SD")
-    axs[0, 2].set_xlabel("Lag X")
-    axs[0, 2].set_ylabel("Lag Y")
-    fig.colorbar(im, ax=axs[0, 2])
-    set_integer_ticks(axs[0, 2])
-
-    # Plot average 2D power spectrum
+    # Power spectrum plot (mean only, skip variance)
     log_power_spectrum = fft.fftshift(torch.log1p(torch.tensor(spectral.mean_power_spectrum[channel])))
     h, w = log_power_spectrum.shape
 
     im = axs[1, 1].imshow(
         log_power_spectrum, cmap="viridis", origin="lower", extent=extent, vmin=0
     )
-    axs[1, 1].set_title("Average 2D Power Spectrum (log)")
+    axs[1, 1].set_title("2D Power Spectrum (log)")
     axs[1, 1].set_xlabel("Frequency X")
     axs[1, 1].set_ylabel("Frequency Y")
     fig.colorbar(im, ax=axs[1, 1])
     set_integer_ticks(axs[1, 1])
-
-    log_power_spectrum_sd = fft.fftshift(
-        torch.log1p(torch.sqrt(torch.tensor(spectral.var_power_spectrum[channel])))
-    )
-    im = axs[1, 2].imshow(
-        log_power_spectrum_sd,
-        cmap="viridis",
-        origin="lower",
-        extent=extent,
-        vmin=0,
-    )
-    axs[1, 2].set_title("2D Power Spectrum SD")
-    axs[1, 2].set_xlabel("Frequency X")
-    axs[1, 2].set_ylabel("Frequency Y")
-    fig.colorbar(im, ax=axs[1, 2])
-    set_integer_ticks(axs[1, 2])
 
     plt.tight_layout()
     return fig

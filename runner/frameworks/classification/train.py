@@ -179,6 +179,7 @@ def train(
                 fit_analysis=cfg.logging.get("fit_analysis", False),
                 fit_blur_sigma=cfg.logging.get("fit_blur_sigma", 0.5),
                 latent_analysis=cfg.logging.get("latent_analysis", False),
+                channel_plot_epoch_step=cfg.logging.get("channel_plot_epoch_step", 5),
             )
 
             analyze(

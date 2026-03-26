@@ -38,6 +38,7 @@ class AnalysesCfg:
     fit_blur_sigma: float = 0.5
     latent_analysis: bool = False
     latent_layer: str = "visual_cortex"
+    channel_plot_epoch_step: int = 5
 
     def __post_init__(self):
         self.analyses_dir = Path(self.data_dir) / "analyses"
@@ -104,19 +105,27 @@ def analyze(
         dataloader = channel_ana.prepare_dataset(test_set, cfg.plot_sample_size, cfg.batch_size)
         spectral_result = channel_ana.spectral_analysis(device, dataloader, brain)
         histogram_result = channel_ana.histogram_analysis(device, dataloader, brain)
-        channel_ana.plot(
-            log,
-            rf_result,
-            spectral_result,
-            histogram_result,
-            epoch,
-            copy_checkpoint,
+
+        # Gate plotting based on epoch frequency
+        should_plot = (epoch == 0) or (
+            cfg.channel_plot_epoch_step > 0
+            and epoch % cfg.channel_plot_epoch_step == 0
         )
+        if should_plot:
+            channel_ana.plot(
+                log,
+                rf_result,
+                spectral_result,
+                histogram_result,
+                epoch,
+                copy_checkpoint,
+            )
+
         log.save_dict(
             cfg.analyses_dir / f"spectral_stats_epoch_{epoch}.npz", spectral_result
         )  # TODO: Check if compressed save possible
         log.save_dict(
-            cfg.analyses_dir / f"histogram_stats_epoch_{epoch}.npz", spectral_result
+            cfg.analyses_dir / f"histogram_stats_epoch_{epoch}.npz", histogram_result
         )
         channel_time = time.time() - start_time
         logger.info(f"Epoch {epoch} - Channel analysis (spectral + histogram): {channel_time:.2f}s")
@@ -169,16 +178,17 @@ def analyze(
 
     if epoch == 0:
         default_ana.initialization_plots(log, brain, objective, input_shape, rf_result)
-        _extended_initialization_plots(
-            log,
-            cfg.channel_analysis,
-            cfg.analyses_dir,
-            input_shape,
-            train_set,
-            cfg.plot_sample_size,
-            cfg.batch_size,
-            device,
-        )
+        # Skip expensive channel analysis at init (will run at epoch 0 via sparse schedule)
+        # _extended_initialization_plots(
+        #     log,
+        #     cfg.channel_analysis,
+        #     cfg.analyses_dir,
+        #     input_shape,
+        #     train_set,
+        #     cfg.plot_sample_size,
+        #     cfg.batch_size,
+        #     device,
+        # )
 
     log.plot_and_save_histories(histories, save_always=True)
 
