@@ -3,6 +3,8 @@
 # Number of training epochs
 num_epochs: 50
 
+batch_size: 128
+
 # The optimizer to use
 optimizer: # torch.optim Class and parameters
   _target_: torch.optim.AdamW
