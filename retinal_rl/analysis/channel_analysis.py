@@ -1,97 +1,22 @@
 import logging
-from dataclasses import dataclass
-from typing import cast
+from pathlib import Path
 
 import numpy as np
 import torch
-import torch.utils
-import torch.utils.data
-from matplotlib import gridspec
-from matplotlib import pyplot as plt
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
-from torch import Tensor, fft, nn
+import torch.nn as nn
+from torch import Tensor
 from torch.utils.data import DataLoader
 
-from retinal_rl.analysis.plot import FigureLogger, set_integer_ticks
+from matplotlib import pyplot as plt
+
 from retinal_rl.classification.imageset import Imageset, ImageSubset
+from retinal_rl.analysis.plot import FigureLogger, set_integer_ticks
 from retinal_rl.models.brain import Brain, get_cnn_circuit
-from retinal_rl.util import FloatArray, is_nonlinearity
+from retinal_rl.util import is_nonlinearity
 
 logger = logging.getLogger(__name__)
 
-
-@dataclass
-class SpectralAnalysis:
-    """Results of spectral analysis for a layer."""
-
-    mean_power_spectrum: FloatArray
-    var_power_spectrum: FloatArray
-    mean_autocorr: FloatArray
-    var_autocorr: FloatArray
-
-
-@dataclass
-class HistogramAnalysis:
-    """Results of histogram analysis for a layer."""
-
-    channel_histograms: FloatArray
-    bin_edges: FloatArray
-
-
-def spectral_analysis(
-    device: torch.device,
-    dataloader: DataLoader[tuple[Tensor, Tensor, int]],
-    brain: Brain,
-) -> dict[str, SpectralAnalysis]:
-    brain.eval()
-    brain.to(device)
-    _, cnn_layers = get_cnn_circuit(brain)
-
-    # Initialize results
-    results: dict[str, SpectralAnalysis] = {}
-
-    # Analyze each layer
-    head_layers: list[nn.Module] = []
-
-    for layer_name, layer in cnn_layers.items():
-        head_layers.append(layer)
-
-        if is_nonlinearity(layer):
-            continue
-
-        results[layer_name] = _layer_spectral_analysis(
-            device, dataloader, nn.Sequential(*head_layers)
-        )
-
-    return results
-
-
-def histogram_analysis(
-    device: torch.device,
-    dataloader: DataLoader[tuple[Tensor, Tensor, int]],
-    brain: Brain,
-) -> dict[str, HistogramAnalysis]:
-    brain.eval()
-    brain.to(device)
-    _, cnn_layers = get_cnn_circuit(brain)
-
-    # Initialize results
-    results: dict[str, HistogramAnalysis] = {}
-
-    # Analyze each layer
-    head_layers: list[nn.Module] = []
-
-    for layer_name, layer in cnn_layers.items():
-        head_layers.append(layer)
-        if is_nonlinearity(layer):
-            continue
-        results[layer_name] = _layer_pixel_histograms(
-            device, dataloader, nn.Sequential(*head_layers)
-        )
-
-    return results
-
+#----Inter-channel analysis: decorrelation analysis for convolutional layers----
 
 def prepare_dataset(
     imageset: Imageset, max_sample_size: int = 0, batch_size: int = 64, num_workers: int = 0
@@ -112,287 +37,415 @@ def prepare_dataset(
     return DataLoader(subset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
 
-def _layer_pixel_histograms(
+def compute_decorrelation_scores(
+    device: torch.device,
+    dataloader: DataLoader[tuple[Tensor, Tensor, int]],
+    brain: Brain,
+) -> dict[str, tuple[float, float]]:
+    """Compute channel decorrelation scores for each convolutional layer.
+
+    Decorrelation score = 1 - mean(|off-diagonal Pearson correlations|)
+    Uncertainty based on channel equalization (CV of per-channel standard deviations)
+    Both range from 0 to 1.
+
+    Args:
+        device: torch device to run on
+        dataloader: DataLoader yielding (observations, labels, indices)
+        brain: The neural network model
+
+    Returns:
+        dict mapping layer_name -> (decorrelation_score, uncertainty) tuple
+    """
+    brain.eval()
+    brain.to(device)
+
+    _, cnn_layers = get_cnn_circuit(brain)
+    results: dict[str, tuple[float, float]] = {}
+    head_layers: list[nn.Module] = []
+
+    for layer_name, layer in cnn_layers.items():
+        head_layers.append(layer)
+        if is_nonlinearity(layer):
+            continue
+        model = nn.Sequential(*head_layers)
+        results[layer_name] = _layer_decorrelation_score(device, dataloader, model)
+
+    return results
+
+
+def _layer_decorrelation_score(
+    device: torch.device,
+    dataloader: DataLoader[tuple[Tensor, Tensor, int]],
+    model: nn.Module,
+    eps: float = 1e-8,
+) -> float:
+    """Compute decorrelation score for a single layer via online covariance accumulation.
+
+    Accumulates cross-channel covariance matrix in O(C^2) memory instead of O(N*C).
+
+    Args:
+        device: torch device
+        dataloader: DataLoader yielding (observations, labels, indices)
+        model: Forward model ending at the target layer
+        eps: Numerical stability constant for correlation computation
+
+    Returns:
+        Decorrelation score (float in [0, 1])
+    """
+    model.eval()
+    model.to(device)
+
+    sum_x = None  # shape (C,)
+    sum_x2 = None  # shape (C, C) - sum of outer products
+    n = 0
+
+    with torch.no_grad():
+        # First pass: probe first batch to get number of channels
+        for batch in dataloader:
+            observations = batch[0].to(device)
+            activations = model(observations)  # shape (B, C, H, W)
+
+            B, C, H, W = activations.shape
+
+            # If single channel, no decorrelation to measure
+            if C == 1:
+                return 1.0
+
+            # Flatten spatial dimensions: (B, C, H, W) -> (B*H*W, C)
+            activations_flat = activations.permute(0, 2, 3, 1).reshape(-1, C)  # (B*H*W, C)
+
+            # Initialize accumulators on first batch
+            if sum_x is None:
+                sum_x = torch.zeros(C, device=device, dtype=activations.dtype)
+                sum_x2 = torch.zeros((C, C), device=device, dtype=activations.dtype)
+
+            # Accumulate
+            sum_x += activations_flat.sum(dim=0)  # (C,)
+            sum_x2 += activations_flat.T @ activations_flat  # (C, C)
+            n += activations_flat.shape[0]
+
+    # Compute covariance from sums
+    mean = sum_x / n  # (C,)
+    cov = sum_x2 / n - torch.outer(mean, mean)  # (C, C)
+
+    # Convert covariance to correlation
+    std = torch.sqrt(torch.diagonal(cov).clamp(min=eps))  # (C,) - clamp to avoid division by zero
+    corr = cov / torch.outer(std, std)  # (C, C)
+
+    # Extract off-diagonal absolute correlations
+    mask = ~torch.eye(C, device=device, dtype=torch.bool)
+    off_diag_corr = corr[mask]
+    mean_abs_off_diag = torch.abs(off_diag_corr).mean().item()
+
+    # Decorrelation score: 1 - mean(|off-diagonal correlations|)
+    decorr_score = 1.0 - mean_abs_off_diag
+
+    cv = std.std() / std.mean()
+    equalization_score = 1 / (1 + cv)
+    uncertainty = 1.0 - equalization_score
+
+    return decorr_score, uncertainty
+
+
+def update_and_save_decorrelation_history(
+    path: Path,
+    scores: dict[str, tuple[float, float]],
+    epoch: int,
+) -> dict[str, list]:
+    """Update and save decorrelation history across epochs.
+
+    Loads existing history from NPZ file, appends current epoch's scores and uncertainties,
+    saves back to file, and returns the full history.
+
+    Args:
+        path: Path to decorrelation_history.npz file
+        scores: dict mapping layer_name -> (decorrelation_score, uncertainty) tuple
+        epoch: Current epoch number
+
+    Returns:
+        Full history dict: layer_name -> list of [epoch, score, uncertainty] triples
+    """
+    # Load existing history or start fresh
+    if path.exists():
+        data = dict(np.load(path, allow_pickle=True))
+        history = data["decorrelation_history"].item()
+    else:
+        history = {}
+
+    # Append current epoch scores and uncertainties
+    for layer_name, (score, uncertainty) in scores.items():
+        history.setdefault(layer_name, []).append([epoch, float(score), float(uncertainty)])
+
+    # Save updated history
+    np.savez_compressed(path, decorrelation_history=history)
+
+    return history
+
+
+#----Intra-channel analysis: spectral slope----
+
+def compute_spectral_slopes(
+    device: torch.device,
+    dataloader: DataLoader[tuple[Tensor, Tensor, int]],
+    brain: Brain,
+) -> dict[str, tuple[float, float]]:
+    """Compute power spectral slope per layer.
+
+    Fits a line to the radially-averaged power spectrum in log-log frequency space.
+    Slope ~0 = whitened; slope ~-2 = natural images (1/f^2 power law).
+
+    Args:
+        device: torch device to run on
+        dataloader: DataLoader yielding (observations, labels, indices)
+        brain: The neural network model
+
+    Returns:
+        dict mapping layer_name -> (mean_slope, std_slope) across channels
+    """
+    brain.eval()
+    brain.to(device)
+
+    _, cnn_layers = get_cnn_circuit(brain)
+    results: dict[str, tuple[float, float]] = {}
+    head_layers: list[nn.Module] = []
+
+    for layer_name, layer in cnn_layers.items():
+        head_layers.append(layer)
+        if is_nonlinearity(layer):
+            continue
+        model = nn.Sequential(*head_layers)
+        results[layer_name] = _layer_spectral_slope(device, dataloader, model)
+
+    return results
+
+
+def _layer_spectral_slope(
     device: torch.device,
     dataloader: DataLoader[tuple[Tensor, Tensor, int]],
     model: nn.Module,
     num_bins: int = 20,
-) -> HistogramAnalysis:
-    """Compute histograms of pixel/activation values for each channel across all data in an imageset."""
-    _, first_batch, _ = next(iter(dataloader))
+    eps: float = 1e-8,
+) -> tuple[float, float]:
+    """Compute mean and std of log-log spectral slope across channels for one layer."""
+    model.eval()
+    model.to(device)
+
+    sum_power = None   # (C, num_bins)
+    bin_idx = None     # precomputed freq -> bin mapping
+    bin_counts = None  # number of freq pixels per bin
+    log_bin_centers = None
+    n_batches = 0
+    C = None
+
     with torch.no_grad():
-        first_batch = model(first_batch.to(device))
-    num_channels: int = first_batch.shape[1]
+        for batch in dataloader:
+            obs = batch[0].to(device)
+            acts = model(obs)  # (B, C, H, W)
+            B, C_curr, H, W = acts.shape
 
-    # Initialize variables for dynamic range computation
-    global_min = torch.full((num_channels,), float("inf"), device=device)
-    global_max = torch.full((num_channels,), float("-inf"), device=device)
-    histograms: Tensor = torch.zeros(
-        (num_channels, num_bins), dtype=torch.float64, device=device
-    )
-    total_elements = 0
+            # Compute 2D FFT power spectrum
+            fft = torch.fft.rfft2(acts)               # (B, C, H, W//2+1)
+            power = fft.real ** 2 + fft.imag ** 2     # (B, C, H, W//2+1)
 
-    # Single pass: compute global min/max and accumulate histograms simultaneously
-    hist_range: tuple[float, float] = None  # Computed on first batch
+            # Build radial frequency grid and bin mapping once on first batch
+            if sum_power is None:
+                C = C_curr
+                fy = torch.fft.fftfreq(H, device=device)
+                fx = torch.fft.rfftfreq(W, device=device)
+                fy_grid, fx_grid = torch.meshgrid(fy, fx, indexing="ij")  # (H, W//2+1)
+                r = torch.sqrt(fy_grid ** 2 + fx_grid ** 2).reshape(-1)   # (H*(W//2+1),)
 
-    for _, batch, _ in dataloader:
-        with torch.no_grad():
-            batch = model(batch.to(device))
+                # Log-spaced bin edges from min nonzero freq to max
+                r_min = r[r > 0].min().item()
+                r_max = r.max().item()
+                bin_edges = torch.logspace(
+                    np.log10(r_min), np.log10(r_max), num_bins + 1, device=device
+                )
+                log_bin_centers = (
+                    0.5 * (torch.log10(bin_edges[:-1]) + torch.log10(bin_edges[1:]))
+                ).cpu().numpy()  # (num_bins,)
 
-        batch_flat = batch.view(-1, num_channels)
-        batch_min, _ = batch_flat.min(dim=0)
-        batch_max, _ = batch_flat.max(dim=0)
-        global_min = torch.min(global_min, batch_min)
-        global_max = torch.max(global_max, batch_max)
-        total_elements += batch.numel() // num_channels
+                # Precompute bin index for each freq pixel (DC at r=0 maps to bin 0)
+                bin_idx = torch.bucketize(r, bin_edges[1:]).clamp(0, num_bins - 1)  # (N_freq,)
+                bin_counts = torch.bincount(bin_idx, minlength=num_bins).float().clamp(min=1)
 
-        # Compute histogram range on first batch
-        if hist_range is None:
-            hist_range = (global_min.min().item(), global_max.max().item())
+                sum_power = torch.zeros(C, num_bins, device=device)
 
-    # Recompute histogram range from global min/max
-    hist_range = (global_min.min().item(), global_max.max().item())
+            # Vectorized radial averaging: (B, C, N_freq) -> (C, num_bins)
+            N_freq = H * (W // 2 + 1)
+            power_flat = power.reshape(B, C, N_freq)  # (B, C, N_freq)
 
-    # Second pass: accumulate histograms with computed range (unavoidable for torch.histc API)
-    for _, batch, _ in dataloader:
-        with torch.no_grad():
-            batch = model(batch.to(device))
-        batch_flat = batch.view(-1, num_channels)
-        # Vectorized histogram computation
-        for c in range(num_channels):
-            hist = torch.histc(
-                batch_flat[:, c], bins=num_bins, min=hist_range[0], max=hist_range[1]
-            )
-            histograms[c] += hist
+            bin_idx_bc = bin_idx.unsqueeze(0).unsqueeze(0).expand(B, C, -1)  # (B, C, N_freq)
+            bin_power = torch.zeros(B, C, num_bins, device=device)
+            bin_power.scatter_add_(2, bin_idx_bc, power_flat)
+            bin_power = bin_power / bin_counts  # normalize by pixels per bin
 
-    bin_width = (hist_range[1] - hist_range[0]) / num_bins
-    normalized_histograms = histograms / (total_elements * bin_width / num_channels)
+            sum_power += bin_power.mean(dim=0)  # average over batch, accumulate
+            n_batches += 1
 
-    return HistogramAnalysis(
-        normalized_histograms.cpu().numpy(),
-        np.linspace(hist_range[0], hist_range[1], num_bins + 1, dtype=np.float64),
-    )
+    # Mean power across all batches, fit log-log slope per channel
+    mean_power = (sum_power / n_batches).cpu().numpy()  # (C, num_bins)
+    log_power = np.log10(np.maximum(mean_power, eps))   # (C, num_bins)
+
+    slopes = np.array([
+        np.polyfit(log_bin_centers, log_power[c], 1)[0]
+        for c in range(C)
+    ])
+
+    return float(slopes.mean()), float(slopes.std())
 
 
-def _layer_spectral_analysis(
-    device: torch.device,
-    dataloader: DataLoader[tuple[Tensor, Tensor, int]],
-    model: nn.Module,
-) -> SpectralAnalysis:
-    """Compute spectral analysis statistics for each channel across all data in an imageset."""
-    _, first_batch, _ = next(iter(dataloader))
-    with torch.no_grad():
-        first_batch = model(first_batch.to(device))
-    image_size = first_batch.shape[1:]
+def update_and_save_spectral_slope_history(
+    path: Path,
+    slopes: dict[str, tuple[float, float]],
+    epoch: int,
+) -> dict[str, list]:
+    """Update and save spectral slope history across epochs.
 
-    # Initialize variables for dynamic range computation
-    mean_power_spectrum = torch.zeros(image_size, dtype=torch.float64, device=device)
-    m2_power_spectrum = torch.zeros(image_size, dtype=torch.float64, device=device)
-    mean_autocorr = torch.zeros(image_size, dtype=torch.float64, device=device)
-    m2_autocorr = torch.zeros(image_size, dtype=torch.float64, device=device)
-    autocorr: Tensor = torch.zeros(image_size, dtype=torch.float64, device=device)
+    Args:
+        path: Path to spectral_slope_history.npz file
+        slopes: dict mapping layer_name -> (mean_slope, std_slope)
+        epoch: Current epoch number
 
-    count = 0
+    Returns:
+        Full history dict: layer_name -> list of [epoch, mean_slope, std_slope] triples
+    """
+    if path.exists():
+        data = dict(np.load(path, allow_pickle=True))
+        history = data["spectral_slope_history"].item()
+    else:
+        history = {}
 
-    for _, batch, _ in dataloader:
-        with torch.no_grad():
-            batch = model(batch.to(device))
+    for layer_name, (mean_slope, std_slope) in slopes.items():
+        history.setdefault(layer_name, []).append([epoch, float(mean_slope), float(std_slope)])
 
-        # Vectorized FFT computation over entire batch
-        power_spectrum = torch.abs(fft.fft2(batch)) ** 2
+    np.savez_compressed(path, spectral_slope_history=history)
 
-        # Compute power spectrum statistics (batched)
-        mean_power_spectrum += power_spectrum.sum(dim=0)
-        m2_power_spectrum += (power_spectrum ** 2).sum(dim=0)
+    return history
 
-        # Compute normalized autocorrelation (batched)
-        autocorr = cast(Tensor, fft.ifft2(power_spectrum)).real
-        max_abs_autocorr = torch.amax(
-            torch.abs(autocorr), dim=(-2, -1), keepdim=True
-        )
-        autocorr = autocorr / (max_abs_autocorr + 1e-8)
 
-        # Compute autocorrelation statistics (batched)
-        mean_autocorr += autocorr.sum(dim=0)
-        m2_autocorr += (autocorr ** 2).sum(dim=0)
+def _plot_spectral_slopes(
+    log: FigureLogger,
+    history: dict[str, list],
+    epoch: int,
+    copy_checkpoint: bool,
+) -> None:
+    """Plot spectral slope history across epochs with uncertainty error bars.
 
-        count += batch.shape[0]
+    Reference slopes: ~0 (whitened), ~-2 (natural images, 1/f^2 law).
 
-    mean_power_spectrum /= count
-    mean_autocorr /= count
-    var_power_spectrum = m2_power_spectrum / count - (mean_power_spectrum / count) ** 2
-    var_autocorr = m2_autocorr / count - (mean_autocorr / count) ** 2
+    Args:
+        log: FigureLogger instance for logging plots
+        history: dict mapping layer_name -> list of [epoch, mean_slope, std_slope] triples
+        epoch: Current epoch (for logging)
+        copy_checkpoint: Whether to copy plot to checkpoint directory
+    """
+    fig, ax = plt.subplots(figsize=(7, 5))
 
-    return SpectralAnalysis(
-        mean_power_spectrum.cpu().numpy(),
-        var_power_spectrum.cpu().numpy(),
-        mean_autocorr.cpu().numpy(),
-        var_autocorr.cpu().numpy(),
-    )
+    for layer_name, layer_history in history.items():
+        if len(layer_history) == 0:
+            continue
+        arr = np.array(layer_history)  # shape (T, 3): [epoch, mean_slope, std_slope]
+        ax.errorbar(arr[:, 0], arr[:, 1], yerr=arr[:, 2], marker="o", label=layer_name,
+                   linewidth=2, capsize=5, capthick=1.5, elinewidth=1.5)
+
+    
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Spectral Slope")
+    ax.set_title("Power Spectral Slope by Layer")
+    ax.legend(loc="lower right")
+    set_integer_ticks(ax)
+    fig.tight_layout()
+
+    log.log_figure(fig, "spectral_slope", "spectral_slope_history", epoch, copy_checkpoint)
 
 
 def plot(
     log: FigureLogger,
-    rf_result: dict[str, FloatArray],
-    spectral_result: dict[str, SpectralAnalysis],
-    histogram_result: dict[str, HistogramAnalysis],
+    decorr_history: dict[str, list],
+    spectral_history: dict[str, list],
     epoch: int,
     copy_checkpoint: bool,
-):
-    for layer_name, layer_rfs in rf_result.items():
-        layer_spectral = spectral_result[layer_name]
-        layer_histogram = histogram_result[layer_name]
-        for channel in range(layer_rfs.shape[0]):
-            channel_fig = layer_channel_plots(
-                layer_rfs,
-                layer_spectral,
-                layer_histogram,
-                layer_name=layer_name,
-                channel=channel,
+) -> None:
+    """Plot both decorrelation and spectral slope analyses side-by-side.
+
+    Creates a 1x2 figure with decorrelation scores (left) and spectral slopes (right).
+
+    Args:
+        log: FigureLogger instance for logging plots
+        decorr_history: dict mapping layer_name -> list of [epoch, score, uncertainty] triples
+        spectral_history: dict mapping layer_name -> list of [epoch, mean_slope, std_slope] triples
+        epoch: Current epoch (for logging)
+        copy_checkpoint: Whether to copy plot to checkpoint directory
+    """
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+
+    # ===== Left: Decorrelation =====
+    for layer_name, layer_history in decorr_history.items():
+        if len(layer_history) == 0:
+            continue
+        arr = np.array(layer_history)
+        epochs = arr[:, 0]
+        scores = arr[:, 1]
+        uncertainties = arr[:, 2]
+
+        # Normalize uncertainty for alpha scaling
+        u_norm = (uncertainties - uncertainties.min()) / (uncertainties.ptp() + 1e-8)
+        alpha_vals = 0.4 + 0.6 * (1 - u_norm)
+
+        # Plot segment-wise to vary alpha
+        for i in range(len(epochs) - 1):
+            ax1.plot(
+                epochs[i:i+2],
+                scores[i:i+2],
+                color=f"C{list(decorr_history.keys()).index(layer_name)}",
+                alpha=alpha_vals[i],
+                linewidth=2
             )
-            log.log_figure(
-                channel_fig,
-                f"{layer_name}_layer_channel_analysis",
-                f"channel_{channel}",
-                epoch,
-                copy_checkpoint,
-            )
 
+        # markers
+        ax1.scatter(epochs, scores, s=20, alpha=0.9)
 
-def layer_channel_plots(
-    receptive_fields: FloatArray,
-    spectral: SpectralAnalysis,
-    histogram: HistogramAnalysis,
-    layer_name: str,
-    channel: int,
-) -> Figure:
-    """Plot receptive fields, pixel histograms, and autocorrelation plots for a single channel in a layer."""
-    axs: np.ndarray[Axes]
-    fig, axs = plt.subplots(2, 2, figsize=(14, 10))
-    fig.suptitle(f"Layer: {layer_name}, Channel: {channel}", fontsize=16)
+    ax1.set_xlabel("Epoch")
+    ax1.set_ylabel("Decorrelation Score")
+    ax1.set_title("Channel Decorrelation Score")
+    ax1.set_ylim(0, 1)
+    ax1.legend(loc="lower right", frameon=False)
+    ax1.grid(True, alpha=0.2)
+    set_integer_ticks(ax1)
 
-    # Receptive Fields
-    rf = receptive_fields[channel]
-    _plot_receptive_fields(axs[0, 0], rf)
-    axs[0, 0].set_title("Receptive Field")
-    axs[0, 0].set_xlabel("X")
-    axs[0, 0].set_ylabel("Y")
+    #===== Right: Spectral Slope =====
 
-    # Pixel Histograms
-    hist = histogram.channel_histograms[channel]
-    bin_edges = histogram.bin_edges
-    axs[1, 0].bar(
-        bin_edges[:-1],
-        hist,
-        width=np.diff(bin_edges),
-        align="edge",
-        color="gray",
-        edgecolor="black",
-    )
-    axs[1, 0].set_title("Channel Histogram")
-    axs[1, 0].set_xlabel("Value")
-    axs[1, 0].set_ylabel("Empirical Probability")
+    for i, (layer_name, layer_history) in enumerate(spectral_history.items()):
+        if len(layer_history) == 0:
+            continue
 
-    # Autocorrelation plot (mean only, skip variance)
-    autocorr = fft.fftshift(torch.tensor(spectral.mean_autocorr[channel])) #np shift here
-    h, w = autocorr.shape
-    extent = [-w // 2, w // 2, -h // 2, h // 2]
-    im = axs[0, 1].imshow(
-        autocorr, cmap="twilight", vmin=-1, vmax=1, origin="lower", extent=extent
-    )
-    axs[0, 1].set_title("2D Autocorrelation")
-    axs[0, 1].set_xlabel("Lag X")
-    axs[0, 1].set_ylabel("Lag Y")
-    fig.colorbar(im, ax=axs[0, 1])
-    set_integer_ticks(axs[0, 1])
+        arr = np.array(layer_history)
+        epochs = arr[:, 0]
+        slopes = arr[:, 1]
 
-    # Power spectrum plot (mean only, skip variance)
-    log_power_spectrum = fft.fftshift(torch.log1p(torch.tensor(spectral.mean_power_spectrum[channel])))
-    h, w = log_power_spectrum.shape
-
-    im = axs[1, 1].imshow(
-        log_power_spectrum, cmap="viridis", origin="lower", extent=extent, vmin=0
-    )
-    axs[1, 1].set_title("2D Power Spectrum (log)")
-    axs[1, 1].set_xlabel("Frequency X")
-    axs[1, 1].set_ylabel("Frequency Y")
-    fig.colorbar(im, ax=axs[1, 1])
-    set_integer_ticks(axs[1, 1])
-
-    plt.tight_layout()
-    return fig
-
-
-def _plot_receptive_fields(ax: Axes, rf: FloatArray):
-    """Plot full-color receptive field and individual color channels for CIFAR-10 range (-1 to 1)."""
-    # Clear the main axes
-    ax.clear()
-    ax.axis("off")
-
-    # Create a GridSpec within the given axes
-    gs = gridspec.GridSpecFromSubplotSpec(2, 2, subplot_spec=ax.get_subplotspec())
-
-    rf_full = np.moveaxis(rf, 0, -1)  # Move channel axis to the last dimension
-    rf_min = rf_full.min()
-    rf_max = rf_full.max()
-    rf_full = (rf_full - rf_min) / (rf_max - rf_min)
-    # Full-color receptive field
-
-    ax_full = ax.figure.add_subplot(gs[0, 0])
-    ax_full.imshow(rf_full)
-    ax_full.set_title("Full Color")
-    ax_full.axis("off")
-
-    # Individual color channels
-    channels = ["Red", "Green", "Blue"]
-    cmaps = ["RdGy_r", "RdYlGn", "PuOr"]  # Diverging colormaps centered at 0
-    positions = [(0, 1), (1, 0), (1, 1)]  # Correct positions for a 2x2 grid
-    for i in range(3):
-        row, col = positions[i]
-        ax_channel = ax.figure.add_subplot(gs[row, col])
-        im = ax_channel.imshow(rf[i], cmap=cmaps[i], vmin=rf_min, vmax=rf_max)
-        ax_channel.set_title(channels[i])
-        ax_channel.axis("off")
-        plt.colorbar(im, ax=ax_channel, fraction=0.046, pad=0.04)
-
-    # Add min and max values as text
-    ax.text(
-        0.5,
-        -0.05,
-        f"Min: {rf.min():.2f}, Max: {rf.max():.2f}",
-        horizontalalignment="center",
-        verticalalignment="center",
-        transform=ax.transAxes,
-    )
-
-
-def analyze_input(
-    device: torch.device, dataloader: DataLoader[tuple[Tensor, Tensor, int]]
-) -> tuple[SpectralAnalysis, HistogramAnalysis]:
-    spectral_result = _layer_spectral_analysis(device, dataloader, nn.Identity())
-    histogram_result = _layer_pixel_histograms(device, dataloader, nn.Identity())
-    return spectral_result, histogram_result
-
-
-def input_plot(
-    log: FigureLogger,
-    rf_result: FloatArray,
-    spectral_result: SpectralAnalysis,
-    histogram_result: HistogramAnalysis,
-    init_dir: str,
-):
-    for channel in range(histogram_result.channel_histograms.shape[0]):
-        channel_fig = layer_channel_plots(
-            rf_result,
-            spectral_result,
-            histogram_result,
-            layer_name="input",
-            channel=channel,
+        ax2.plot(
+            epochs,
+            slopes,
+            label=layer_name,
+            linewidth=2,
+            alpha=0.85,
+            marker="o",
+            markersize=3
         )
-        log.log_figure(
-            channel_fig,
-            init_dir,
-            f"input_channel_{channel}",
-            0,
-            False,
-        )
+
+    ax2.set_xlabel("Epoch")
+    ax2.set_ylabel("Spectral Slope")
+    ax2.set_title("Power Spectral Slope")
+
+    # cleaner legend
+    ax2.legend(loc="lower right", frameon=False)
+
+    # subtle grid + remove top/right borders
+    ax2.grid(True, alpha=0.2)
+    ax2.spines[['top', 'right']].set_visible(False)
+
+    set_integer_ticks(ax2)
+
+    fig.tight_layout()
+    log.log_figure(fig, "channel_analysis", "combined_analysis", epoch, copy_checkpoint)

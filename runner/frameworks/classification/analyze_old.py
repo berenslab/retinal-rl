@@ -5,8 +5,6 @@ import time
 
 import numpy as np
 import torch
-from torch import Tensor
-from torch.utils.data import DataLoader
 
 from retinal_rl.analysis import channel_analysis as channel_ana
 from retinal_rl.analysis import default as default_ana
@@ -99,17 +97,40 @@ def analyze(
         fit_time = time.time() - start_time
         logger.info(f"Epoch {epoch} - Fit analysis (DoG + Gabor): {fit_time:.2f}s")
 
-    # ============ Channel Analysis (Decorrelation) ============
+    # ============ Channel Analysis (Spectral + Histogram) ============
     channel_time = 0.0
     if cfg.channel_analysis:
         start_time = time.time()
         # Prepare dataset
         dataloader = channel_ana.prepare_dataset(test_set, cfg.plot_sample_size, cfg.batch_size)
+        spectral_result = channel_ana.spectral_analysis(device, dataloader, brain)
+        histogram_result = channel_ana.histogram_analysis(device, dataloader, brain)
 
-        # Channel analysis: decorrelation + spectral slope
-        run_channel_analysis(log, device, dataloader, brain, cfg.analyses_dir, epoch, copy_checkpoint)
+        # Gate plotting based on epoch frequency
+        should_plot = (epoch == 0) or (
+            cfg.channel_plot_epoch_step > 0
+            and epoch % cfg.channel_plot_epoch_step == 0
+        )
+        if should_plot:
+            channel_ana.plot(
+                log,
+                rf_result,
+                spectral_result,
+                histogram_result,
+                epoch,
+                copy_checkpoint,
+            )
+
+        log.save_dict(
+            cfg.analyses_dir / f"spectral_stats_epoch_{epoch}.npz", spectral_result
+        )  # TODO: Check if compressed save possible
+        log.save_dict(
+            cfg.analyses_dir / f"histogram_stats_epoch_{epoch}.npz", histogram_result
+        )
         channel_time = time.time() - start_time
-        logger.info(f"Epoch {epoch} - Channel analysis: {channel_time:.2f}s")
+        logger.info(f"Epoch {epoch} - Channel analysis (spectral + histogram): {channel_time:.2f}s")
+    else:
+        spectral_result, histogram_result = None, None
 
     # ============ Latent Analysis (t-SNE) ============
     latent_time = 0.0
@@ -232,25 +253,4 @@ def run_fit_analysis(
 
         fit_analysis.plot(log, rf_result, results, epoch, copy_checkpoint, r2_history, display_name)
 
-def run_channel_analysis(
-    log: FigureLogger,
-    device: torch.device,
-    dataloader: DataLoader[tuple[Tensor, Tensor, int]],
-    brain: Brain,
-    analyses_dir: Path,
-    epoch: int,
-    copy_checkpoint: bool,
-) -> None:
-    """Compute and plot channel decorrelation and spectral slope analyses."""
-    # Decorrelation analysis
-    decorr_scores = channel_ana.compute_decorrelation_scores(device, dataloader, brain)
-    decorr_path = analyses_dir / "decorrelation_history.npz"
-    decorr_history = channel_ana.update_and_save_decorrelation_history(decorr_path, decorr_scores, epoch)
 
-    # Spectral slope analysis
-    spectral_slopes = channel_ana.compute_spectral_slopes(device, dataloader, brain)
-    spectral_path = analyses_dir / "spectral_slope_history.npz"
-    spectral_history = channel_ana.update_and_save_spectral_slope_history(spectral_path, spectral_slopes, epoch)
-
-    # Plot both together
-    channel_ana.plot(log, decorr_history, spectral_history, epoch, copy_checkpoint)
