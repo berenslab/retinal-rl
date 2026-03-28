@@ -60,6 +60,8 @@ def train(
     num_epochs = cfg.optimizer.num_epochs
     batch_size = cfg.optimizer.batch_size
     num_workers = cfg.system.num_workers
+    if train_set.fixed_transformation:
+        num_workers = 0
 
     trainloader = DataLoader(
         train_set, batch_size=batch_size, shuffle=True, num_workers=num_workers

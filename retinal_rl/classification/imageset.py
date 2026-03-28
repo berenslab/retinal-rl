@@ -62,11 +62,12 @@ class Imageset(Dataset[Tuple[Tensor, Tensor, int]]):
     def _create_fixed_dataset(self) -> List[Tuple[Tensor, Tensor, int]]:
         transformed_data: List[Tuple[Tensor, Tensor, int]] = []
         for img, label in self.base_dataset:
+            img_tensor = self.to_tensor(img)
             for _ in range(self.multiplier):
-                source_img = self.source_transforms(img)
-                noisy_img = self.noise_transforms(source_img)
+                source_tensor = self.source_transforms(img_tensor)
+                noisy_tensor = self.noise_transforms(source_tensor.clone())
                 transformed_data.append(
-                    (self.to_tensor(source_img), self.to_tensor(noisy_img), label)
+                    (self.normalize_maybe(source_tensor), self.normalize_maybe(noisy_tensor), label)
                 )
         return transformed_data
 
