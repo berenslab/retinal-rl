@@ -11,11 +11,12 @@ run_name: 'run_${now:%Y-%m-%d-%H-%M-%S-%f}'
 # run_name: 'run_2025-11-03-17-21-50-654350' #added for analysis to be removed later
 
 logging:
-  wandb_project: retinal-vae-classification # <--- Change this to your desired project name
+  wandb_project: retinal-vae # <--- Change this to your desired project name
   use_wandb: true # Ensure WandB is enabled for this experiment
   channel_analysis: true #added for analysis, to be removed later
   fit_analysis: true # Enable DoG + Gabor (Difference of Gaussians) fitting for receptive fields
   fit_blur_sigma: 0.5 # Gaussian blur sigma before fitting DoG/Gabor (default: 0.5)
+  latent_analysis: true # Enable analysis of latent space representations # Visualize the VAE latent space  
 
 
 

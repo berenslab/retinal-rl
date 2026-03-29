@@ -1,7 +1,7 @@
 # Optimizer configuration for VAE classification with dual-stream architecture
 
 # Number of training epochs
-num_epochs: 50
+num_epochs: 100
 
 batch_size: 128
 

@@ -7,8 +7,8 @@ defaults:
 
 framework: classification
 
-# run_name: 'laplace-run_${now:%Y-%m-%d-%H-%M-%S-%f}'
-run_name: 'laplace-run_2026-03-17-15-25-35-539096' #added for analysis to be removed later
+run_name: 'laplace-run_${now:%Y-%m-%d-%H-%M-%S-%f}'
+# run_name: 'laplace-run_2026-03-17-15-25-35-539096' #added for analysis to be removed later
 
 logging:
   wandb_project: retinal-vae
@@ -16,7 +16,7 @@ logging:
   use_wandb: true # Ensure WandB is enabled for this experiment
   channel_analysis: true #added for analysis, to be removed later
   fit_analysis: true # Enable DoG + Gabor fitting for receptive fields
-  # fit_blur_sigma: 0.5 # Gaussian blur sigma before fitting DoG/Gabor (default: 0.5)
+  fit_blur_sigma: 0.5 # Gaussian blur sigma before fitting DoG/Gabor (default: 0.5)
   latent_analysis: true # Enable analysis of latent space representations
 
 ### Interpolation Parameters ####-------
@@ -72,6 +72,6 @@ class_weight_thalamus: 0.01
 class_weight_cortex: 0.1
 
 recon_weight: 1  #--> alpha
-bottle_weight: 0.00001  #--> beta=0.001 default in vae-classification 
+bottle_weight: 0.001  #--> beta=0.001 default in vae-classification 
 
 # run this command for laplace: apptainer run --nv --bind /etc/pki/tls/certs/ca-bundle.trust.crt:/etc/ssl/certs/ca-bundle.crt retinal-rl.sif python main.py +experiment="vae-classification-laplace" command=train
