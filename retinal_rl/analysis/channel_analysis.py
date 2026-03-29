@@ -324,42 +324,6 @@ def update_and_save_spectral_slope_history(
     return history
 
 
-def _plot_spectral_slopes(
-    log: FigureLogger,
-    history: dict[str, list],
-    epoch: int,
-    copy_checkpoint: bool,
-) -> None:
-    """Plot spectral slope history across epochs with uncertainty error bars.
-
-    Reference slopes: ~0 (whitened), ~-2 (natural images, 1/f^2 law).
-
-    Args:
-        log: FigureLogger instance for logging plots
-        history: dict mapping layer_name -> list of [epoch, mean_slope, std_slope] triples
-        epoch: Current epoch (for logging)
-        copy_checkpoint: Whether to copy plot to checkpoint directory
-    """
-    fig, ax = plt.subplots(figsize=(7, 5))
-
-    for layer_name, layer_history in history.items():
-        if len(layer_history) == 0:
-            continue
-        arr = np.array(layer_history)  # shape (T, 3): [epoch, mean_slope, std_slope]
-        ax.errorbar(arr[:, 0], arr[:, 1], yerr=arr[:, 2], marker="o", label=layer_name,
-                   linewidth=2, capsize=5, capthick=1.5, elinewidth=1.5)
-
-    
-    ax.set_xlabel("Epoch")
-    ax.set_ylabel("Spectral Slope")
-    ax.set_title("Power Spectral Slope by Layer")
-    ax.legend(loc="lower right")
-    set_integer_ticks(ax)
-    fig.tight_layout()
-
-    log.log_figure(fig, "spectral_slope", "spectral_slope_history", epoch, copy_checkpoint)
-
-
 def plot(
     log: FigureLogger,
     decorr_history: dict[str, list],
