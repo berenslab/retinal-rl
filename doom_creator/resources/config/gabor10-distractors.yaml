@@ -13,3 +13,5 @@ objects:
           - 'gabors/low-45.png'
           - 'gabors/low-90.png'
           - 'gabors/low-135.png'
+          - 'gabors/low-0-phase-180.png'
+          - 'gabors/low-90-phase-180.png'
