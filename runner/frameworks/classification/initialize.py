@@ -84,6 +84,9 @@ def initialize(
     # If continuing from a previous run, load the model and history
     if cfg.data_dir.exists():
         return _initialize_reload(cfg, brain, optimizer)
+    # Check multirun (sweep runs are stored there)
+    if _find_checkpoint_in_multirun(cfg.run_name) is not None:
+        return _initialize_reload(cfg, brain, optimizer)
     # else, initialize a new model and history
     logger.info(
         f"Experiment data path {cfg.data_dir} does not exist. Initializing {cfg.run_name}."
@@ -148,6 +151,22 @@ def _initialize_create(
     return brain, optimizer, histories, epoch
 
 
+def _find_checkpoint_in_multirun(run_name: str) -> Path | None:
+    """Search for a checkpoint in multirun sweeps by run_name."""
+    # Use original cwd (before Hydra chdir) to find the project root
+    original_cwd = Path(HydraConfig.get().runtime.cwd)
+    multirun_dir = original_cwd / "experiments/multirun"
+    if not multirun_dir.exists():
+        return None
+
+    # Search through all sweeps for the run_name
+    for checkpoint in multirun_dir.glob(f"*/sweep/*/{run_name}/data/current_checkpoint.pt"):
+        logger.info(f"Found checkpoint in multirun: {checkpoint}")
+        return checkpoint
+
+    return None
+
+
 def _initialize_reload(
     cfg: InitConfig, brain: Brain, optimizer: Optimizer
 ) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
@@ -156,10 +175,12 @@ def _initialize_reload(
     )
     checkpoint_file = cfg.data_dir / "current_checkpoint.pt"
 
-    # check if files don't exist
+    # If checkpoint not in single-run, search in multirun (for sweep runs)
     if not checkpoint_file.exists():
-        logger.error(f"File not found: {checkpoint_file}")
-        raise FileNotFoundError("Checkpoint file does not exist.")
+        checkpoint_file = _find_checkpoint_in_multirun(cfg.run_name)
+        if checkpoint_file is None:
+            logger.error(f"Checkpoint not found in {cfg.data_dir} or multirun")
+            raise FileNotFoundError("Checkpoint file does not exist.")
 
     # Load the state dict into the brain model
     checkpoint = torch.load(checkpoint_file, map_location=cfg.device)
