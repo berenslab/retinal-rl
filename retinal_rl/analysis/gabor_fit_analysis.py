@@ -16,7 +16,6 @@ from scipy.ndimage import gaussian_filter
 
 from retinal_rl.math_utils import estimate_frequency, estimate_orientation_fft, gabor_2d
 
-
 # ---------------------------------------------------------------------------
 # Gabor-specific fitting
 # ---------------------------------------------------------------------------

@@ -287,7 +287,7 @@ def layer_channel_plots(
 
     # Autocorrelation plots
     # Plot average 2D autocorrelation and variance
-    
+
     autocorr = fft.fftshift(torch.tensor(spectral.mean_autocorr[channel])) #np shift here
     h, w = autocorr.shape
     extent = [-w // 2, w // 2, -h // 2, h // 2]

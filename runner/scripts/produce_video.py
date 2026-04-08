@@ -149,8 +149,8 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
 
                 need_video_frame = (
                     len(video_frames) < cfg.video_frames
-                    or cfg.video_frames < 0
-                    and num_episodes == 0
+                    or (cfg.video_frames < 0
+                    and num_episodes == 0)
                 )
                 if need_video_frame:
                     # frame = env.render()

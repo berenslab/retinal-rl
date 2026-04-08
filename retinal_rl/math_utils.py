@@ -7,7 +7,6 @@ and general-purpose metrics used across fit analysis modules.
 import numpy as np
 from numpy.typing import NDArray
 
-
 FloatArray = NDArray[np.float64]
 
 

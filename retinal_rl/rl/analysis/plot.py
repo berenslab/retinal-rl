@@ -7,7 +7,6 @@ from numpy.typing import NDArray
 from torch import Tensor
 
 
-
 def rescale_range(
     input: NDArray[np.float64],
     center_zero: bool = False,
@@ -20,12 +19,12 @@ def rescale_range(
 
     _max = np.max(input)
     _min = np.min(input)
-    
-    
+
+
     if center_zero:
         _max = max(abs(_max), abs(_min))
         _min = -_max
-        
+
     return (input - _min) / (_max - _min) * (out_max - out_min) + out_min
 
 

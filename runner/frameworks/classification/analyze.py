@@ -6,15 +6,14 @@ import torch
 
 from retinal_rl.analysis import channel_analysis as channel_ana
 from retinal_rl.analysis import default as default_ana
-from retinal_rl.analysis import fit_analysis
-from retinal_rl.analysis import receptive_fields
+from retinal_rl.analysis import fit_analysis, receptive_fields
 from retinal_rl.analysis import reconstructions as recon_ana
 from retinal_rl.analysis import transforms_analysis as transf_ana
 from retinal_rl.analysis.dog_fit_analysis import dog_map_from_params, fit_dog_2d
-from retinal_rl.analysis.gabor_fit_analysis import gabor_map_from_params, fit_gabor_2d
+from retinal_rl.analysis.gabor_fit_analysis import fit_gabor_2d, gabor_map_from_params
 from retinal_rl.analysis.plot import FigureLogger
-from retinal_rl.math_utils import FloatArray
 from retinal_rl.classification.imageset import Imageset
+from retinal_rl.math_utils import FloatArray
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.objective import ContextT, Objective
 

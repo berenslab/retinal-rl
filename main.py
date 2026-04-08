@@ -4,7 +4,6 @@ import os
 import sys
 import warnings
 
-
 import hydra
 import torch
 from hydra.utils import instantiate
@@ -17,7 +16,6 @@ from runner.frameworks.framework_interface import TrainingFramework
 from runner.frameworks.rl.sf_framework import SFFramework
 from runner.sweep import launch_sweep
 from runner.util import create_brain, delete_results, load_brain_weights
-
 
 # Load the eval resolver for OmegaConf
 OmegaConf.register_new_resolver("eval", eval)

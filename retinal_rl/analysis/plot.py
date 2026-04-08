@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import seaborn as sns
-import wandb
 from matplotlib import patches
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -17,6 +16,7 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Circle, Wedge
 from matplotlib.ticker import MaxNLocator
 
+import wandb
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.objective import ContextT, Objective
 from retinal_rl.rl.analysis.plot import rescale_range

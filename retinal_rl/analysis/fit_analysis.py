@@ -12,8 +12,7 @@ Model-specific modules (dog_fit_analysis, gabor_fit_analysis) supply:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -316,7 +315,7 @@ def plot(
     """Top-level plotting: overlays per layer, R² statistics, and R² history."""
     tag = fit_name.lower()
 
-    for layer in fit_results.keys():
+    for layer in fit_results:
         overlays = plot_layer_overlays(rf_result, fit_results, layer, fit_name)
         log.log_figure(overlays, tag, f"{layer}_overlays", epoch, copy_checkpoint)
 

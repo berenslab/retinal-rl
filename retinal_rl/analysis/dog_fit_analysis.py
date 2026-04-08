@@ -16,7 +16,6 @@ from scipy.ndimage import gaussian_filter
 
 from retinal_rl.math_utils import dog_2d
 
-
 # ---------------------------------------------------------------------------
 # DoG-specific fitting
 # ---------------------------------------------------------------------------
