@@ -97,12 +97,12 @@ class PickupTrackingWrapper(gym.Wrapper):
         super().__init__(env)
         # TODO: make object values configurable / get from environment
         self.object_values = np.array([-25, -20, -15, -10, -5, 10, 20, 30, 40, 50])
-        self.pickup_counts = {str(object_value): 0 for object_value in self.object_values}
+        self.pickup_counts = {str(obj_val): 0 for obj_val in self.object_values}
         self.last_health = None
 
     def reset(self, **kwargs):
         obs, info = self.env.reset(**kwargs)
-        self.pickup_counts = {str(object_value): 0 for object_value in self.object_values}
+        self.pickup_counts = {str(_val): 0 for _val in self.object_values}
         return obs, info
 
     def step(self, action):
