@@ -138,9 +138,10 @@ class PickupTrackingWrapper(gym.Wrapper):
 class PickupRewardShaping(gym.Wrapper):
     """Based on SampleFactories GatheringRewardShaping wrapper."""
 
-    def __init__(self, env):
+    def __init__(self, env, additive: bool = True):
         super().__init__(env)
         self._prev_health = None
+        self.additive = additive
 
     def _reward_shaping(self, info, done):
         if info is None or done:
@@ -163,7 +164,8 @@ class PickupRewardShaping(gym.Wrapper):
     def step(self, action):
         observation, reward, terminated, truncated, info = self.env.step(action)
         done = terminated | truncated
-        reward += self._reward_shaping(info, done)
+        pickup_reward = self._reward_shaping(info, done)
+        reward = reward + pickup_reward if self.additive else pickup_reward 
         return observation, reward, terminated, truncated, info
 
 ### Retinal Environments ###
@@ -178,7 +180,7 @@ def retinal_doomspec(
         ewraps.append((SatietyInput, {}))
 
     if pickup_reward:
-        ewraps.append((PickupRewardShaping, {}))
+        ewraps.append((PickupRewardShaping, {"additive": False}))
 
     action_space = (
         doom_action_space_basic()
