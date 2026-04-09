@@ -134,16 +134,51 @@ class PickupTrackingWrapper(gym.Wrapper):
         return obs, rew, terminated, truncated, info
 
 
+
+class PickupRewardShaping(gym.Wrapper):
+    """Based on SampleFactories GatheringRewardShaping wrapper."""
+
+    def __init__(self, env):
+        super().__init__(env)
+        self._prev_health = None
+
+    def _reward_shaping(self, info, done):
+        if info is None or done:
+            return 0.0
+
+        curr_health = info.get("HEALTH", 0.0)
+        reward = 0.0
+
+        if self._prev_health is not None:
+            delta = curr_health - self._prev_health
+            reward = delta / 100 # max health is 100, so this should normalize it well
+
+        self._prev_health = curr_health
+        return reward
+
+    def reset(self, **kwargs):
+        self._prev_health = None
+        return self.env.reset(**kwargs)
+
+    def step(self, action):
+        observation, reward, terminated, truncated, info = self.env.step(action)
+        done = terminated | truncated
+        reward += self._reward_shaping(info, done)
+        return observation, reward, terminated, truncated, info
+
 ### Retinal Environments ###
 
 
 def retinal_doomspec(
-    scene_name: str, cfg_path: str, sat_in: bool, allow_backwards: bool
+    scene_name: str, cfg_path: str, sat_in: bool, allow_backwards: bool, pickup_reward: bool = True
 ):
     ewraps = [(PickupTrackingWrapper, {})]
 
     if sat_in:
-        ewraps.append(SatietyInput, {})
+        ewraps.append((SatietyInput, {}))
+
+    if pickup_reward:
+        ewraps.append((PickupRewardShaping, {}))
 
     action_space = (
         doom_action_space_basic()
