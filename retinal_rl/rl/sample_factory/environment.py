@@ -8,6 +8,7 @@ import numpy as np
 # import gym
 from gymnasium.spaces import Discrete
 from sample_factory.envs.env_utils import register_env
+from sample_factory.utils.utils import log
 from sf_examples.vizdoom.doom.action_space import (
     doom_action_space_basic,
     key_to_action_basic,
@@ -103,6 +104,7 @@ class PickupTrackingWrapper(gym.Wrapper):
     def reset(self, **kwargs):
         obs, info = self.env.reset(**kwargs)
         self.pickup_counts = {str(_val): 0 for _val in self.object_values}
+        self.last_health = None
         return obs, info
 
     def step(self, action):
@@ -117,13 +119,15 @@ class PickupTrackingWrapper(gym.Wrapper):
             for object_value in self.object_values[picked_up_object]:
                 self.pickup_counts[str(object_value)] += 1
 
-        if picked_up_object.sum() > 1 or (
+
+        done = terminated | truncated
+        unknown_diff = picked_up_object.sum() > 1 or (
             picked_up_object.sum() == 0 and diff not in [0, -1]
-        ):
-            print(
-                f"Warning: Detected pickup of multiple objects or an object with an unexpected value. Diff: {diff}, Picked up objects: {self.object_values[picked_up_object]}"
+        )
+        if not done and unknown_diff:
+            log.warning(
+                f"Unexpected unbound health difference: {diff}."
             )
-            # TODO: proper logging
 
         if "episode_extra_stats" not in info:
             info["episode_extra_stats"] = dict()
