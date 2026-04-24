@@ -75,7 +75,11 @@ def analyze(
     # Fit analysis (DoG + Gabor)
     if cfg.fit_analysis:
         run_fit_analysis(
-            log, rf_result, cfg.analyses_dir, epoch, copy_checkpoint,
+            log,
+            rf_result,
+            cfg.analyses_dir,
+            epoch,
+            copy_checkpoint,
             blur_sigma=cfg.fit_blur_sigma,
         )
 
@@ -164,6 +168,7 @@ def _extended_initialization_plots(
             default_ana.INIT_DIR,
         )
 
+
 def run_fit_analysis(
     log: FigureLogger,
     rf_result: dict[str, FloatArray],
@@ -177,11 +182,17 @@ def run_fit_analysis(
         ("dog", "DoG", fit_dog_2d, dog_map_from_params),
         ("gabor", "Gabor", fit_gabor_2d, gabor_map_from_params),
     ]:
-        results = fit_analysis.analyze_all_layers(rf_result, fit_2d_fn, map_fn, blur_sigma)
+        results = fit_analysis.analyze_all_layers(
+            rf_result, fit_2d_fn, map_fn, blur_sigma
+        )
         npz = fit_analysis.prepare_npz_dict(results)
         log.save_dict(analyses_dir / f"{key}_fits_epoch_{epoch}.npz", npz)
 
         r2_history_path = analyses_dir / f"{key}_r2_history.npz"
-        r2_history = fit_analysis.update_and_save_r2_history(r2_history_path, results, epoch)
+        r2_history = fit_analysis.update_and_save_r2_history(
+            r2_history_path, results, epoch
+        )
 
-        fit_analysis.plot(log, rf_result, results, epoch, copy_checkpoint, r2_history, display_name)
+        fit_analysis.plot(
+            log, rf_result, results, epoch, copy_checkpoint, r2_history, display_name
+        )

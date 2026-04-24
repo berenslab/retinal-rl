@@ -12,7 +12,7 @@ Model-specific modules (dog_fit_analysis, gabor_fit_analysis) supply:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Tuple
+from typing import Any, Callable
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -23,8 +23,8 @@ from retinal_rl.analysis.plot import FigureLogger, set_integer_ticks
 from retinal_rl.math_utils import FloatArray, r2_score, rf_to_magnitude
 
 # Type aliases for the two callables each model must provide.
-Fit2DFn = Callable[[np.ndarray, float], Dict[str, float]]
-MapFromParamsFn = Callable[[Tuple[int, int], Dict[str, float]], np.ndarray]
+Fit2DFn = Callable[[np.ndarray, float], dict[str, float]]
+MapFromParamsFn = Callable[[tuple[int, int], dict[str, float]], np.ndarray]
 
 
 # ---------------------------------------------------------------------------
@@ -36,7 +36,7 @@ MapFromParamsFn = Callable[[Tuple[int, int], Dict[str, float]], np.ndarray]
 class FitResult:
     """Container for a single-channel model fit."""
 
-    params: Dict[str, float]
+    params: dict[str, float]
     fit_success: bool
     r2: float
     fitted_map: np.ndarray
@@ -70,7 +70,7 @@ def analyze_layer(
     fit_2d: Fit2DFn,
     map_from_params: MapFromParamsFn,
     blur_sigma: float = 0.5,
-) -> Dict[int, FitResult]:
+) -> dict[int, FitResult]:
     """Fit every channel in a layer RF array (N, C, H, W)."""
     return {
         idx: fit_to_channel(rf_ch, fit_2d, map_from_params, blur_sigma)
@@ -79,11 +79,11 @@ def analyze_layer(
 
 
 def analyze_all_layers(
-    rf_result: Dict[str, FloatArray],
+    rf_result: dict[str, FloatArray],
     fit_2d: Fit2DFn,
     map_from_params: MapFromParamsFn,
     blur_sigma: float = 0.5,
-) -> Dict[str, Dict[int, FitResult]]:
+) -> dict[str, dict[int, FitResult]]:
     """Fit every channel in every layer."""
     return {
         layer: analyze_layer(rfs, fit_2d, map_from_params, blur_sigma)
@@ -97,10 +97,10 @@ def analyze_all_layers(
 
 
 def prepare_npz_dict(
-    results: Dict[str, Dict[int, FitResult]],
-) -> Dict[str, Any]:
+    results: dict[str, dict[int, FitResult]],
+) -> dict[str, Any]:
     """Flatten fit results into an NPZ-friendly dict of arrays."""
-    npz_dict: Dict[str, Any] = {}
+    npz_dict: dict[str, Any] = {}
     for layer, layer_res in results.items():
         ch_indices = sorted(layer_res.keys())
         param_keys = list(layer_res[ch_indices[0]].params.keys())
@@ -125,7 +125,7 @@ def prepare_npz_dict(
 # ---------------------------------------------------------------------------
 
 
-def load_r2_history(path) -> Dict[str, Any]:
+def load_r2_history(path) -> dict[str, Any]:
     """Load R² history from disk (returns empty dict on failure)."""
     try:
         dat = np.load(path, allow_pickle=True)
@@ -134,16 +134,16 @@ def load_r2_history(path) -> Dict[str, Any]:
         return {}
 
 
-def save_r2_history(path, r2_history: Dict[str, Any]) -> None:
+def save_r2_history(path, r2_history: dict[str, Any]) -> None:
     """Save R² history to disk."""
     np.savez_compressed(path, r2_history=r2_history)
 
 
 def update_r2_history(
-    r2_history: Dict[str, Any],
-    results: Dict[str, Dict[int, FitResult]],
+    r2_history: dict[str, Any],
+    results: dict[str, dict[int, FitResult]],
     epoch: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Append current epoch's R² values to the history."""
     updated = {k: [list(item) for item in v] for k, v in r2_history.items()}
     for layer, layer_res in results.items():
@@ -154,9 +154,9 @@ def update_r2_history(
 
 def update_and_save_r2_history(
     history_path,
-    results: Dict[str, Dict[int, FitResult]],
+    results: dict[str, dict[int, FitResult]],
     epoch: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Load, update, save, and return R² history."""
     existing = load_r2_history(history_path)
     updated = update_r2_history(existing, results, epoch)
@@ -169,11 +169,11 @@ def update_and_save_r2_history(
 # ---------------------------------------------------------------------------
 
 
-def stats_from_layer(layer_res: Dict[int, FitResult]) -> Dict[str, float]:
+def stats_from_layer(layer_res: dict[int, FitResult]) -> dict[str, float]:
     """Compute summary stats for a layer."""
     r2_vals = np.array([res.r2 for res in layer_res.values()])
     resid_rms = np.array(
-        [np.sqrt(np.mean(res.residual_map ** 2)) for res in layer_res.values()]
+        [np.sqrt(np.mean(res.residual_map**2)) for res in layer_res.values()]
     )
     return {
         "r2_mean": float(np.nanmean(r2_vals)),
@@ -189,8 +189,8 @@ def stats_from_layer(layer_res: Dict[int, FitResult]) -> Dict[str, float]:
 
 
 def plot_layer_overlays(
-    rf_result: Dict[str, FloatArray],
-    fit_results: Dict[str, Dict[int, FitResult]],
+    rf_result: dict[str, FloatArray],
+    fit_results: dict[str, dict[int, FitResult]],
     layer_name: str,
     fit_name: str,
     max_cols: int = 8,
@@ -220,7 +220,7 @@ def plot_layer_overlays(
 
 
 def plot_r2_statistics(
-    fit_results: Dict[str, Dict[int, FitResult]],
+    fit_results: dict[str, dict[int, FitResult]],
     fit_name: str,
 ) -> Figure:
     """Cross-layer R² violin plot."""
@@ -228,12 +228,12 @@ def plot_r2_statistics(
     n_layers = len(layers)
 
     r2_per_layer = {
-        l: np.array([r.r2 for r in fit_results[l].values()]) for l in layers
+        layer: np.array([r.r2 for r in fit_results[layer].values()]) for layer in layers
     }
 
     fig, ax = plt.subplots(figsize=(7, 5))
 
-    r2_arrays = [r2_per_layer[l] for l in layers]
+    r2_arrays = [r2_per_layer[layer] for layer in layers]
     if any(len(arr) > 0 for arr in r2_arrays):
         positions = np.arange(n_layers)
         parts = ax.violinplot(
@@ -256,16 +256,15 @@ def plot_r2_statistics(
     return fig
 
 
-def plot_r2_history(r2_history: Dict[str, Any], fit_name: str) -> Figure:
+def plot_r2_history(r2_history: dict[str, Any], fit_name: str) -> Figure:
     """Plot median R² with IQR over epochs."""
     fig, ax = plt.subplots(figsize=(6, 4))
 
     # Detect whether we have full distribution data or legacy means
     has_full_data = False
     for layer, arr in r2_history.items():
-        if len(arr) > 0 and len(arr[0]) > 1:
-            if hasattr(arr[0][1], "__len__"):
-                has_full_data = True
+        if len(arr) > 0 and len(arr[0]) > 1 and hasattr(arr[0][1], "__len__"):
+            has_full_data = True
         break
 
     if not has_full_data:
@@ -305,11 +304,11 @@ def plot_r2_history(r2_history: Dict[str, Any], fit_name: str) -> Figure:
 
 def plot(
     log: FigureLogger,
-    rf_result: Dict[str, FloatArray],
-    fit_results: Dict[str, Dict[int, FitResult]],
+    rf_result: dict[str, FloatArray],
+    fit_results: dict[str, dict[int, FitResult]],
     epoch: int,
     copy_checkpoint: bool,
-    r2_history: Dict[str, Any],
+    r2_history: dict[str, Any],
     fit_name: str,
 ):
     """Top-level plotting: overlays per layer, R² statistics, and R² history."""
@@ -324,7 +323,3 @@ def plot(
 
     r2_fig = plot_r2_history(r2_history, fit_name)
     log.log_figure(r2_fig, tag, f"{tag}_r2_history", epoch, copy_checkpoint)
-
-
-
-

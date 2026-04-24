@@ -186,13 +186,13 @@ def estimate_orientation_fft(image: np.ndarray) -> float:
     ny, nx = image.shape
     fy = np.fft.fftshift(np.fft.fftfreq(ny))
     fx = np.fft.fftshift(np.fft.fftfreq(nx))
-    FY, FX = np.meshgrid(fy, fx, indexing="ij")
+    fy_grid, fx_grid = np.meshgrid(fy, fx, indexing="ij")
 
     # Zero out DC component
     cy, cx = ny // 2, nx // 2
     power_spectrum[cy - 2 : cy + 3, cx - 2 : cx + 3] = 0
 
-    angles = np.arctan2(FY, FX)
+    angles = np.arctan2(fy_grid, fx_grid)
     total_power = np.sum(power_spectrum)
 
     if total_power > 0:

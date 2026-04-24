@@ -20,7 +20,6 @@ def rescale_range(
     _max = np.max(input)
     _min = np.min(input)
 
-
     if center_zero:
         _max = max(abs(_max), abs(_min))
         _min = -_max
@@ -69,7 +68,7 @@ def receptive_field_plots(
                 ax.spines["right"].set_visible(True)
                 # Set title to channel i when j = 0
                 if j == 0:
-                    ax.set_title(f"Channel {i+1}")
+                    ax.set_title(f"Channel {i + 1}")
 
                 if i % max_cols == 0:
                     ax.set_ylabel(clrs[j])
@@ -88,7 +87,7 @@ def receptive_field_plots(
             ax.set_yticks([])
             ax.spines["top"].set_visible(True)
             ax.spines["right"].set_visible(True)
-            ax.set_title(f"Channel {i+1}")
+            ax.set_title(f"Channel {i + 1}")
 
     fig.tight_layout()  # Adjust layout to fit color bars
     return fig

@@ -42,16 +42,48 @@ def fit_dog_2d(image: np.ndarray, blur_sigma: float = 1) -> Dict[str, float]:
     sigma_small = min(nx, ny) / 8
     sigma_large = min(nx, ny) / 3
 
-    initial_guess = [amp1_guess, amp1_guess * 0.3, peak_x, peak_y,
-                     sigma_small, sigma_small, sigma_large, sigma_large, mean_val]
-    lower_bounds = [-np.inf, -np.inf, 0, 0, 0.5, 0.5, sigma_small * 1.5, sigma_small * 1.5, -np.inf]
-    upper_bounds = [np.inf, np.inf, nx, ny, sigma_large * 0.6, sigma_large * 0.6, nx, ny, np.inf]
+    initial_guess = [
+        amp1_guess,
+        amp1_guess * 0.3,
+        peak_x,
+        peak_y,
+        sigma_small,
+        sigma_small,
+        sigma_large,
+        sigma_large,
+        mean_val,
+    ]
+    lower_bounds = [
+        -np.inf,
+        -np.inf,
+        0,
+        0,
+        0.5,
+        0.5,
+        sigma_small * 1.5,
+        sigma_small * 1.5,
+        -np.inf,
+    ]
+    upper_bounds = [
+        np.inf,
+        np.inf,
+        nx,
+        ny,
+        sigma_large * 0.6,
+        sigma_large * 0.6,
+        nx,
+        ny,
+        np.inf,
+    ]
 
     try:
         params, _ = optimize.curve_fit(
             lambda coords, *p: dog_2d(coords, *p, theta=0),
-            (x.ravel(), y.ravel()), img.ravel(),
-            p0=initial_guess, bounds=(lower_bounds, upper_bounds), maxfev=10000,
+            (x.ravel(), y.ravel()),
+            img.ravel(),
+            p0=initial_guess,
+            bounds=(lower_bounds, upper_bounds),
+            maxfev=10000,
         )
     except Exception:
         lower_bounds[6] = sigma_small * 1.3
@@ -59,18 +91,26 @@ def fit_dog_2d(image: np.ndarray, blur_sigma: float = 1) -> Dict[str, float]:
         try:
             params, _ = optimize.curve_fit(
                 lambda coords, *p: dog_2d(coords, *p, theta=0),
-                (x.ravel(), y.ravel()), img.ravel(),
-                p0=initial_guess, bounds=(lower_bounds, upper_bounds), maxfev=15000,
+                (x.ravel(), y.ravel()),
+                img.ravel(),
+                p0=initial_guess,
+                bounds=(lower_bounds, upper_bounds),
+                maxfev=15000,
             )
         except Exception:
             params = initial_guess
 
     return {
-        "amp1": params[0], "amp2": params[1],
-        "x0": params[2], "y0": params[3],
-        "sigma1_x": params[4], "sigma1_y": params[5],
-        "sigma2_x": params[6], "sigma2_y": params[7],
-        "offset": params[8], "theta": 0.0,
+        "amp1": params[0],
+        "amp2": params[1],
+        "x0": params[2],
+        "y0": params[3],
+        "sigma1_x": params[4],
+        "sigma1_y": params[5],
+        "sigma2_x": params[6],
+        "sigma2_y": params[7],
+        "offset": params[8],
+        "theta": 0.0,
     }
 
 
@@ -80,9 +120,14 @@ def dog_map_from_params(shape: Tuple[int, int], params: Dict[str, float]) -> np.
     y, x = np.meshgrid(np.arange(h), np.arange(w), indexing="ij")
     return dog_2d(
         (x, y),
-        params["amp1"], params["amp2"],
-        params["x0"], params["y0"],
-        params["sigma1_x"], params["sigma1_y"],
-        params["sigma2_x"], params["sigma2_y"],
-        params["offset"], params.get("theta", 0),
+        params["amp1"],
+        params["amp2"],
+        params["x0"],
+        params["y0"],
+        params["sigma1_x"],
+        params["sigma1_y"],
+        params["sigma2_x"],
+        params["sigma2_y"],
+        params["offset"],
+        params.get("theta", 0),
     )

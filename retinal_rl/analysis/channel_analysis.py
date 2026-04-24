@@ -311,7 +311,9 @@ def layer_channel_plots(
     set_integer_ticks(axs[0, 2])
 
     # Plot average 2D power spectrum
-    log_power_spectrum = np.fft.fftshift(np.log1p(spectral.mean_power_spectrum[channel]))
+    log_power_spectrum = np.fft.fftshift(
+        np.log1p(spectral.mean_power_spectrum[channel])
+    )
     h, w = log_power_spectrum.shape
 
     im = axs[1, 1].imshow(
@@ -323,7 +325,9 @@ def layer_channel_plots(
     fig.colorbar(im, ax=axs[1, 1])
     set_integer_ticks(axs[1, 1])
 
-    log_power_spectrum_sd = np.fft.fftshift(np.log1p(np.sqrt(spectral.var_power_spectrum[channel])))
+    log_power_spectrum_sd = np.fft.fftshift(
+        np.log1p(np.sqrt(spectral.var_power_spectrum[channel]))
+    )
     im = axs[1, 2].imshow(
         log_power_spectrum_sd,
         cmap="viridis",

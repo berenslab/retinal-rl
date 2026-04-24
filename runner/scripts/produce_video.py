@@ -66,9 +66,9 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
     eval_env_frameskip: int = (
         cfg.env_frameskip if cfg.eval_env_frameskip is None else cfg.eval_env_frameskip
     )
-    assert (
-        cfg.env_frameskip % eval_env_frameskip == 0
-    ), f"{cfg.env_frameskip=} must be divisible by {eval_env_frameskip=}"
+    assert cfg.env_frameskip % eval_env_frameskip == 0, (
+        f"{cfg.env_frameskip=} must be divisible by {eval_env_frameskip=}"
+    )
     render_action_repeat: int = cfg.env_frameskip // eval_env_frameskip
     cfg.env_frameskip = cfg.eval_env_frameskip = eval_env_frameskip
     log.debug(
@@ -147,10 +147,8 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
             for _ in range(render_action_repeat):
                 obs, rew, terminated, truncated, infos = env.step(actions)
 
-                need_video_frame = (
-                    len(video_frames) < cfg.video_frames
-                    or (cfg.video_frames < 0
-                    and num_episodes == 0)
+                need_video_frame = len(video_frames) < cfg.video_frames or (
+                    cfg.video_frames < 0 and num_episodes == 0
                 )
                 if need_video_frame:
                     # frame = env.render()

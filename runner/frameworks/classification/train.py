@@ -3,7 +3,6 @@
 import logging
 import time
 from pathlib import Path
-from typing import Dict, List
 
 import torch
 from omegaconf import DictConfig
@@ -32,7 +31,7 @@ def train(
     train_set: Imageset,
     test_set: Imageset,
     initial_epoch: int,
-    history: Dict[str, List[float]],
+    history: dict[str, list[float]],
 ):
     """Train the Brain model using the specified optimizer.
 
@@ -194,7 +193,7 @@ def train(
 
 
 def _wandb_log_statistics(
-    epoch: int, epoch_wall_time: float, histories: Dict[str, List[float]]
+    epoch: int, epoch_wall_time: float, histories: dict[str, list[float]]
 ) -> None:
     log_dict = {
         "Epoch": epoch,

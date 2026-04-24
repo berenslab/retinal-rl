@@ -53,7 +53,6 @@ class ClassificationFramework(TrainingFramework):
         brain: Brain,
         objective: Optional[Objective[ContextT]] = None,
     ):
-
         cfg = AnalysesCfg(
             run_dir=Path(self.cfg.path.run_dir),
             plot_dir=Path(self.cfg.path.plot_dir),

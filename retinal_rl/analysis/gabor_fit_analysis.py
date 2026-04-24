@@ -41,41 +41,71 @@ def fit_gabor_2d(image: np.ndarray, blur_sigma: float = 0.5) -> Dict[str, float]
     amp_guess = np.max(np.abs(img - np.mean(img)))
     offset_guess = np.mean(img)
 
-    initial_guess = [amp_guess, x_cm, y_cm, sigma_guess, sigma_guess,
-                     freq_guess, theta_guess, 0.0, offset_guess]
+    initial_guess = [
+        amp_guess,
+        x_cm,
+        y_cm,
+        sigma_guess,
+        sigma_guess,
+        freq_guess,
+        theta_guess,
+        0.0,
+        offset_guess,
+    ]
     lower_bounds = [-np.inf, 0, 0, 0.5, 0.5, 0.001, -np.pi, -2 * np.pi, -np.inf]
     upper_bounds = [np.inf, nx, ny, nx, ny, 1.0, np.pi, 2 * np.pi, np.inf]
 
     try:
         params, _ = optimize.curve_fit(
-            gabor_2d, (x.ravel(), y.ravel()), img.ravel(),
-            p0=initial_guess, bounds=(lower_bounds, upper_bounds), maxfev=15000,
+            gabor_2d,
+            (x.ravel(), y.ravel()),
+            img.ravel(),
+            p0=initial_guess,
+            bounds=(lower_bounds, upper_bounds),
+            maxfev=15000,
         )
     except Exception:
         try:
             initial_guess[7] = np.pi / 2
             params, _ = optimize.curve_fit(
-                gabor_2d, (x.ravel(), y.ravel()), img.ravel(),
-                p0=initial_guess, bounds=(lower_bounds, upper_bounds), maxfev=15000,
+                gabor_2d,
+                (x.ravel(), y.ravel()),
+                img.ravel(),
+                p0=initial_guess,
+                bounds=(lower_bounds, upper_bounds),
+                maxfev=15000,
             )
         except Exception:
             params = initial_guess
 
     return {
-        "amp": params[0], "x0": params[1], "y0": params[2],
-        "sigma_x": params[3], "sigma_y": params[4],
-        "freq": params[5], "theta": params[6],
-        "phase": params[7], "offset": params[8],
+        "amp": params[0],
+        "x0": params[1],
+        "y0": params[2],
+        "sigma_x": params[3],
+        "sigma_y": params[4],
+        "freq": params[5],
+        "theta": params[6],
+        "phase": params[7],
+        "offset": params[8],
     }
 
 
-def gabor_map_from_params(shape: Tuple[int, int], params: Dict[str, float]) -> np.ndarray:
+def gabor_map_from_params(
+    shape: Tuple[int, int], params: Dict[str, float]
+) -> np.ndarray:
     """Render Gabor params to a 2D map on a (H, W) grid."""
     h, w = shape
     y, x = np.meshgrid(np.arange(h), np.arange(w), indexing="ij")
     return gabor_2d(
         (x, y),
-        params["amp"], params["x0"], params["y0"],
-        params["sigma_x"], params["sigma_y"],
-        params["freq"], params["theta"], params["phase"], params["offset"],
+        params["amp"],
+        params["x0"],
+        params["y0"],
+        params["sigma_x"],
+        params["sigma_y"],
+        params["freq"],
+        params["theta"],
+        params["phase"],
+        params["offset"],
     )
