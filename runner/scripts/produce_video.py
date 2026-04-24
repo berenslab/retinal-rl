@@ -66,9 +66,9 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
     eval_env_frameskip: int = (
         cfg.env_frameskip if cfg.eval_env_frameskip is None else cfg.eval_env_frameskip
     )
-    assert cfg.env_frameskip % eval_env_frameskip == 0, (
-        f"{cfg.env_frameskip=} must be divisible by {eval_env_frameskip=}"
-    )
+    assert (
+        cfg.env_frameskip % eval_env_frameskip == 0
+    ), f"{cfg.env_frameskip=} must be divisible by {eval_env_frameskip=}"
     render_action_repeat: int = cfg.env_frameskip // eval_env_frameskip
     cfg.env_frameskip = cfg.eval_env_frameskip = eval_env_frameskip
     log.debug(

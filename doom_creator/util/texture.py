@@ -34,9 +34,7 @@ class DatasetWrapper(ABC):
 
 
 class MNISTWrapper(DatasetWrapper):
-    def __init__(
-        self, data_src_path: str, train: bool = True, download: bool = True
-    ):
+    def __init__(self, data_src_path: str, train: bool = True, download: bool = True):
         self.dataset = MNIST(data_src_path, train=train, download=download)
         self.label_to_str = num2words
         self.num_classes = len(self.dataset.classes)
@@ -46,9 +44,7 @@ class MNISTWrapper(DatasetWrapper):
 
 
 class CIFAR10Wrapper(DatasetWrapper):
-    def __init__(
-        self, data_src_path: str, train: bool = True, download: bool = True
-    ):
+    def __init__(self, data_src_path: str, train: bool = True, download: bool = True):
         self.dataset = CIFAR10(data_src_path, train=train, download=download)
         self.label_to_str = lambda i: self.dataset.classes[i]
         self.num_classes = len(self.dataset.classes)
@@ -62,9 +58,7 @@ class CIFAR10Wrapper(DatasetWrapper):
 
 
 class CIFAR100Wrapper(DatasetWrapper):
-    def __init__(
-        self, data_src_path: str, train: bool = True, download: bool = True
-    ):
+    def __init__(self, data_src_path: str, train: bool = True, download: bool = True):
         self.dataset = CIFAR100(data_src_path, train=train, download=download)
         self.label_to_str = lambda i: self.dataset.classes[i]
         self.num_classes = len(self.dataset.classes)
@@ -78,10 +72,10 @@ class CIFAR100Wrapper(DatasetWrapper):
 
 
 class SVHNWrapper(DatasetWrapper):
-    def __init__(
-        self, data_src_path: str, train: bool = True, download: bool = True
-    ):
-        self.dataset = SVHN(data_src_path, split="train" if train else "test", download=download)
+    def __init__(self, data_src_path: str, train: bool = True, download: bool = True):
+        self.dataset = SVHN(
+            data_src_path, split="train" if train else "test", download=download
+        )
         self.label_to_str = num2words
         self.num_classes = len(set(self.dataset.labels))
 
