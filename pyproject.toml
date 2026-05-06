@@ -66,5 +66,4 @@ known-third-party = ["wandb"]
 [tool.setuptools]
 
 [tool.setuptools.packages.find]
-where=["."]
-include =["retinal_rl", "runner", "doom_creator"]
+include =["retinal_rl*", "runner*", "doom_creator*"]
