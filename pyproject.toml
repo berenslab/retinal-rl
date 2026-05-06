@@ -14,7 +14,7 @@ dependencies = [
     "mypy",
     "pyright",
     "captum",
-    "git+https://github.com/fabioseel/sample-factory.git@97a8127fb7afd38a0d8513897aa52dfb7069c0cf",
+    "sample-factory @ git+https://github.com/fabioseel/sample-factory.git@97a8127fb7afd38a0d8513897aa52dfb7069c0cf",
     "vizdoom",
     "beartype",
     ]
