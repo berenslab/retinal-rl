@@ -9,7 +9,6 @@ from sample_factory.utils.attr_dict import AttrDict
 from sample_factory.utils.typing import Config
 from sample_factory.utils.utils import log
 
-
 torch.backends.cudnn.enabled = False
 
 
