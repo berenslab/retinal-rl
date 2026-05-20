@@ -199,16 +199,16 @@ class LaplaceReconstructionLoss(ReconstructionLoss[ContextT]):
 
     def compute_value(self, context: ContextT) -> Tensor:
         """Compute the L1 loss (Laplace negative log-likelihood).
-        
+
         If learn_scale=False:
             Loss = ||x - x_recon||_1 (simple L1 loss)
-        
+
         If learn_scale=True:
             Loss = log(2b) + |x - mu| / b (full Laplace NLL)
         """
         sources = context.sources
         decoder_outputs = context.responses[self.target_decoder]
-        
+
         # Get reconstructions (mu in Laplace terms)
         reconstructions = decoder_outputs[self.decoder_output_index]
 
@@ -229,20 +229,19 @@ class LaplaceReconstructionLoss(ReconstructionLoss[ContextT]):
         if not self.learn_scale:
             # Simple L1 loss (assumes constant scale absorbed into weight)
             return torch.nn.functional.l1_loss(reconstructions, sources, reduction="mean")
-        else:
-            # Full Laplace negative log-likelihood with learnable scale
-            if len(decoder_outputs) <= self.scale_output_index:
-                raise ValueError(
-                    f"learn_scale=True but decoder only has {len(decoder_outputs)} outputs. "
-                    f"Expected log_b at index {self.scale_output_index}"
-                )
-            
-            log_b = decoder_outputs[self.scale_output_index]
-            b = torch.exp(log_b)  # Ensure positive scale
-            
-            # Negative log-likelihood: log(2b) + |x - mu| / b
-            nll = torch.log(2 * b) + torch.abs(sources - reconstructions) / b
-            return nll.mean()
+        # Full Laplace negative log-likelihood with learnable scale
+        if len(decoder_outputs) <= self.scale_output_index:
+            raise ValueError(
+                f"learn_scale=True but decoder only has {len(decoder_outputs)} outputs. "
+                f"Expected log_b at index {self.scale_output_index}"
+            )
+
+        log_b = decoder_outputs[self.scale_output_index]
+        b = torch.exp(log_b)  # Ensure positive scale
+
+        # Negative log-likelihood: log(2b) + |x - mu| / b
+        nll = torch.log(2 * b) + torch.abs(sources - reconstructions) / b
+        return nll.mean()
 
     @property
     def key_name(self) -> str:
@@ -424,16 +423,16 @@ class KLDivergenceLoss(Loss[ContextT]):
 class LaplaceKLDivergenceLoss(Loss[ContextT]):
     """
     KL divergence loss between Laplace posterior q(z|x) and Laplace prior p(z).
-    
+
     Assumes standard Laplace prior Laplace(0, prior_b). Gets distribution parameters
     from separate mu and log_b circuit outputs.
-    
+
     The closed-form KL divergence between two Laplace distributions is:
     KL(q||p) = (b_q/b_p) * exp(-|mu_q - mu_p|/b_q) + |mu_q - mu_p|/b_p + log(b_p/b_q) - 1
-    
+
     For standard prior p(z) = Laplace(0, prior_b):
     KL(q||p) = (b/prior_b) * exp(-|mu|/b) + |mu|/prior_b + log(prior_b/b) - 1
-    
+
     Args:
         target_mu: Name of the circuit producing mu (location) values
         target_log_b: Name of the circuit producing log_var as is the terminology in rest of the doc (log scale) values
@@ -483,7 +482,7 @@ class LaplaceKLDivergenceLoss(Loss[ContextT]):
     def compute_value(self, context: ContextT) -> Tensor:
         """
         Compute KL divergence between Laplace posterior and prior.
-        
+
         For q(z|x) = Laplace(mu, b) and p(z) = Laplace(0, prior_b):
         KL(q||p) = (b/prior_b) * exp(-|mu|/b) + |mu|/prior_b + log(prior_b/b) - 1
 
@@ -507,7 +506,7 @@ class LaplaceKLDivergenceLoss(Loss[ContextT]):
 
         mu = context.responses[self.target_mu][self.mu_output_index]
         log_b = context.responses[self.target_log_b][self.log_b_output_index]
-        
+
         # Ensure b is positive by exponentiating log_b
         b = torch.exp(log_b)
 

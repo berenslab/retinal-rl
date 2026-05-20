@@ -57,7 +57,7 @@ class VariationalBottleneckLaplace(NeuralCircuit):
             raise ValueError(f"Expected 2 inputs (mu, log_var), got {len(inputs)}")
 
         mu, log_b = inputs # log_b is the log of the scale parameter for the Laplace distribution
-        
+
         #here we do laplace reparameterization using the inverse CDF (quantile function) of the Laplace distribution
         if self.training:
             b = torch.exp(log_b)
