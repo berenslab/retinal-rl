@@ -3,7 +3,6 @@
 import logging
 import time
 from pathlib import Path
-from typing import Dict, List
 
 import torch
 import wandb
@@ -32,7 +31,7 @@ def train(
     train_set: Imageset,
     test_set: Imageset,
     initial_epoch: int,
-    history: Dict[str, List[float]],
+    history: dict[str, list[float]],
 ):
     """Train the Brain model using the specified optimizer.
 
@@ -99,13 +98,15 @@ def train(
         for key, value in test_losses.items():
             history[f"test_{key}"] = [value]
         ana_cfg = AnalysesCfg(
-            Path(cfg.path.run_dir),
-            Path(cfg.path.plot_dir),
-            Path(cfg.path.checkpoint_plot_dir),
-            Path(cfg.path.data_dir),
-            cfg.logging.use_wandb,
-            cfg.logging.channel_analysis,
-            cfg.logging.plot_sample_size,
+            run_dir=Path(cfg.path.run_dir),
+            plot_dir=Path(cfg.path.plot_dir),
+            checkpoint_plot_dir=Path(cfg.path.checkpoint_plot_dir),
+            data_dir=Path(cfg.path.data_dir),
+            use_wandb=cfg.logging.use_wandb,
+            channel_analysis=cfg.logging.channel_analysis,
+            plot_sample_size=cfg.logging.plot_sample_size,
+            fit_analysis=cfg.logging.get("fit_analysis", False),
+            fit_blur_sigma=cfg.logging.get("fit_blur_sigma", 0.5),
         )
         analyze(
             ana_cfg,
@@ -150,7 +151,7 @@ def train(
         logger.info(f"Epoch {epoch} complete. Wall Time: {epoch_wall_time:.2f}s.")
 
         if epoch % checkpoint_step == 0:
-            logger.info("Saving checkpoint and plots.")
+            logger.info("Saving checkpoint.")
 
             save_checkpoint(
                 data_dir,
@@ -162,35 +163,37 @@ def train(
                 epoch,
             )
 
-            ana_cfg = AnalysesCfg(
-                Path(cfg.path.run_dir),
-                Path(cfg.path.plot_dir),
-                Path(cfg.path.checkpoint_plot_dir),
-                Path(cfg.path.data_dir),
-                cfg.logging.use_wandb,
-                cfg.logging.channel_analysis,
-                cfg.logging.plot_sample_size,
-            )
+        ana_cfg = AnalysesCfg(
+            run_dir=Path(cfg.path.run_dir),
+            plot_dir=Path(cfg.path.plot_dir),
+            checkpoint_plot_dir=Path(cfg.path.checkpoint_plot_dir),
+            data_dir=Path(cfg.path.data_dir),
+            use_wandb=cfg.logging.use_wandb,
+            channel_analysis=cfg.logging.channel_analysis,
+            plot_sample_size=cfg.logging.plot_sample_size,
+            fit_analysis=cfg.logging.get("fit_analysis", False),
+            fit_blur_sigma=cfg.logging.get("fit_blur_sigma", 0.5),
+        )
 
-            analyze(
-                ana_cfg,
-                device,
-                brain,
-                objective,
-                history,
-                train_set,
-                test_set,
-                epoch,
-                True,
-            )
-            logger.info("Analysis complete.")
+        analyze(
+            ana_cfg,
+            device,
+            brain,
+            objective,
+            history,
+            train_set,
+            test_set,
+            epoch,
+            epoch % checkpoint_step == 0,
+        )
+        logger.info("Analysis complete.")
 
         if use_wandb:
             _wandb_log_statistics(epoch, epoch_wall_time, history)
 
 
 def _wandb_log_statistics(
-    epoch: int, epoch_wall_time: float, histories: Dict[str, List[float]]
+    epoch: int, epoch_wall_time: float, histories: dict[str, list[float]]
 ) -> None:
     log_dict = {
         "Epoch": epoch,

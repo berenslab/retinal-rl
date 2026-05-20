@@ -147,10 +147,8 @@ def custom_enjoy(  # noqa: C901 # TODO: Properly implement this anyway
             for _ in range(render_action_repeat):
                 obs, rew, terminated, truncated, infos = env.step(actions)
 
-                need_video_frame = (
-                    len(video_frames) < cfg.video_frames
-                    or cfg.video_frames < 0
-                    and num_episodes == 0
+                need_video_frame = len(video_frames) < cfg.video_frames or (
+                    cfg.video_frames < 0 and num_episodes == 0
                 )
                 if need_video_frame:
                     # frame = env.render()
