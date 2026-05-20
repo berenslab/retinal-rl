@@ -4,7 +4,8 @@ version="0.0.1"
 dependencies = [
     "gymnasium",
     "torch",
-    "torchvision", 
+    "torchvision",
+    "torchinfo",
     "matplotlib",
     "opencv-python",
     "hydra-core",
@@ -13,7 +14,7 @@ dependencies = [
     "mypy",
     "pyright",
     "captum",
-    "sample-factory",
+    "sample-factory @ git+https://github.com/fabioseel/sample-factory.git@97a8127fb7afd38a0d8513897aa52dfb7069c0cf",
     "vizdoom",
     "beartype",
     ]
@@ -66,4 +67,4 @@ known-third-party = ["wandb"]
 [tool.setuptools]
 
 [tool.setuptools.packages.find]
-include =["retinal_rl*"]
+include =["retinal_rl*", "runner*", "doom_creator*"]
