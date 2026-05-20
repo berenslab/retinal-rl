@@ -6,9 +6,9 @@ from matplotlib.figure import Figure
 from PIL import Image
 from torch import nn
 
-from retinal_rl.analysis.plot import make_image_grid
 from retinal_rl.classification.imageset import Imageset
 from retinal_rl.classification.transforms import ContinuousTransform
+from retinal_rl.plot.util import make_image_grid
 from retinal_rl.util import FloatArray
 
 

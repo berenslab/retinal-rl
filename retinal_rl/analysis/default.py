@@ -1,10 +1,10 @@
-from retinal_rl.analysis.plot import (
-    FigureLogger,
+from retinal_rl.models.brain import Brain
+from retinal_rl.models.objective import ContextT, Objective
+from retinal_rl.plot.log import FigureLogger
+from retinal_rl.plot.util import (
     plot_brain_and_optimizers,
     plot_receptive_field_sizes,
 )
-from retinal_rl.models.brain import Brain
-from retinal_rl.models.objective import ContextT, Objective
 from retinal_rl.util import FloatArray
 
 INIT_DIR = "initialization_analysis"
