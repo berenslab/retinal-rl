@@ -9,10 +9,10 @@ from retinal_rl.analysis import default as default_ana
 from retinal_rl.analysis import receptive_fields
 from retinal_rl.analysis import reconstructions as recon_ana
 from retinal_rl.analysis import transforms_analysis as transf_ana
-from retinal_rl.analysis.plot import FigureLogger
 from retinal_rl.classification.imageset import Imageset
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.objective import ContextT, Objective
+from retinal_rl.plot.log import FigureLogger
 
 ### Infrastructure ###
 

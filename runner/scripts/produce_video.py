@@ -35,7 +35,7 @@ from retinal_rl.analysis.activity_recording import (
 )
 from retinal_rl.analysis.attribution import analyze as attribution_analyze
 from retinal_rl.analysis.output_pca import analyze as output_pca_analyze
-from retinal_rl.analysis.plot import fig_to_rgb_image
+from retinal_rl.plot.util import fig_to_rgb_image
 from retinal_rl.rl.sample_factory.models import SampleFactoryBrain
 from retinal_rl.util import rescale_zero_one
 from runner.frameworks.rl.sf_framework import SFFramework

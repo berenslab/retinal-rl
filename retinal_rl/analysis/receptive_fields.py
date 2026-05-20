@@ -5,8 +5,8 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from torch import Tensor, nn
 
-from retinal_rl.analysis.plot import FigureLogger
 from retinal_rl.models.brain import Brain, get_cnn_circuit
+from retinal_rl.plot.log import FigureLogger
 from retinal_rl.util import FloatArray, is_nonlinearity, rf_size_and_start
 
 
