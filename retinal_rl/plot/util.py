@@ -288,3 +288,10 @@ def set_integer_ticks(ax: Axes):
     """Set integer ticks for both x and y axes."""
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+
+
+def fig_to_rgb_image(fig: Figure) -> FloatArray:
+    """Convert a Matplotlib figure to a numpy array representing an RGB image."""
+    fig.canvas.draw()
+    data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+    return data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
