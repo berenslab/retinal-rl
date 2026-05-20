@@ -96,7 +96,7 @@ class SatietyInput(gym.Wrapper):
 class PickupTrackingWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-        # TODO: make object values configurable / get from environment
+        # TODO: make object values configurable / get from environment. One way might be to auto-discover them on the go.
         self.object_values = np.array([-25, -20, -15, -10, -5, 10, 20, 30, 40, 50])
         self.pickup_counts = {str(obj_val): 0 for obj_val in self.object_values}
         self.last_health = None
@@ -110,7 +110,9 @@ class PickupTrackingWrapper(gym.Wrapper):
     def step(self, action):
         obs, rew, terminated, truncated, info = self.env.step(action)
 
-        unbound_health = info.get("USER17")
+        unbound_health = info.get(
+            "USER17"
+        )  # USER17 is the unbound health variable exposed through vizdoom.cfg in doom_creator
         diff = unbound_health - self.last_health if self.last_health is not None else 0
         self.last_health = unbound_health
         # Accept differences up to one (eg health decreases by 1 periodically, which can coincide with the pickup of an object)
@@ -119,15 +121,12 @@ class PickupTrackingWrapper(gym.Wrapper):
             for object_value in self.object_values[picked_up_object]:
                 self.pickup_counts[str(object_value)] += 1
 
-
         done = terminated | truncated
         unknown_diff = picked_up_object.sum() > 1 or (
             picked_up_object.sum() == 0 and diff not in [0, -1]
         )
         if not done and unknown_diff:
-            log.warning(
-                f"Unexpected unbound health difference: {diff}."
-            )
+            log.warning(f"Unexpected unbound health difference: {diff}.")
 
         if "episode_extra_stats" not in info:
             info["episode_extra_stats"] = dict()
@@ -153,7 +152,9 @@ class PickupRewardShaping(gym.Wrapper):
             return 0.0
 
         curr_health = info.get("HEALTH", 0.0)
-        living_penalty = info.get("num_frames") * self.metabolic_cost / self.metabolic_delay
+        living_penalty = (
+            info.get("num_frames") * self.metabolic_cost / self.metabolic_delay
+        )
         reward = 0.0
 
         if self._prev_health is not None:
