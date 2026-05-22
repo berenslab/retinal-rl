@@ -15,7 +15,7 @@ from sample_factory.enjoy import (
 )
 from sample_factory.model.actor_critic import create_actor_critic
 from sample_factory.model.model_utils import get_rnn_size
-from sample_factory.utils.typing import Config, StatusCode
+from sample_factory.utils.typing import Config
 from sample_factory.utils.utils import log
 
 from runner.frameworks.rl.sf_framework import SFFramework
@@ -30,10 +30,10 @@ Stores the results as a list in data/analyses/survival_durations_{env_name}.csv
 OmegaConf.register_new_resolver("eval", eval)
 
 
-def test_survival_duration(  # TODO: Properly implement this anyway
+def test_survival_duration(
     cfg: Config,
     num_repeats: int = 10,
-) -> tuple[StatusCode, float]:
+) -> list[int]:
     cfg = load_from_checkpoint(cfg)
 
     eval_env_frameskip: int = (
@@ -48,7 +48,8 @@ def test_survival_duration(  # TODO: Properly implement this anyway
         f"Using frameskip {cfg.env_frameskip} and {render_action_repeat=} for evaluation"
     )
 
-    cfg.num_envs = 1
+    batch_size = min(num_repeats, cfg.num_workers)
+    cfg.num_envs = batch_size
 
     env = make_env(cfg)
 
@@ -68,70 +69,68 @@ def test_survival_duration(  # TODO: Properly implement this anyway
 
     load_state_dict(cfg, actor_critic, device)
 
-    epoch_durations = []
+    results: list[int] = []
+    frame_counts = [0] * batch_size  # frame count for the current episode per env
+
+    obs, _ = env.reset()
+    action_mask = obs.pop("action_mask").to(device) if "action_mask" in obs else None
+    rnn_states = torch.zeros(
+        [batch_size, get_rnn_size(cfg)], dtype=torch.float32, device=device
+    )
+
     with torch.no_grad():
-        for epoch in range(num_repeats):
-            num_frames = 0
-            obs, infos = env.reset()
-            action_mask = (
-                obs.pop("action_mask").to(device) if "action_mask" in obs else None
-            )
-            rnn_states = torch.zeros(
-                [1, get_rnn_size(cfg)], dtype=torch.float32, device=device
-            )
-            episode_finished = False
+        while len(results) < num_repeats:
+            normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
 
-            while not episode_finished:
-                normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
+            policy_outputs = actor_critic(
+                normalized_obs, rnn_states, action_mask=action_mask
+            )
 
-                policy_outputs = actor_critic(
-                    normalized_obs, rnn_states, action_mask=action_mask
+            # sample actions from the distribution by default
+            actions = policy_outputs["actions"]
+
+            if cfg.eval_deterministic:
+                action_distribution = actor_critic.action_distribution()
+                actions = argmax_actions(action_distribution)
+
+            # actions shape should be [num_agents, num_actions] even if it's [1, 1]
+            if actions.ndim == 1:
+                actions = unsqueeze_tensor(actions, dim=-1)
+            actions = preprocess_actions(env_info, actions)
+
+            rnn_states = policy_outputs["new_rnn_states"]
+
+            for _ in range(render_action_repeat):
+                obs, _, terminated, truncated, _ = env.step(actions)
+
+                action_mask = (
+                    obs.pop("action_mask").to(device) if "action_mask" in obs else None
                 )
+                dones = make_dones(terminated, truncated)
 
-                # sample actions from the distribution by default
-                actions = policy_outputs["actions"]
+                for i, done in enumerate(torch.as_tensor(dones).view(batch_size)):
+                    frame_counts[i] += 1
+                    if done:
+                        results.append(frame_counts[i])
+                        frame_counts[i] = 0
+                        rnn_states[i] = torch.zeros(
+                            [get_rnn_size(cfg)], dtype=torch.float32, device=device
+                        )
+                        if len(results) >= num_repeats:
+                            break
 
-                if cfg.eval_deterministic:
-                    action_distribution = actor_critic.action_distribution()
-                    actions = argmax_actions(action_distribution)
-
-                # actions shape should be [num_agents, num_actions] even if it's [1, 1]
-                if actions.ndim == 1:
-                    actions = unsqueeze_tensor(actions, dim=-1)
-                actions = preprocess_actions(env_info, actions)
-
-                rnn_states = policy_outputs["new_rnn_states"]
-
-                for _ in range(render_action_repeat):
-                    obs, rew, terminated, truncated, infos = env.step(actions)
-
-                    action_mask = (
-                        obs.pop("action_mask").to(device)
-                        if "action_mask" in obs
-                        else None
-                    )
-                    dones = make_dones(terminated, truncated)
-
-                    num_frames += 1
-                    if num_frames % 100 == 0:
-                        log.debug(f"Num frames {num_frames}...")
-
-                    episode_finished = all(dones)
-                    if episode_finished:
-                        break
-
-            log.debug(f"Epoch {epoch}: {num_frames}")
-            epoch_durations.append(num_frames)
+                if len(results) >= num_repeats:
+                    break
 
     env.close()
-    return epoch_durations
+    return results
 
-
-experiment_path = Path(sys.argv[1])
-env_name = sys.argv[2]
-num_repeats = int(sys.argv[3])
 
 if __name__ == "__main__":
+    experiment_path = Path(sys.argv[1])
+    env_name = sys.argv[2]
+    num_repeats = int(sys.argv[3])
+
     # Load the config file
     cfg = OmegaConf.load(experiment_path / "config" / "config.yaml")
     cfg.path.run_dir = experiment_path
@@ -139,7 +138,6 @@ if __name__ == "__main__":
     cfg.dataset.env_name = env_name
 
     cfg.logging.use_wandb = False
-    cfg.samplefactory.save_video = True
     cfg.samplefactory.no_render = True
 
     framework = SFFramework(cfg, "cache")
