@@ -9,10 +9,9 @@ from sample_factory.algo.utils.env_info import extract_env_info
 from sample_factory.algo.utils.rl_utils import make_dones, prepare_and_normalize_obs
 from sample_factory.algo.utils.tensor_utils import unsqueeze_tensor
 from sample_factory.cfg.arguments import load_from_checkpoint
-from sample_factory.enjoy import (
-    load_state_dict,
-    make_env,
-)
+from sample_factory.algo.utils.make_env import SequentialVectorizeWrapper, make_env_func_batched
+from sample_factory.enjoy import load_state_dict
+from sample_factory.utils.attr_dict import AttrDict
 from sample_factory.model.actor_critic import create_actor_critic
 from sample_factory.model.model_utils import get_rnn_size
 from sample_factory.utils.typing import Config
@@ -49,17 +48,22 @@ def test_survival_duration(
     )
 
     batch_size = min(num_repeats, cfg.num_workers)
-    cfg.num_envs = batch_size
+    cfg.num_envs = 1  # each sub-env is a single environment
 
-    env = make_env(cfg)
+    sub_envs = [
+        make_env_func_batched(cfg, env_config=AttrDict(worker_index=0, vector_index=i, env_id=i))
+        for i in range(batch_size)
+    ]
+    env = SequentialVectorizeWrapper(sub_envs)
 
-    assert env.num_agents == 1, "env.num_agents must be 1"
+    assert env.single_env_agents == 1, "only single-agent environments are supported"
 
     env_info = extract_env_info(env, cfg)
 
-    if hasattr(env.unwrapped, "reset_on_init"):
-        # reset call ruins the demo recording for VizDoom
-        env.unwrapped.reset_on_init = False
+    for sub_env in env.envs:
+        if hasattr(sub_env.unwrapped, "reset_on_init"):
+            # reset call ruins the demo recording for VizDoom
+            sub_env.unwrapped.reset_on_init = False
 
     actor_critic = create_actor_critic(cfg, env.observation_space, env.action_space)
     actor_critic.eval()
