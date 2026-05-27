@@ -5,7 +5,7 @@ import torch
 from omegaconf import OmegaConf
 from sample_factory.algo.sampling.batched_sampling import preprocess_actions
 from sample_factory.algo.utils.action_distributions import argmax_actions
-from sample_factory.algo.utils.env_info import extract_env_info
+from sample_factory.algo.utils.env_info import obtain_env_info_in_a_separate_process
 from sample_factory.algo.utils.rl_utils import make_dones, prepare_and_normalize_obs
 from sample_factory.algo.utils.tensor_utils import unsqueeze_tensor
 from sample_factory.cfg.arguments import load_from_checkpoint
@@ -58,7 +58,7 @@ def test_survival_duration(
 
     assert env.single_env_agents == 1, "only single-agent environments are supported"
 
-    env_info = extract_env_info(env, cfg)
+    env_info = obtain_env_info_in_a_separate_process(cfg)
 
     for sub_env in env.envs:
         if hasattr(sub_env.unwrapped, "reset_on_init"):
