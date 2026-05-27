@@ -149,6 +149,12 @@ if __name__ == "__main__":
         framework.sf_cfg, num_repeats=num_repeats
     )
 
+    duration_file = experiment_path / "data" / "analyses" / f"survival_durations_{env_name}.csv"
+    if duration_file.exists():
+        with open(duration_file, "r") as f:
+            existing_durations = [int(line.strip()) for line in f]
+        survival_durations = existing_durations + survival_durations
+
     with open(
         experiment_path / "data" / "analyses" / f"survival_durations_{env_name}.csv",
         "w",
