@@ -1,7 +1,9 @@
 import queue
 import sys
 import threading
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 import torch
 from omegaconf import OmegaConf
@@ -31,22 +33,78 @@ Stores the results as a list in data/analyses/survival_durations_{env_name}.csv
 OmegaConf.register_new_resolver("eval", eval)
 
 
+@dataclass
+class _InferReq:
+    worker_id: int
+    obs: dict
+    rnn_states: torch.Tensor
+    action_mask: Optional[torch.Tensor]
+
+
+def _inference_server(
+    infer_queue: "queue.Queue[Optional[_InferReq]]",
+    result_queues: "list[queue.Queue]",
+    actor_critic: ActorCritic,
+    cfg: Config,
+) -> None:
+    """
+    Collects inference requests from all worker threads, runs one batched forward
+    pass, and distributes results. This avoids N serial batch-size-1 passes.
+    """
+    while True:
+        reqs: list[_InferReq] = []
+
+        req = infer_queue.get()
+        if req is None:
+            break
+        reqs.append(req)
+
+        # Drain any additional pending requests without waiting
+        while True:
+            try:
+                req = infer_queue.get_nowait()
+                if req is None:
+                    infer_queue.put(None)  # put back the stop signal
+                    break
+                reqs.append(req)
+            except queue.Empty:
+                break
+
+        obs_keys = list(reqs[0].obs.keys())
+        batch_obs = {k: torch.cat([r.obs[k] for r in reqs], dim=0) for k in obs_keys}
+        batch_rnn = torch.cat([r.rnn_states for r in reqs], dim=0)
+        has_mask = reqs[0].action_mask is not None
+        batch_mask = torch.cat([r.action_mask for r in reqs], dim=0) if has_mask else None
+
+        with torch.no_grad():
+            normalized_obs = prepare_and_normalize_obs(actor_critic, batch_obs)
+            policy_outputs = actor_critic(normalized_obs, batch_rnn, action_mask=batch_mask)
+            actions = policy_outputs["actions"]
+            if cfg.eval_deterministic:
+                actions = argmax_actions(actor_critic.action_distribution())
+            new_rnn_states = policy_outputs["new_rnn_states"]
+
+        for i, req in enumerate(reqs):
+            result_queues[req.worker_id].put(
+                {
+                    "actions": actions[i : i + 1],
+                    "new_rnn_states": new_rnn_states[i : i + 1],
+                }
+            )
+
+
 def _episode_worker(
     task_queue: "queue.Queue[object]",
-    result_queue: "queue.Queue[int]",
-    actor_critic: "ActorCritic",
-    inference_lock: threading.Lock,
+    episode_result_queue: "queue.Queue[int]",
+    infer_queue: "queue.Queue[Optional[_InferReq]]",
+    my_result_queue: "queue.Queue[dict]",
     env: BatchedVecEnv,
     cfg: Config,
     env_info: EnvInfo,
     render_action_repeat: int,
     device: torch.device,
+    worker_id: int,
 ) -> None:
-    """
-    Thread worker: shares the model with other threads, owns one env.
-    Inference is serialised via inference_lock; env.step() runs outside
-    the lock so all VizDoom subprocesses advance in parallel.
-    """
     rnn_size = get_rnn_size(cfg)
 
     while True:
@@ -61,16 +119,19 @@ def _episode_worker(
 
         episode_done = False
         while not episode_done:
-            with inference_lock:
-                with torch.no_grad():
-                    normalized_obs = prepare_and_normalize_obs(actor_critic, obs)
-                    policy_outputs = actor_critic(
-                        normalized_obs, rnn_states, action_mask=action_mask
-                    )
-                    actions = policy_outputs["actions"]
-                    if cfg.eval_deterministic:
-                        actions = argmax_actions(actor_critic.action_distribution())
-                    rnn_states = policy_outputs["new_rnn_states"]
+            obs_device = {k: v.to(device) for k, v in obs.items()}
+            infer_queue.put(
+                _InferReq(
+                    worker_id=worker_id,
+                    obs=obs_device,
+                    rnn_states=rnn_states,
+                    action_mask=action_mask,
+                )
+            )
+
+            result = my_result_queue.get()
+            actions = result["actions"]
+            rnn_states = result["new_rnn_states"]
 
             if actions.ndim == 1:
                 actions = unsqueeze_tensor(actions, dim=-1)
@@ -87,7 +148,7 @@ def _episode_worker(
                     episode_done = True
                     break
 
-        result_queue.put(frame_count)
+        episode_result_queue.put(frame_count)
 
 
 def test_survival_duration(
@@ -129,44 +190,56 @@ def test_survival_duration(
     actor_critic.model_to_device(device)
     load_state_dict(cfg, actor_critic, device)
 
-    inference_lock = threading.Lock()
     task_queue: "queue.Queue[object]" = queue.Queue()
-    result_queue: "queue.Queue[int]" = queue.Queue()
+    episode_result_queue: "queue.Queue[int]" = queue.Queue()
+    infer_queue: "queue.Queue[Optional[_InferReq]]" = queue.Queue()
+    result_queues: "list[queue.Queue[dict]]" = [queue.Queue() for _ in range(batch_size)]
 
     for _ in range(num_repeats):
         task_queue.put(1)
     for _ in range(batch_size):
-        task_queue.put(None)  # one stop signal per thread
+        task_queue.put(None)
 
-    threads = [
+    inference_thread = threading.Thread(
+        target=_inference_server,
+        args=(infer_queue, result_queues, actor_critic, cfg),
+        daemon=True,
+    )
+    inference_thread.start()
+
+    worker_threads = [
         threading.Thread(
             target=_episode_worker,
             args=(
                 task_queue,
-                result_queue,
-                actor_critic,
-                inference_lock,
+                episode_result_queue,
+                infer_queue,
+                result_queues[i],
                 envs[i],
                 cfg,
                 env_info,
                 render_action_repeat,
                 device,
+                i,
             ),
             daemon=True,
         )
         for i in range(batch_size)
     ]
-    for t in threads:
+    for t in worker_threads:
         t.start()
 
     results = []
     for i in range(num_repeats):
-        frame_count = result_queue.get()
+        frame_count = episode_result_queue.get()
         results.append(frame_count)
         log.info(f"Episode {i + 1}/{num_repeats} completed: {frame_count} frames")
 
-    for t in threads:
+    for t in worker_threads:
         t.join()
+
+    infer_queue.put(None)
+    inference_thread.join()
 
     for env in envs:
         env.close()
@@ -179,7 +252,6 @@ if __name__ == "__main__":
     env_name = sys.argv[2]
     num_repeats = int(sys.argv[3])
 
-    # Load the config file
     cfg = OmegaConf.load(experiment_path / "config" / "config.yaml")
     cfg.path.run_dir = experiment_path
 
