@@ -159,7 +159,11 @@ def test_survival_duration(
     for t in threads:
         t.start()
 
-    results = [result_queue.get() for _ in range(num_repeats)]
+    results = []
+    for i in range(num_repeats):
+        frame_count = result_queue.get()
+        results.append(frame_count)
+        log.info(f"Episode {i + 1}/{num_repeats} completed: {frame_count} frames")
 
     for t in threads:
         t.join()
