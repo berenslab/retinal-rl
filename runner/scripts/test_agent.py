@@ -166,7 +166,7 @@ def test_survival_duration(
     render_action_repeat: int = cfg.env_frameskip // eval_env_frameskip
     cfg.env_frameskip = cfg.eval_env_frameskip = eval_env_frameskip
 
-    batch_size = min(num_repeats, cfg.num_workers)
+    batch_size = min(128, min(num_repeats, cfg.num_workers*cfg.num_envs_per_worker))
     log.debug(f"Running {num_repeats} episodes with {batch_size} parallel threads")
 
     device = torch.device("cpu" if cfg.device == "cpu" else "cuda")
@@ -235,6 +235,12 @@ def test_survival_duration(
         results.append(frame_count)
         log.info(f"Episode {i + 1}/{num_repeats} completed: {frame_count} frames")
 
+    with open(
+        experiment_path / "data" / "analyses" / f"survival_durations_{env_name}.csv",
+        "a",
+    ) as f:
+        f.writelines([f"{duration}\n" for duration in results])
+
     for t in worker_threads:
         t.join()
 
@@ -259,14 +265,9 @@ if __name__ == "__main__":
 
     cfg.logging.use_wandb = False
     cfg.samplefactory.no_render = True
+    cfg.eval_deterministic = True # for testing, we want to avoid stochasticity in the policy
 
     framework = SFFramework(cfg, "cache")
     survival_durations = test_survival_duration(
         framework.sf_cfg, num_repeats=num_repeats
     )
-
-    with open(
-        experiment_path / "data" / "analyses" / f"survival_durations_{env_name}.csv",
-        "a",
-    ) as f:
-        f.writelines([f"{duration}\n" for duration in survival_durations])
