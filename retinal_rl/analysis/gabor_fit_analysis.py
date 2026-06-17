@@ -11,7 +11,7 @@ lives in fit_analysis.py .
 from typing import Dict, Tuple
 
 import numpy as np
-from scipy import optimize
+from scipy.optimize import least_squares
 from scipy.ndimage import gaussian_filter
 
 from retinal_rl.math_utils import estimate_frequency, estimate_orientation_fft, gabor_2d
@@ -55,29 +55,24 @@ def fit_gabor_2d(image: np.ndarray, blur_sigma: float = 0.5) -> Dict[str, float]
     lower_bounds = [-np.inf, 0, 0, 0.5, 0.5, 0.001, -np.pi, -2 * np.pi, -np.inf]
     upper_bounds = [np.inf, nx, ny, nx, ny, 1.0, np.pi, 2 * np.pi, np.inf]
 
-    try:
-        params, _ = optimize.curve_fit(
-            gabor_2d,
-            (x.ravel(), y.ravel()),
-            img.ravel(),
-            p0=initial_guess,
-            bounds=(lower_bounds, upper_bounds),
-            maxfev=15000,
-        )
-    except Exception:
-        try:
-            initial_guess[7] = np.pi / 2
-            params, _ = optimize.curve_fit(
-                gabor_2d,
-                (x.ravel(), y.ravel()),
-                img.ravel(),
-                p0=initial_guess,
-                bounds=(lower_bounds, upper_bounds),
-                maxfev=15000,
-            )
-        except Exception:
-            params = initial_guess
+    x_flat, y_flat, img_flat = x.ravel(), y.ravel(), img.ravel()
 
+    residual = lambda p: gabor_2d((x_flat, y_flat), *p) - img_flat
+
+    for phase in [0.0, np.pi / 2]:
+        initial_guess[7] = phase
+        result = least_squares(
+            residual,
+            initial_guess,
+            bounds=(lower_bounds, upper_bounds),
+            max_nfev=15000,
+        )
+        if result.success:
+            params = result.x
+            break
+    else:
+        params = np.array(initial_guess)
+    
     return {
         "amp": params[0],
         "x0": params[1],

@@ -11,7 +11,7 @@ lives in fit_analysis.py .
 from typing import Dict, Tuple
 
 import numpy as np
-from scipy import optimize
+from scipy.optimize import least_squares
 from scipy.ndimage import gaussian_filter
 
 from retinal_rl.math_utils import dog_2d
@@ -76,29 +76,24 @@ def fit_dog_2d(image: np.ndarray, blur_sigma: float = 1) -> Dict[str, float]:
         np.inf,
     ]
 
-    try:
-        params, _ = optimize.curve_fit(
-            lambda coords, *p: dog_2d(coords, *p, theta=0),
-            (x.ravel(), y.ravel()),
-            img.ravel(),
-            p0=initial_guess,
+    x_flat, y_flat, img_flat = x.ravel(), y.ravel(), img.ravel()
+
+    residual = lambda p: dog_2d((x_flat, y_flat), *p, theta=0) - img_flat
+
+    for sigma_lower, max_nfev in [(sigma_small * 1.5, 10000), (sigma_small * 1.3, 15000)]:
+        lower_bounds[6] = sigma_lower
+        lower_bounds[7] = sigma_lower
+        result = least_squares(
+            residual,
+            initial_guess,
             bounds=(lower_bounds, upper_bounds),
-            maxfev=10000,
+            max_nfev=max_nfev,
         )
-    except Exception:
-        lower_bounds[6] = sigma_small * 1.3
-        lower_bounds[7] = sigma_small * 1.3
-        try:
-            params, _ = optimize.curve_fit(
-                lambda coords, *p: dog_2d(coords, *p, theta=0),
-                (x.ravel(), y.ravel()),
-                img.ravel(),
-                p0=initial_guess,
-                bounds=(lower_bounds, upper_bounds),
-                maxfev=15000,
-            )
-        except Exception:
-            params = initial_guess
+        if result.success:
+            params = result.x
+            break
+    else:
+        params = np.array(initial_guess)
 
     return {
         "amp1": params[0],
