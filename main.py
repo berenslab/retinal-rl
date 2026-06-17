@@ -40,7 +40,13 @@ def get_framework(cfg: DictConfig, cache_path: str) -> TrainingFramework:
 def _program(cfg: DictConfig):
     # TODO: Instead of doing checks of the config here, we should implement
     # sth like the configstore which ensures config parameters are present
-    print(cfg)
+    print(OmegaConf.to_yaml(cfg, resolve=True))
+
+    OmegaConf.save(
+        OmegaConf.create(cfg),
+        cfg.path.run_dir + "/config/full_config.yaml",
+        resolve=True,
+    )
 
     if cfg.command == "clean":
         delete_results(cfg)
