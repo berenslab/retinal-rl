@@ -16,6 +16,7 @@ from retinal_rl.classification.imageset import Imageset
 from retinal_rl.math_utils import FloatArray
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.objective import ContextT, Objective
+from retinal_rl.plot.log import FigureLogger
 
 ### Infrastructure ###
 

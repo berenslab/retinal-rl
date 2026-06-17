@@ -13,9 +13,10 @@ from matplotlib.figure import Figure
 from torch import Tensor, fft, nn
 from torch.utils.data import DataLoader
 
-from retinal_rl.analysis.plot import FigureLogger, set_integer_ticks
 from retinal_rl.classification.imageset import Imageset, ImageSubset
 from retinal_rl.models.brain import Brain, get_cnn_circuit
+from retinal_rl.plot.log import FigureLogger
+from retinal_rl.plot.util import set_integer_ticks
 from retinal_rl.util import FloatArray, is_nonlinearity
 
 logger = logging.getLogger(__name__)

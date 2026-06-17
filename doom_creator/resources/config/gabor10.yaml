@@ -3,7 +3,7 @@ objects:
     actors:
       nourishment-1:
         textures:
-          - 'gabors/high-0.png'
+          - 'gabors/low-0-phase-180.png'
       nourishment-2:
         textures:
           - 'gabors/high-0.png'
@@ -23,7 +23,7 @@ objects:
           - 'gabors/low-45.png'
       poison-2:
         textures:
-          - 'gabors/low-45.png'
+          - 'gabors/low-90-phase-180.png'
       poison-3:
         textures:
           - 'gabors/high-45.png'

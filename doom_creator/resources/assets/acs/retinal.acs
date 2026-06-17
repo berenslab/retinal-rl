@@ -194,15 +194,6 @@ script "Agent Metabolism" ENTER {
     }
 }
 
-// Tracking stats
-script 10 (int pickedup) {
-
-    health_gathered = health_gathered + pickedup;
-    if(pickedup > 0) { num_nourishments = num_nourishments - 1; }
-    if(pickedup < 0) { num_poisons = num_poisons - 1; }
-
- }
-
 script "Agent Initialization" ENTER {
 
     int act_x = random(-spawn_range/10,spawn_range/10);

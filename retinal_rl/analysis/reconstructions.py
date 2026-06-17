@@ -6,11 +6,11 @@ import numpy as np
 import torch
 from matplotlib.figure import Figure
 
-from retinal_rl.analysis.plot import FigureLogger
 from retinal_rl.classification.imageset import Imageset
 from retinal_rl.models.brain import Brain
 from retinal_rl.models.loss import ContextT, ReconstructionLoss
 from retinal_rl.models.objective import Objective
+from retinal_rl.plot.log import FigureLogger
 from retinal_rl.util import FloatArray
 
 

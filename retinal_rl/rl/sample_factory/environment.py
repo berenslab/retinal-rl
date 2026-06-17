@@ -8,6 +8,7 @@ import numpy as np
 # import gym
 from gymnasium.spaces import Discrete
 from sample_factory.envs.env_utils import register_env
+from sample_factory.utils.utils import log
 from sf_examples.vizdoom.doom.action_space import (
     doom_action_space_basic,
     key_to_action_basic,
@@ -92,16 +93,108 @@ class SatietyInput(gym.Wrapper):
         return obs_dict, rew, terminated, truncated, info
 
 
+class PickupTrackingWrapper(gym.Wrapper):
+    def __init__(self, env):
+        super().__init__(env)
+        # TODO: make object values configurable / get from environment. One way might be to auto-discover them on the go.
+        self.object_values = np.array([-25, -20, -15, -10, -5, 10, 20, 30, 40, 50])
+        self.pickup_counts = {str(obj_val): 0 for obj_val in self.object_values}
+        self.last_health = None
+
+    def reset(self, **kwargs):
+        obs, info = self.env.reset(**kwargs)
+        self.pickup_counts = {str(_val): 0 for _val in self.object_values}
+        self.last_health = None
+        return obs, info
+
+    def step(self, action):
+        obs, rew, terminated, truncated, info = self.env.step(action)
+
+        unbound_health = info.get(
+            "USER17"
+        )  # USER17 is the unbound health variable exposed through vizdoom.cfg in doom_creator
+        diff = unbound_health - self.last_health if self.last_health is not None else 0
+        self.last_health = unbound_health
+        # Accept differences up to one (eg health decreases by 1 periodically, which can coincide with the pickup of an object)
+        picked_up_object = np.abs(diff - self.object_values) <= 1
+        if np.sum(picked_up_object) == 1:
+            for object_value in self.object_values[picked_up_object]:
+                self.pickup_counts[str(object_value)] += 1
+
+        done = terminated | truncated
+        unknown_diff = picked_up_object.sum() > 1 or (
+            picked_up_object.sum() == 0 and diff not in [0, -1]
+        )
+        if not done and unknown_diff:
+            log.warning(f"Unexpected unbound health difference: {diff}.")
+
+        if "episode_extra_stats" not in info:
+            info["episode_extra_stats"] = dict()
+        info["episode_extra_stats"]["pickup_counts"] = (
+            self.pickup_counts.copy()
+        )  # Add a copy of the pickup counts to the info dict
+
+        return obs, rew, terminated, truncated, info
+
+
+class PickupRewardShaping(gym.Wrapper):
+    """Based on SampleFactories GatheringRewardShaping wrapper."""
+
+    def __init__(self, env, additive: bool = True):
+        super().__init__(env)
+        self._prev_health = None
+        self.additive = additive
+        self.metabolic_cost = 1
+        self.metabolic_delay = 2
+
+    def _reward_shaping(self, info, done):
+        if info is None or done:
+            return 0.0
+
+        curr_health = info.get("HEALTH", 0.0)
+        living_penalty = (
+            info.get("num_frames") * self.metabolic_cost / self.metabolic_delay
+        )
+        reward = 0.0
+
+        if self._prev_health is not None:
+            delta = curr_health - self._prev_health
+            # remove 'living penalty' from reward
+            # max health is 100, so this should normalize it well
+            reward = 0 if delta == -living_penalty else delta / 100
+
+        self._prev_health = curr_health
+        return reward
+
+    def reset(self, **kwargs):
+        self._prev_health = None
+        return self.env.reset(**kwargs)
+
+    def step(self, action):
+        observation, reward, terminated, truncated, info = self.env.step(action)
+        done = terminated | truncated
+        pickup_reward = self._reward_shaping(info, done)
+        reward = reward + pickup_reward if self.additive else pickup_reward
+        return observation, reward, terminated, truncated, info
+
+
 ### Retinal Environments ###
 
 
 def retinal_doomspec(
-    scene_name: str, cfg_path: str, sat_in: bool, allow_backwards: bool
+    scene_name: str,
+    cfg_path: str,
+    sat_in: bool,
+    allow_backwards: bool,
+    pickup_reward: bool = True,
 ):
-    ewraps = []
+    ewraps = [(PickupTrackingWrapper, {})]
 
     if sat_in:
-        ewraps = [(SatietyInput, {})]
+        ewraps.append((SatietyInput, {}))
+
+    if pickup_reward:
+        ewraps.append((PickupRewardShaping, {"additive": False}))
 
     action_space = (
         doom_action_space_basic()

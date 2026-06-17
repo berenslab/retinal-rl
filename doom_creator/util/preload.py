@@ -45,10 +45,7 @@ def preload(
 ):
     if type.is_asset:
         assert source_dir is not None
-        doomify = (
-            type != TextureType.GABORS
-        )  # only gabor images are not doomified somehow
-        preload_assets(type, textures_dir, source_dir, doomify)
+        preload_assets(type, textures_dir, source_dir)
     else:
         preload_dataset(type, textures_dir, source_dir, train=train, clean=False)
 
