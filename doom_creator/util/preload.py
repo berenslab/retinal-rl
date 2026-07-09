@@ -55,16 +55,16 @@ def preload_assets(
 ):
     type_str = asset_type.value
     assert osp.exists(osp.join(assets_dir, type_str))
-    if not osp.exists(osp.join(textures_dir, type_str)):
-        # copy images from resources
-        shutil.copytree(
-            osp.join(assets_dir, type_str), osp.join(textures_dir, type_str)
-        )
-        # Minor TODO: instead of copying adjust path when loading/saving for doomification
-        # set offset for apple images
-        if doomify:
-            for png in glob(osp.join(textures_dir, type_str, "*.png")):
-                doomify_image(png)
+
+    # copy images from resources
+    shutil.copytree(
+        osp.join(assets_dir, type_str), osp.join(textures_dir, type_str), dirs_exist_ok=True
+    )
+    # Minor TODO: instead of copying adjust path when loading/saving for doomification
+    # set offset for apple images
+    if doomify:
+        for png in glob(osp.join(textures_dir, type_str, "*.png")):
+            doomify_image(png)
 
 
 def preload_dataset(

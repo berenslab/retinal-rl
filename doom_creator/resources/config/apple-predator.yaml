@@ -1,0 +1,10 @@
+objects:
+  predator:
+    init: 1
+    delay: 0
+    actors:
+      predator-1:
+        textures:
+          - 'apples/green_apple.png'
+        damage: 100
+        speed: 20

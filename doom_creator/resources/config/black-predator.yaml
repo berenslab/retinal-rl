@@ -1,0 +1,10 @@
+objects:
+  predator:
+    init: 1
+    delay: 0
+    actors:
+      predator-1:
+        textures:
+          - 'predators/hawk.png'
+        damage: 100
+        speed: 20
