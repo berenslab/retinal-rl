@@ -24,6 +24,7 @@ class Actor:
     healing: Optional[int] = None
     damage: Optional[int] = None
     radius: Optional[int] = None
+    speed: Optional[int] = None
     textures: List[str] = field(default_factory=list)
 
 
@@ -39,6 +40,7 @@ class ObjectType(Enum):
     poison = "poison"
     distractor = "distractor"
     obstacle = "obstacle"
+    predator = "predator"
 
 
 @dataclass

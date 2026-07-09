@@ -60,7 +60,6 @@ def actor_function(actor_name: str, values: List[int], heal_or_damage: str):
 
 
     plus_minus = "+" if heal_or_damage == "Heal" else "-"
-    update_health_gathered = f"health_gathered = health_gathered {plus_minus} values_{actor_name}[i];"
 
     return f"""\
 int values_{actor_name}[{num_values}] = {{ {values_string} }};
@@ -70,7 +69,7 @@ script "func_{actor_name}" (void)
     {heal_or_damage}Thing(values_{actor_name}[i]);
 
     // Update health gathered for stats
-    {update_health_gathered}
+    health_gathered = health_gathered {plus_minus} values_{actor_name}[i];
 
     // Free space for spawning
     int x = GetActorX(0) >> 16;
@@ -83,6 +82,22 @@ script "func_{actor_name}" (void)
     free_positions[grid_index] = 1;
     objects_left_to_spawn++;
 
+}}
+"""
+
+def predator_function(actor_name: str, damage: int):
+    actor_name = actor_name.replace("-", "_")
+    # Actor name will be used in function name, not possible with -
+    return f"""\
+script "func_{actor_name}" (void)
+{{
+    // Called from the predator's own Melee state, so the activator here is
+    // the predator, not the player - target the player by its reserved TID
+    // (PLAYER_TID, assigned in retinal.acs's "Agent Initialization") instead.
+    Thing_Damage(32000, {damage});
+
+    // Update health gathered for stats
+    health_gathered = health_gathered - {damage};
 }}
 """
 

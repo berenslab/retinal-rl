@@ -53,8 +53,10 @@ def make_scenario(
     include_decorate = ""
     actor_idx = 0
     n_actors = sum(len(type_cfg.actors) for type_cfg in cfg.objects.values())
-    buffer = 500 # have a buffer for objects / lumps other than the actor sprites
-    max_sprites_per_class = (65535 - buffer) // n_actors # There's a hard limit for number of objects in vizdoom, so make sure we don't reach that
+    buffer = 500  # have a buffer for objects / lumps other than the actor sprites
+    max_sprites_per_class = (
+        (65535 - buffer) // n_actors
+    )  # There's a hard limit for number of objects in vizdoom, so make sure we don't reach that
     for typ, type_cfg in tqdm(cfg.objects.items(), desc="Creating Objects"):
         for actor_name, actor_cfg in tqdm(
             type_cfg.actors.items(), desc="Creating " + typ.value, leave=False
@@ -63,7 +65,7 @@ def make_scenario(
             # get all pngs listend in pngpths and subdirs
             png_pths = actor_cfg.textures
             pngs = get_pngs(osp.join(directories.CACHE_DIR, "textures"), png_pths)
-            pngs = pngs[:min(len(pngs), max_sprites_per_class)]
+            pngs = pngs[: min(len(pngs), max_sprites_per_class)]
             num_textures = len(pngs)
             assert num_textures < 26**3, "Too many textures for actor: " + actor_name
 
@@ -81,7 +83,7 @@ def make_scenario(
             actor_names.append(actor_name)
             actor_num_textures.append(num_textures)
 
-            dec = make_actor_decorate(actor_name, typ, sprite_names)
+            dec = make_actor_decorate(actor_name, typ, sprite_names, actor_cfg)
             s_zip.writestr(osp.join("actors", actor_name + ".dec"), dec)
             include_decorate += templates.decorate.include(actor_name)
 
@@ -180,6 +182,13 @@ def make_acs(
                     actor_name,
                     values=values_list(actor_cfg.damage),
                 )
+            elif typ is config.ObjectType.predator:
+                assert actor_cfg.damage is not None, (
+                    "predator actor " + actor_name + " must define damage"
+                )
+                actor_functions += templates.acs.predator_function(
+                    actor_name, damage=actor_cfg.damage
+                )
 
     actor_arrays_initialization = ""
     for i, (actor_name, num_textures) in enumerate(zip(actor_names, num_textures)):
@@ -221,7 +230,7 @@ def texture_code(j):
 
 
 def make_actor_decorate(
-    actor_name: str, typ: config.ObjectType, sprite_names: list[str]
+    actor_name: str, typ: config.ObjectType, sprite_names: list[str], actor_cfg: Optional[config.Actor] = None
 ):
     """Returns the decorate description for an actor as a str.
 
@@ -233,7 +242,12 @@ def make_actor_decorate(
     states = ""
 
     for i, sprite_name in enumerate(sprite_names):
-        states += templates.decorate.states_template(index=i, texture_code=sprite_name)
+        if typ is config.ObjectType.predator:
+            states += templates.decorate.predator_states_template(
+                index=i, texture_code=sprite_name, actor_name=actor_name
+            )
+        else:
+            states += templates.decorate.states_template(index=i, texture_code=sprite_name)
 
     if typ is config.ObjectType.nourishment:
         decorate = templates.decorate.nourishment(
@@ -248,6 +262,11 @@ def make_actor_decorate(
     elif typ is config.ObjectType.obstacle:
         decorate = templates.decorate.obstacle(
             name=actor_name, states_definitions=states
+        )
+    elif typ is config.ObjectType.predator:
+        assert actor_cfg is not None and actor_cfg.speed is not None, "Predator actor config must be provided"
+        decorate = templates.decorate.predator(
+            name=actor_name, states_definitions=states, speed=actor_cfg.speed
         )
     else:
         raise ValueError(f"Invalid actor type: {typ}")

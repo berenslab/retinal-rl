@@ -3,6 +3,14 @@
 #library "RETINAL"
 #include "zcommon.acs"
 
+// The player's UDMF "id" (1, see TEXTMAP.txt) is NOT applied to the actual
+// player pawn at spawn, so it can't be used to target the player by TID from
+// other actors' scripts (e.g. a predator's melee attack). Instead we assign
+// the player this reserved TID explicitly in "Agent Initialization" below.
+// It's set far above the range UniqueTID() hands out during normal play, so
+// it won't collide with TIDs assigned to spawned actors.
+#define PLAYER_TID 32000
+
 // Variables
 
 // Global Variables
@@ -46,6 +54,11 @@ global int 21:spawn_range;
 global int 22:grid_size;
 global bool 23:free_positions[];
 global int 24:objects_left_to_spawn;
+
+// Predator variables
+global int 25:predator_unique;
+global int 26:predator_init;
+global int 27:predator_delay;
 
 // Spawning actor by index
 function void SpawnActor(int oid) {
@@ -135,6 +148,28 @@ function void randomDistractor(void) {
     SpawnActor(oid+distractor_offset);
 }
 
+function void spawnPredator(void) {
+    int predator_offset = nourishment_unique + poison_unique + obstacle_unique + distractor_unique;
+    int oid = random(0,predator_unique-1);
+
+    int tid = UniqueTID();
+    str act = actor_names[oid + predator_offset];
+
+    str texture_num = random(0,actor_num_textures[oid + predator_offset] - 1);
+    str texture = StrParam(s:"Texture",d:texture_num);
+
+    int actor_x = GetActorX(0) >> 16;
+    int actor_y = GetActorY(0) >> 16;
+    int min_dist = spawn_range / 2.0;
+    int max_dist = spawn_range;
+    int spawn_offset_x = random(min_dist, max_dist);
+    int spawn_offset_y = random(min_dist, max_dist);
+    if (random(0,1)) { spawn_offset_x = -spawn_offset_x; }
+    if (random(0,1)) { spawn_offset_y = -spawn_offset_y; }
+    Spawn(act, (actor_x + spawn_offset_x)*1.0, (actor_y + spawn_offset_y)*1.0, 0.0, tid);
+    SetActorState(tid, texture);
+}
+
 // Environment behaviour
 script "Nourishment Spawning" ENTER {
 
@@ -194,7 +229,19 @@ script "Agent Metabolism" ENTER {
     }
 }
 
+script "Predator Spawning" ENTER {
+    int i=0;
+    for(i=0;i<predator_init;++i){ spawnPredator(); }
+
+    while(predator_delay > 0) {
+        delay(predator_delay);
+        spawnPredator();
+    }
+}
+
 script "Agent Initialization" ENTER {
+
+    Thing_ChangeTID(0, PLAYER_TID);
 
     int act_x = random(-spawn_range/10,spawn_range/10);
     int act_y = random(-spawn_range/10,spawn_range/10);

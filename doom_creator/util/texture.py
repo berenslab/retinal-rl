@@ -96,6 +96,7 @@ class TextureType(Enum):
     APPLES = "apples"
     OBSTACLES = "obstacles"
     GABORS = "gabors"
+    PREDATORS = "predators"
     MNIST = "mnist"
     CIFAR10 = "cifar-10"
     CIFAR100 = "cifar-100"
@@ -103,7 +104,7 @@ class TextureType(Enum):
 
     @property
     def is_asset(self):
-        return self in [TextureType.APPLES, TextureType.OBSTACLES, TextureType.GABORS]
+        return self in [TextureType.APPLES, TextureType.OBSTACLES, TextureType.GABORS, TextureType.PREDATORS]
 
     @property
     def is_dataset(self):

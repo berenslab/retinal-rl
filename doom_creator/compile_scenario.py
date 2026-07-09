@@ -81,6 +81,12 @@ def make_parser():
         action="store_true",
         help="Preload resources",
     )
+    # Add option to run preload
+    parser.add_argument(
+        "--preload_assets",
+        action="store_true",
+        help="Preload assets",
+    )
     # List the contents of the scenario yaml directory
     parser.add_argument(
         "--list_yamls",
@@ -109,12 +115,13 @@ def main():
 
     cfg = load(args.yamls, dirs.SCENARIO_YAML_DIR)
     # Check preload flag
-    do_load, do_make, do_list = args.preload, len(args.yamls) > 0, args.list_yamls
-    if do_load:
+    do_load, load_assets, do_make, do_list = args.preload, args.preload_assets, len(args.yamls) > 0, args.list_yamls
+    if load_assets:
         preload(TType.APPLES, dirs.TEXTURES_DIR, dirs.ASSETS_DIR)
         preload(TType.OBSTACLES, dirs.TEXTURES_DIR, dirs.ASSETS_DIR)
+        preload(TType.PREDATORS, dirs.TEXTURES_DIR, dirs.ASSETS_DIR)
         preload(TType.GABORS, dirs.TEXTURES_DIR, dirs.ASSETS_DIR)
-
+    if do_load:
         preload(TType.MNIST, dirs.TEXTURES_DIR, args.dataset_dir, train=not args.test)
         preload(TType.CIFAR10, dirs.TEXTURES_DIR, args.dataset_dir, train=not args.test)
         preload(TType.SVHN, dirs.TEXTURES_DIR, args.dataset_dir, train=not args.test)
