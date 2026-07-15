@@ -43,6 +43,7 @@ from retinal_rl.rl.sample_factory.observer import RetinalAlgoObserver
 from retinal_rl.rl.sample_factory.retinal_stats_handler import retinal_stats_handler
 from runner.frameworks.classification.initialize import initialize
 from runner.frameworks.framework_interface import TrainingFramework
+from runner.frameworks.rl.environments import get_full_env_name
 from runner.util import create_brain
 
 
@@ -152,7 +153,12 @@ class SFFramework(TrainingFramework):
 
     @staticmethod
     def to_sf_cfg(cfg: DictConfig) -> Config:
-        sf_cfg = SFFramework._get_default_cfg(cfg.dataset.env_name)  # Load Defaults
+        env_name = cfg.dataset.env_name
+        # allow for env name versioning endings
+        # check envs in cache/scenarios
+        env_name = get_full_env_name(env_name, Path(cfg.path.scenario_yaml_dir))
+
+        sf_cfg = SFFramework._get_default_cfg(env_name)  # Load Defaults
 
         # overwrite default values with those set in cfg
         # TODO: which other parameters need to be set_
@@ -163,7 +169,7 @@ class SFFramework(TrainingFramework):
 
         SFFramework._set_cfg_cli_argument(sf_cfg, "res_h", cfg.dataset.vision_height)
         SFFramework._set_cfg_cli_argument(sf_cfg, "res_w", cfg.dataset.vision_width)
-        SFFramework._set_cfg_cli_argument(sf_cfg, "env", cfg.dataset.env_name)
+        SFFramework._set_cfg_cli_argument(sf_cfg, "env", env_name)
         SFFramework._set_cfg_cli_argument(
             sf_cfg, "input_satiety", cfg.dataset.input_satiety
         )

@@ -7,6 +7,7 @@ from zipfile import ZipFile, ZipInfo
 
 import omg
 from tqdm import tqdm
+import datetime
 
 from doom_creator.util import config, templates
 from doom_creator.util.directories import Directories
@@ -16,8 +17,13 @@ from doom_creator.util.directories import Directories
 def make_scenario(
     cfg: config.Config,
     directories: Directories,
-    scenario_name: Optional[str] = None,
+    scenario_name: Optional[str],
 ):
+
+    cur_date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    git_hash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("utf-8").strip()
+    scenario_name = scenario_name + "_v" + cur_date + "_" + git_hash
+
     # Create Zip for output
     directories.SCENARIO_OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_file = osp.join(directories.SCENARIO_OUT_DIR, scenario_name) + ".zip"
