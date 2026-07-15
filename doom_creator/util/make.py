@@ -187,7 +187,7 @@ def make_acs(
                     "predator actor " + actor_name + " must define damage"
                 )
                 actor_functions += templates.acs.predator_function(
-                    actor_name, damage=actor_cfg.damage
+                    actor_name, damage=actor_cfg.damage, attack_distance=actor_cfg.attack_distance
                 )
 
     actor_arrays_initialization = ""
@@ -243,7 +243,7 @@ def make_actor_decorate(
 
     for i, sprite_name in enumerate(sprite_names):
         if typ is config.ObjectType.predator:
-            states += templates.decorate.predator_states_template(
+            states += templates.decorate.random_move_predator_states_template(
                 index=i, texture_code=sprite_name, actor_name=actor_name
             )
         else:

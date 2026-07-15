@@ -7,4 +7,5 @@ objects:
         textures:
           - 'apples/green_apple.png'
         damage: 100
-        speed: 20
+        speed: 5
+        attack_distance: 80

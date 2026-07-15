@@ -7,4 +7,5 @@ objects:
         textures:
           - 'predators/green_hawk.png'
         damage: 100
-        speed: 20
+        speed: 5
+        attack_distance: 80

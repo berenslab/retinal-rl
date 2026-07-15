@@ -262,3 +262,37 @@ script "Agent Initialization" ENTER {
     }
 }
 
+
+function int IsActorInFront(int actor, int player, int fov)
+{
+    int playerX = GetActorX(player) >> 16;
+    int playerY = GetActorY(player) >> 16;
+    int actorX = GetActorX(actor) >> 16;
+    int actorY = GetActorY(actor) >> 16;
+
+    int angleToActor = VectorAngle(actorX - playerX, actorY - playerY);
+    int playerAngle = GetActorAngle(player);
+    int angleDiff = angleToActor - playerAngle;
+
+    // angles are fixed-point fractions of a circle (65536 == full turn);
+    // normalize into (-32768, 32768]
+    while (angleDiff > 32768) angleDiff -= 65536;
+    while (angleDiff < -32768) angleDiff += 65536;
+
+
+    return (angleDiff > -fov && angleDiff < fov);
+}
+
+
+
+function int IsActorClose(int actor, int player, int distance)
+{
+    int playerX = GetActorX(player) >> 16;
+    int playerY = GetActorY(player) >> 16;
+    int actorX = GetActorX(actor) >> 16;
+    int actorY = GetActorY(actor) >> 16;
+
+    int squareDistance = (playerX-actorX)*(playerX-actorX)+(playerY-actorY)*(playerY-actorY);
+
+    return (squareDistance < distance*distance);
+}

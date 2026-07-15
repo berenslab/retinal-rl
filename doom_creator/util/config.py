@@ -26,6 +26,7 @@ class Actor:
     radius: Optional[int] = None
     speed: Optional[int] = None
     textures: List[str] = field(default_factory=list)
+    attack_distance: Optional[int] = None
 
 
 @dataclass

@@ -85,7 +85,7 @@ script "func_{actor_name}" (void)
 }}
 """
 
-def predator_function(actor_name: str, damage: int):
+def predator_function(actor_name: str, damage: int, attack_distance: int = 80):
     actor_name = actor_name.replace("-", "_")
     # Actor name will be used in function name, not possible with -
     return f"""\
@@ -94,10 +94,15 @@ script "func_{actor_name}" (void)
     // Called from the predator's own Melee state, so the activator here is
     // the predator, not the player - target the player by its reserved TID
     // (PLAYER_TID, assigned in retinal.acs's "Agent Initialization") instead.
-    Thing_Damage(32000, {damage});
+    // Check if any player can see this actor
+    int actor_close = IsActorClose(0, 32000, {attack_distance});
+    if (actor_close)
+    {{
+        Thing_Damage(32000, {damage});
 
-    // Update health gathered for stats
-    health_gathered = health_gathered - {damage};
+        // Update health gathered for stats
+        health_gathered = health_gathered - {damage};
+    }}
 }}
 """
 
