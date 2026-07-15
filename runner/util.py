@@ -8,6 +8,7 @@ import shutil
 from pathlib import Path
 from typing import Any, cast
 
+import hydra
 import networkx as nx
 import torch
 from hydra.utils import instantiate
@@ -253,3 +254,6 @@ def search_conf(config: DictConfig | dict, search_str: str) -> list:
 
     traverse_config(config)
     return found_values
+
+def get_cache_dir() -> Path:
+    return Path(hydra.utils.get_original_cwd()) / "cache"

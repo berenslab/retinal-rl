@@ -7,12 +7,13 @@ from omegaconf import DictConfig
 from torchvision import datasets
 
 from retinal_rl.classification.imageset import Imageset
+from runner.util import get_cache_dir
 
 
 def get_datasets(cfg: DictConfig) -> tuple[Imageset, Imageset]:
     """Get the train and test datasets based on the configuration."""
-    cache_dir = os.path.join(hydra.utils.get_original_cwd(), "cache")
-    return _get_datasets(cache_dir, cfg.dataset.name, cfg.dataset.imageset)
+    cache_dir = get_cache_dir()
+    return _get_datasets(str(cache_dir), cfg.dataset.name, cfg.dataset.imageset)
 
 
 def _get_datasets(

@@ -156,7 +156,7 @@ class SFFramework(TrainingFramework):
         env_name = cfg.dataset.env_name
         # allow for env name versioning endings
         # check envs in cache/scenarios
-        env_name = get_full_env_name(env_name, Path(cfg.path.scenario_yaml_dir))
+        env_name = get_full_env_name(env_name)
 
         sf_cfg = SFFramework._get_default_cfg(env_name)  # Load Defaults
 
