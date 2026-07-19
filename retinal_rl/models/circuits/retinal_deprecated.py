@@ -1,4 +1,5 @@
-from typing import List, OrderedDict
+from collections import OrderedDict
+from typing import List
 
 import torch
 from torch.nn import AvgPool2d, Conv2d, Flatten, Linear, MaxPool2d, Sequential

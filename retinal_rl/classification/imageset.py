@@ -6,7 +6,8 @@ It includes:
 """
 
 import logging
-from typing import List, Sequence, Tuple
+from collections.abc import Sequence
+from typing import List, Tuple
 
 import torchvision.transforms.functional as tf
 from PIL import Image

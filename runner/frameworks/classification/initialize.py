@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass
 from os import getenv
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, cast
+from typing import Any, cast
 
 import omegaconf
 import torch
@@ -73,7 +73,7 @@ def initialize(
     dict_cfg: DictConfig,
     brain: Brain,
     optimizer: Optimizer,
-) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
+) -> tuple[Brain, Optimizer, dict[str, list[float]], int]:
     """Initialize the Brain, Optimizers, and training histories. Checks whether the experiment directory exists and loads the model and history if it does. Otherwise, initializes a new model and history."""
 
     cfg = InitConfig.from_dict_config(dict_cfg)
@@ -95,7 +95,7 @@ def initialize(
     cfg_backup = omegaconf.OmegaConf.to_container(
         dict_cfg, resolve=True, throw_on_missing=True
     )
-    cfg_backup = cast(Dict[str, Any], cfg_backup)
+    cfg_backup = cast(dict[str, Any], cfg_backup)
 
     return _initialize_create(cfg, cfg_backup, brain, optimizer)
 
@@ -105,10 +105,10 @@ def _initialize_create(
     cfg_backup: dict[Any, Any],
     brain: Brain,
     optimizer: Optimizer,
-) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
+) -> tuple[Brain, Optimizer, dict[str, list[float]], int]:
     epoch = 0
     # initialize the training histories
-    histories: Dict[str, List[float]] = {}
+    histories: dict[str, list[float]] = {}
 
     cfg.data_dir.mkdir(parents=True, exist_ok=True)
     cfg.checkpoint_dir.mkdir(parents=True, exist_ok=True)
@@ -169,7 +169,7 @@ def _find_checkpoint_in_multirun(run_name: str) -> Path | None:
 
 def _initialize_reload(
     cfg: InitConfig, brain: Brain, optimizer: Optimizer
-) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
+) -> tuple[Brain, Optimizer, dict[str, list[float]], int]:
     logger.info(
         f"Experiment data dir {cfg.data_dir} exists. Loading existing model and history."
     )
