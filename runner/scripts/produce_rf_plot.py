@@ -27,10 +27,8 @@ def reshape_images(
 ):
     n, _, w, h = arr.shape
     whitespace_pix = np.round(whitespace * max(w, h)).astype(int)
-    if n_rows is None and n_cols is None:
-        n_rows = 1
     if n_rows is None:
-        n_rows = (n + n_cols - 1) // n_cols
+        n_rows = (n + n_cols - 1) // n_cols if n_cols is not None else 1
     if n_cols is None:
         n_cols = (n + n_rows - 1) // n_rows
 
@@ -71,8 +69,11 @@ def init_plot(
     rf_dir: Path, cur_file: str, hyper_params: list[str], figwidth: float = 10
 ):
     # Init figure
-    with open(rf_dir / cur_file) as f:
-        rf = json.load(f)
+    if cur_file.endswith(".json"):
+        with open(rf_dir / cur_file) as f:
+            rf = json.load(f)
+    else:
+        rf = np.load(rf_dir / cur_file, allow_pickle=True)
 
     comp_layer_rfs = []
     for i, (layer, layer_rfs) in enumerate(rf.items()):
@@ -182,7 +183,11 @@ def parse_args(argv: list[str]):
 
 
 experiments_path, out_dir, anim, fast = parse_args(sys.argv)
-for experiment_path in experiments_path.iterdir():
+if (experiments_path / "data").exists():
+    _iter = [experiments_path]
+else:
+    _iter = experiments_path.iterdir()
+for experiment_path in _iter:
     try:
         print(experiment_path)
         if anim:
