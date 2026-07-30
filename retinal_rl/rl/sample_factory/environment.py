@@ -1,13 +1,16 @@
+import enum
 import functools
 import os
 from typing import Optional
 
 import gymnasium as gym
 import numpy as np
+import torch
 
 # import gym
 from gymnasium.spaces import Discrete
 from sample_factory.envs.env_utils import register_env
+from sample_factory.utils.normalize import ObservationNormalizer
 from sample_factory.utils.utils import log
 from sf_examples.vizdoom.doom.action_space import (
     doom_action_space_basic,
@@ -91,6 +94,45 @@ class SatietyInput(gym.Wrapper):
         obs_dict = self._parse_info(obs, info)
 
         return obs_dict, rew, terminated, truncated, info
+
+
+
+class InputTransFormGroup(enum.Enum):
+    SOURCE = "source"
+    NOISE = "noise"
+
+class InputTransformWrapper(gym.Wrapper):
+    """Add game variables to the observation space + reward shaping."""
+
+    def __init__(self, env, transforms: torch.nn.Sequential, group_name: InputTransFormGroup = InputTransFormGroup.SOURCE):
+        super().__init__(env)
+        self.transforms = transforms
+        self.group_name = group_name
+
+    def _apply_transforms(self, obs):
+        if isinstance(obs, np.ndarray):
+            obs = torch.from_numpy(obs).to(torch.float32)
+            obs = self.transforms(obs)
+            obs = obs.numpy()
+        else:
+            obs = self.transforms(obs)
+        return obs
+
+    def step(self, action):
+        obs, rew, terminated, truncated, info = self.env.step(action)
+
+        if isinstance(obs, dict):
+            obs_clone = ObservationNormalizer._clone_tensordict(obs)
+            for k in obs:
+                if any([k.endswith(suffix) for suffix in [f"_pre_{g.value}" for g in InputTransFormGroup]]):
+                    obs_clone[k] = obs[k]
+                else:
+                    inp = obs[k].clone() if obs[k].dtype == torch.float else obs[k].float()
+                    obs_clone[k] = self.transforms(inp)
+                    obs_clone[k + f"_pre_{self.group_name.value}"] = obs[k]
+            return obs_clone
+        else:
+            return self._apply_transforms(obs), rew, terminated, truncated, info
 
 
 class PickupTrackingWrapper(gym.Wrapper):
@@ -187,6 +229,8 @@ def retinal_doomspec(
     sat_in: bool,
     allow_backwards: bool,
     pickup_reward: bool = True,
+    source_transforms: Optional[torch.nn.Module] = None,
+    noise_transforms: Optional[torch.nn.Module] = None,
 ):
     ewraps = [(PickupTrackingWrapper, {})]
 
@@ -195,6 +239,12 @@ def retinal_doomspec(
 
     if pickup_reward:
         ewraps.append((PickupRewardShaping, {"additive": False}))
+
+    if source_transforms is not None:
+        ewraps.append((InputTransformWrapper, {"transforms": source_transforms, "group_name": InputTransFormGroup.SOURCE}))
+
+    if noise_transforms is not None:
+        ewraps.append((InputTransformWrapper, {"transforms": noise_transforms, "group_name": InputTransFormGroup.NOISE}))
 
     action_space = (
         doom_action_space_basic()
@@ -227,7 +277,7 @@ def make_retinal_env_from_spec(
 
 
 def register_retinal_env(
-    scene_name: str, cache_dir: str, input_satiety: bool, allow_backwards: bool = True
+    scene_name: str, cache_dir: str, input_satiety: bool, allow_backwards: bool = True, source_transforms=None, noise_transforms=None
 ):
     if not os.path.isabs(cache_dir):
         # make path absolute by making it relative to the path of this file
@@ -235,6 +285,6 @@ def register_retinal_env(
         cache_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", cache_dir)
     cfg_path = os.path.join(cache_dir, "scenarios", scene_name + ".cfg")
 
-    env_spec = retinal_doomspec(scene_name, cfg_path, input_satiety, allow_backwards)
+    env_spec = retinal_doomspec(scene_name, cfg_path, input_satiety, allow_backwards, source_transforms=source_transforms, noise_transforms=noise_transforms)
     make_env_func = functools.partial(make_retinal_env_from_spec, env_spec)
     register_env(env_spec.name, make_env_func)

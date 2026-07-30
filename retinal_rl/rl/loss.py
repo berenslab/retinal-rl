@@ -17,6 +17,7 @@ from torch import Tensor
 
 from retinal_rl.models.circuits.actor_critic import Actor, Critic
 from retinal_rl.models.loss import BaseContext, Loss
+from retinal_rl.rl.sample_factory.environment import InputTransFormGroup
 
 
 class RLContext(BaseContext):
@@ -352,14 +353,26 @@ def build_context(
         adv_std, adv_mean = torch.std_mean(masked_select(adv, mb.valids, num_invalids))
         adv = (adv - adv_mean) / torch.clamp_min(adv_std, 1e-7)  # normalize advantage
 
-        vis_input = (
-            mb.normalized_obs["obs_raw"]
-            if "obs_raw" in mb.normalized_obs
-            else mb.normalized_obs["obs"]
+        # vis_input = (
+        #     mb.normalized_obs["obs_raw"]
+        #     if "obs_raw" in mb.normalized_obs
+        #     else mb.normalized_obs["obs"]
+        # )
+
+        noise_transformed = any(
+            [k.endswith(f"_pre_{InputTransFormGroup.NOISE.value}") for k in mb.normalized_obs]
         )
+
+        if noise_transformed:
+            source = mb.normalized_obs[f"obs_pre_{InputTransFormGroup.NOISE.value}"]
+            noise = mb.normalized_obs["obs"]
+        else:
+            source = mb.normalized_obs["obs"]
+            noise = None
+
     return RLContext(
-        vis_input,
-        None,
+        source,
+        noise,
         responses,
         epoch,
         num_invalids,

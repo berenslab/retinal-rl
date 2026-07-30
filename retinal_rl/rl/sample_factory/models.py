@@ -41,27 +41,6 @@ class SampleFactoryBrain(ActorCritic, ActorCriticProtocol):
 
         self.set_brain(create_brain(DictConfig(cfg.brain)))
         # TODO: Find way to instantiate brain outside
-        transforms_list = hydra.utils.instantiate(cfg.transforms)
-        self.inp_transforms = torch.nn.Sequential(*transforms_list)
-
-    def normalize_obs(self, obs: dict[str, Tensor]) -> dict[str, Tensor]:
-        """
-        This is used to implement input transforms!
-        """
-        if self.cfg[
-            "normalize_input"
-        ]:  # FIXME: have a properly defined switch between default samplefactory inp normalization and our input transforms
-            return self.obs_normalizer(obs)
-
-        obs_clone = ObservationNormalizer._clone_tensordict(obs)
-        for k in (
-            obs
-        ):  # There should be only one key "obs" in all our cases as far as I know
-            inp = obs[k].clone() if obs[k].dtype == torch.float else obs[k].float()
-            # TODO: This should not be needed after the cloning before
-            obs_clone[k] = self.inp_transforms(inp)
-            obs_clone[k + "_raw"] = obs[k]
-        return obs_clone
 
     def set_brain(self, brain: Brain):
         """

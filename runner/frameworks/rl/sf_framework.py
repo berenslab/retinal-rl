@@ -55,11 +55,21 @@ class SFFramework(TrainingFramework):
         self.sf_cfg = self.to_sf_cfg(cfg)
 
         # Register retinal environments and models.
+        source_transforms = None
+        noise_transforms = None
+        if hasattr(cfg.dataset, "source_transforms"):
+            source_transforms = torch.nn.Sequential(*OmegaConf.to_object(cfg.dataset.source_transforms))
+
+        if hasattr(cfg.dataset, "noise_transforms"):
+            noise_transforms = torch.nn.Sequential(*OmegaConf.to_object(cfg.dataset.noise_transforms))
+
         register_retinal_env(
             self.sf_cfg.env,
             self.data_root,
             self.sf_cfg.input_satiety,
             self.sf_cfg.allow_backwards,
+            source_transforms=source_transforms,
+            noise_transforms=noise_transforms,
         )
 
         self.cfg = cfg
@@ -175,14 +185,6 @@ class SFFramework(TrainingFramework):
             # TODO: Doesn't need to be part of sf_cfg!
         else:
             SFFramework._set_cfg_cli_argument(sf_cfg, "allow_backwards", True)
-            # TODO: move to default!
-
-        if hasattr(cfg.dataset, "transforms"):
-            SFFramework._set_cfg_cli_argument(
-                sf_cfg, "transforms", OmegaConf.to_object(cfg.dataset.transforms)
-            )
-        else:
-            SFFramework._set_cfg_cli_argument(sf_cfg, "transforms", [])
             # TODO: move to default!
 
         SFFramework._set_cfg_cli_argument(sf_cfg, "device", cfg.system.device)
