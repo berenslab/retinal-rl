@@ -8,6 +8,7 @@ from typing import Any, Optional
 
 # from retinal_rl.rl.sample_factory.observer import RetinalAlgoObserver
 import torch
+from hydra.utils import instantiate
 from omegaconf import DictConfig
 from omegaconf.omegaconf import OmegaConf
 from sample_factory.algo.learning.learner_factory import global_learner_factory
@@ -58,10 +59,10 @@ class SFFramework(TrainingFramework):
         source_transforms = None
         noise_transforms = None
         if hasattr(cfg.dataset, "source_transforms"):
-            source_transforms = torch.nn.Sequential(*OmegaConf.to_object(cfg.dataset.source_transforms))
+            source_transforms = torch.nn.Sequential(*instantiate(cfg.dataset.source_transforms))
 
         if hasattr(cfg.dataset, "noise_transforms"):
-            noise_transforms = torch.nn.Sequential(*OmegaConf.to_object(cfg.dataset.noise_transforms))
+            noise_transforms = torch.nn.Sequential(*instantiate(cfg.dataset.noise_transforms))
 
         register_retinal_env(
             self.sf_cfg.env,

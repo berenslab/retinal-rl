@@ -10,7 +10,6 @@ import torch
 # import gym
 from gymnasium.spaces import Discrete
 from sample_factory.envs.env_utils import register_env
-from sample_factory.utils.normalize import ObservationNormalizer
 from sample_factory.utils.utils import log
 from sf_examples.vizdoom.doom.action_space import (
     doom_action_space_basic,
@@ -101,38 +100,72 @@ class InputTransFormGroup(enum.Enum):
     SOURCE = "source"
     NOISE = "noise"
 
+
 class InputTransformWrapper(gym.Wrapper):
-    """Add game variables to the observation space + reward shaping."""
+    """Applies a sequence of transforms to the "obs" entry of the observation.
+
+    Keeps the pre-transform value around under "obs_pre_<group_name>" so that
+    downstream code (see retinal_rl.rl.loss.build_context) can recover both the
+    transformed input and the (partially-)clean source. Works whether the
+    wrapped env's observation is a plain array or already a dict (e.g. once
+    SatietyInput or an earlier InputTransformWrapper has run), and whether it is
+    the first InputTransformWrapper in the chain or stacked on top of another.
+    """
+
+    OBS_KEY = "obs"
 
     def __init__(self, env, transforms: torch.nn.Sequential, group_name: InputTransFormGroup = InputTransFormGroup.SOURCE):
         super().__init__(env)
         self.transforms = transforms
         self.group_name = group_name
+        self.pre_key = f"{self.OBS_KEY}_pre_{group_name.value}"
 
-    def _apply_transforms(self, obs):
-        if isinstance(obs, np.ndarray):
-            obs = torch.from_numpy(obs).to(torch.float32)
-            obs = self.transforms(obs)
-            obs = obs.numpy()
+        current_obs_space = self.observation_space
+        if isinstance(current_obs_space, gym.spaces.Dict):
+            vision_space = current_obs_space[self.OBS_KEY]
+            other_spaces = {
+                k: v
+                for k, v in current_obs_space.spaces.items()
+                if k != self.OBS_KEY
+            }
         else:
-            obs = self.transforms(obs)
-        return obs
+            vision_space = current_obs_space
+            other_spaces = {}
+
+        transformed_space = gym.spaces.Box(
+            low=-np.inf, high=np.inf, shape=vision_space.shape, dtype=np.float32
+        )
+
+        self.observation_space = gym.spaces.Dict(
+            {
+                **other_spaces,
+                self.OBS_KEY: transformed_space,
+                self.pre_key: vision_space,
+            }
+        )
+
+    def _to_obs_dict(self, obs):
+        return dict(obs) if isinstance(obs, dict) else {self.OBS_KEY: obs}
+
+    def _transform(self, vision):
+        is_numpy = isinstance(vision, np.ndarray)
+        inp = torch.from_numpy(vision).float() if is_numpy else vision.float()
+        out = self.transforms(inp)
+        return out.numpy() if is_numpy else out
+
+    def _process(self, obs):
+        obs_dict = self._to_obs_dict(obs)
+        obs_dict[self.pre_key] = obs_dict[self.OBS_KEY]
+        obs_dict[self.OBS_KEY] = self._transform(obs_dict[self.OBS_KEY])
+        return obs_dict
+
+    def reset(self, **kwargs):
+        obs, info = self.env.reset(**kwargs)
+        return self._process(obs), info
 
     def step(self, action):
         obs, rew, terminated, truncated, info = self.env.step(action)
-
-        if isinstance(obs, dict):
-            obs_clone = ObservationNormalizer._clone_tensordict(obs)
-            for k in obs:
-                if any([k.endswith(suffix) for suffix in [f"_pre_{g.value}" for g in InputTransFormGroup]]):
-                    obs_clone[k] = obs[k]
-                else:
-                    inp = obs[k].clone() if obs[k].dtype == torch.float else obs[k].float()
-                    obs_clone[k] = self.transforms(inp)
-                    obs_clone[k + f"_pre_{self.group_name.value}"] = obs[k]
-            return obs_clone
-        else:
-            return self._apply_transforms(obs), rew, terminated, truncated, info
+        return self._process(obs), rew, terminated, truncated, info
 
 
 class PickupTrackingWrapper(gym.Wrapper):

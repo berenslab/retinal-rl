@@ -1,0 +1,64 @@
+# @package _global_
+defaults:
+  - _self_
+  - override /dataset: rl-base
+  - override /brain: eff-brain-rl
+  - override /optimizer: eff-brain-rl
+
+framework: rl
+
+logging:
+  use_wandb: True
+
+### Interpolation Parameters ###
+
+# This is a free list of parameters that can be interpolated by the subconfigs
+# in sweep, dataset, brain, and optimizer. A major use for this is interpolating
+# values in the subconfigs, and then looping over them in a sweep.
+
+### INPUT SETTINGS
+env_name: gathering-apples
+vision_height: ${dataset.vision_height}
+vision_width: ${dataset.vision_width}
+
+
+### BRAIN SETTINGS
+rgc_channels: 32
+lgn_channels: ${rgc_channels}
+activation: "gelu"
+
+generic_stride: 3
+generic_kernel_size: 11
+
+rnn_size: 128
+prefrontal_out: 128
+prefrontal_hidden: [128]
+
+layer_norm: False
+affine_norm: False
+
+### LOSS/OPTIMIZER SETTINGS
+
+recon_weight: 0
+sparsity_weight: 0
+
+learning_rate: 0.0003
+weight_decay: 0.0005
+
+policy_factor: 0.05
+exploration_factor: 0.0001
+value_factor: 2
+reconstruction_factor: 0.1 # factor calculated through expected value of 0.4 and sum of rl losses being approximately 0.04
+recon_weight_retina: ${recon_weight}
+recon_weight_thalamus: ${recon_weight}
+
+
+samplefactory:
+  num_workers: 14
+  num_envs_per_worker: 32
+  train_for_env_steps: 2500000000
+  analysis_freq_start: 5000000
+  analysis_freq_end: 500000000
+  use_rnn: True
+  rnn_size: ${rnn_size}
+  normalize_input: False
