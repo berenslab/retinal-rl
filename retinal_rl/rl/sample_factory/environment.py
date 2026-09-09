@@ -67,10 +67,14 @@ class SatietyInput(gym.Wrapper):
         self.measurements_vec = np.zeros([num_measurements], dtype=np.float32)
 
     def _parse_info(self, obs, info):
+        if "HEALTH" not in info:
+            # can happen after a broken/degraded game frame (e.g. ViZDoom returned no
+            # state); reuse the last known satiety measurement rather than crash.
+            log.warning("info missing 'HEALTH'; reusing previous satiety measurement.")
+            return {"obs": obs, "measurements": self.measurements_vec}
+
         # we don't really care how much negative health we have, dead is dead
-        hlth = float(
-            info["HEALTH"]
-        )  # TODO: Used when input_satiety = true - but info does not contain HEALTH
+        hlth = float(info["HEALTH"])
         # clip health to [-1,1]
         hlth = np.clip(hlth, 0, 100)
         satiety = (hlth - 50) / 50.0
@@ -113,20 +117,27 @@ class PickupTrackingWrapper(gym.Wrapper):
         unbound_health = info.get(
             "USER17"
         )  # USER17 is the unbound health variable exposed through vizdoom.cfg in doom_creator
-        diff = unbound_health - self.last_health if self.last_health is not None else 0
-        self.last_health = unbound_health
-        # Accept differences up to one (eg health decreases by 1 periodically, which can coincide with the pickup of an object)
-        picked_up_object = np.abs(diff - self.object_values) <= 1
-        if np.sum(picked_up_object) == 1:
-            for object_value in self.object_values[picked_up_object]:
-                self.pickup_counts[str(object_value)] += 1
+        if unbound_health is None:
+            # can happen after a broken/degraded game frame (e.g. ViZDoom returned no
+            # state); skip pickup detection for this step without losing continuity
+            # (self.last_health is left untouched, so the next real step's diff is
+            # still computed against the last known good value).
+            log.warning("info missing 'USER17'; skipping pickup tracking for this step.")
+        else:
+            diff = unbound_health - self.last_health if self.last_health is not None else 0
+            self.last_health = unbound_health
+            # Accept differences up to one (eg health decreases by 1 periodically, which can coincide with the pickup of an object)
+            picked_up_object = np.abs(diff - self.object_values) <= 1
+            if np.sum(picked_up_object) == 1:
+                for object_value in self.object_values[picked_up_object]:
+                    self.pickup_counts[str(object_value)] += 1
 
-        done = terminated | truncated
-        unknown_diff = picked_up_object.sum() > 1 or (
-            picked_up_object.sum() == 0 and diff not in [0, -1]
-        )
-        if not done and unknown_diff:
-            log.warning(f"Unexpected unbound health difference: {diff}.")
+            done = terminated | truncated
+            unknown_diff = picked_up_object.sum() > 1 or (
+                picked_up_object.sum() == 0 and diff not in [0, -1]
+            )
+            if not done and unknown_diff:
+                log.warning(f"Unexpected unbound health difference: {diff}.")
 
         if "episode_extra_stats" not in info:
             info["episode_extra_stats"] = dict()
@@ -151,7 +162,14 @@ class PickupRewardShaping(gym.Wrapper):
         if info is None or done:
             return 0.0
 
-        curr_health = info.get("HEALTH", 0.0)
+        if "HEALTH" not in info:
+            # can happen after a broken/degraded game frame (e.g. ViZDoom returned no
+            # state); skip shaping rather than default to a bogus health value, which
+            # would otherwise inject a spurious reward spike on the next real step.
+            log.warning("info missing 'HEALTH'; skipping reward shaping for this step.")
+            return 0.0
+
+        curr_health = info["HEALTH"]
         living_penalty = (
             info.get("num_frames") * self.metabolic_cost / self.metabolic_delay
         )
