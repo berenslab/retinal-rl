@@ -17,7 +17,8 @@ dependencies = [
     "sample-factory @ git+https://github.com/fabioseel/sample-factory.git@97a8127fb7afd38a0d8513897aa52dfb7069c0cf",
     "vizdoom",
     "beartype",
-    ]
+    "scikit-learn>=1.7.2",
+]
 
 [tool.pyright]
 include = ["retinal_rl"]

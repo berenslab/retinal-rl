@@ -293,5 +293,5 @@ def set_integer_ticks(ax: Axes):
 def fig_to_rgb_image(fig: Figure) -> FloatArray:
     """Convert a Matplotlib figure to a numpy array representing an RGB image."""
     fig.canvas.draw()
-    data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-    return data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    data = np.frombuffer(fig.canvas.tostring_argb(), dtype=np.uint8)
+    return data.reshape(fig.canvas.get_width_height()[::-1] + (4,))[..., 1:4]  # Drop the alpha channel
