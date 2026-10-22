@@ -76,7 +76,7 @@ From: ubuntu:22.04
     num2words==0.5.13 \
     omgifol==0.5.1 \
     wandb==0.28.2 \
-    git+https://github.com/fabioseel/sample-factory.git@0ac5d964506434198243f5589f4371d61457f78d \
+    git+https://github.com/fabioseel/sample-factory.git@3ea6dec7f5d84cf7303c6bf3d4e73b7c4c4df131 \
     dpcpp-cpp-rt==2024.2.1 \
     seaborn==0.13.2 \
     hydra-core==1.3.2 \
