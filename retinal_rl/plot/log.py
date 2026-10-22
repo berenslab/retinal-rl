@@ -13,15 +13,46 @@ from retinal_rl.plot.util import plot_histories
 from retinal_rl.rl.analysis.plot import rescale_range
 from retinal_rl.util import NumpyEncoder
 
+# Entries are ("image", wandb title, png path) or ("file", file path)
+PendingWandb = list[tuple[str, ...]]
+
+
+def flush_pending_wandb(
+    pending: PendingWandb, run_dir: Path, staging_dir: Path | None = None
+) -> None:
+    """Log what a FigureLogger with a wandb_staging_dir collected. Must run in the process that owns the wandb run."""
+    try:
+        for entry in pending:
+            if entry[0] == "image":
+                _, title, png_path = entry
+                wandb.log({title: wandb.Image(png_path)}, commit=False)
+            else:
+                wandb.save(entry[1], base_path=str(run_dir), policy="now")
+    finally:
+        if staging_dir is not None:
+            shutil.rmtree(staging_dir, ignore_errors=True)
+
 
 class FigureLogger:
     def __init__(
-        self, use_wandb: bool, plot_dir: Path, checkpoint_plot_dir: Path, run_dir: Path
+        self,
+        use_wandb: bool,
+        plot_dir: Path,
+        checkpoint_plot_dir: Path,
+        run_dir: Path,
+        wandb_staging_dir: Path | None = None,
     ):
+        """
+        wandb_staging_dir: if set, nothing is sent to wandb directly. Figures are saved to this directory instead
+            and recorded in self.pending_wandb, to be logged later with flush_pending_wandb() (e.g. when the
+            analysis runs in a different process than the one owning the wandb run).
+        """
         self.use_wandb = use_wandb
         self.plot_dir = plot_dir
         self.checkpoint_plot_dir = checkpoint_plot_dir
         self.run_dir = run_dir
+        self.wandb_staging_dir = wandb_staging_dir
+        self.pending_wandb: PendingWandb = []
 
     def log_figure(
         self,
@@ -33,8 +64,13 @@ class FigureLogger:
     ) -> None:
         if self.use_wandb:
             title = f"{self._wandb_title(sub_dir)}/{self._wandb_title(file_name)}"
-            img = wandb.Image(fig)
-            wandb.log({title: img}, commit=False)
+            if self.wandb_staging_dir is not None:
+                png_path = self.wandb_staging_dir / f"{len(self.pending_wandb):04d}.png"
+                fig.savefig(png_path)
+                self.pending_wandb.append(("image", title, str(png_path)))
+            else:
+                img = wandb.Image(fig)
+                wandb.log({title: img}, commit=False)
         else:
             self.save_figure(sub_dir, file_name, fig)
             if copy_checkpoint:
@@ -87,6 +123,12 @@ class FigureLogger:
         filepath.write_text(summary)
 
         if self.use_wandb:
+            self._wandb_save(filepath)
+
+    def _wandb_save(self, filepath: str | Path) -> None:
+        if self.wandb_staging_dir is not None:
+            self.pending_wandb.append(("file", str(filepath)))
+        else:
             wandb.save(str(filepath), base_path=self.run_dir, policy="now")
 
     def save_dict(

@@ -40,8 +40,9 @@ def analyze(
     objective: Objective[ContextT],
     epoch: int,
     copy_checkpoint: bool = False,
+    figure_logger: FigureLogger | None = None,
 ):
-    log = FigureLogger(
+    log = figure_logger or FigureLogger(
         cfg.use_wandb, cfg.plot_dir, cfg.checkpoint_plot_dir, cfg.run_dir
     )
 
