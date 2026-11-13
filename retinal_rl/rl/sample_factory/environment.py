@@ -122,9 +122,13 @@ class PickupTrackingWrapper(gym.Wrapper):
             # state); skip pickup detection for this step without losing continuity
             # (self.last_health is left untouched, so the next real step's diff is
             # still computed against the last known good value).
-            log.warning("info missing 'USER17'; skipping pickup tracking for this step.")
+            log.warning(
+                "info missing 'USER17'; skipping pickup tracking for this step."
+            )
         else:
-            diff = unbound_health - self.last_health if self.last_health is not None else 0
+            diff = (
+                unbound_health - self.last_health if self.last_health is not None else 0
+            )
             self.last_health = unbound_health
             # Accept differences up to one (eg health decreases by 1 periodically, which can coincide with the pickup of an object)
             picked_up_object = np.abs(diff - self.object_values) <= 1
