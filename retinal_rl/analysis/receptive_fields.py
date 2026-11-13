@@ -112,16 +112,15 @@ def _compute_receptive_fields(
     widx = (wsz - 1) // 2
 
     hrf_size, wrf_size, hmn, wmn = rf_size_and_start(head_layers, hidx, widx)
-    # TODO: Discuss: Do we want to allow receptive fields larger than the input size?
-    hmn = max(0, hmn)
-    wmn = max(0, wmn)
-    hrf_size = min(hrf_size, hght)
-    wrf_size = min(wrf_size, wdth)
 
     grads: list[Tensor] = []
 
     for j in range(out_channels):
         grad = torch.autograd.grad(x[0, j, hidx, widx], obs, retain_graph=True)[0]
-        grads.append(grad[0, :, hmn : hmn + hrf_size, wmn : wmn + wrf_size])
+        # pad so that RFs extending beyond the input (into the zero padding) are cut out unshifted and at full size
+        grad = nn.functional.pad(grad[0], (wrf_size, wrf_size, hrf_size, hrf_size))
+        grads.append(
+            grad[:, hmn + hrf_size : hmn + 2 * hrf_size, wmn + wrf_size : wmn + 2 * wrf_size]
+        )
 
     return torch.stack(grads).cpu().numpy()
