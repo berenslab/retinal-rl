@@ -1,0 +1,92 @@
+Bootstrap: docker
+From: ubuntu:22.04
+# ARM64 (aarch64) variant of retinal-rl.def. Build on an ARM host, or on x86
+# with qemu-user-static and "From: arm64v8/ubuntu:22.04".
+
+%post
+
+  export TZ=Europe/Berlin
+  export DEBIAN_FRONTEND=noninteractive
+
+  # Update
+  apt -qy update
+
+  # Python
+  apt -y install python3 python3-all-dev pip
+
+  # VizDoom Depends (+ build tools, as some packages lack aarch64 wheels)
+
+  apt install -y \
+    build-essential \
+    pkg-config \
+    cmake \
+    curl \
+    libboost-all-dev \
+    libsdl2-dev \
+    libfreetype6-dev \
+    libgl1-mesa-dev \
+    libglu1-mesa-dev \
+    libpng-dev \
+    libjpeg-dev \
+    libbz2-dev \
+    libfluidsynth-dev \
+    libgme-dev \
+    libopenal-dev \
+    zlib1g-dev \
+    timidity \
+    git \
+    tar \
+    unzip \
+    gifsicle \
+    parallel \
+    nasm
+
+  # Plotting Depends
+  apt install -y \
+    ffmpeg \
+    libcairo2-dev \
+    fonts-liberation
+
+
+  # Rename python3 to python
+  ln -s /usr/bin/python3 /usr/bin/python
+
+  # build action code compiler from source (prebuilt binary is x86-only)
+  git clone --depth 1 --branch 1.59 https://github.com/ZDoom/acc.git /tmp/acc
+  cmake -S /tmp/acc -B /tmp/acc/build -DCMAKE_BUILD_TYPE=Release
+  cmake --build /tmp/acc/build -j
+  mkdir -p /usr/share/acc
+  cp /tmp/acc/*.acs /usr/share/acc/
+  mv /tmp/acc/build/acc /usr/bin/acc
+  rm -rf /tmp/acc
+
+  # PyTorch: PyPI aarch64 wheels are CPU-only, use the CUDA index instead
+  pip3 install --no-cache-dir torch==2.6.0 torchvision==0.21.0 \
+    --index-url https://download.pytorch.org/whl/cu126
+
+  # retinal-rl Extra (dpcpp-cpp-rt dropped: x86-only)
+
+  pip3 install --no-cache-dir gymnasium==0.29.1 \
+    vizdoom==1.2.4  \
+    matplotlib==3.9.1 \
+    opentsne==1.0.2 \
+    opencv-python==4.10.0.84 \
+    pygame==2.6.1 \
+    pycairo==1.26.1  \
+    pytest==8.3.3 \
+    git+https://github.com/pytorch/captum.git@fd758e025673100cb6a525d59a78893c558b825b \
+    torchinfo==1.8.0 \
+    num2words==0.5.13 \
+    omgifol==0.5.1 \
+    wandb==0.28.2 \
+    git+https://github.com/fabioseel/sample-factory.git@3ea6dec7f5d84cf7303c6bf3d4e73b7c4c4df131 \
+    seaborn==0.13.2 \
+    hydra-core==1.3.2 \
+    networkx==3.3 \
+    ruff==0.7.0 \
+    beartype
+
+  # Clean up for smaller container size
+  apt clean
+  rm -rf /var/lib/apt/lists/*
+  rm -rf /root/.cache/pip
