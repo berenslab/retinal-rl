@@ -178,7 +178,9 @@ def _resumed_config(
 
     cfg = copy.deepcopy(snapshot)
     cfg.run_name = request.run_name  # legacy snapshots contain ${now:...}
-    cu.apply_overrides(cfg, request.new_overrides)
+    # launch scripts pass the same +key=v on every (re)start: the snapshot of a
+    # resumed run already has the key, so it is set instead of rejected
+    cu.apply_overrides(cfg, request.new_overrides, add_existing=True)
     OmegaConf.set_struct(cfg, True)  # behave like a hydra-composed config
 
     changes = cu.config_diff(snapshot, cfg, _DIFF_IGNORE_PREFIXES)

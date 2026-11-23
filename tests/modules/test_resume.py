@@ -149,7 +149,7 @@ def test_end_to_end(launch_dir):
     assert len(log) == 1 and log[0].changes == {}
 
     # Resume with a changed value: applied, logged and snapshot archived
-    _run_app(launch_dir, "run_name=run_e2e", "logging.max_checkpoints=9")
+    _run_app(launch_dir, "run_name=run_e2e", "+logging.max_checkpoints=9")
     second = OmegaConf.load(run_dir / "effective.yaml")
     assert second.logging.max_checkpoints == 9
     assert second.logging.checkpoint_step == 7

@@ -69,6 +69,12 @@ def test_apply_overrides_errors(override, error):
         cu.apply_overrides(cfg, [override])
 
 
+def test_apply_overrides_add_existing():
+    cfg = OmegaConf.create({"a": 1})
+    cu.apply_overrides(cfg, ["+a=2", "+b=3"], add_existing=True)
+    assert cfg == {"a": 2, "b": 3}
+
+
 def test_flatten_and_set_nested():
     tree = {"a": {"b": 1, "e": {}}, "c": 2}
     assert cu.flatten(tree) == {"a.b": 1, "a.e": {}, "c": 2}

@@ -83,8 +83,14 @@ def is_group_override(override: Override, groups: set[str]) -> bool:
 ### Configs ###
 
 
-def apply_overrides(cfg: DictConfig, overrides: list[str]) -> None:
-    """Apply hydra-style value overrides (key=v, +key=v, ++key=v, ~key) in place."""
+def apply_overrides(
+    cfg: DictConfig, overrides: list[str], add_existing: bool = False
+) -> None:
+    """Apply hydra-style value overrides (key=v, +key=v, ++key=v, ~key) in place.
+
+    add_existing: `+key=v` for a key that already exists sets it (like `++`)
+    instead of raising, e.g. when re-applying launch overrides to a snapshot.
+    """
     for o in parse_overrides(overrides):
         key = o.key_or_group
         exists = OmegaConf.select(cfg, key, default=_MISSING) is not _MISSING
@@ -92,7 +98,7 @@ def apply_overrides(cfg: DictConfig, overrides: list[str]) -> None:
             if not exists:
                 raise KeyError(f"Can not delete '{key}': not in the config")
             _delete(cfg, key)
-        elif o.is_add() and exists:
+        elif o.is_add() and exists and not add_existing:
             raise KeyError(f"Can not add '{key}': already in the config")
         elif not (o.is_add() or o.is_force_add()) and not exists:
             raise KeyError(f"Can not override '{key}': not in the config (use +{key})")
