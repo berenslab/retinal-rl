@@ -125,11 +125,13 @@ class SFFramework(TrainingFramework):
             )
 
             cfg, runner = make_runner(self.sf_cfg)
-            # if cfg.online_analysis:
-            runner.register_observer(RetinalAlgoObserver(self.sf_cfg))
-            runner.register_episodic_stats_handler(retinal_stats_handler)
-
             has_checkpoint = self._prepare_checkpoint_dir(cfg)
+
+            # if cfg.online_analysis:
+            runner.register_observer(
+                RetinalAlgoObserver(self.sf_cfg, resumed=has_checkpoint)
+            )
+            runner.register_episodic_stats_handler(retinal_stats_handler)
 
             status = runner.init()
 
