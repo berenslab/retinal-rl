@@ -39,7 +39,7 @@ logging:
 hydra:
   searchpath:
     - file://config/user
-  output_subdir: config  # Subdirectory for Hydra output in the run directory
+  output_subdir: ${path.config_dir}  # Subdirectory for Hydra output in the run directory
   run:
     dir: experiments/single-run/${hydra:runtime.choices.experiment}/${run_name}  # Directory for single runs
   job:
@@ -54,8 +54,15 @@ hydra:
     subdir: ${hydra:runtime.choices.experiment}/sweep/${oc.env:WANDB_SWEEP_ID,local}/${run_name}  # Individual sweep run subdirectory
 
 # Path configuration
+# All paths except run_dir are relative to run_dir (hydra changes into it).
+# runner/paths.py reads these values - define new locations here, not in the code.
 path:
   run_dir: ${hydra:runtime.output_dir}  # Access run directory at runtime
+  config_dir: config  # Hydra's output_subdir: hydra's files and the configs of the run
+  run_config: ${path.config_dir}/run_config.yaml  # Config snapshot used to resume the run
+  launch_overrides: ${path.config_dir}/launch.yaml  # Overrides the run was started with
+  resume_log: ${path.config_dir}/resume_log.yaml  # One entry (incl. config changes) per resume
+  full_config: ${path.config_dir}/full_config.yaml  # Resolved config of the last launch
   data_dir: data  # Root directory in run_dir where all run data is saved
   checkpoint_dir: ${path.data_dir}/checkpoints  # Directory for checkpoints
   plot_dir: ${path.data_dir}/plots  # Directory for plots

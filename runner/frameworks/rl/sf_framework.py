@@ -1,5 +1,6 @@
 import argparse
 import json
+import logging
 import os
 import warnings
 from argparse import Namespace
@@ -10,6 +11,7 @@ from typing import Any, Optional
 import torch
 from omegaconf import DictConfig
 from omegaconf.omegaconf import OmegaConf
+from sample_factory.algo.learning.learner import Learner
 from sample_factory.algo.learning.learner_factory import global_learner_factory
 from sample_factory.algo.runners.runner import Runner
 from sample_factory.algo.utils.context import global_model_factory
@@ -44,6 +46,9 @@ from retinal_rl.rl.sample_factory.retinal_stats_handler import retinal_stats_han
 from runner.frameworks.classification.initialize import initialize
 from runner.frameworks.framework_interface import TrainingFramework
 from runner.util import create_brain
+
+# Initialize the logger
+logger = logging.getLogger(__name__)
 
 
 class SFFramework(TrainingFramework):
@@ -120,18 +125,39 @@ class SFFramework(TrainingFramework):
             )
 
             cfg, runner = make_runner(self.sf_cfg)
+            has_checkpoint = self._prepare_checkpoint_dir(cfg)
+
             # if cfg.online_analysis:
-            runner.register_observer(RetinalAlgoObserver(self.sf_cfg))
+            runner.register_observer(
+                RetinalAlgoObserver(self.sf_cfg, resumed=has_checkpoint)
+            )
             runner.register_episodic_stats_handler(retinal_stats_handler)
 
             status = runner.init()
 
-            # update brain weights
-            self.preset_model_and_optimizer(brain, optimizer, runner)
+            if not has_checkpoint:
+                # No checkpoint -> new run -> preset model & optimizer
+                self.preset_model_and_optimizer(brain, optimizer, runner)
+            else:
+                # Resuming: No presetting of the model (would overwrite the ckpt)
+                logger.info("Found sample factory checkpoint, continuing training.")
 
             if status == ExperimentStatus.SUCCESS:
                 status = runner.run()
-            print(status)
+            logger.info(status)
+
+    @staticmethod
+    def _prepare_checkpoint_dir(cfg: Config) -> bool:
+        """
+        Remove leftovers of interrupted saves and report whether a checkpoint exists. (Sample factory saves to '<prefix>_temp' and renames afterwards)
+        """
+        checkpoint_dir = Learner.checkpoint_dir(cfg, 0)
+        for prefix in ("checkpoint", "best"):
+            tmp = Path(checkpoint_dir) / f"{prefix}_temp"
+            if tmp.exists():
+                warnings.warn(f"Removing incomplete checkpoint {tmp}")
+                tmp.unlink()
+        return len(Learner.get_checkpoints(checkpoint_dir)) > 0
 
     @staticmethod
     def load_brain_and_config(

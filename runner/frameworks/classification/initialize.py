@@ -15,9 +15,13 @@ from omegaconf import DictConfig
 from torch.optim.optimizer import Optimizer
 
 from retinal_rl.models.brain import Brain
-from runner.util import save_checkpoint
+from runner.paths import find_run_dirs, load_base_config
+from runner.util import load_brain_weights, save_checkpoint
 
 ### Infrastructure ###
+
+# Written by runner.util.save_checkpoint into the data dir
+_CURRENT_CHECKPOINT = "current_checkpoint.pt"
 
 
 # Initialize the logger
@@ -81,23 +85,26 @@ def initialize(
     logger.info(f"Run Name: {cfg.run_name}")
     logger.info(f"(WANDB) Sweep ID: {wandb_sweep_id}")
 
-    # If continuing from a previous run, load the model and history
-    if cfg.data_dir.exists():
-        return _initialize_reload(cfg, brain, optimizer)
-    # Check multirun (sweep runs are stored there)
-    if _find_checkpoint_in_multirun(cfg.run_name) is not None:
-        return _initialize_reload(cfg, brain, optimizer)
-    # else, initialize a new model and history
-    logger.info(
-        f"Experiment data path {cfg.data_dir} does not exist. Initializing {cfg.run_name}."
-    )
+    # Continue a previous run (sweep runs might be stored in another sweep dir)
+    checkpoint_file = _find_checkpoint(cfg)
+    if checkpoint_file is not None:
+        result = _initialize_reload(cfg, checkpoint_file, brain, optimizer)
+    else:
+        logger.info(f"No checkpoint found. Initializing {cfg.run_name}.")
+        cfg_backup = omegaconf.OmegaConf.to_container(
+            dict_cfg, resolve=True, throw_on_missing=True
+        )
+        cfg_backup = cast(Dict[str, Any], cfg_backup)
 
-    cfg_backup = omegaconf.OmegaConf.to_container(
-        dict_cfg, resolve=True, throw_on_missing=True
-    )
-    cfg_backup = cast(Dict[str, Any], cfg_backup)
+        # Only for fresh runs - when resuming, the trained weights must not be
+        # overwritten. Loaded before the initial checkpoint is saved, so that it
+        # contains these weights.
+        if "init_weights_path" in dict_cfg:
+            logger.info(f"Loading initial weights from {dict_cfg.init_weights_path}")
+            load_brain_weights(brain, dict_cfg.init_weights_path)
 
-    return _initialize_create(cfg, cfg_backup, brain, optimizer)
+        result = _initialize_create(cfg, cfg_backup, brain, optimizer)
+    return result
 
 
 def _initialize_create(
@@ -151,36 +158,23 @@ def _initialize_create(
     return brain, optimizer, histories, epoch
 
 
-def _find_checkpoint_in_multirun(run_name: str) -> Path | None:
-    """Search for a checkpoint in multirun sweeps by run_name."""
-    # Use original cwd (before Hydra chdir) to find the project root
-    original_cwd = Path(HydraConfig.get().runtime.cwd)
-    multirun_dir = original_cwd / "experiments/multirun"
-    if not multirun_dir.exists():
-        return None
-
-    # Search through all sweeps for the run_name
-    for checkpoint in multirun_dir.glob(f"*/sweep/*/{run_name}/data/current_checkpoint.pt"):
-        logger.info(f"Found checkpoint in multirun: {checkpoint}")
-        return checkpoint
-
-    return None
+def _find_checkpoint(cfg: InitConfig) -> Path | None:
+    """The checkpoint of this run: in the run dir, else in another run dir of
+    the same name (e.g. a sweep run continued in a new sweep)."""
+    candidates = [cfg.data_dir / _CURRENT_CHECKPOINT]
+    if not candidates[0].exists():
+        other_run_dirs = find_run_dirs(
+            load_base_config(), cfg.run_name, Path(HydraConfig.get().runtime.cwd)
+        )
+        candidates = [d / cfg.data_dir / _CURRENT_CHECKPOINT for d in other_run_dirs]
+    found = [c for c in candidates if c.exists()]
+    return found[0] if found else None
 
 
 def _initialize_reload(
-    cfg: InitConfig, brain: Brain, optimizer: Optimizer
+    cfg: InitConfig, checkpoint_file: Path, brain: Brain, optimizer: Optimizer
 ) -> Tuple[Brain, Optimizer, Dict[str, List[float]], int]:
-    logger.info(
-        f"Experiment data dir {cfg.data_dir} exists. Loading existing model and history."
-    )
-    checkpoint_file = cfg.data_dir / "current_checkpoint.pt"
-
-    # If checkpoint not in single-run, search in multirun (for sweep runs)
-    if not checkpoint_file.exists():
-        checkpoint_file = _find_checkpoint_in_multirun(cfg.run_name)
-        if checkpoint_file is None:
-            logger.error(f"Checkpoint not found in {cfg.data_dir} or multirun")
-            raise FileNotFoundError("Checkpoint file does not exist.")
+    logger.info(f"Loading existing model and history from {checkpoint_file}.")
 
     # Load the state dict into the brain model
     checkpoint = torch.load(checkpoint_file, map_location=cfg.device)
@@ -200,7 +194,7 @@ def _initialize_reload(
             job_type=HydraConfig.get().runtime.choices.brain,
             name=cfg.run_name,
             id=cfg.run_name,
-            resume="must",
+            resume="allow",  # also works if wandb was not used for the earlier part
             dir=cfg.wandb_dir,
         )
         if cfg.wandb_preempt:

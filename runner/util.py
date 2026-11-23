@@ -5,6 +5,7 @@
 import logging
 import os
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Any, cast
 
@@ -80,6 +81,21 @@ def load_brain_weights(brain: Brain, checkpoint_path: str):
         )
 
     brain.load_state_dict(actual_state_dict)
+
+
+def git_hash(repo_dir: Path) -> str | None:
+    """Commit hash of the repository at repo_dir, None if not available (e.g. no git)."""
+    try:
+        commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repo_dir,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        commit = None
+    return commit
 
 
 def delete_results(run_dir: Path) -> None:

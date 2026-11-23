@@ -10,6 +10,7 @@ from sample_factory.utils.utils import log
 from retinal_rl.models.objective import Objective
 from retinal_rl.rl.analyze import AnalysesCfg, analyze
 from retinal_rl.rl.loss import RLContext
+from retinal_rl.rl.sample_factory import analysis_schedule
 from retinal_rl.rl.sample_factory.retinal_stats_handler import retinal_stats_handler
 from retinal_rl.rl.sample_factory.util import load_brain_from_checkpoint
 
@@ -24,20 +25,17 @@ class RetinalAlgoObserver(AlgoObserver):
     AlgoObserver that runs analysis at specified times.
     """
 
-    def __init__(self, cfg: Config):
+    def __init__(self, cfg: Config, resumed: bool = False):
+        """`resumed`: the learner continues from a checkpoint. The schedule is then
+        continued once the restored env steps are known (instead of analysing at 0)."""
         self.cfg = cfg
         self.cur_freq = cfg.analysis_freq_start
         self.end_freq = cfg.analysis_freq_end
         self.current_process = None
         self.queue = multiprocessing.Queue()
 
-        # get analysis count
-        # if not os.path.exists(analysis_root(cfg)):
-        #     os.makedirs(analysis_root(cfg))
-
-        # acount = read_analysis_count(cfg)
-
         self.next_analysis_step = 0
+        self.awaiting_resumed_steps = resumed
 
     def _analyze(self, env_step: int):
         try:
@@ -77,18 +75,32 @@ class RetinalAlgoObserver(AlgoObserver):
     ) -> None:  # TODO: deprecated and will be refactored anyway
         """Called after each training step."""
         total_env_steps = sum(runner.env_steps.values())
+        # runner.env_steps is filled by the learners' first reports
+        steps_known = len(runner.env_steps) == self.cfg.num_policies
 
-        if total_env_steps >= self.next_analysis_step:
+        if self.awaiting_resumed_steps and steps_known:
+            self.next_analysis_step, self.cur_freq = analysis_schedule.first_after(
+                total_env_steps, self.cfg.analysis_freq_start, self.end_freq
+            )
+            self.awaiting_resumed_steps = False
+            log.info(
+                f"RETINAL RL: resumed at {total_env_steps} env steps, "
+                f"next analysis at {self.next_analysis_step}"
+            )
+
+        if (
+            not self.awaiting_resumed_steps
+            and total_env_steps >= self.next_analysis_step
+        ):
             # run analysis in a separate process
             log.debug(
                 "RETINAL RL: current_step >= self.steps_complete, launching analysis process..."
             )
 
             self._analyze(total_env_steps)
-            self.next_analysis_step = self.next_analysis_step + min(
-                self.cur_freq, self.end_freq
+            self.next_analysis_step, self.cur_freq = analysis_schedule.advance(
+                self.next_analysis_step, self.cur_freq, self.end_freq
             )
-            self.cur_freq = self.cur_freq * 2
 
     # Use extra summaries for now TODO: unify with classification logging
     def extra_summaries(
